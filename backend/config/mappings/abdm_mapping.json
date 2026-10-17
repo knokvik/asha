@@ -1,0 +1,39 @@
+{
+  "system": "ABDM",
+  "version": "4.0",
+  "fhir_version": "4.0.1",
+  "profiles": {
+    "WellnessRecord": {
+      "bundle_profile": "https://nrces.in/ndhm/fhir/r4/StructureDefinition/WellnessRecord",
+      "composition_type_code": "86470-3",
+      "composition_type_display": "Wellness and health assessment note",
+      "hi_type": "WellnessRecord"
+    },
+    "ImmunizationRecord": {
+      "bundle_profile": "https://nrces.in/ndhm/fhir/r4/StructureDefinition/ImmunizationRecord",
+      "composition_type_code": "412726003",
+      "composition_type_display": "Immunization record",
+      "hi_type": "ImmunizationRecord"
+    },
+    "OPConsultation": {
+      "bundle_profile": "https://nrces.in/ndhm/fhir/r4/StructureDefinition/OPConsultationRecord",
+      "composition_type_code": "371530004",
+      "composition_type_display": "Clinical consultation report",
+      "hi_type": "OPConsultation"
+    },
+    "DiagnosticReport": {
+      "bundle_profile": "https://nrces.in/ndhm/fhir/r4/StructureDefinition/DiagnosticReportRecord",
+      "composition_type_code": "721981007",
+      "composition_type_display": "Diagnostic study report",
+      "hi_type": "DiagnosticReport"
+    }
+  },
+  "code_systems": {
+    "snomed": "http://snomed.info/sct",
+    "loinc": "http://loinc.org",
+    "abha_id": "https://healthid.ndhm.gov.in",
+    "rch_id": "https://rch.nhm.gov.in",
+    "nikshay_id": "https://nikshay.in"
+  },
+  "default_consent_validity_days": 30
+}

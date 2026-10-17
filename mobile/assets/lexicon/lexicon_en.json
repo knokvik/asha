@@ -1,0 +1,114 @@
+{
+  "language": "en",
+  "version": "2024.1",
+  "entries": [
+    {
+      "spoken_variants": ["fast breathing", "rapid breathing", "shortness of breath", "gasping"],
+      "canonical_concept": "FAST_BREATHING",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.1
+    },
+    {
+      "spoken_variants": ["jaundice", "yellow skin", "yellow eyes"],
+      "canonical_concept": "JAUNDICE",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.0
+    },
+    {
+      "spoken_variants": ["fever", "high temperature", "hot body", "chills"],
+      "canonical_concept": "FEVER",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.05
+    },
+    {
+      "spoken_variants": ["diarrhea", "loose stools", "watery stools", "dysentery"],
+      "canonical_concept": "DIARRHEA",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.05
+    },
+    {
+      "spoken_variants": ["anemia", "pale skin", "low blood", "fatigue"],
+      "canonical_concept": "ANEMIA",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.0
+    },
+    {
+      "spoken_variants": ["malnutrition", "wasting", "underweight"],
+      "canonical_concept": "MALNUTRITION",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.0
+    },
+    {
+      "spoken_variants": ["convulsions", "seizures", "fits"],
+      "canonical_concept": "CONVULSIONS",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.1
+    },
+    {
+      "spoken_variants": ["chest indrawing", "intercostal indrawing", "sunken chest"],
+      "canonical_concept": "CHEST_INDRAWING",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.1
+    },
+    {
+      "spoken_variants": ["vomiting", "throwing up", "emesis"],
+      "canonical_concept": "VOMITING",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.05
+    },
+    {
+      "spoken_variants": ["lethargy", "unconscious", "drowsy", "unresponsive"],
+      "canonical_concept": "LETHARGY",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.05
+    },
+    {
+      "spoken_variants": ["cough", "coughing"],
+      "canonical_concept": "COUGH",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.05
+    },
+    {
+      "spoken_variants": ["hypertension", "high blood pressure", "high bp"],
+      "canonical_concept": "HYPERTENSION",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.0
+    },
+    {
+      "spoken_variants": ["diabetes", "sugar"],
+      "canonical_concept": "DIABETES",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.0
+    },
+    {
+      "spoken_variants": ["yes", "yeah", "correct", "true", "positive"],
+      "canonical_concept": "YES",
+      "field_type": "boolean",
+      "confidence_boost": 0.0
+    },
+    {
+      "spoken_variants": ["no", "nope", "false", "negative"],
+      "canonical_concept": "NO",
+      "field_type": "boolean",
+      "confidence_boost": 0.0
+    },
+    {
+      "spoken_variants": ["ten", "10"],
+      "canonical_concept": "10",
+      "field_type": "numeric",
+      "output_transform": "numeric"
+    },
+    {
+      "spoken_variants": ["thirty", "30", "thirty years"],
+      "canonical_concept": "30",
+      "field_type": "numeric",
+      "output_transform": "numeric"
+    },
+    {
+      "spoken_variants": ["sixty", "60"],
+      "canonical_concept": "60",
+      "field_type": "numeric",
+      "output_transform": "numeric"
+    }
+  ]
+}

@@ -1,0 +1,331 @@
+{
+  "version_id": "NHM_NAT_2024_V1",
+  "state_code": "DEFAULT",
+  "effective_from": "2024-01-01T00:00:00.000Z",
+  "effective_to": null,
+  "description": "National Health Mission ASHA Incentive Catalogue 2024",
+  "items": [
+    {
+      "activity_code": "ANC_REG_EARLY",
+      "activity_name": "Early ANC Registration",
+      "category": "RCH_MATERNAL",
+      "rates": {
+        "fixed_honorarium": 0.0,
+        "performance_incentive": 100.0,
+        "state_top_up": 50.0,
+        "connectivity_allowance": 0.0
+      },
+      "submission_window_days": 60,
+      "required_evidence_type": "CLINICAL_ENCOUNTER",
+      "eligibility_conditions": {
+        "max_gestational_weeks": 12
+      },
+      "descriptions": {
+        "en": "Registration of pregnancy within first trimester (<= 12 weeks)",
+        "hi": "गर्भावस्था की पहली तिमाही (12 सप्ताह के भीतर) में पंजीकरण",
+        "mr": "पहिल्या तिमाहीत (12 आठवड्यांच्या आत) गर्भधारणा नोंदणी"
+      },
+      "audio_clips": {
+        "en": "assets/audio/incentives/anc_early_en.mp3",
+        "hi": "assets/audio/incentives/anc_early_hi.mp3",
+        "mr": "assets/audio/incentives/anc_early_mr.mp3"
+      },
+      "ineligibility_messages": {
+        "LATE_REGISTRATION": {
+          "en": "Registration completed after 12 weeks of pregnancy. Eligible only within 12 weeks.",
+          "hi": "गर्भावस्था के 12 सप्ताह बाद पंजीकरण। केवल 12 सप्ताह के भीतर मान्य।",
+          "mr": "गर्भधारणेच्या 12 आठवड्यांनंतर नोंदणी. केवळ 12 आठवड्यांच्या आत पात्र."
+        }
+      },
+      "ineligibility_audio_clips": {
+        "LATE_REGISTRATION": {
+          "en": "assets/audio/incentives/inelig_anc_late_en.mp3",
+          "hi": "assets/audio/incentives/inelig_anc_late_hi.mp3",
+          "mr": "assets/audio/incentives/inelig_anc_late_mr.mp3"
+        }
+      }
+    },
+    {
+      "activity_code": "ANC_CHECKUP_FULL",
+      "activity_name": "Full ANC Service Package",
+      "category": "RCH_MATERNAL",
+      "rates": {
+        "fixed_honorarium": 0.0,
+        "performance_incentive": 200.0,
+        "state_top_up": 100.0,
+        "connectivity_allowance": 0.0
+      },
+      "submission_window_days": 90,
+      "required_evidence_type": "VISIT_SERIES",
+      "eligibility_conditions": {
+        "min_anc_visits": 4,
+        "requires_tt": true,
+        "requires_ifa": true
+      },
+      "descriptions": {
+        "en": "Ensuring 4 ANC checkups, TT vaccination, and IFA supplementation",
+        "hi": "4 एएनसी जांच, टीटी टीका और आईएफए की आपूर्ति सुनिश्चित करना",
+        "mr": "4 एएनसी तपासण्या, टीटी लस आणि आयएफए गोळ्यांची पूर्तता"
+      },
+      "audio_clips": {
+        "en": "assets/audio/incentives/anc_full_en.mp3",
+        "hi": "assets/audio/incentives/anc_full_hi.mp3"
+      },
+      "ineligibility_messages": {
+        "INSUFFICIENT_VISITS": {
+          "en": "Fewer than 4 ANC visits completed. At least 4 checkups are required.",
+          "hi": "4 से कम एएनसी जांच पूरी हुई हैं। कम से कम 4 जांच आवश्यक हैं।",
+          "mr": "4 पेक्षा कमी एएनसी तपासण्या पूर्ण झाल्या आहेत."
+        }
+      }
+    },
+    {
+      "activity_code": "INST_DELIVERY_ESCORT",
+      "activity_name": "Institutional Delivery Escort (JSY)",
+      "category": "RCH_MATERNAL",
+      "rates": {
+        "fixed_honorarium": 0.0,
+        "performance_incentive": 300.0,
+        "state_top_up": 300.0,
+        "connectivity_allowance": 0.0
+      },
+      "submission_window_days": 45,
+      "required_evidence_type": "FACILITY_VERIFICATION",
+      "eligibility_conditions": {
+        "delivery_location": "FACILITY"
+      },
+      "descriptions": {
+        "en": "Escorting pregnant woman to accredited health facility for delivery",
+        "hi": "संस्थागत प्रसव हेतु गर्भवती महिला को मान्यता प्राप्त स्वास्थ्य केंद्र ले जाना",
+        "mr": "प्रसूतीसाठी गरोदर महिलेला आरोग्य केंद्रात घेऊन जाणे"
+      },
+      "audio_clips": {
+        "en": "assets/audio/incentives/delivery_escort_en.mp3",
+        "hi": "assets/audio/incentives/delivery_escort_hi.mp3"
+      },
+      "ineligibility_messages": {
+        "HOME_DELIVERY": {
+          "en": "Delivery took place at home. JSY incentive requires institutional delivery.",
+          "hi": "प्रसव घर पर हुआ। जेएसवाई प्रोत्साहन के लिए संस्थागत प्रसव अनिवार्य है।",
+          "mr": "प्रसूती घरी झाली. जेएसवाय साठी संस्थात्मक प्रसूती आवश्यक आहे."
+        }
+      }
+    },
+    {
+      "activity_code": "HBNC_COMPLETE",
+      "activity_name": "Complete Home-Based Newborn Care Series",
+      "category": "RCH_CHILD",
+      "rates": {
+        "fixed_honorarium": 0.0,
+        "performance_incentive": 250.0,
+        "state_top_up": 50.0,
+        "connectivity_allowance": 0.0
+      },
+      "submission_window_days": 60,
+      "required_evidence_type": "VISIT_SERIES",
+      "eligibility_conditions": {
+        "institutional_visits_required": 6,
+        "home_visits_required": 7
+      },
+      "descriptions": {
+        "en": "Conducting all scheduled home visits for newborn care within 42 days",
+        "hi": "42 दिनों के भीतर नवजात शिशु की देखभाल हेतु सभी निर्धारित गृह भ्रमण",
+        "mr": "42 दिवसांच्या आत नवजात बाळाची सर्व गृह भेट पूर्ण करणे"
+      },
+      "audio_clips": {
+        "en": "assets/audio/incentives/hbnc_complete_en.mp3",
+        "hi": "assets/audio/incentives/hbnc_complete_hi.mp3"
+      },
+      "ineligibility_messages": {
+        "INCOMPLETE_VISITS": {
+          "en": "Incomplete HBNC visit series. All scheduled visits must be completed.",
+          "hi": "एचबीएनसी गृह भ्रमण श्रृंखला अधूरी है। सभी निर्धारित भ्रमण पूरे होने चाहिए।",
+          "mr": "एचबीएनसी गृह भेट अपूर्ण आहे."
+        }
+      }
+    },
+    {
+      "activity_code": "HBYC_VISIT",
+      "activity_name": "Home-Based Care for Young Child (HBYC)",
+      "category": "RCH_CHILD",
+      "rates": {
+        "fixed_honorarium": 0.0,
+        "performance_incentive": 50.0,
+        "state_top_up": 25.0,
+        "connectivity_allowance": 0.0
+      },
+      "submission_window_days": 45,
+      "required_evidence_type": "CLINICAL_ENCOUNTER",
+      "eligibility_conditions": {
+        "milestones_months": [3, 6, 9, 12, 15]
+      },
+      "descriptions": {
+        "en": "Conducting HBYC quarterly visit and nutrition/developmental assessment",
+        "hi": "एचबीवाईसी त्रैमासिक भ्रमण और पोषण व विकास मूल्यांकन",
+        "mr": "एचबीव्हायसी त्रैमासिक भेट आणि वाढीचे मूल्यांकन"
+      },
+      "audio_clips": {
+        "en": "assets/audio/incentives/hbyc_visit_en.mp3"
+      }
+    },
+    {
+      "activity_code": "IMMUNIZATION_FULL_1YR",
+      "activity_name": "Full Immunization at 1 Year",
+      "category": "IMMUNIZATION",
+      "rates": {
+        "fixed_honorarium": 0.0,
+        "performance_incentive": 100.0,
+        "state_top_up": 50.0,
+        "connectivity_allowance": 0.0
+      },
+      "submission_window_days": 60,
+      "required_evidence_type": "VACCINATION_RECORD",
+      "eligibility_conditions": {
+        "required_antigens": ["BCG", "OPV_3", "PENTA_3", "MR_1"]
+      },
+      "descriptions": {
+        "en": "Ensuring child receives all required vaccines before first birthday",
+        "hi": "पहले जन्मदिन से पूर्व बच्चे के सभी आवश्यक टीके पूर्ण कराना",
+        "mr": "पहिल्या वाढदिवसापूर्वी बालकाचे संपूर्ण लसीकरण पूर्ण करणे"
+      },
+      "audio_clips": {
+        "en": "assets/audio/incentives/imm_1yr_en.mp3",
+        "hi": "assets/audio/incentives/imm_1yr_hi.mp3"
+      },
+      "ineligibility_messages": {
+        "PENDING_VACCINES": {
+          "en": "Pending required vaccines to complete 1-year immunization schedule.",
+          "hi": "1 वर्ष का टीकाकरण पूरा करने के लिए आवश्यक टीके लंबित हैं।",
+          "mr": "1 वर्षाच्या लसीकरणासाठी आवश्यक लस प्रलंबित आहेत."
+        }
+      }
+    },
+    {
+      "activity_code": "IMMUNIZATION_COMPLETE_2YR",
+      "activity_name": "Complete Immunization at 2 Years",
+      "category": "IMMUNIZATION",
+      "rates": {
+        "fixed_honorarium": 0.0,
+        "performance_incentive": 75.0,
+        "state_top_up": 25.0,
+        "connectivity_allowance": 0.0
+      },
+      "submission_window_days": 60,
+      "required_evidence_type": "VACCINATION_RECORD",
+      "eligibility_conditions": {
+        "required_antigens": ["DPT_BOOSTER_1", "MR_2", "OPV_BOOSTER"]
+      },
+      "descriptions": {
+        "en": "Ensuring child receives 16-24 month booster doses",
+        "hi": "16-24 महीने के बूस्टर टीके पूर्ण कराना",
+        "mr": "16-24 महिन्यांचे बुस्टर डोस पूर्ण करणे"
+      },
+      "audio_clips": {
+        "en": "assets/audio/incentives/imm_2yr_en.mp3"
+      }
+    },
+    {
+      "activity_code": "CBAC_SCREENING",
+      "activity_name": "NCD Community Based Assessment Checklist (CBAC)",
+      "category": "NCD",
+      "rates": {
+        "fixed_honorarium": 0.0,
+        "performance_incentive": 20.0,
+        "state_top_up": 10.0,
+        "connectivity_allowance": 0.0
+      },
+      "submission_window_days": 30,
+      "required_evidence_type": "CLINICAL_ENCOUNTER",
+      "eligibility_conditions": {
+        "min_age_years": 30
+      },
+      "descriptions": {
+        "en": "Filling CBAC form for individuals aged 30 and above",
+        "hi": "30 वर्ष और उससे अधिक आयु के व्यक्तियों के लिए सीबीएसी फॉर्म भरना",
+        "mr": "30 वर्षे आणि त्याहून अधिक वयाच्या व्यक्तींसाठी सीबीएसी फॉर्म भरणे"
+      },
+      "audio_clips": {
+        "en": "assets/audio/incentives/cbac_en.mp3"
+      },
+      "ineligibility_messages": {
+        "AGE_UNDER_30": {
+          "en": "Individual is under 30 years of age. CBAC is only applicable for 30+.",
+          "hi": "व्यक्ति की आयु 30 वर्ष से कम है। सीबीएसी केवल 30+ के लिए मान्य है।",
+          "mr": "व्यक्तीचे वय 30 वर्षांपेक्षा कमी आहे."
+        }
+      }
+    },
+    {
+      "activity_code": "TB_DOTS_SUPPORT",
+      "activity_name": "TB Patient Treatment Supporter",
+      "category": "COMMUNICABLE_DISEASE",
+      "rates": {
+        "fixed_honorarium": 0.0,
+        "performance_incentive": 1000.0,
+        "state_top_up": 200.0,
+        "connectivity_allowance": 0.0
+      },
+      "submission_window_days": 60,
+      "required_evidence_type": "TREATMENT_OUTCOME",
+      "eligibility_conditions": {
+        "treatment_status": "CURED_OR_COMPLETED"
+      },
+      "descriptions": {
+        "en": "Supporting a TB patient throughout 6-month treatment to cure",
+        "hi": "टीबी रोगी को 6 महीने के उपचार में सहायता कर रोगमुक्त कराना",
+        "mr": "टीबी रुग्णाला 6 महिन्यांच्या उपचारात मदत करून बरे करणे"
+      },
+      "audio_clips": {
+        "en": "assets/audio/incentives/tb_dots_en.mp3"
+      }
+    },
+    {
+      "activity_code": "VHSND_SESSION",
+      "activity_name": "VHSND Session Mobilization & Support",
+      "category": "ROUTINE",
+      "rates": {
+        "fixed_honorarium": 0.0,
+        "performance_incentive": 200.0,
+        "state_top_up": 50.0,
+        "connectivity_allowance": 0.0
+      },
+      "submission_window_days": 30,
+      "required_evidence_type": "SESSION_LOG",
+      "eligibility_conditions": {
+        "session_completed": true
+      },
+      "descriptions": {
+        "en": "Mobilizing beneficiaries and participating in monthly VHSND session",
+        "hi": "मासिक वीएचएसएनडी सत्र में लाभार्थियों को एकत्र करना और सहयोग देना",
+        "mr": "मासिक व्हीएचएसएनडी सत्रात सहभाग आणि समन्वय"
+      },
+      "audio_clips": {
+        "en": "assets/audio/incentives/vhsnd_en.mp3"
+      }
+    },
+    {
+      "activity_code": "ROUTINE_RECURRENT",
+      "activity_name": "Monthly Routine Recurrent Activities",
+      "category": "ROUTINE",
+      "rates": {
+        "fixed_honorarium": 2000.0,
+        "performance_incentive": 0.0,
+        "state_top_up": 500.0,
+        "connectivity_allowance": 500.0
+      },
+      "submission_window_days": 30,
+      "required_evidence_type": "MONTHLY_REPORT",
+      "eligibility_conditions": {
+        "report_submitted": true
+      },
+      "descriptions": {
+        "en": "Monthly fixed routine honorarium and connectivity support",
+        "hi": "मासिक नियमित मानदेय एवं कनेक्टिविटी भत्ता",
+        "mr": "मासिक नियमित मानधन आणि कनेक्टिव्हिटी भत्ता"
+      },
+      "audio_clips": {
+        "en": "assets/audio/incentives/routine_en.mp3"
+      }
+    }
+  ]
+}

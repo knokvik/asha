@@ -1,0 +1,138 @@
+{
+  "language": "hi",
+  "version": "2024.1",
+  "entries": [
+    {
+      "spoken_variants": ["साँस तेज़", "सांस तेज़", "सांस फूलना", "हाँफना", "तेज सांस", "तेज़ साँस", "सांस तेज"],
+      "canonical_concept": "FAST_BREATHING",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.1
+    },
+    {
+      "spoken_variants": ["पीलिया", "पीला", "आँखें पीली", "पीलापन", "पीली आँखें"],
+      "canonical_concept": "JAUNDICE",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.0
+    },
+    {
+      "spoken_variants": ["बुखार", "तेज बुखार", "ताप", "गर्म बदन", "ज्वर", "बुखार है"],
+      "canonical_concept": "FEVER",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.05
+    },
+    {
+      "spoken_variants": ["दस्त", "पतले दस्त", "झाड़ा", "पेचिश", "पतला पाखाना"],
+      "canonical_concept": "DIARRHEA",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.05
+    },
+    {
+      "spoken_variants": ["खून की कमी", "एनीमिया", "रक्तअल्पता", "कमजोरी और पीलापन"],
+      "canonical_concept": "ANEMIA",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.0
+    },
+    {
+      "spoken_variants": ["कुपोषण", "सूखा रोग", "वजन कम", "कमजोरी"],
+      "canonical_concept": "MALNUTRITION",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.0
+    },
+    {
+      "spoken_variants": ["दौरा", "दौरे", "झटके", "आक्षेप", "मिर्गी"],
+      "canonical_concept": "CONVULSIONS",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.1
+    },
+    {
+      "spoken_variants": ["छाती धंसना", "पसलियां चलना", "छाती खिंचना", "छाती अंदर जाना"],
+      "canonical_concept": "CHEST_INDRAWING",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.1
+    },
+    {
+      "spoken_variants": ["उल्टी", "उलटी", "कै", "उल्टी होना"],
+      "canonical_concept": "VOMITING",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.05
+    },
+    {
+      "spoken_variants": ["सुस्ती", "बेहोशी", "सुस्त", "होश नहीं", "बेहोश"],
+      "canonical_concept": "LETHARGY",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.05
+    },
+    {
+      "spoken_variants": ["खांसी", "खंसी", "कफ", "खांसी आना"],
+      "canonical_concept": "COUGH",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.05
+    },
+    {
+      "spoken_variants": ["हाई ब्लड प्रेशर", "हाई बीपी", "उच्च रक्तचाप", "रक्तचाप"],
+      "canonical_concept": "HYPERTENSION",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.0
+    },
+    {
+      "spoken_variants": ["शुगर", "मधुमेह", "डायबिटीज"],
+      "canonical_concept": "DIABETES",
+      "field_type": "symptom_flag",
+      "confidence_boost": 0.0
+    },
+    {
+      "spoken_variants": ["हाँ", "haan", "ha", "ji haan", "हाँजी", "yes"],
+      "canonical_concept": "YES",
+      "field_type": "boolean",
+      "confidence_boost": 0.0
+    },
+    {
+      "spoken_variants": ["नहीं", "nahi", "nahin", "ji nahi", "ना", "no"],
+      "canonical_concept": "NO",
+      "field_type": "boolean",
+      "confidence_boost": 0.0
+    },
+    {
+      "spoken_variants": ["एक", "1"],
+      "canonical_concept": "1",
+      "field_type": "numeric",
+      "output_transform": "numeric"
+    },
+    {
+      "spoken_variants": ["दो", "2"],
+      "canonical_concept": "2",
+      "field_type": "numeric",
+      "output_transform": "numeric"
+    },
+    {
+      "spoken_variants": ["पाँच", "पांच", "5"],
+      "canonical_concept": "5",
+      "field_type": "numeric",
+      "output_transform": "numeric"
+    },
+    {
+      "spoken_variants": ["दस", "10"],
+      "canonical_concept": "10",
+      "field_type": "numeric",
+      "output_transform": "numeric"
+    },
+    {
+      "spoken_variants": ["बीस", "20"],
+      "canonical_concept": "20",
+      "field_type": "numeric",
+      "output_transform": "numeric"
+    },
+    {
+      "spoken_variants": ["तीस", "30", "तीस साल"],
+      "canonical_concept": "30",
+      "field_type": "numeric",
+      "output_transform": "numeric"
+    },
+    {
+      "spoken_variants": ["साठ", "60"],
+      "canonical_concept": "60",
+      "field_type": "numeric",
+      "output_transform": "numeric"
+    }
+  ]
+}

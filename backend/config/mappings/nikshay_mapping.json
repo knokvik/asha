@@ -1,0 +1,57 @@
+{
+  "system": "Ni-kshay",
+  "version": "3.1",
+  "state_code": "default",
+  "csv_column_aliases": {
+    "nikshay_id": ["nikshay_id", "patient_id", "case_id", "tb_case_number"],
+    "member_id": ["member_id", "beneficiary_id", "local_id"],
+    "abha_id": ["abha_id", "abha_number"],
+    "phone": ["phone", "mobile", "contact_number"],
+    "site": ["site_of_disease", "site", "tb_site"],
+    "regimen": ["regimen", "treatment_regimen", "tb_regimen"],
+    "diagnosis_date": ["diagnosis_date", "date_of_diagnosis"],
+    "treatment_start_date": ["treatment_start_date", "start_date", "initiation_date"],
+    "test_result": ["test_result", "diagnostic_result", "cbnaat_result", "microscopy_result"],
+    "nikshay_poshan_status": ["nikshay_poshan_status", "poshan_status", "dbt_status"]
+  },
+  "diagnosis_code_map": {
+    "NAAT_POSITIVE_SENSITIVE": "CBNAAT positive, Rifampicin sensitive",
+    "NAAT_POSITIVE_RESISTANT": "CBNAAT positive, Rifampicin resistant (MDR/RR-TB)",
+    "NAAT_NEGATIVE": "CBNAAT negative",
+    "SMEAR_POSITIVE": "Microscopy positive",
+    "SMEAR_NEGATIVE": "Microscopy negative",
+    "CLINICALLY_DIAGNOSED": "Clinically diagnosed pulmonary TB"
+  },
+  "regimen_code_map": {
+    "DS-TB FDC": "Daily FDC Adult (2HRZE / 4HRE)",
+    "DS-TB Daily FDC": "Daily FDC Adult (2HRZE / 4HRE)",
+    "PEDIATRIC_FDC": "Daily Pediatric Dispersible FDC",
+    "DR-TB": "All-Oral Longer / Shorter Bedaquiline Regimen",
+    "TPT": "TB Preventive Treatment (3HP / 6H)"
+  },
+  "poshan_status_map": {
+    "PENDING": "Bank Details Pending Verification",
+    "APPROVED": "DBT Benefit Approved for Processing",
+    "PAID": "Direct Benefit Transfer Disbursed to Bank Account",
+    "REJECTED": "Bank Account Seeding Failed"
+  },
+  "presumptive_export_fields": [
+    "nikshay_id",
+    "member_id",
+    "beneficiary_name",
+    "age",
+    "sex",
+    "phone",
+    "village",
+    "screening_date",
+    "cough_duration_days",
+    "has_fever",
+    "has_weight_loss",
+    "has_night_sweats",
+    "has_hemoptysis",
+    "anm_approval_status",
+    "anm_approval_notes",
+    "anm_approved_at",
+    "designated_drtb_centre"
+  ]
+}

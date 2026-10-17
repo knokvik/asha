@@ -1,0 +1,338 @@
+{
+  "system": "HMIS",
+  "version": "2026.1",
+  "state_code": "default",
+  "description": "Ministry of Health and Family Welfare (MoHFW) National HMIS Monthly Facility/Subcentre Indicators",
+  "indicators": {
+    "M1.1": {
+      "category": "Maternal Health",
+      "name": "Total number of pregnant women registered for ANC within 1st trimester",
+      "source_encounters": ["ANC_REGISTRATION"],
+      "filter_field": "trimester",
+      "filter_value": 1
+    },
+    "M1.2": {
+      "category": "Maternal Health",
+      "name": "Total number of pregnant women registered for ANC after 1st trimester",
+      "source_encounters": ["ANC_REGISTRATION"],
+      "filter_field": "trimester_gt",
+      "filter_value": 1
+    },
+    "M1.3": {
+      "category": "Maternal Health",
+      "name": "Number of pregnant women given 180 Iron Folic Acid (IFA) tablets",
+      "source_encounters": ["ANC_VISIT"],
+      "observation_code": "IFA_TABLETS_GIVEN",
+      "min_value": 180
+    },
+    "M1.4": {
+      "category": "Maternal Health",
+      "name": "Number of pregnant women received 4 or more ANC check-ups",
+      "source_encounters": ["ANC_VISIT"],
+      "min_visit_count": 4
+    },
+    "M1.5": {
+      "category": "Maternal Health",
+      "name": "Number of pregnant women tested for Hemoglobin (Hb < 7 g/dL, severe anemia)",
+      "source_encounters": ["ANC_VISIT", "LAB_TEST"],
+      "observation_code": "HAEMOGLOBIN",
+      "max_value": 7.0
+    },
+    "M1.6": {
+      "category": "Maternal Health",
+      "name": "Number of pregnant women with severe anemia treated at facility",
+      "source_encounters": ["ANC_VISIT", "REFERRAL_FOLLOWUP"],
+      "observation_code": "SEVERE_ANEMIA_TREATED",
+      "expected_value": "YES"
+    },
+    "M1.7": {
+      "category": "Maternal Health",
+      "name": "Total institutional deliveries conducted (Public facilities)",
+      "source_encounters": ["DELIVERY"],
+      "observation_code": "DELIVERY_PLACE_TYPE",
+      "expected_value": "PUBLIC"
+    },
+    "M1.8": {
+      "category": "Maternal Health",
+      "name": "Total institutional deliveries conducted (Private facilities)",
+      "source_encounters": ["DELIVERY"],
+      "observation_code": "DELIVERY_PLACE_TYPE",
+      "expected_value": "PRIVATE"
+    },
+    "M1.9": {
+      "category": "Maternal Health",
+      "name": "Total home deliveries attended by Skilled Birth Attendant (SBA)",
+      "source_encounters": ["DELIVERY"],
+      "observation_code": "DELIVERY_ATTENDANT",
+      "expected_value": "SBA"
+    },
+    "M1.10": {
+      "category": "Maternal Health",
+      "name": "Total home deliveries attended by Non-SBA",
+      "source_encounters": ["DELIVERY"],
+      "observation_code": "DELIVERY_ATTENDANT",
+      "expected_value": "NON_SBA"
+    },
+    "M1.11": {
+      "category": "Maternal Health",
+      "name": "Maternal deaths reported during pregnancy, delivery, or within 42 days",
+      "source_encounters": ["MATERNAL_DEATH_REPORT"],
+      "observation_code": "EVENT_TYPE",
+      "expected_value": "MATERNAL_DEATH"
+    },
+    "M1.12": {
+      "category": "Maternal Health",
+      "name": "Number of High Risk Pregnancies (HRP) identified and tracked",
+      "source_encounters": ["ANC_VISIT", "HRP_IDENTIFIED"],
+      "observation_code": "HRP_STATUS",
+      "expected_value": "HIGH_RISK"
+    },
+
+    "M2.1": {
+      "category": "Child Health and Immunization",
+      "name": "Total number of live births - Male",
+      "source_encounters": ["NEWBORN_REGISTRATION", "DELIVERY"],
+      "observation_code": "SEX",
+      "expected_value": "MALE"
+    },
+    "M2.2": {
+      "category": "Child Health and Immunization",
+      "name": "Total number of live births - Female",
+      "source_encounters": ["NEWBORN_REGISTRATION", "DELIVERY"],
+      "observation_code": "SEX",
+      "expected_value": "FEMALE"
+    },
+    "M2.3": {
+      "category": "Child Health and Immunization",
+      "name": "Total number of still births reported",
+      "source_encounters": ["DELIVERY"],
+      "observation_code": "BIRTH_OUTCOME",
+      "expected_value": "STILL_BIRTH"
+    },
+    "M2.4": {
+      "category": "Child Health and Immunization",
+      "name": "Newborns weighed at birth with birth weight less than 2.5 kg (LBW)",
+      "source_encounters": ["NEWBORN_REGISTRATION", "HBNC_VISIT"],
+      "observation_code": "BIRTH_WEIGHT_KG",
+      "max_value": 2.5
+    },
+    "M2.5": {
+      "category": "Child Health and Immunization",
+      "name": "Newborns breastfed within 1 hour of birth",
+      "source_encounters": ["NEWBORN_REGISTRATION", "HBNC_VISIT"],
+      "observation_code": "EARLY_BREASTFEEDING",
+      "expected_value": "YES"
+    },
+    "M2.6": {
+      "category": "Child Health and Immunization",
+      "name": "Infants receiving recommended HBNC home visits within 42 days",
+      "source_encounters": ["HBNC_VISIT"],
+      "min_visit_count": 6
+    },
+    "M2.7": {
+      "category": "Child Health and Immunization",
+      "name": "Children 3 to 15 months receiving HBYC visits",
+      "source_encounters": ["HBYC_VISIT"],
+      "min_visit_count": 1
+    },
+    "M2.8": {
+      "category": "Child Health and Immunization",
+      "name": "Number of infants given BCG at birth",
+      "source_encounters": ["IMMUNIZATION_DOSE"],
+      "observation_code": "VACCINE_CODE",
+      "expected_value": "BCG"
+    },
+    "M2.9": {
+      "category": "Child Health and Immunization",
+      "name": "Number of infants given OPV-0 dose at birth",
+      "source_encounters": ["IMMUNIZATION_DOSE"],
+      "observation_code": "VACCINE_CODE",
+      "expected_value": "OPV_0"
+    },
+    "M2.10": {
+      "category": "Child Health and Immunization",
+      "name": "Number of infants given Hepatitis B birth dose",
+      "source_encounters": ["IMMUNIZATION_DOSE"],
+      "observation_code": "VACCINE_CODE",
+      "expected_value": "HEP_B_0"
+    },
+    "M2.11": {
+      "category": "Child Health and Immunization",
+      "name": "Number of infants given Pentavalent-1 / Pentavalent-3 dose",
+      "source_encounters": ["IMMUNIZATION_DOSE"],
+      "observation_code": "VACCINE_CODE",
+      "expected_values": ["PENTA_1", "PENTA_2", "PENTA_3"]
+    },
+    "M2.12": {
+      "category": "Child Health and Immunization",
+      "name": "Number of infants given Rotavirus vaccine dose",
+      "source_encounters": ["IMMUNIZATION_DOSE"],
+      "observation_code": "VACCINE_CODE",
+      "expected_values": ["ROTA_1", "ROTA_2", "ROTA_3"]
+    },
+    "M2.13": {
+      "category": "Child Health and Immunization",
+      "name": "Number of children given Measles-Rubella (MR) 1st dose (9-12 months)",
+      "source_encounters": ["IMMUNIZATION_DOSE"],
+      "observation_code": "VACCINE_CODE",
+      "expected_value": "MR_1"
+    },
+    "M2.14": {
+      "category": "Child Health and Immunization",
+      "name": "Total children 9-11 months fully immunized (BCG+OPV1-3+Penta1-3+MR1)",
+      "source_encounters": ["IMMUNIZATION_FULL_CONFIRMATION"],
+      "observation_code": "FULL_IMMUNIZATION_STATUS",
+      "expected_value": "CONFIRMED"
+    },
+    "M2.15": {
+      "category": "Child Health and Immunization",
+      "name": "Infant deaths reported (under 1 year)",
+      "source_encounters": ["INFANT_DEATH_REPORT"],
+      "observation_code": "EVENT_TYPE",
+      "expected_value": "INFANT_DEATH"
+    },
+
+    "M3.1": {
+      "category": "Family Planning",
+      "name": "Number of Combined Oral Contraceptive Pill (Mala-N) cycles distributed",
+      "source_encounters": ["FAMILY_PLANNING_DISTRIBUTION"],
+      "observation_code": "CONTRACEPTIVE_TYPE",
+      "expected_value": "OCP_CYCLES"
+    },
+    "M3.2": {
+      "category": "Family Planning",
+      "name": "Number of Condom pieces (Nirodh) distributed",
+      "source_encounters": ["FAMILY_PLANNING_DISTRIBUTION"],
+      "observation_code": "CONTRACEPTIVE_TYPE",
+      "expected_value": "CONDOMS"
+    },
+    "M3.3": {
+      "category": "Family Planning",
+      "name": "Number of Emergency Contraceptive Pills (ECP) distributed",
+      "source_encounters": ["FAMILY_PLANNING_DISTRIBUTION"],
+      "observation_code": "CONTRACEPTIVE_TYPE",
+      "expected_value": "ECP"
+    },
+    "M3.4": {
+      "category": "Family Planning",
+      "name": "Number of Injectable Contraceptive (Antara) doses given",
+      "source_encounters": ["FAMILY_PLANNING_DISTRIBUTION"],
+      "observation_code": "CONTRACEPTIVE_TYPE",
+      "expected_value": "ANTARA_INJECTION"
+    },
+    "M3.5": {
+      "category": "Family Planning",
+      "name": "Number of Intrauterine Contraceptive Devices (IUCD/PPIUCD) inserted",
+      "source_encounters": ["FAMILY_PLANNING_PROCEDURE"],
+      "observation_code": "FP_PROCEDURE",
+      "expected_value": "IUCD_INSERTION"
+    },
+    "M3.6": {
+      "category": "Family Planning",
+      "name": "Number of Female Sterilizations (Tubectomy / Laparoscopic) performed",
+      "source_encounters": ["FAMILY_PLANNING_PROCEDURE"],
+      "observation_code": "FP_PROCEDURE",
+      "expected_value": "FEMALE_STERILIZATION"
+    },
+    "M3.7": {
+      "category": "Family Planning",
+      "name": "Number of Male Sterilizations (Non-Scalpel Vasectomy) performed",
+      "source_encounters": ["FAMILY_PLANNING_PROCEDURE"],
+      "observation_code": "FP_PROCEDURE",
+      "expected_value": "MALE_STERILIZATION"
+    },
+    "M3.8": {
+      "category": "Family Planning",
+      "name": "Number of Centchroman (Chhaya) non-steroidal pill strips distributed",
+      "source_encounters": ["FAMILY_PLANNING_DISTRIBUTION"],
+      "observation_code": "CONTRACEPTIVE_TYPE",
+      "expected_value": "CHHAYA_STRIPS"
+    },
+
+    "M4.1": {
+      "category": "Communicable & NCDs",
+      "name": "Number of persons screened for Tuberculosis symptoms",
+      "source_encounters": ["TB_SCREENING"],
+      "observation_code": "SCREENING_COMPLETED",
+      "expected_value": "YES"
+    },
+    "M4.2": {
+      "category": "Communicable & NCDs",
+      "name": "Number of presumptive TB cases referred for Sputum / NAAT examination",
+      "source_encounters": ["TB_SCREENING", "REFERRAL_ISSUED"],
+      "observation_code": "TB_PRESUMPTIVE_STATUS",
+      "expected_value": "REFERRED_FOR_TESTING"
+    },
+    "M4.3": {
+      "category": "Communicable & NCDs",
+      "name": "Number of confirmed TB cases initiated on DOTS treatment",
+      "source_encounters": ["TB_TREATMENT_REGISTRATION"],
+      "observation_code": "TB_REGIMEN",
+      "match_any": true
+    },
+    "M4.4": {
+      "category": "Communicable & NCDs",
+      "name": "Individuals 30+ years screened for Hypertension using CBAC",
+      "source_encounters": ["CBAC_SCREENING"],
+      "observation_code": "HTN_SCREENED",
+      "expected_value": "YES"
+    },
+    "M4.5": {
+      "category": "Communicable & NCDs",
+      "name": "Individuals 30+ years screened for Diabetes",
+      "source_encounters": ["CBAC_SCREENING"],
+      "observation_code": "DIABETES_SCREENED",
+      "expected_value": "YES"
+    },
+    "M4.6": {
+      "category": "Communicable & NCDs",
+      "name": "Individuals 30+ years screened for Oral Cancer",
+      "source_encounters": ["CBAC_SCREENING"],
+      "observation_code": "ORAL_CANCER_SCREENED",
+      "expected_value": "YES"
+    },
+    "M4.7": {
+      "category": "Communicable & NCDs",
+      "name": "Individuals diagnosed with Hypertension on regular treatment",
+      "source_encounters": ["NCD_FOLLOWUP"],
+      "observation_code": "HTN_ON_TREATMENT",
+      "expected_value": "YES"
+    },
+    "M4.8": {
+      "category": "Communicable & NCDs",
+      "name": "Individuals diagnosed with Diabetes on regular treatment",
+      "source_encounters": ["NCD_FOLLOWUP"],
+      "observation_code": "DIABETES_ON_TREATMENT",
+      "expected_value": "YES"
+    },
+
+    "M5.1": {
+      "category": "VHSND & Outreach",
+      "name": "Total Village Health, Sanitation and Nutrition Days (VHSND) planned",
+      "source_encounters": ["VHSND_SESSION"],
+      "observation_code": "SESSION_STATUS",
+      "expected_value": "PLANNED"
+    },
+    "M5.2": {
+      "category": "VHSND & Outreach",
+      "name": "Total VHSND sessions actually organized and held",
+      "source_encounters": ["VHSND_SESSION"],
+      "observation_code": "SESSION_STATUS",
+      "expected_value": "HELD"
+    },
+    "M5.3": {
+      "category": "VHSND & Outreach",
+      "name": "VHSND sessions with tripartite presence (ANM, ASHA, and AWW present)",
+      "source_encounters": ["VHSND_SESSION"],
+      "observation_code": "TRIPARTITE_ATTENDANCE",
+      "expected_value": "YES"
+    },
+    "M5.4": {
+      "category": "VHSND & Outreach",
+      "name": "VHSNC (Village Health Sanitation & Nutrition Committee) monthly meetings held",
+      "source_encounters": ["VHSNC_MEETING"],
+      "observation_code": "MEETING_HELD",
+      "expected_value": "YES"
+    }
+  }
+}

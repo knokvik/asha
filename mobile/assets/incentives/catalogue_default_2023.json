@@ -1,0 +1,48 @@
+{
+  "version_id": "NHM_NAT_2023_V1",
+  "state_code": "DEFAULT",
+  "effective_from": "2023-01-01T00:00:00.000Z",
+  "effective_to": "2023-12-31T23:59:59.000Z",
+  "description": "National Health Mission ASHA Incentive Catalogue 2023",
+  "items": [
+    {
+      "activity_code": "ANC_REG_EARLY",
+      "activity_name": "Early ANC Registration (2023)",
+      "category": "RCH_MATERNAL",
+      "rates": {
+        "fixed_honorarium": 0.0,
+        "performance_incentive": 75.0,
+        "state_top_up": 25.0,
+        "connectivity_allowance": 0.0
+      },
+      "submission_window_days": 60,
+      "required_evidence_type": "CLINICAL_ENCOUNTER",
+      "eligibility_conditions": {
+        "max_gestational_weeks": 12
+      },
+      "descriptions": {
+        "en": "Registration of pregnancy within first trimester (2023 Rate)"
+      }
+    },
+    {
+      "activity_code": "HBNC_COMPLETE",
+      "activity_name": "Complete Home-Based Newborn Care Series (2023)",
+      "category": "RCH_CHILD",
+      "rates": {
+        "fixed_honorarium": 0.0,
+        "performance_incentive": 200.0,
+        "state_top_up": 0.0,
+        "connectivity_allowance": 0.0
+      },
+      "submission_window_days": 60,
+      "required_evidence_type": "VISIT_SERIES",
+      "eligibility_conditions": {
+        "institutional_visits_required": 6,
+        "home_visits_required": 7
+      },
+      "descriptions": {
+        "en": "Conducting 6 home visits for institutional delivery within 42 days (2023 Rate)"
+      }
+    }
+  ]
+}

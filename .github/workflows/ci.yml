@@ -1,0 +1,170 @@
+name: ASHA Digital Platform CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # ── 1. Mobile Quality Gate ────────────────────────────────────────────────
+  mobile_ci:
+    name: Mobile Client Verification (Flutter 3.x)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Java Development Kit (JDK 17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Mobile Dependencies
+        run: |
+          cd mobile
+          flutter pub get
+
+      - name: Verify Mobile Code Quality (flutter analyze)
+        run: |
+          cd mobile
+          flutter analyze --fatal-infos
+
+      - name: Run Mobile Automated Test Suites
+        run: |
+          cd mobile
+          flutter test --coverage
+
+      - name: Build Base APK & Enforce Size Constraints (< 50 MB)
+        run: |
+          cd mobile
+          flutter build apk --release --split-per-abi || flutter build apk --release
+          APK_PATH=$(find build/app/outputs/flutter-apk -name "*.apk" | head -n 1)
+          if [ -f "$APK_PATH" ]; then
+            SIZE_MB=$(du -m "$APK_PATH" | cut -f1)
+            echo "Built APK at $APK_PATH: ${SIZE_MB} MB"
+            if [ "$SIZE_MB" -gt 50 ]; then
+              echo "ERROR: Base APK exceeds 50 MB threshold ($SIZE_MB MB) per Requirement 48.1"
+              exit 1
+            fi
+            echo "SUCCESS: APK size within compliant bounds (${SIZE_MB} MB < 50 MB)"
+          fi
+
+  # ── 2. Backend Quality Gate ───────────────────────────────────────────────
+  backend_ci:
+    name: Backend API & Services (Python 3.12)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: asha_platform_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Python Dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install ruff pytest pytest-asyncio pytest-cov httpx
+          pip install -r requirements.txt
+
+      - name: Lint Backend Codebase (Ruff)
+        run: |
+          cd backend
+          ruff check .
+
+      - name: Run Backend Unit & Integration Tests (Pytest)
+        env:
+          DATABASE_URL: postgresql+asyncpg://test_user:test_password@localhost:5432/asha_platform_test
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          cd backend
+          pytest --cov=. --cov-report=xml
+
+  # ── 3. Web Dashboard Quality Gate ────────────────────────────────────────
+  web_dashboard_ci:
+    name: Web Dashboards (React 18 + Vite)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: web-dashboard/package-lock.json
+
+      - name: Install Dashboard Dependencies
+        run: |
+          cd web-dashboard
+          npm ci
+
+      - name: Run Vitest Integration Suite
+        run: |
+          cd web-dashboard
+          npm run test
+
+      - name: Build Production SPA Bundle
+        run: |
+          cd web-dashboard
+          npm run build
+
+  # ── 4. Containerization & Staging Deployment ──────────────────────────────
+  docker_and_deploy:
+    name: Build Multi-Tier Containers & Deploy to Staging
+    needs: [mobile_ci, backend_ci, web_dashboard_ci]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose Configuration
+        run: |
+          docker compose config
+
+      - name: Build Production Docker Images
+        run: |
+          docker compose build
