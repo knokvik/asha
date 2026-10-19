@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -7,7 +7,9 @@ import {
   sendDoctorFeedback,
   acknowledgeReferral,
   fetchAbdmHiuRecords,
+  startConsult,
 } from '@/shared/api/referralApi';
+import { slaLabel, unseenRedIds } from '@/features/clinical-desk/logic';
 import { ReferralItem } from '@/types';
 import {
   Activity,
@@ -65,6 +67,8 @@ export function PHCDashboardPage() {
 
   // Sound chime toggle
   const [soundAlertEnabled, setSoundAlertEnabled] = useState(true);
+  const [freshRedIds, setFreshRedIds] = useState<string[]>([]);
+  const seenRedIds = useRef<string[] | null>(null);
 
   // Poll referral queue every 30 seconds for live triage (Req 41.1, Design 2.7)
   const { data: referrals = [], isLoading, isRefetching, refetch } = useQuery({
@@ -90,6 +94,30 @@ export function PHCDashboardPage() {
       queryClient.invalidateQueries({ queryKey: ['referrals'] });
     },
   });
+
+  const consultMutation = useMutation({
+    mutationFn: (id: string) => startConsult(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['referrals'] });
+    },
+  });
+
+  useEffect(() => {
+    if (isLoading) return;
+    const redIds = referrals
+      .filter((item) => item.severity === 'RED' && (item.status === 'pending' || item.status === 'arrived'))
+      .map((item) => item.id);
+    if (seenRedIds.current === null) {
+      seenRedIds.current = redIds;
+      return;
+    }
+    const fresh = unseenRedIds(seenRedIds.current, redIds);
+    if (fresh.length > 0) {
+      setFreshRedIds(fresh);
+      window.alert(`New RED referral: ${fresh.join(', ')}`);
+      seenRedIds.current = [...seenRedIds.current, ...fresh];
+    }
+  }, [referrals, isLoading]);
 
   const feedbackMutation = useMutation({
     mutationFn: ({ refId, ashaId, msg }: { refId: string; ashaId: string; msg: string }) =>
@@ -418,13 +446,23 @@ export function PHCDashboardPage() {
                 const minutesWaiting = Math.round(
                   (Date.now() - new Date(item.referredAt).getTime()) / (1000 * 60)
                 );
+                const sla = isRed ? slaLabel(item.referredAt, Date.now()) : null;
+                const ageLabel =
+                  item.ageMonths != null
+                    ? `${item.ageMonths} mo`
+                    : item.patientAge < 1
+                      ? `${Math.round(item.patientAge * 12)} months`
+                      : `${item.patientAge} yrs`;
 
                 return (
                   <Card
                     key={item.id}
+                    data-fresh-red={freshRedIds.includes(item.id) ? 'true' : 'false'}
                     className={`transition-all ${
-                      isRed
-                        ? 'border-rose-300 dark:border-rose-500/50 bg-rose-50/20 dark:bg-gradient-to-r dark:from-rose-950/25 dark:via-[#222224] dark:to-[#222224] shadow-xs'
+                      freshRedIds.includes(item.id)
+                        ? 'border-rose-600 ring-2 ring-rose-500 bg-rose-50 dark:bg-rose-950/40'
+                        : isRed
+                        ? 'border-l-4 border-l-rose-500 border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] shadow-xs'
                         : 'border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224]'
                     }`}
                   >
@@ -455,7 +493,7 @@ export function PHCDashboardPage() {
                             <h2 className="text-lg font-bold text-[#0F172A] dark:text-white flex items-center gap-2">
                               {item.patientName}
                               <span className="text-xs font-normal text-[#525252] dark:text-[#A3A3A3]">
-                                ({item.patientAge < 1 ? `${Math.round(item.patientAge * 12)} months` : `${item.patientAge} yrs`}, {item.patientGender})
+                                ({ageLabel}, {item.patientGender}{item.wardId ? `, ${item.wardId}` : ''})
                               </span>
                             </h2>
 
@@ -485,6 +523,24 @@ export function PHCDashboardPage() {
                           <div className="text-sm font-semibold text-rose-700 dark:text-rose-200">
                             {item.reason}
                           </div>
+                          {item.firedRules && item.firedRules.length > 0 && (
+                            <details className="text-xs text-slate-700 dark:text-slate-300">
+                              <summary className="cursor-pointer font-semibold">Reasons</summary>
+                              <ul className="mt-1 space-y-1">
+                                {item.firedRules.map((rule) => (
+                                  <li key={rule.ruleId}>
+                                    {rule.ruleId}: {rule.reason}
+                                  </li>
+                                ))}
+                              </ul>
+                            </details>
+                          )}
+                          {item.sms && (
+                            <p className="font-mono text-[11px] text-slate-600 dark:text-slate-300">{item.sms}</p>
+                          )}
+                          {item.outbreakContext && (
+                            <p className="text-xs text-amber-700 dark:text-amber-300">{item.outbreakContext}</p>
+                          )}
 
                           {/* ASHA Clinical Field Observation */}
                           <div className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-[#181818] p-3 rounded-xl border border-slate-200 dark:border-[#2E2E2E]">
@@ -546,11 +602,15 @@ export function PHCDashboardPage() {
                                   Hb: <span className="font-bold text-[#F43F5E]">{item.vitals.hemoglobin}</span> g/dL
                                 </span>
                               )}
-                              {item.vitals.temp && (
+                              {item.tempC != null ? (
+                                <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#181818] border border-slate-200 dark:border-[#2E2E2E] text-slate-800 dark:text-slate-200 font-mono">
+                                  Temp: {item.tempC} °C
+                                </span>
+                              ) : item.vitals.temp ? (
                                 <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#181818] border border-slate-200 dark:border-[#2E2E2E] text-slate-800 dark:text-slate-200 font-mono">
                                   Temp: {item.vitals.temp} °F
                                 </span>
-                              )}
+                              ) : null}
                             </div>
                           )}
                         </div>
@@ -585,6 +645,11 @@ export function PHCDashboardPage() {
                               <div className={`text-[11px] font-semibold ${minutesWaiting > 30 && isRed ? 'text-[#F43F5E] font-bold' : 'text-[#71717A]'}`}>
                                 Wait: {minutesWaiting} mins {minutesWaiting > 30 && isRed ? '(OVERDUE)' : ''}
                               </div>
+                              {sla && (
+                                <div data-testid={`sla-${item.id}`} className={`text-[11px] font-bold ${sla.overdue ? 'text-[#F43F5E]' : 'text-emerald-700'}`}>
+                                  SLA {sla.text}
+                                </div>
+                              )}
                             </div>
                             <span
                               className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
@@ -613,9 +678,23 @@ export function PHCDashboardPage() {
                                 className="w-full text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
                               >
                                 <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-[#10B981]" />
-                                <span>Doctor Ack (Patient Arrived)</span>
+                                <span>ACKNOWLEDGE</span>
                               </Button>
                             )}
+                            {(item.status === 'pending' || item.status === 'arrived') && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => consultMutation.mutate(item.id)}
+                                disabled={consultMutation.isPending}
+                                className="w-full"
+                              >
+                                <span>START CONSULT</span>
+                              </Button>
+                            )}
+                            <NavLink to={`/ticket/${item.id}`} className="block text-center text-xs font-semibold text-emerald-700 dark:text-emerald-300 underline">
+                              Open ticket
+                            </NavLink>
 
                             <div className="grid grid-cols-2 gap-2">
                               {/* ABDM Longitudinal HIU Button */}
@@ -744,6 +823,9 @@ export function PHCDashboardPage() {
                 <p className="text-xs text-[#71717A]">
                   Pregnancy test kits low (4 days left). Emergency indents raised to District CMSO.
                 </p>
+                <NavLink to="/resources" className="text-xs font-semibold text-rose-700 underline">
+                  PCMC early warning: Ward W3 dengue NS1 stock
+                </NavLink>
               </div>
             </div>
           </Card>

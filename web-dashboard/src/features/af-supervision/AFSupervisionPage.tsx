@@ -22,6 +22,7 @@ import {
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ImciAshaTable } from '@/features/af-supervision/ImciAshaTable';
 
 export function AFSupervisionPage() {
   const queryClient = useQueryClient();
@@ -109,6 +110,8 @@ export function AFSupervisionPage() {
           </div>
         </div>
       </Card>
+
+      <ImciAshaTable />
 
       {/* Search Bar */}
       <div className="relative max-w-md">

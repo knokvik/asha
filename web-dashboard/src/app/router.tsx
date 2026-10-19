@@ -6,6 +6,8 @@ import { ANMWorkspacePage } from '@/features/anm-workspace/ANMWorkspacePage';
 import { DistrictAnalyticsPage } from '@/features/analytics/DistrictAnalyticsPage';
 import { AdminConsolePage } from '@/features/admin/AdminConsolePage';
 import { OsmAndMapPage } from '@/features/map/OsmAndMapPage';
+import { TicketPage } from '@/features/phc-dashboard/TicketPage';
+import { ResourcesPage } from '@/features/phc-dashboard/ResourcesPage';
 
 export const router = createBrowserRouter([
   {
@@ -21,11 +23,31 @@ export const router = createBrowserRouter([
         element: <PHCDashboardPage />,
       },
       {
+        path: 'queue',
+        element: <PHCDashboardPage />,
+      },
+      {
+        path: 'ticket/:id',
+        element: <TicketPage />,
+      },
+      {
         path: 'map',
         element: <OsmAndMapPage />,
       },
       {
+        path: 'heatmap',
+        element: <OsmAndMapPage mode="heatmap" />,
+      },
+      {
+        path: 'resources',
+        element: <ResourcesPage />,
+      },
+      {
         path: 'af',
+        element: <AFSupervisionPage />,
+      },
+      {
+        path: 'supervisor',
         element: <AFSupervisionPage />,
       },
       {

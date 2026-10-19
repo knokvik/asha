@@ -57,6 +57,21 @@ export interface ReferralItem {
   status: 'pending' | 'arrived' | 'admitted' | 'treated' | 'discharged' | 'did_not_reach';
   outcomeNotes?: string;
   outcomeRecordedAt?: string;
+  /** Child IMCI fields from the phone pack. Absent on older maternal referrals. */
+  wardId?: string;
+  ageMonths?: number;
+  sms?: string;
+  firedRules?: { ruleId: string; reason: string; guidelineRef: string }[];
+  outbreakContext?: string;
+  followUpDays?: number | null;
+  urgency?: string;
+  facilityName?: string;
+  preReferral?: string[];
+  suspected?: string;
+  tempC?: number;
+  diagnosis?: string;
+  outcomeAction?: 'treated' | 'referred_up' | 'sent_home';
+  noteForAsha?: string;
 }
 
 export interface AshaPerformanceCard {

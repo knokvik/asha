@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -22,6 +22,9 @@ import {
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PCMC_FACILITIES, PCMC_WARDS } from '@/shared/api/mockData';
+import { PcmcHeatPanel, type HeatView } from '@/features/map/PcmcHeatPanel';
+import { outbreakWards, weekPoint, type WardWeek } from '@/features/clinical-desk/logic';
 
 // Facility & Asset Geodata for PHC Shahpur Catchment
 interface FacilityLocation {
@@ -227,7 +230,32 @@ const ASHA_WORKERS: AshaFieldLocation[] = [
   },
 ];
 
-export function OsmAndMapPage() {
+const PCMC_CENTER: [number, number] = [18.66, 73.82];
+
+function getTileLayer(style: 'osmand_topo' | 'osm_standard' | 'dark_tactical') {
+  if (style === 'osmand_topo') {
+    // CartoDB Voyager: Clean, fast topographic & terrain vector raster tiles with full contours and roads
+    return L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}{r}.png', {
+      maxZoom: 19,
+      subdomains: 'abcd',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    });
+  } else if (style === 'osm_standard') {
+    return L.tileLayer('https://tile.openstreetmap.org/{z}/{x}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    });
+  } else {
+    // Dark Tactical: CartoDB Dark Matter
+    return L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}{r}.png', {
+      maxZoom: 19,
+      subdomains: 'abcd',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    });
+  }
+}
+
+export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
@@ -241,14 +269,27 @@ export function OsmAndMapPage() {
   const [showCatchmentRings, setShowCatchmentRings] = useState(true);
   const [showDeadZone, setShowDeadZone] = useState(true);
   const [selectedAsset, setSelectedAsset] = useState<any | null>(null);
+  const [heatView, setHeatView] = useState<HeatView>({
+    week: 11,
+    showFlags: true,
+    showAnaemia: true,
+    showStunting: false,
+    showFacilities: true,
+  });
+  const onHeatView = useCallback((view: HeatView) => setHeatView(view), []);
 
   // Initialize Leaflet Map
   useEffect(() => {
-    if (!mapContainerRef.current || mapInstanceRef.current) return;
+    if (!mapContainerRef.current) return;
+
+    // Clean up any stale Leaflet ID on container before init
+    if ((mapContainerRef.current as any)._leaflet_id) {
+      delete (mapContainerRef.current as any)._leaflet_id;
+    }
 
     // Create Map
     const map = L.map(mapContainerRef.current, {
-      center: PHC_COORDINATES,
+      center: mode === 'heatmap' ? PCMC_CENTER : PHC_COORDINATES,
       zoom: 12,
       zoomControl: false,
     });
@@ -257,12 +298,17 @@ export function OsmAndMapPage() {
     // Zoom control at bottom right
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+    // Attach initial tile layer immediately upon map creation
+    const initialTile = getTileLayer(mapStyle).addTo(map);
+    tileLayerRef.current = initialTile;
+
     // Initialize layer groups
     const subcentreLayer = L.layerGroup().addTo(map);
     const ambulanceLayer = L.layerGroup().addTo(map);
     const ashaLayer = L.layerGroup().addTo(map);
     const ringsLayer = L.layerGroup().addTo(map);
     const deadZoneLayer = L.layerGroup().addTo(map);
+    const pcmcLayer = L.layerGroup().addTo(map);
 
     layerGroupsRef.current = {
       subcentres: subcentreLayer,
@@ -270,18 +316,77 @@ export function OsmAndMapPage() {
       ashas: ashaLayer,
       rings: ringsLayer,
       deadZone: deadZoneLayer,
+      pcmc: pcmcLayer,
     };
 
-    // Fix map sizing
-    setTimeout(() => {
+    // Auto-resize observer to handle any DOM changes or flex calculations
+    const resizeObserver = new ResizeObserver(() => {
       map.invalidateSize();
-    }, 250);
+    });
+    resizeObserver.observe(mapContainerRef.current);
+
+    // Staggered size invalidations to ensure proper tile rendering
+    const t1 = setTimeout(() => map.invalidateSize(), 100);
+    const t2 = setTimeout(() => map.invalidateSize(), 300);
+    const t3 = setTimeout(() => map.invalidateSize(), 800);
 
     return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      resizeObserver.disconnect();
       map.remove();
       mapInstanceRef.current = null;
+      tileLayerRef.current = null;
     };
-  }, []);
+  }, [mode]);
+
+  useEffect(() => {
+    const group = layerGroupsRef.current.pcmc;
+    if (!group || mode !== 'heatmap') return;
+    group.clearLayers();
+    const wards = PCMC_WARDS as WardWeek[];
+    const hot = new Set(outbreakWards(wards, heatView.week));
+    for (const ward of wards) {
+      const point = weekPoint(ward, heatView.week);
+      const rate = point.flags;
+      const fill = !heatView.showFlags
+        ? '#94a3b8'
+        : rate >= 4
+          ? '#e11d48'
+          : rate >= 2
+            ? '#f59e0b'
+            : '#10b981';
+      const bounds = (ward as WardWeek & { bounds: [[number, number], [number, number]] }).bounds;
+      L.rectangle(bounds, {
+        color: hot.has(ward.wardId) ? '#be123c' : fill,
+        weight: hot.has(ward.wardId) ? 3 : 1,
+        fillColor: fill,
+        fillOpacity: 0.35,
+      })
+        .bindTooltip(`${ward.wardId}: ${point.dengueLike} dengue-like`)
+        .addTo(group);
+      if (hot.has(ward.wardId)) {
+        const center: [number, number] = [
+          (bounds[0][0] + bounds[1][0]) / 2,
+          (bounds[0][1] + bounds[1][1]) / 2,
+        ];
+        L.circle(center, { radius: 1800, color: '#be123c', fillOpacity: 0.15 }).addTo(group);
+      }
+    }
+    if (heatView.showFacilities) {
+      for (const facility of PCMC_FACILITIES) {
+        L.circleMarker([facility.lat, facility.lon], {
+          radius: 7,
+          color: '#064e3b',
+          fillColor: '#10b981',
+          fillOpacity: 1,
+        })
+          .bindTooltip(facility.name)
+          .addTo(group);
+      }
+    }
+  }, [mode, heatView]);
 
   // Handle Tile Layer Switching (OsmAnd Topo vs OSM Standard vs Dark Tactical)
   useEffect(() => {
@@ -292,28 +397,7 @@ export function OsmAndMapPage() {
       map.removeLayer(tileLayerRef.current);
     }
 
-    let tileUrl = '';
-    let attribution = '';
-
-    if (mapStyle === 'osmand_topo') {
-      // OpenTopoMap - OsmAnd classic topographic terrain with contour elevations
-      tileUrl = 'https://{s}.tile.opentopomap.org/{z}/{x}.png';
-      attribution = 'Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap (CC-BY-SA)';
-    } else if (mapStyle === 'osm_standard') {
-      // Standard OpenStreetMap
-      tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}.png';
-      attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
-    } else {
-      // Dark Matter - matches dark #1E1E1E UI perfectly
-      tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}{r}.png';
-      attribution = '&copy; OpenStreetMap &copy; CARTO';
-    }
-
-    const newTileLayer = L.tileLayer(tileUrl, {
-      maxZoom: 17,
-      attribution,
-    }).addTo(map);
-
+    const newTileLayer = getTileLayer(mapStyle).addTo(map);
     tileLayerRef.current = newTileLayer;
   }, [mapStyle]);
 
@@ -529,6 +613,7 @@ export function OsmAndMapPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden bg-white dark:bg-[#1E1E1E]">
+      {mode === 'heatmap' && <PcmcHeatPanel onView={onHeatView} />}
       {/* 1. Header Toolbar */}
       <div className="shrink-0 p-4 border-b border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
         <div className="flex items-center space-x-3">
@@ -550,15 +635,15 @@ export function OsmAndMapPage() {
 
         {/* Stats Pill Strip */}
         <div className="flex items-center gap-2 flex-wrap text-xs">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50/50 dark:bg-[#1E1E1E] text-rose-700 dark:text-rose-400 font-semibold">
-            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] text-[#0F172A] dark:text-[#F8FAFC] font-semibold">
+            <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
             <span>2 En-Route (ETA &lt; 15m)</span>
           </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50/50 dark:bg-[#1E1E1E] text-emerald-700 dark:text-emerald-400 font-semibold">
-            <Radio className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] text-[#0F172A] dark:text-[#F8FAFC] font-semibold">
+            <Radio className="w-3.5 h-3.5 text-emerald-600" />
             <span>6 Sub-Centres Linked</span>
           </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E5E7EB] dark:border-[#2E2E2E] bg-slate-50 dark:bg-[#1E1E1E] text-[#525252] dark:text-[#94A3B8]">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] text-[#525252] dark:text-[#94A3B8]">
             <Activity className="w-3.5 h-3.5 text-purple-500" />
             <span>14 ASHAs in Field</span>
           </div>
@@ -566,14 +651,18 @@ export function OsmAndMapPage() {
       </div>
 
       {/* 2. Main Workspace: Map Canvas + Floating Overlay Controls */}
-      <div className="flex-1 relative min-h-0">
+      <div className="flex-1 relative min-h-0 w-full h-full">
         {/* Leaflet DOM Node */}
-        <div ref={mapContainerRef} className="w-full h-full z-0" />
+        <div
+          ref={mapContainerRef}
+          style={{ width: '100%', height: '100%', minHeight: '520px' }}
+          className="w-full h-full z-0"
+        />
 
         {/* Floating Controls Overlay (Top Left) */}
         <div className="absolute top-4 left-4 z-20 space-y-2 max-w-xs sm:max-w-sm">
           {/* Map Base Layer Selector (OsmAnd Styles) */}
-          <Card className="p-3 border-[#E5E7EB] dark:border-[#2E2E2E] bg-white/95 dark:bg-[#222224]/95 backdrop-blur-md shadow-lg space-y-2">
+          <Card className="p-3 border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] shadow-sm space-y-2">
             <div className="text-[11px] font-bold uppercase tracking-wider text-[#71717A] flex items-center justify-between">
               <span className="flex items-center gap-1">
                 <Layers className="w-3.5 h-3.5" />
@@ -615,7 +704,7 @@ export function OsmAndMapPage() {
           </Card>
 
           {/* Feature Layer Toggles */}
-          <Card className="p-3 border-[#E5E7EB] dark:border-[#2E2E2E] bg-white/95 dark:bg-[#222224]/95 backdrop-blur-md shadow-lg space-y-2">
+          <Card className="p-3 border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] shadow-sm space-y-2">
             <div className="text-[11px] font-bold uppercase tracking-wider text-[#71717A]">
               GIS Layers & Assets
             </div>
@@ -693,7 +782,7 @@ export function OsmAndMapPage() {
               size="xs"
               variant="outline"
               onClick={handleCenterPHC}
-              className="bg-white/90 dark:bg-[#1E1E1E]/90 backdrop-blur-sm gap-1 text-[11px]"
+              className="bg-white dark:bg-[#1E1E1E] border-[#E5E7EB] dark:border-[#2E2E2E] gap-1 text-[11px]"
             >
               <Crosshair className="w-3.5 h-3.5 text-emerald-600" />
               <span>Center PHC</span>
@@ -712,7 +801,7 @@ export function OsmAndMapPage() {
 
         {/* Floating Live Fleet & Transit Drawer (Bottom Right) */}
         <div className="absolute bottom-6 left-4 right-4 sm:left-auto sm:right-6 sm:w-88 z-20">
-          <Card className="p-4 border-[#E5E7EB] dark:border-[#2E2E2E] bg-white/95 dark:bg-[#222224]/95 backdrop-blur-md shadow-2xl space-y-3">
+          <Card className="p-4 border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] shadow-lg space-y-3">
             <div className="flex items-center justify-between border-b border-[#E5E7EB] dark:border-[#2E2E2E] pb-2">
               <span className="text-xs font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-1.5">
                 <Navigation className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
@@ -727,10 +816,10 @@ export function OsmAndMapPage() {
               {AMBULANCES.filter((a) => a.status === 'en_route_emergency').map((amb) => (
                 <div
                   key={amb.id}
-                  className="p-2.5 rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50/50 dark:bg-rose-950/20 text-xs space-y-1"
+                  className="p-2.5 rounded-xl border-l-4 border-l-rose-500 border border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#1E1E1E] text-xs space-y-1"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-rose-700 dark:text-rose-300 flex items-center gap-1">
+                    <span className="font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1">
                       <span>🚑 {amb.code}</span>
                       <span className="text-[10px] text-[#525252] dark:text-[#A3A3A3]">({amb.speedKmH} km/h)</span>
                     </span>
@@ -744,7 +833,7 @@ export function OsmAndMapPage() {
                   <div className="text-[10px] text-rose-600 dark:text-rose-400 font-medium">
                     {amb.condition}
                   </div>
-                  <div className="flex items-center justify-between pt-1 border-t border-rose-200/50 dark:border-rose-800/30 text-[10px]">
+                  <div className="flex items-center justify-between pt-1 border-t border-[#E5E7EB] dark:border-[#2E2E2E] text-[10px]">
                     <span className="text-[#525252] dark:text-[#94A3B8]">Destination: PHC Shahpur</span>
                     <a
                       href={`tel:${amb.driverPhone}`}

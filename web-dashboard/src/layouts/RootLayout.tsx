@@ -19,6 +19,8 @@ import {
   Moon,
   PhoneCall,
   MapPin,
+  Layers,
+  Package,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -99,7 +101,7 @@ export function RootLayout() {
         {/* 1. Header (Fixed, Non-scrolling) */}
         <div className="flex h-16 shrink-0 items-center justify-between border-b border-[#E5E7EB] dark:border-[#2E2E2E] px-4">
           <div className="flex items-center space-x-3 overflow-hidden">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 shadow-sm border border-emerald-500/30 text-white">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 shadow-xs border border-emerald-500/30 text-white">
               <HeartPulse className="h-5 w-5" />
             </div>
             {sidebarOpen && (
@@ -169,6 +171,62 @@ export function RootLayout() {
                     </Badge>
                   </div>
                 )}
+              </NavLink>
+
+              <NavLink
+                to="/queue"
+                className={({ isActive }) =>
+                  `flex items-center space-x-3 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
+                    isActive
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 shadow-xs'
+                      : 'text-[#525252] dark:text-[#A3A3A3] hover:bg-slate-100 dark:hover:bg-[#2A2A2A] hover:text-[#0F172A] dark:hover:text-white'
+                  } ${!sidebarOpen ? 'justify-center px-2' : ''}`
+                }
+              >
+                <Layers className="h-4 w-4 shrink-0 text-rose-500" />
+                {sidebarOpen && <span>Child IMCI queue</span>}
+              </NavLink>
+
+              <NavLink
+                to="/heatmap"
+                className={({ isActive }) =>
+                  `flex items-center space-x-3 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
+                    isActive
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 shadow-xs'
+                      : 'text-[#525252] dark:text-[#A3A3A3] hover:bg-slate-100 dark:hover:bg-[#2A2A2A] hover:text-[#0F172A] dark:hover:text-white'
+                  } ${!sidebarOpen ? 'justify-center px-2' : ''}`
+                }
+              >
+                <MapPin className="h-4 w-4 shrink-0 text-rose-500" />
+                {sidebarOpen && <span>PCMC heatmap</span>}
+              </NavLink>
+
+              <NavLink
+                to="/resources"
+                className={({ isActive }) =>
+                  `flex items-center space-x-3 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
+                    isActive
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 shadow-xs'
+                      : 'text-[#525252] dark:text-[#A3A3A3] hover:bg-slate-100 dark:hover:bg-[#2A2A2A] hover:text-[#0F172A] dark:hover:text-white'
+                  } ${!sidebarOpen ? 'justify-center px-2' : ''}`
+                }
+              >
+                <Package className="h-4 w-4 shrink-0 text-amber-500" />
+                {sidebarOpen && <span>Early-warning stock</span>}
+              </NavLink>
+
+              <NavLink
+                to="/supervisor"
+                className={({ isActive }) =>
+                  `flex items-center space-x-3 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
+                    isActive
+                      ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 shadow-xs'
+                      : 'text-[#525252] dark:text-[#A3A3A3] hover:bg-slate-100 dark:hover:bg-[#2A2A2A] hover:text-[#0F172A] dark:hover:text-white'
+                  } ${!sidebarOpen ? 'justify-center px-2' : ''}`
+                }
+              >
+                <Users className="h-4 w-4 shrink-0 text-amber-500" />
+                {sidebarOpen && <span>IMCI supervisor</span>}
               </NavLink>
 
               <NavLink
