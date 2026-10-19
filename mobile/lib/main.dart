@@ -1,0 +1,28 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'app/app.dart';
+import 'core/database/app_database.dart';
+import 'core/sync/sync_worker.dart';
+
+/// Application entry point.
+///
+/// [WidgetsFlutterBinding.ensureInitialized] is required before accessing
+/// platform channels (used by path_provider, flutter_secure_storage, etc.).
+///
+/// [ProviderScope] is the root Riverpod container — all providers declared
+/// with @riverpod live inside this scope.
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  setupSqliteForPlatform();
+  const apiBaseUrl = String.fromEnvironment('ASHA_API_BASE_URL');
+  const pins = String.fromEnvironment('ASHA_API_SHA256_PINS');
+  // Deployment supplies a HTTPS base URL and comma-separated SHA-256 pins via
+  // dart-defines. Local test/debug builds omit them and do not schedule work.
+  if (apiBaseUrl.isNotEmpty) {
+    await SyncScheduler().initialise(
+      apiBaseUrl: apiBaseUrl,
+      certificatePins: pins.isEmpty ? const [] : pins.split(','),
+    );
+  }
+  runApp(const ProviderScope(child: AshaApp()));
+}
