@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 
+import '../../../app/theme/app_theme.dart';
 import '../../../core/pdf/pdf_generator.dart';
 import '../../../core/voice/tts_service.dart';
 import '../data/earnings_repository.dart';
@@ -157,8 +158,6 @@ class _EarningsScreenState extends State<EarningsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Earnings & Incentives'),
-        backgroundColor: Colors.teal.shade800,
-        foregroundColor: Colors.white,
         actions: [
           // Privacy Shield Toggle (Req 55.6)
           IconButton(
@@ -303,19 +302,19 @@ class _EarningsScreenState extends State<EarningsScreen> {
 
   Widget _buildEarningsHeroCard() {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.teal.shade800, Colors.teal.shade600],
+        gradient: const LinearGradient(
+          colors: [AshaColors.primary, AshaColors.primaryDark],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
+        borderRadius: AshaShapes.cardRadius,
+        boxShadow: const [
           BoxShadow(
-            color: Colors.teal.withValues(alpha: 0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            color: Color.fromRGBO(18, 26, 21, 0.12),
+            blurRadius: 14,
+            offset: Offset(0, 4),
           ),
         ],
       ),

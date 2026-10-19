@@ -3,84 +3,128 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/router.dart';
+import '../../app/theme/app_theme.dart';
 import '../../core/l10n/language_selector_dialog.dart';
 
-/// Global Navigation Drawer providing direct one-tap access to all 10+ core
-/// operational modules of the ASHA Digital Platform.
-class AppDrawer extends ConsumerWidget {
+/// Global Navigation Drawer providing direct one-tap access to all core
+/// operational modules of the ASHA Digital Platform with AshaSetu Unified styling.
+class AppDrawer extends ConsumerStatefulWidget {
   const AppDrawer({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+  ConsumerState<AppDrawer> createState() => _AppDrawerState();
+}
+
+class _AppDrawerState extends ConsumerState<AppDrawer> {
+  final _open = <String, bool>{
+    'field': true,
+    'admin': true,
+    'clinical': true,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final ref = this.ref;
     final currentRole = ref.watch(userRoleProvider);
 
     return Drawer(
+      backgroundColor: AshaColors.cardSurface,
       child: SafeArea(
         top: false,
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            // ── Drawer Header ──────────────────────────────────────────────
-            UserAccountsDrawerHeader(
-              decoration: BoxDecoration(
+            // ── Drawer Header (DocSpot Forest Gradient + Zevoa Mint) ───────
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 52, 20, 20),
+              decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    theme.colorScheme.primary,
-                    theme.colorScheme.primary.withValues(alpha: 0.85),
+                    AshaColors.primary,
+                    AshaColors.primaryDark,
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
               ),
-              currentAccountPicture: CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Text(
-                  'SS',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              ),
-              accountName: const Row(
-                children: [
-                  Text(
-                    'Sunita Sharma',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Colors.white,
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Icon(Icons.verified, size: 16, color: Colors.amberAccent),
-                ],
-              ),
-              accountEmail: Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
-                    'ASHA Worker • Rampur / Seorahi PHC',
-                    style: TextStyle(fontSize: 12, color: Colors.white70),
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 28,
+                        backgroundColor: Colors.white,
+                        child: Text(
+                          'SS',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: AshaColors.primaryDark,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Flexible(
+                                  child: Text(
+                                    'Sunita Sharma',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 18,
+                                      color: Colors.white,
+                                      letterSpacing: -0.3,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Icon(
+                                  Icons.verified,
+                                  size: 18,
+                                  color: AshaColors.leafMint,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'ASHA Worker • Rampur PHC',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.white70,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 14),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(4),
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 0.8),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.lock, size: 10, color: Colors.white),
-                        SizedBox(width: 4),
+                        Icon(Icons.lock, size: 12, color: Colors.white),
+                        SizedBox(width: 6),
                         Text(
-                          'Offline • AES-256 Encrypted',
-                          style: TextStyle(fontSize: 10, color: Colors.white),
+                          'Offline • AES-256 SQLCipher Encrypted',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
@@ -89,14 +133,23 @@ class AppDrawer extends ConsumerWidget {
               ),
             ),
 
+            const SizedBox(height: 8),
+
             // ── Section 1: Field Operations ────────────────────────────────
-            _buildSectionHeader(context, 'FIELD OPERATIONS'),
+            _section('field', 'FIELD OPERATIONS', [
+            _buildDrawerTile(
+              context: context,
+              icon: Icons.dashboard_outlined,
+              title: 'Home',
+              subtitle: 'Dashboard, map, and field desk',
+              route: '/home',
+            ),
             _buildDrawerTile(
               context: context,
               icon: Icons.checklist_rtl,
               title: "Today's Due List & Scheduler",
               subtitle: 'Red follow-ups, overdue, upcoming',
-              route: '/home',
+              route: '/due-list',
             ),
             _buildDrawerTile(
               context: context,
@@ -118,14 +171,32 @@ class AppDrawer extends ConsumerWidget {
               title: 'Emergency Triage & Danger Signs',
               subtitle: 'IMNCI & maternal red alert triage',
               route: '/triage',
-              highlightColor: Colors.red.shade100,
-              iconColor: Colors.red.shade700,
+              highlightColor: AshaColors.alertHighRisk.withValues(alpha: 0.08),
+              iconColor: AshaColors.alertHighRisk,
+            ),
+            _buildDrawerTile(
+              context: context,
+              icon: Icons.fact_check_outlined,
+              title: 'Setu triage questions',
+              subtitle: 'One question at a time, then a referral QR',
+              route: '/triage/questions',
+            ),
+            _buildDrawerTile(
+              context: context,
+              icon: Icons.translate,
+              title: 'They speak / I ask',
+              subtitle: 'Hear the family, or ask in their language',
+              route: '/triage/language',
+            ),
+            ]),
+
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Divider(color: AshaColors.borderSubtle),
             ),
 
-            const Divider(),
-
             // ── Section 2: Administrative & Earnings ───────────────────────
-            _buildSectionHeader(context, 'ADMINISTRATIVE & REPORTING'),
+            _section('admin', 'ADMINISTRATIVE & REPORTING', [
             _buildDrawerTile(
               context: context,
               icon: Icons.account_balance_wallet_outlined,
@@ -133,7 +204,7 @@ class AppDrawer extends ConsumerWidget {
               subtitle: '₹4,200 claimed • Direct benefit transfer',
               route: '/incentives',
               badge: '₹4,200',
-              badgeColor: Colors.green.shade700,
+              badgeColor: AshaColors.vitalNormal,
             ),
             _buildDrawerTile(
               context: context,
@@ -149,11 +220,15 @@ class AppDrawer extends ConsumerWidget {
               subtitle: 'RCH, ANC, PNC, HBNC, CBAC registers',
               route: '/reports',
             ),
+            ]),
 
-            const Divider(),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Divider(color: AshaColors.borderSubtle),
+            ),
 
             // ── Section 3: Clinical Tools & Job Aids ───────────────────────
-            _buildSectionHeader(context, 'CLINICAL AIDS & TOOLS'),
+            _section('clinical', 'CLINICAL AIDS & TOOLS', [
             _buildDrawerTile(
               context: context,
               icon: Icons.calculate_outlined,
@@ -188,47 +263,88 @@ class AppDrawer extends ConsumerWidget {
               title: 'Teleconsultation & Helpline',
               subtitle: 'Doctor connect & emergency 108',
               route: '/support',
+              iconColor: AshaColors.teleConsultBlue,
             ),
+            ]),
 
-            const Divider(),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Divider(color: AshaColors.borderSubtle),
+            ),
 
             // ── Settings & Language ────────────────────────────────────────
-            ListTile(
-              leading: const Icon(Icons.language, color: Colors.blueGrey),
-              title: const Text('Change Language / भाषा बदलें'),
-              subtitle: const Text('12 Indian Regional Languages'),
-              onTap: () {
-                Navigator.pop(context);
-                showDialog(
-                  context: context,
-                  builder: (_) => const LanguageSelectorDialog(),
-                );
-              },
-            ),
-
-            // Role toggle for supervision demonstration
-            ListTile(
-              leading: const Icon(Icons.swap_horiz, color: Colors.deepPurple),
-              title: const Text('Active Role Switcher'),
-              subtitle: Text('Current: ${currentRole.toUpperCase()} (Tap to toggle ASHA / AF)'),
-              onTap: () {
-                final newRole = currentRole == 'asha' ? 'af' : 'asha';
-                ref.read(userRoleProvider.notifier).setRole(newRole);
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Switched active role to: ${newRole.toUpperCase()}'),
-                    duration: const Duration(seconds: 2),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: ListTile(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AshaColors.surfaceMuted,
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                );
-              },
+                  child: const Icon(Icons.language, color: AshaColors.textSecondary, size: 20),
+                ),
+                title: const Text(
+                  'Change Language / भाषा बदलें',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AshaColors.textPrimary),
+                ),
+                subtitle: const Text(
+                  '12 Indian Regional Languages',
+                  style: TextStyle(fontSize: 12, color: AshaColors.textSecondary),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  showDialog(
+                    context: context,
+                    builder: (_) => const LanguageSelectorDialog(),
+                  );
+                },
+              ),
             ),
 
-            const SizedBox(height: 16),
-            const Center(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: ListTile(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AshaColors.surfaceMuted,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.swap_horiz, color: AshaColors.primary, size: 20),
+                ),
+                title: const Text(
+                  'Active Role Switcher',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AshaColors.textPrimary),
+                ),
+                subtitle: Text(
+                  'Current: ${currentRole.toUpperCase()} (Tap to toggle ASHA / AF)',
+                  style: const TextStyle(fontSize: 12, color: AshaColors.textSecondary),
+                ),
+                onTap: () {
+                  final newRole = currentRole == 'asha' ? 'af' : 'asha';
+                  ref.read(userRoleProvider.notifier).setRole(newRole);
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Switched active role to: ${newRole.toUpperCase()}'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            const SizedBox(height: 20),
+            Center(
               child: Text(
                 'ASHA Setu Platform • NHM India v1.0.0',
-                style: TextStyle(fontSize: 11, color: Colors.grey),
+                style: AshaTypography.subtitleSmall.copyWith(
+                  color: AshaColors.textMuted,
+                  fontSize: 11,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -238,18 +354,35 @@ class AppDrawer extends ConsumerWidget {
     );
   }
 
-  Widget _buildSectionHeader(BuildContext context, String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 16, top: 12, bottom: 4),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.1,
-          color: Colors.blueGrey.shade700,
+  Widget _section(String id, String title, List<Widget> children) {
+    final open = _open[id] ?? true;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InkWell(
+          onTap: () => setState(() => _open[id] = !open),
+          child: Padding(
+            padding: const EdgeInsets.only(left: 20, right: 12, top: 12, bottom: 6),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                      color: AshaColors.textMuted,
+                    ),
+                  ),
+                ),
+                Icon(open ? Icons.expand_less : Icons.expand_more, size: 18, color: AshaColors.textMuted),
+              ],
+            ),
+          ),
         ),
-      ),
+        if (open) ...children,
+      ],
     );
   }
 
@@ -264,46 +397,73 @@ class AppDrawer extends ConsumerWidget {
     Color? highlightColor,
     Color? iconColor,
   }) {
-    return ListTile(
-      tileColor: highlightColor,
-      leading: Icon(
-        icon,
-        color: iconColor ?? Theme.of(context).colorScheme.primary,
-      ),
-      title: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-            ),
+    final effectiveIconColor = iconColor ?? AshaColors.primary;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+      child: ListTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        tileColor: highlightColor,
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: (highlightColor != null)
+                ? effectiveIconColor.withValues(alpha: 0.12)
+                : AshaColors.surfaceMuted,
+            borderRadius: BorderRadius.circular(10),
           ),
-          if (badge != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: badgeColor ?? Colors.blue,
-                borderRadius: BorderRadius.circular(10),
-              ),
+          child: Icon(
+            icon,
+            color: effectiveIconColor,
+            size: 20,
+          ),
+        ),
+        title: Row(
+          children: [
+            Expanded(
               child: Text(
-                badge,
+                title,
                 style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: AshaColors.textPrimary,
                 ),
               ),
             ),
-        ],
+            if (badge != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: badgeColor ?? AshaColors.primary,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  badge,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(
+            fontSize: 12,
+            color: AshaColors.textSecondary,
+          ),
+        ),
+        onTap: () {
+          Navigator.pop(context);
+          if (route == '/home') {
+            context.go(route);
+          } else {
+            context.push(route);
+          }
+        },
       ),
-      subtitle: Text(
-        subtitle,
-        style: const TextStyle(fontSize: 12, color: Colors.black54),
-      ),
-      onTap: () {
-        Navigator.pop(context); // Close drawer
-        context.push(route);
-      },
     );
   }
 }

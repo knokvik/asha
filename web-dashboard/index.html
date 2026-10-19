@@ -4,13 +4,25 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ASHA Digital Platform | Health Portal & Supervision Console</title>
-    <meta name="description" content="Integrated supervision, clinic workspace, triage referral queue, and district analytics dashboard for the ASHA Digital Platform." />
+    <title>PHC Shahpur Emergency Triage & Referral Queue | ASHA Digital Platform</title>
+    <meta name="description" content="Integrated clinical triage referral queue, facility planning, and emergency command center for PHC Medical Officers." />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+      try {
+        const theme = localStorage.getItem('asha-theme');
+        if (theme === 'light') {
+          document.documentElement.classList.remove('dark');
+          document.documentElement.classList.add('light');
+        } else {
+          document.documentElement.classList.remove('light');
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {}
+    </script>
   </head>
-  <body class="bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500 selection:text-white">
+  <body class="bg-white dark:bg-[#1E1E1E] text-[#0F172A] dark:text-[#F8FAFC] antialiased selection:bg-[#10B981] selection:text-white">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

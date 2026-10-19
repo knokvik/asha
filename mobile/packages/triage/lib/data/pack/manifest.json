@@ -1,0 +1,33 @@
+{
+  "district_id": "PCMC",
+  "district_name": "Pimpri-Chinchwad",
+  "state": "Maharashtra",
+  "ward_count": 8,
+  "pack_version": 1,
+  "generated_at": "2026-10-19T00:00:00Z",
+  "as_of_month": 10,
+  "languages": [
+    "mr",
+    "hi",
+    "en"
+  ],
+  "synthetic": true,
+  "note": "Sample ward boxes and a cached GPS fix. Not official boundaries. Works offline.",
+  "sample_fix": {
+    "latitude": 18.64,
+    "longitude": 73.84,
+    "label": "Cached fix inside sample ward W3"
+  },
+  "facilities": [
+    {
+      "id": "HFR-PCMC-W3",
+      "name": "PCMC UPHC Ward 3",
+      "ward_id": "W3"
+    },
+    {
+      "id": "HFR-PCMC-W5",
+      "name": "PCMC UPHC Ward 5",
+      "ward_id": "W5"
+    }
+  ]
+}

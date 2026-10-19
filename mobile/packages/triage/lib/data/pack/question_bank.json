@@ -1,0 +1,620 @@
+{
+  "questions": [
+    {
+      "id": "core.drink",
+      "module": "core",
+      "text": {
+        "en": "Can the child drink or breastfeed?",
+        "hi": "क्या बच्चा पानी पी या स्तनपान कर पा रहा है?",
+        "mr": "मुलाला पाणी पिता येते का किंवा स्तनपान करता येते का?"
+      },
+      "type": "bool",
+      "weight": 10,
+      "is_red_flag": true,
+      "input_field": "symptoms.unable_to_drink",
+      "invert_yes": true
+    },
+    {
+      "id": "core.vomit",
+      "module": "core",
+      "text": {
+        "en": "Does the child vomit everything?",
+        "hi": "क्या बच्चा सब कुछ उगल देता है?",
+        "mr": "मूल खाल्लेले सर्व उलटते का?"
+      },
+      "type": "bool",
+      "weight": 10,
+      "is_red_flag": true,
+      "input_field": "symptoms.vomits_everything"
+    },
+    {
+      "id": "core.convulsions",
+      "module": "core",
+      "text": {
+        "en": "Has the child had convulsions during this illness?",
+        "hi": "क्या इस बीमारी में बच्चे को दौरे पड़े हैं?",
+        "mr": "या आजारात मुलाला झटके आले का?"
+      },
+      "type": "bool",
+      "weight": 10,
+      "is_red_flag": true,
+      "input_field": "symptoms.convulsions"
+    },
+    {
+      "id": "core.convulsing_now",
+      "module": "core",
+      "text": {
+        "en": "Is the child convulsing now?",
+        "hi": "क्या बच्चे को अभी दौरे पड़ रहे हैं?",
+        "mr": "मुलाला आत्ता झटके येत आहेत का?"
+      },
+      "type": "bool",
+      "weight": 10,
+      "is_red_flag": true,
+      "input_field": "symptoms.convulsing_now"
+    },
+    {
+      "id": "core.lethargic",
+      "module": "core",
+      "text": {
+        "en": "Is the child lethargic or unconscious?",
+        "hi": "क्या बच्चा बहुत सुस्त या बेहोश है?",
+        "mr": "मूल खूप सुस्त किंवा बेशुद्ध आहे का?"
+      },
+      "type": "bool",
+      "weight": 10,
+      "is_red_flag": true,
+      "input_field": "symptoms.lethargic_or_unconscious"
+    },
+    {
+      "id": "core.stiff_neck",
+      "module": "core",
+      "text": {
+        "en": "Does the child have a stiff neck?",
+        "hi": "क्या बच्चे की गर्दन अकड़ी हुई है?",
+        "mr": "मुलाची मान ताठ आहे का?"
+      },
+      "type": "bool",
+      "weight": 9,
+      "is_red_flag": true,
+      "input_field": "symptoms.stiff_neck"
+    },
+    {
+      "id": "core.indrawing",
+      "module": "core",
+      "text": {
+        "en": "Does the lower chest wall pull in when the child breathes in?",
+        "hi": "क्या सांस लेते समय छाती अंदर धंसती है?",
+        "mr": "श्वास घेताना छाती आत ओढली जाते का?"
+      },
+      "type": "bool",
+      "weight": 8,
+      "is_red_flag": true,
+      "input_field": "symptoms.chest_indrawing"
+    },
+    {
+      "id": "core.stridor",
+      "module": "core",
+      "text": {
+        "en": "Is there a harsh sound when the child is calm?",
+        "hi": "क्या शांत बच्चे की सांस में कर्कश आवाज है?",
+        "mr": "मूल शांत असताना श्वासात खरखर आवाज आहे का?"
+      },
+      "type": "bool",
+      "weight": 8,
+      "is_red_flag": true,
+      "input_field": "symptoms.stridor_in_calm_child"
+    },
+    {
+      "id": "core.mastoid",
+      "module": "core",
+      "text": {
+        "en": "Is there tender swelling behind the ear?",
+        "hi": "क्या कान के पीछे दर्द के साथ सूजन है?",
+        "mr": "कानामागे दाबले असता दुखणारी सूज आहे का?"
+      },
+      "type": "bool",
+      "weight": 8,
+      "is_red_flag": true,
+      "input_field": "symptoms.tender_swelling_behind_ear"
+    },
+    {
+      "id": "core.wasting",
+      "module": "core",
+      "text": {
+        "en": "Does the child have visible severe wasting?",
+        "hi": "क्या बच्चे में गंभीर कृशता दिखती है?",
+        "mr": "मुलामध्ये गंभीर कृशता दिसते का?"
+      },
+      "type": "bool",
+      "weight": 8,
+      "is_red_flag": true,
+      "input_field": "symptoms.visible_severe_wasting"
+    },
+    {
+      "id": "core.oedema",
+      "module": "core",
+      "text": {
+        "en": "Is there oedema of both feet?",
+        "hi": "क्या दोनों पैरों पर सूजन है?",
+        "mr": "दोन्ही पायावर सूज आहे का?"
+      },
+      "type": "bool",
+      "weight": 8,
+      "is_red_flag": true,
+      "input_field": "symptoms.oedema_both_feet"
+    },
+    {
+      "id": "core.rr",
+      "module": "core",
+      "text": {
+        "en": "Count the breaths in one minute.",
+        "hi": "एक मिनट में सांस गिनें।",
+        "mr": "एका मिनिटातील श्वास मोजा."
+      },
+      "type": "number",
+      "weight": 8,
+      "is_red_flag": false,
+      "input_field": "vitals.respiratory_rate",
+      "numeric": {
+        "unit": "/min",
+        "min": 0,
+        "max": 100,
+        "decimals": 0
+      }
+    },
+    {
+      "id": "core.severe_malaria",
+      "module": "core",
+      "text": {
+        "en": "Are there signs of severe malaria?",
+        "hi": "क्या गंभीर मलेरिया के लक्षण हैं?",
+        "mr": "गंभीर मलेरियाची लक्षणे आहेत का?"
+      },
+      "type": "bool",
+      "weight": 8,
+      "is_red_flag": true,
+      "input_field": "symptoms.severe_malaria"
+    },
+    {
+      "id": "core.cough",
+      "module": "core",
+      "text": {
+        "en": "Does the child have a cough or difficulty breathing?",
+        "hi": "क्या बच्चे को खांसी या सांस लेने में तकलीफ है?",
+        "mr": "मुलाला खोकला किंवा श्वास घेण्यास त्रास आहे का?"
+      },
+      "type": "bool",
+      "weight": 7,
+      "is_red_flag": false,
+      "input_field": "symptoms.cough"
+    },
+    {
+      "id": "core.diarrhoea",
+      "module": "core",
+      "text": {
+        "en": "Does the child have diarrhoea?",
+        "hi": "क्या बच्चे को दस्त हैं?",
+        "mr": "मुलाला जुलाब आहे का?"
+      },
+      "type": "bool",
+      "weight": 7,
+      "is_red_flag": false,
+      "input_field": "symptoms.diarrhoea"
+    },
+    {
+      "id": "core.blood",
+      "module": "core",
+      "text": {
+        "en": "Is there blood in the stool?",
+        "hi": "क्या मल में खून है?",
+        "mr": "शौचात रक्त आहे का?"
+      },
+      "type": "bool",
+      "weight": 7,
+      "is_red_flag": true,
+      "input_field": "symptoms.blood_in_stool"
+    },
+    {
+      "id": "core.fever",
+      "module": "core",
+      "text": {
+        "en": "Does the child have fever?",
+        "hi": "क्या बच्चे को बुखार है?",
+        "mr": "मुलाला ताप आहे का?"
+      },
+      "type": "bool",
+      "weight": 7,
+      "is_red_flag": false,
+      "input_field": "symptoms.fever"
+    },
+    {
+      "id": "core.drinking_poorly",
+      "module": "core",
+      "text": {
+        "en": "Is the child drinking poorly or not able to drink?",
+        "hi": "क्या बच्चा बहुत कम पी पा रहा है?",
+        "mr": "मूल फार कमी पीऊ शकते का?"
+      },
+      "type": "bool",
+      "weight": 6,
+      "is_red_flag": true,
+      "input_field": "symptoms.drinking_poorly"
+    },
+    {
+      "id": "core.cough_days",
+      "module": "core",
+      "text": {
+        "en": "For how many days has the cough lasted?",
+        "hi": "खांसी कितने दिन से है?",
+        "mr": "खोकला किती दिवसांपासून आहे?"
+      },
+      "type": "number",
+      "weight": 6,
+      "is_red_flag": false,
+      "input_field": "symptoms.cough_duration_days",
+      "numeric": {
+        "unit": "days",
+        "min": 0,
+        "max": 60,
+        "decimals": 0
+      }
+    },
+    {
+      "id": "core.diarrhoea_days",
+      "module": "core",
+      "text": {
+        "en": "For how many days has the diarrhoea lasted?",
+        "hi": "दस्त कितने दिन से हैं?",
+        "mr": "जुलाब किती दिवसांपासून आहे?"
+      },
+      "type": "number",
+      "weight": 6,
+      "is_red_flag": false,
+      "input_field": "symptoms.diarrhoea_duration_days",
+      "numeric": {
+        "unit": "days",
+        "min": 0,
+        "max": 60,
+        "decimals": 0
+      }
+    },
+    {
+      "id": "core.temp",
+      "module": "core",
+      "text": {
+        "en": "What is the temperature?",
+        "hi": "तापमान कितना है?",
+        "mr": "तापमान किती आहे?"
+      },
+      "type": "number",
+      "weight": 6,
+      "is_red_flag": false,
+      "input_field": "vitals.temp_c",
+      "numeric": {
+        "unit": "C",
+        "min": 32,
+        "max": 43,
+        "decimals": 1
+      }
+    },
+    {
+      "id": "core.sunken",
+      "module": "core",
+      "text": {
+        "en": "Are the eyes sunken?",
+        "hi": "क्या आंखें धंसी हुई हैं?",
+        "mr": "डोळे खोल गेले आहेत का?"
+      },
+      "type": "bool",
+      "weight": 6,
+      "is_red_flag": false,
+      "input_field": "symptoms.sunken_eyes"
+    },
+    {
+      "id": "core.restless",
+      "module": "core",
+      "text": {
+        "en": "Is the child restless or irritable?",
+        "hi": "क्या बच्चा बेचैन या चिड़चिड़ा है?",
+        "mr": "मूल अस्वस्थ किंवा चिडचिडे आहे का?"
+      },
+      "type": "bool",
+      "weight": 5,
+      "is_red_flag": false,
+      "input_field": "symptoms.restless_irritable"
+    },
+    {
+      "id": "core.eager",
+      "module": "core",
+      "text": {
+        "en": "Does the child drink eagerly or seem thirsty?",
+        "hi": "क्या बच्चा बहुत तेजी से पी रहा है?",
+        "mr": "मूल उत्सुकतेने पिते का?"
+      },
+      "type": "bool",
+      "weight": 5,
+      "is_red_flag": false,
+      "input_field": "symptoms.drinks_eagerly"
+    },
+    {
+      "id": "core.skin_pinch",
+      "module": "core",
+      "text": {
+        "en": "How does the skin pinch go back?",
+        "hi": "त्वचा की चुटकी वापस कैसे जाती है?",
+        "mr": "त्वचेची चिमटी परत कशी जाते?"
+      },
+      "type": "choice",
+      "weight": 5,
+      "is_red_flag": false,
+      "input_field": "symptoms.skin_pinch",
+      "options": [
+        {
+          "value": "normal",
+          "label": "Goes back immediately"
+        },
+        {
+          "value": "slow",
+          "label": "Goes back slowly"
+        },
+        {
+          "value": "very_slow",
+          "label": "Goes back very slowly, 2 seconds or more"
+        }
+      ]
+    },
+    {
+      "id": "core.malaria_test",
+      "module": "core",
+      "text": {
+        "en": "Is the malaria test positive?",
+        "hi": "क्या मलेरिया जांच सकारात्मक है?",
+        "mr": "मलेरिया चाचणी पॉझिटिव्ह आहे का?"
+      },
+      "type": "bool",
+      "weight": 5,
+      "is_red_flag": false,
+      "input_field": "symptoms.malaria_test_positive"
+    },
+    {
+      "id": "core.pallor",
+      "module": "core",
+      "text": {
+        "en": "Is there palmar pallor?",
+        "hi": "क्या हथेली पीली है?",
+        "mr": "तळहातावर फिकेपणा आहे का?"
+      },
+      "type": "bool",
+      "weight": 5,
+      "is_red_flag": false,
+      "input_field": "symptoms.palmar_pallor"
+    },
+    {
+      "id": "core.ear_pain",
+      "module": "core",
+      "text": {
+        "en": "Does the child have ear pain?",
+        "hi": "क्या बच्चे के कान में दर्द है?",
+        "mr": "मुलाला कानात दुखत आहे का?"
+      },
+      "type": "bool",
+      "weight": 4,
+      "is_red_flag": false,
+      "input_field": "symptoms.ear_pain"
+    },
+    {
+      "id": "core.ear_discharge",
+      "module": "core",
+      "text": {
+        "en": "Is there discharge from the ear?",
+        "hi": "क्या कान से पानी या मवाद बह रहा है?",
+        "mr": "कानातून स्त्राव होत आहे का?"
+      },
+      "type": "bool",
+      "weight": 4,
+      "is_red_flag": false,
+      "input_field": "symptoms.ear_discharge"
+    },
+    {
+      "id": "core.zscore",
+      "module": "core",
+      "text": {
+        "en": "What is the weight-for-age Z-score?",
+        "hi": "वजन-आयु Z-स्कोर कितना है?",
+        "mr": "वजन-वय Z-स्कोअर किती आहे?"
+      },
+      "type": "number",
+      "weight": 4,
+      "is_red_flag": false,
+      "input_field": "vitals.weight_for_age_zscore",
+      "numeric": {
+        "unit": "Z",
+        "min": -6,
+        "max": 4,
+        "decimals": 1
+      }
+    },
+    {
+      "id": "core.ear_days",
+      "module": "core",
+      "text": {
+        "en": "For how many days has the ear been discharging?",
+        "hi": "कान से स्राव कितने दिन से है?",
+        "mr": "कानातून स्त्राव किती दिवसांपासून आहे?"
+      },
+      "type": "number",
+      "weight": 3,
+      "is_red_flag": false,
+      "input_field": "symptoms.ear_discharge_days",
+      "numeric": {
+        "unit": "days",
+        "min": 0,
+        "max": 90,
+        "decimals": 0
+      }
+    },
+    {
+      "id": "core.weight",
+      "module": "core",
+      "text": {
+        "en": "What is the weight in kilograms?",
+        "hi": "वजन कितने किलो है?",
+        "mr": "वजन किती किलो आहे?"
+      },
+      "type": "number",
+      "weight": 3,
+      "is_red_flag": false,
+      "input_field": "vitals.weight_kg",
+      "numeric": {
+        "unit": "kg",
+        "min": 1,
+        "max": 30,
+        "decimals": 1
+      }
+    },
+    {
+      "id": "dengue.abdominal",
+      "module": "dengue",
+      "text": {
+        "en": "Is there severe abdominal pain or tenderness?",
+        "hi": "क्या पेट में तेज दर्द या छूने पर दर्द है?",
+        "mr": "पोटात तीव्र दुखणे किंवा दाबल्यावर दुखणे आहे का?"
+      },
+      "type": "bool",
+      "weight": 9,
+      "is_red_flag": true,
+      "input_field": "symptoms.severe_abdominal_pain"
+    },
+    {
+      "id": "dengue.vomiting",
+      "module": "dengue",
+      "text": {
+        "en": "Is the vomiting persistent?",
+        "hi": "क्या उल्टी लगातार हो रही है?",
+        "mr": "उलटी सतत होत आहे का?"
+      },
+      "type": "bool",
+      "weight": 9,
+      "is_red_flag": true,
+      "input_field": "symptoms.persistent_vomiting"
+    },
+    {
+      "id": "dengue.bleeding",
+      "module": "dengue",
+      "text": {
+        "en": "Is there bleeding from the gums or nose, or other mucosal bleeding?",
+        "hi": "क्या मसूड़ों या नाक से खून आ रहा है?",
+        "mr": "हिरड्या किंवा नाकातून रक्त येत आहे का?"
+      },
+      "type": "bool",
+      "weight": 9,
+      "is_red_flag": true,
+      "input_field": "symptoms.mucosal_bleeding"
+    },
+    {
+      "id": "dengue.fluid",
+      "module": "dengue",
+      "text": {
+        "en": "Is there clinical fluid accumulation?",
+        "hi": "क्या शरीर में पानी जमा दिख रहा है?",
+        "mr": "शरीरात द्रव साचल्याचे लक्षण आहे का?"
+      },
+      "type": "bool",
+      "weight": 9,
+      "is_red_flag": true,
+      "input_field": "symptoms.clinical_fluid_accumulation"
+    },
+    {
+      "id": "dengue.restless",
+      "module": "dengue",
+      "text": {
+        "en": "Is the child unusually lethargic or restless?",
+        "hi": "क्या बच्चा असामान्य रूप से सुस्त या बेचैन है?",
+        "mr": "मूल असामान्य सुस्त किंवा अस्वस्थ आहे का?"
+      },
+      "type": "bool",
+      "weight": 9,
+      "is_red_flag": true,
+      "input_field": "symptoms.dengue_restless_or_lethargic"
+    },
+    {
+      "id": "dengue.breeding",
+      "module": "dengue",
+      "text": {
+        "en": "Are there water-filled containers where mosquitoes can breed near the home?",
+        "hi": "क्या घर के पास मच्छरों के लिए पानी भरा पड़ा है?",
+        "mr": "घराजवळ डासांच्या उत्पत्तीसाठी पाणी साचले आहे का?"
+      },
+      "type": "bool",
+      "weight": 2,
+      "is_red_flag": false,
+      "input_field": "symptoms.mosquito_breeding_nearby"
+    },
+    {
+      "id": "measles.rash",
+      "module": "measles",
+      "text": {
+        "en": "Is there a generalised rash?",
+        "hi": "क्या पूरे शरीर पर दाने हैं?",
+        "mr": "अंगावर पुरळ आहे का?"
+      },
+      "type": "bool",
+      "weight": 8,
+      "is_red_flag": true,
+      "input_field": "symptoms.measles_rash"
+    },
+    {
+      "id": "measles.eyes",
+      "module": "measles",
+      "text": {
+        "en": "Are the eyes red?",
+        "hi": "क्या आंखें लाल हैं?",
+        "mr": "डोळे लाल आहेत का?"
+      },
+      "type": "bool",
+      "weight": 4,
+      "is_red_flag": false,
+      "input_field": "symptoms.red_eyes"
+    },
+    {
+      "id": "measles.nose",
+      "module": "measles",
+      "text": {
+        "en": "Does the child have a runny nose?",
+        "hi": "क्या नाक बह रही है?",
+        "mr": "नाक वाहत आहे का?"
+      },
+      "type": "bool",
+      "weight": 3,
+      "is_red_flag": false,
+      "input_field": "symptoms.runny_nose"
+    },
+    {
+      "id": "diarrhoea_cluster.many",
+      "module": "diarrhoea_cluster",
+      "text": {
+        "en": "Has the child passed many watery stools today?",
+        "hi": "क्या आज कई बार पतले दस्त हुए हैं?",
+        "mr": "आज अनेक पातळ शौच झाले का?"
+      },
+      "type": "bool",
+      "weight": 7,
+      "is_red_flag": true,
+      "input_field": "symptoms.watery_stools_many"
+    },
+    {
+      "id": "aes.altered",
+      "module": "aes",
+      "text": {
+        "en": "Did fever come with a sudden change in consciousness?",
+        "hi": "क्या बुखार के साथ अचानक बेहोशी या व्यवहार बदला?",
+        "mr": "तापाबरोबर अचानक शुद्ध हरपली किंवा वर्तन बदलले का?"
+      },
+      "type": "bool",
+      "weight": 9,
+      "is_red_flag": true,
+      "input_field": "symptoms.acute_encephalopathy"
+    }
+  ]
+}

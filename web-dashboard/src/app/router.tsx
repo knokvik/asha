@@ -5,6 +5,7 @@ import { AFSupervisionPage } from '@/features/af-supervision/AFSupervisionPage';
 import { ANMWorkspacePage } from '@/features/anm-workspace/ANMWorkspacePage';
 import { DistrictAnalyticsPage } from '@/features/analytics/DistrictAnalyticsPage';
 import { AdminConsolePage } from '@/features/admin/AdminConsolePage';
+import { OsmAndMapPage } from '@/features/map/OsmAndMapPage';
 
 export const router = createBrowserRouter([
   {
@@ -18,6 +19,10 @@ export const router = createBrowserRouter([
       {
         path: 'phc',
         element: <PHCDashboardPage />,
+      },
+      {
+        path: 'map',
+        element: <OsmAndMapPage />,
       },
       {
         path: 'af',

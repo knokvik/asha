@@ -27,6 +27,8 @@ export interface ReferralItem {
   patientAge: number;
   patientGender: 'M' | 'F' | 'O';
   village: string;
+  abhaId?: string;
+  isSmsRelayed?: boolean;
   ashaId: string;
   ashaName: string;
   ashaPhone: string;
@@ -46,7 +48,12 @@ export interface ReferralItem {
     bloodGlucose?: number;
   };
   redFlags: string[];
+  screenedDangerSigns?: {
+    sign: string;
+    present: boolean;
+  }[];
   referredAt: string; // ISO timestamp
+  arrivedAt?: string;
   status: 'pending' | 'arrived' | 'admitted' | 'treated' | 'discharged' | 'did_not_reach';
   outcomeNotes?: string;
   outcomeRecordedAt?: string;

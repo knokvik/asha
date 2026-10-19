@@ -19,6 +19,7 @@
         android:label="asha_platform"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:largeHeap="true"
         android:networkSecurityConfig="@xml/network_security_config">
         <activity
             android:name=".MainActivity"

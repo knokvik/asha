@@ -1,0 +1,79 @@
+{
+  "module": "malnutrition_anaemia",
+  "guideline": "IMCI chart booklet 2014, malnutrition and anaemia",
+  "rules": [
+    {
+      "rule_id": "MN-WASTE",
+      "module": "malnutrition_anaemia",
+      "severity": "RED",
+      "reason_text": {"en": "Visible severe wasting."},
+      "guideline_ref": "IMCI chart booklet 2014, malnutrition and anaemia",
+      "suspected_disease": "Severe malnutrition",
+      "actions": ["refer_urgently", "prevent_low_blood_sugar"],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.visible_severe_wasting", "op": "eq", "value": true}
+        ]
+      }
+    },
+    {
+      "rule_id": "MN-OEDEMA",
+      "module": "malnutrition_anaemia",
+      "severity": "RED",
+      "reason_text": {"en": "Oedema of both feet."},
+      "guideline_ref": "IMCI chart booklet 2014, malnutrition and anaemia",
+      "suspected_disease": "Severe malnutrition",
+      "actions": ["refer_urgently", "prevent_low_blood_sugar"],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.oedema_both_feet", "op": "eq", "value": true}
+        ]
+      }
+    },
+    {
+      "rule_id": "MN-WAZ-SEV",
+      "module": "malnutrition_anaemia",
+      "severity": "RED",
+      "reason_text": {"en": "Weight-for-age Z-score below -3."},
+      "guideline_ref": "IMCI chart booklet 2014, malnutrition and anaemia",
+      "suspected_disease": "Severe malnutrition",
+      "actions": ["refer_urgently", "prevent_low_blood_sugar"],
+      "conditions": {
+        "all": [
+          {"field": "vitals.weight_for_age_zscore", "op": "lt", "value": -3}
+        ]
+      }
+    },
+    {
+      "rule_id": "MN-WAZ-MOD",
+      "module": "malnutrition_anaemia",
+      "severity": "YELLOW",
+      "reason_text": {"en": "Weight-for-age Z-score from -3 to -2."},
+      "guideline_ref": "IMCI chart booklet 2014, malnutrition and anaemia",
+      "suspected_disease": "Moderate malnutrition",
+      "follow_up_days": 14,
+      "actions": ["follow_up"],
+      "conditions": {
+        "all": [
+          {"field": "vitals.weight_for_age_zscore", "op": "gte", "value": -3},
+          {"field": "vitals.weight_for_age_zscore", "op": "lte", "value": -2}
+        ]
+      }
+    },
+    {
+      "rule_id": "MN-PALLOR",
+      "module": "malnutrition_anaemia",
+      "severity": "YELLOW",
+      "reason_text": {"en": "Palmar pallor."},
+      "guideline_ref": "IMCI chart booklet 2014, malnutrition and anaemia",
+      "suspected_disease": "Anaemia",
+      "follow_up_days": 14,
+      "actions": ["follow_up"],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.palmar_pallor", "op": "eq", "value": true}
+        ]
+      }
+    }
+  ]
+}

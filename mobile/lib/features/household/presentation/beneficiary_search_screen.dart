@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/theme/app_theme.dart';
+import '../../../shared/widgets/asha_badge.dart';
+import '../../../shared/widgets/asha_card.dart';
 import '../data/member_search_repository.dart';
 
 /// Offline Beneficiary Full-Text Search screen powered by SQLite FTS5.
@@ -223,127 +226,122 @@ class _BeneficiarySearchScreenState
     final m = item.member;
     final hamletStr = item.hamlet?.isNotEmpty == true ? ' • ${item.hamlet}' : '';
 
-    return Card(
+    return AshaCard(
       key: Key('search_result_${m.id}'),
       margin: const EdgeInsets.only(bottom: 10),
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          context.push('/beneficiary/${m.id}');
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
+      onTap: () {
+        context.push('/beneficiary/${m.id}');
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CircleAvatar(
-                    backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.12),
-                    child: Icon(
-                      m.sex == 'F' ? Icons.face_3 : Icons.face,
-                      color: Theme.of(context).primaryColor,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          m.name,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${item.village}$hamletStr • Head: ${item.headName}',
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right, color: Colors.grey),
-                ],
+              CircleAvatar(
+                backgroundColor: AshaColors.primary.withValues(alpha: 0.12),
+                child: Icon(
+                  m.sex == 'F' ? Icons.face_3 : Icons.face,
+                  color: AshaColors.primary,
+                ),
               ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  // Relationship & Sex badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      '${m.sex} • ${m.relationshipToHead ?? "Member"}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.blue.shade800,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      m.name,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AshaColors.textPrimary,
+                        letterSpacing: -0.3,
                       ),
                     ),
-                  ),
-
-                  // Phone chip if available
-                  if (m.phone != null && m.phone!.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.phone, size: 12, color: Colors.green),
-                          const SizedBox(width: 4),
-                          Text(
-                            m.phone!,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.green.shade800,
-                            ),
-                          ),
-                        ],
+                    const SizedBox(height: 3),
+                    Text(
+                      '${item.village}$hamletStr • Head: ${item.headName}',
+                      style: const TextStyle(
+                        color: AshaColors.textSecondary,
+                        fontSize: 13,
                       ),
                     ),
-
-                  // ABHA ID badge if available
-                  if (m.abhaId != null && m.abhaId!.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.purple.shade50,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        'ABHA: ${m.abhaId}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.purple.shade800,
-                        ),
-                      ),
-                    ),
-                ],
+                  ],
+                ),
               ),
+              const Icon(Icons.chevron_right, color: AshaColors.textMuted),
             ],
           ),
-        ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              // Relationship & Sex badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AshaColors.surfaceMuted,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AshaColors.borderSubtle, width: 0.8),
+                ),
+                child: Text(
+                  '${m.sex} • ${m.relationshipToHead ?? "Member"}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AshaColors.textPrimary,
+                  ),
+                ),
+              ),
+
+              // Phone chip if available
+              if (m.phone != null && m.phone!.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AshaColors.primaryLight,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.phone, size: 12, color: AshaColors.primary),
+                      const SizedBox(width: 4),
+                      Text(
+                        m.phone!,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AshaColors.primaryDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              // ABHA ID badge if available
+              if (m.abhaId != null && m.abhaId!.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AshaColors.surfaceMuted,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: AshaColors.borderSubtle, width: 0.8),
+                  ),
+                  child: Text(
+                    'ABHA: ${m.abhaId}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AshaColors.textSecondary,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }

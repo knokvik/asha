@@ -1,0 +1,88 @@
+{
+  "module": "ear",
+  "guideline": "IMCI chart booklet 2014, ear problem",
+  "rules": [
+    {
+      "rule_id": "EAR-MAST",
+      "module": "ear",
+      "severity": "RED",
+      "reason_text": {"en": "Tender swelling behind the ear. Mastoiditis."},
+      "guideline_ref": "IMCI chart booklet 2014, ear problem",
+      "suspected_disease": "Mastoiditis",
+      "actions": ["refer_urgently", "first_dose_antibiotic"],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.tender_swelling_behind_ear", "op": "eq", "value": true}
+        ]
+      }
+    },
+    {
+      "rule_id": "EAR-ACUTE",
+      "module": "ear",
+      "severity": "YELLOW",
+      "reason_text": {"en": "Ear discharge for fewer than 14 days."},
+      "guideline_ref": "IMCI chart booklet 2014, ear problem",
+      "suspected_disease": "Acute ear infection",
+      "follow_up_days": 5,
+      "actions": ["follow_up"],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.ear_discharge", "op": "eq", "value": true},
+          {"field": "symptoms.ear_discharge_days", "op": "lt", "value": 14},
+          {"field": "symptoms.tender_swelling_behind_ear", "op": "eq", "value": false}
+        ]
+      }
+    },
+    {
+      "rule_id": "EAR-CHRONIC",
+      "module": "ear",
+      "severity": "YELLOW",
+      "reason_text": {"en": "Ear discharge for 14 days or more."},
+      "guideline_ref": "IMCI chart booklet 2014, ear problem",
+      "suspected_disease": "Chronic ear infection",
+      "follow_up_days": 5,
+      "actions": ["follow_up"],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.ear_discharge", "op": "eq", "value": true},
+          {"field": "symptoms.ear_discharge_days", "op": "gte", "value": 14},
+          {"field": "symptoms.tender_swelling_behind_ear", "op": "eq", "value": false}
+        ]
+      }
+    },
+    {
+      "rule_id": "EAR-PAIN",
+      "module": "ear",
+      "severity": "YELLOW",
+      "reason_text": {"en": "Ear pain."},
+      "guideline_ref": "IMCI chart booklet 2014, ear problem",
+      "suspected_disease": "Acute ear infection",
+      "follow_up_days": 5,
+      "actions": ["follow_up"],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.ear_pain", "op": "eq", "value": true},
+          {"field": "symptoms.ear_discharge", "op": "eq", "value": false},
+          {"field": "symptoms.tender_swelling_behind_ear", "op": "eq", "value": false}
+        ]
+      }
+    },
+    {
+      "rule_id": "EAR-OK",
+      "module": "ear",
+      "severity": "GREEN",
+      "reason_text": {"en": "Ear checked. No pain, discharge, or swelling behind the ear."},
+      "guideline_ref": "IMCI chart booklet 2014, ear problem",
+      "suspected_disease": "No ear infection",
+      "actions": [],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.ear_assessed", "op": "eq", "value": true},
+          {"field": "symptoms.ear_pain", "op": "eq", "value": false},
+          {"field": "symptoms.ear_discharge", "op": "eq", "value": false},
+          {"field": "symptoms.tender_swelling_behind_ear", "op": "eq", "value": false}
+        ]
+      }
+    }
+  ]
+}

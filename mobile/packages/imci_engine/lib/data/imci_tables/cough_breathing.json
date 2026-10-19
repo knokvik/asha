@@ -1,0 +1,156 @@
+{
+  "module": "cough_breathing",
+  "guideline": "IMCI chart booklet 2014, cough or difficult breathing",
+  "rules": [
+    {
+      "rule_id": "CB-INDRAW",
+      "module": "cough_breathing",
+      "severity": "RED",
+      "reason_text": {"en": "Chest indrawing."},
+      "guideline_ref": "IMCI chart booklet 2014, cough or difficult breathing",
+      "suspected_disease": "Severe pneumonia or very severe disease",
+      "actions": ["refer_urgently", "first_dose_antibiotic"],
+      "conditions": {
+        "all": [
+          {"field": "age_months", "op": "lt", "value": 60},
+          {"field": "symptoms.chest_indrawing", "op": "eq", "value": true}
+        ]
+      }
+    },
+    {
+      "rule_id": "CB-STRIDOR",
+      "module": "cough_breathing",
+      "severity": "RED",
+      "reason_text": {"en": "Stridor in a calm child."},
+      "guideline_ref": "IMCI chart booklet 2014, cough or difficult breathing",
+      "suspected_disease": "Severe pneumonia or very severe disease",
+      "actions": ["refer_urgently", "first_dose_antibiotic"],
+      "conditions": {
+        "all": [
+          {"field": "age_months", "op": "lt", "value": 60},
+          {"field": "symptoms.stridor_in_calm_child", "op": "eq", "value": true}
+        ]
+      }
+    },
+    {
+      "rule_id": "CB-YI-FAST",
+      "module": "cough_breathing",
+      "severity": "RED",
+      "reason_text": {"en": "Young infant breathing 60 breaths per minute or faster."},
+      "guideline_ref": "IMNCI young infant, possible serious bacterial infection",
+      "suspected_disease": "Possible serious bacterial infection",
+      "actions": ["refer_urgently", "keep_warm", "first_dose_antibiotic"],
+      "conditions": {
+        "all": [
+          {"field": "age_months", "op": "lt", "value": 2},
+          {"field": "vitals.respiratory_rate", "op": "gte", "value": 60}
+        ]
+      }
+    },
+    {
+      "rule_id": "CB-FAST-U12",
+      "module": "cough_breathing",
+      "severity": "YELLOW",
+      "reason_text": {"en": "Fast breathing in a child aged 2 to 11 months (50 breaths per minute or more)."},
+      "guideline_ref": "IMCI chart booklet 2014, cough or difficult breathing",
+      "suspected_disease": "Pneumonia",
+      "follow_up_days": 2,
+      "actions": ["follow_up"],
+      "conditions": {
+        "all": [
+          {"field": "age_months", "op": "gte", "value": 2},
+          {"field": "age_months", "op": "lt", "value": 12},
+          {"field": "vitals.respiratory_rate", "op": "gte", "value": 50},
+          {
+            "any": [
+              {"field": "symptoms.cough", "op": "eq", "value": true},
+              {"field": "symptoms.cough_or_difficult_breathing", "op": "eq", "value": true}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "rule_id": "CB-FAST-12",
+      "module": "cough_breathing",
+      "severity": "YELLOW",
+      "reason_text": {"en": "Fast breathing in a child aged 12 to 59 months (40 breaths per minute or more)."},
+      "guideline_ref": "IMCI chart booklet 2014, cough or difficult breathing",
+      "suspected_disease": "Pneumonia",
+      "follow_up_days": 2,
+      "actions": ["follow_up"],
+      "conditions": {
+        "all": [
+          {"field": "age_months", "op": "gte", "value": 12},
+          {"field": "age_months", "op": "lte", "value": 59},
+          {"field": "vitals.respiratory_rate", "op": "gte", "value": 40},
+          {
+            "any": [
+              {"field": "symptoms.cough", "op": "eq", "value": true},
+              {"field": "symptoms.cough_or_difficult_breathing", "op": "eq", "value": true}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "rule_id": "CB-LONG",
+      "module": "cough_breathing",
+      "severity": "GREEN",
+      "reason_text": {"en": "Cough for more than 14 days without fast breathing, chest indrawing, or stridor. Follow up."},
+      "guideline_ref": "IMCI chart booklet 2014, cough or difficult breathing",
+      "suspected_disease": "Cough or cold, follow up",
+      "follow_up_days": 14,
+      "actions": ["follow_up"],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.cough", "op": "eq", "value": true},
+          {"field": "symptoms.cough_duration_days", "op": "gt", "value": 14},
+          {"field": "age_months", "op": "gte", "value": 2},
+          {"field": "age_months", "op": "lte", "value": 59},
+          {"field": "symptoms.chest_indrawing", "op": "eq", "value": false},
+          {"field": "symptoms.stridor_in_calm_child", "op": "eq", "value": false},
+          {"not": {"all": [
+            {"field": "age_months", "op": "gte", "value": 2},
+            {"field": "age_months", "op": "lt", "value": 12},
+            {"field": "vitals.respiratory_rate", "op": "gte", "value": 50}
+          ]}},
+          {"not": {"all": [
+            {"field": "age_months", "op": "gte", "value": 12},
+            {"field": "age_months", "op": "lte", "value": 59},
+            {"field": "vitals.respiratory_rate", "op": "gte", "value": 40}
+          ]}}
+        ]
+      }
+    },
+    {
+      "rule_id": "CB-COLD",
+      "module": "cough_breathing",
+      "severity": "GREEN",
+      "reason_text": {"en": "Cough or cold with no fast breathing, chest indrawing, or stridor."},
+      "guideline_ref": "IMCI chart booklet 2014, cough or difficult breathing",
+      "suspected_disease": "Cough or cold",
+      "actions": [],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.cough", "op": "eq", "value": true},
+          {"field": "age_months", "op": "gte", "value": 2},
+          {"field": "age_months", "op": "lte", "value": 59},
+          {"field": "symptoms.chest_indrawing", "op": "eq", "value": false},
+          {"field": "symptoms.stridor_in_calm_child", "op": "eq", "value": false},
+          {"not": {"field": "symptoms.cough_duration_days", "op": "gt", "value": 14}},
+          {"not": {"all": [
+            {"field": "age_months", "op": "gte", "value": 2},
+            {"field": "age_months", "op": "lt", "value": 12},
+            {"field": "vitals.respiratory_rate", "op": "gte", "value": 50}
+          ]}},
+          {"not": {"all": [
+            {"field": "age_months", "op": "gte", "value": 12},
+            {"field": "age_months", "op": "lte", "value": 59},
+            {"field": "vitals.respiratory_rate", "op": "gte", "value": 40}
+          ]}}
+        ]
+      }
+    }
+  ]
+}

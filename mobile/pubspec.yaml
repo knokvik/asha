@@ -57,8 +57,25 @@ dependencies:
   # Notifications
   flutter_local_notifications: ^22.3.2
 
-  # TTS
+  # TTS. flutter_tts stays for the existing result readout.
+  # They speak / I ask use the offline Dolphin, IndicTrans2, and Piper voices.
   flutter_tts: ^4.0.2
+  audioplayers: ^6.1.0
+  record: 6.2.1
+  sherpa_onnx: ^1.13.8
+  onnxruntime_core: ^0.1.0+onnxruntime-1.29.0
+  onnxruntime_binaries: ^1.29.0+1
+  ffi: ^2.1.4
+  characters: ^1.4.0
+
+  core_model:
+    path: packages/core_model
+  core_triage:
+    path: packages/core_triage
+  core_referral:
+    path: packages/core_referral
+  triage:
+    path: packages/triage
 
   # Maps
   flutter_map: ^8.3.2
@@ -89,5 +106,10 @@ flutter:
   uses-material-design: true
   generate: true
   assets:
+    - assets/branding/
     - assets/lexicon/
     - assets/incentives/
+    - assets/triage/
+    - packages/triage/lib/data/pack/
+    - packages/triage/lib/data/model/
+    - packages/imci_engine/lib/data/imci_tables/

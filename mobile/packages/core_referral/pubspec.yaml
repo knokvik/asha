@@ -1,0 +1,14 @@
+name: core_referral
+description: Deterministic two-tier referral note builder for Setu (architecture.md §11).
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.13.1
+
+dependencies:
+  core_model:
+    path: ../core_model
+
+dev_dependencies:
+  test: ^1.26.2

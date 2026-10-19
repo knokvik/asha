@@ -1,0 +1,85 @@
+{
+  "modules": [
+    {
+      "id": "dengue",
+      "condition": "dengue_like",
+      "activation": {
+        "min_cases_per_week": 3,
+        "lookback_weeks": 4,
+        "seasonal_months": [
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ]
+      },
+      "red_flags": [
+        "severe abdominal pain or tenderness",
+        "persistent vomiting",
+        "mucosal or gum bleeding",
+        "lethargy or restlessness",
+        "clinical fluid accumulation"
+      ]
+    },
+    {
+      "id": "measles",
+      "condition": "measles_like",
+      "activation": {
+        "min_cases_per_week": 2,
+        "lookback_weeks": 4,
+        "seasonal_months": [
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    },
+    {
+      "id": "diarrhoea_cluster",
+      "condition": "acute_diarrhoea",
+      "activation": {
+        "min_cases_per_week": 8,
+        "lookback_weeks": 4,
+        "seasonal_months": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ]
+      }
+    },
+    {
+      "id": "aes",
+      "condition": "aes",
+      "activation": {
+        "min_cases_per_week": 1,
+        "lookback_weeks": 4,
+        "seasonal_months": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ]
+      }
+    }
+  ]
+}

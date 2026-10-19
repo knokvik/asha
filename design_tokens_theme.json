@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "AshaSetuUnifiedDesignSystem",
+  "version": "2.0.0",
+  "description": "Single, cohesive design system for the ASHA Worker Super App. Merges Zevoa's modular super-app architecture and DocSpot's clinical healthcare clarity.",
+  "tokens": {
+    "colors": {
+      "primary": {
+        "medicalForestGreen": "#2D5F47",
+        "forestDark": "#1E4231",
+        "forestLight": "#E5F2EE"
+      },
+      "accent": {
+        "leafMint": "#19D96B",
+        "vitalNormal": "#16A34A",
+        "alertHighRisk": "#FF5A36",
+        "pendingWarning": "#F59E0B",
+        "teleConsultBlue": "#3B82F6"
+      },
+      "surfaces": {
+        "screen": "#F8F9FA",
+        "card": "#FFFFFF",
+        "cardMuted": "#F1F5F2",
+        "border": "#E2E8E4",
+        "carbonBlack": "#121A15"
+      },
+      "text": {
+        "primary": "#111815",
+        "secondary": "#5F6B64",
+        "muted": "#8A968F",
+        "inverse": "#FFFFFF"
+      }
+    },
+    "typography": {
+      "fontFamily": "Plus Jakarta Sans, Inter, sans-serif",
+      "scale": {
+        "displayHero": { "sizeSp": 28, "weight": 800, "tracking": -0.015 },
+        "screenTitle": { "sizeSp": 22, "weight": 700, "tracking": -0.01 },
+        "sectionTitle": { "sizeSp": 18, "weight": 600, "tracking": -0.005 },
+        "cardTitle": { "sizeSp": 16, "weight": 600, "tracking": 0.0 },
+        "bodyLarge": { "sizeSp": 15, "weight": 400, "tracking": 0.0 },
+        "bodyMedium": { "sizeSp": 14, "weight": 400, "tracking": 0.0 },
+        "labelBold": { "sizeSp": 14, "weight": 700, "tracking": 0.0 },
+        "subtitle": { "sizeSp": 12, "weight": 500, "tracking": 0.0 },
+        "microBadge": { "sizeSp": 11, "weight": 800, "tracking": 0.005 }
+      }
+    },
+    "shapes": {
+      "cornerRadius": {
+        "buttonPill": 26,
+        "searchPill": 24,
+        "serviceGridCard": 20,
+        "beneficiaryCard": 18,
+        "timeSlotChip": 14,
+        "filterChip": 12,
+        "bottomNavDock": 28,
+        "bottomSheet": 26
+      },
+      "touchTarget": {
+        "minHeightDp": 54,
+        "minWidthDp": 54
+      }
+    },
+    "elevation": {
+      "card": "0px 2px 12px rgba(18, 26, 21, 0.04)",
+      "floatingDock": "0px 10px 28px rgba(18, 26, 21, 0.16)",
+      "modalSheet": "0px -8px 24px rgba(18, 26, 21, 0.08)"
+    }
+  }
+}

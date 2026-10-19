@@ -2,15 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/theme/app_theme.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/l10n/language_selector_dialog.dart';
 import '../../../shared/widgets/app_drawer.dart';
+import '../../../shared/widgets/asha_badge.dart';
+import '../../../shared/widgets/asha_card.dart';
 import '../domain/due_list_models.dart';
 import '../domain/task_scheduler.dart';
 
 /// Home screen — Prioritised Due List, Calendar & Programme Coverage (Requirements 24.1 – 24.7).
 class DueListScreen extends ConsumerStatefulWidget {
-  const DueListScreen({super.key});
+  const DueListScreen({super.key, this.initialTab = 0});
+
+  /// 0 due list, 1 calendar, 2 coverage. Each route opens on its own page.
+  final int initialTab;
 
   @override
   ConsumerState<DueListScreen> createState() => _DueListScreenState();
@@ -36,7 +42,7 @@ class _DueListScreenState extends ConsumerState<DueListScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 3, vsync: this, initialIndex: widget.initialTab.clamp(0, 2));
     _loadData();
   }
 
@@ -365,8 +371,9 @@ class _DueListScreenState extends ConsumerState<DueListScreen>
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal.shade800,
+                backgroundColor: AshaColors.primary,
                 foregroundColor: Colors.white,
+                shape: const RoundedRectangleBorder(borderRadius: AshaShapes.buttonRadius),
               ),
               onPressed: () async {
                 if (titleController.text.trim().isEmpty ||
@@ -411,9 +418,11 @@ class _DueListScreenState extends ConsumerState<DueListScreen>
         title: Text(l10n?.dueList ?? "Today's Tasks"),
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          indicatorColor: Colors.amberAccent,
+          labelColor: AshaColors.primary,
+          unselectedLabelColor: AshaColors.textSecondary,
+          indicatorColor: AshaColors.primary,
+          indicatorWeight: 3,
+          indicatorSize: TabBarIndicatorSize.tab,
           tabs: [
             Tab(
               icon: const Icon(Icons.checklist),
@@ -514,7 +523,7 @@ class _DueListScreenState extends ConsumerState<DueListScreen>
         onPressed: _showAdHocTaskDialog,
         icon: const Icon(Icons.add_task),
         label: const Text('Add Task'),
-        backgroundColor: Colors.teal.shade800,
+        backgroundColor: AshaColors.primary,
         foregroundColor: Colors.white,
       ),
     );
@@ -572,25 +581,53 @@ class _DueListScreenState extends ConsumerState<DueListScreen>
           Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
+                child: OutlinedButton(
                   key: const Key('home_register_household_button'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    shape: const RoundedRectangleBorder(borderRadius: AshaShapes.pillRadius),
+                  ),
                   onPressed: () => context.push('/household/new'),
-                  icon: const Icon(Icons.person_add, size: 18),
-                  label: Text(
-                    l10n?.registerHousehold ?? 'Register Household',
-                    style: const TextStyle(fontSize: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.person_add, size: 16),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          l10n?.registerHousehold ?? 'Register Household',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: OutlinedButton.icon(
+                child: OutlinedButton(
                   key: const Key('home_triage_button'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    shape: const RoundedRectangleBorder(borderRadius: AshaShapes.pillRadius),
+                  ),
                   onPressed: () => context.push('/triage'),
-                  icon: const Icon(Icons.medical_services_outlined, size: 18),
-                  label: const Text(
-                    'Triage Assessment',
-                    style: TextStyle(fontSize: 12),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.medical_services_outlined, size: 16),
+                      SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          'Triage Assessment',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -807,170 +844,158 @@ class _DueListScreenState extends ConsumerState<DueListScreen>
   }
 
   Widget _buildTaskCard(DueTask task) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      shape: RoundedRectangleBorder(
-        side: BorderSide(
-          color: task.hasRedAlert
-              ? Colors.red.shade700
-              : (task.urgencyGroup == UrgencyGroup.overdue
-                    ? Colors.orange.shade700
-                    : Colors.grey.shade300),
-          width: task.hasRedAlert ? 2 : 1,
-        ),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top Row: Member name, program chip, score
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        task.memberName,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        '${task.sex} • ${task.memberAgeText ?? "Age N/A"} • ${task.hamlet}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black54,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.teal.shade50,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: Colors.teal.shade200),
-                  ),
-                  child: Text(
-                    task.programCode.toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.teal.shade900,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
+    final stripeColor = task.hasRedAlert
+        ? AshaColors.alertHighRisk
+        : (task.urgencyGroup == UrgencyGroup.overdue
+            ? AshaColors.warningPending
+            : AshaColors.vitalNormal);
 
-            // Visit Type & Due Info
-            Text(
-              task.visitType,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 4),
-
-            // Urgency & Prioritisation Reason Rationale (Requirement 24.6)
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: task.hasRedAlert
-                    ? Colors.red.shade50
-                    : (task.clinicalRiskLevel >= 2.0
-                          ? Colors.amber.shade50
-                          : Colors.grey.shade100),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    task.hasRedAlert ? Icons.error : Icons.info_outline,
-                    size: 14,
-                    color: task.hasRedAlert
-                        ? Colors.red.shade900
-                        : Colors.black87,
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      task.prioritisationReason,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: task.hasRedAlert
-                            ? Colors.red.shade900
-                            : Colors.black87,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // Action Buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (task.rescheduledCount > 0)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: Text(
-                      'Rescheduled x${task.rescheduledCount}',
+    return AshaCard(
+      margin: const EdgeInsets.symmetric(vertical: 5),
+      statusStripeColor: stripeColor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top Row: Member name, program chip, score
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      task.memberName,
                       style: const TextStyle(
-                        fontSize: 11,
-                        color: Colors.deepOrange,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AshaColors.textPrimary,
+                        letterSpacing: -0.3,
                       ),
                     ),
-                  ),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
+                    const SizedBox(height: 2),
+                    Text(
+                      '${task.sex} • ${task.memberAgeText ?? "Age N/A"} • ${task.hamlet}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AshaColors.textSecondary,
+                      ),
                     ),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  icon: const Icon(Icons.event_busy, size: 16),
-                  label: const Text(
-                    'Skip / Reschedule',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  onPressed: () => _showSkipDialog(task),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: task.hasRedAlert
-                        ? Colors.red.shade800
-                        : Colors.teal.shade800,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 4,
+              ),
+              AshaBadge(
+                label: task.programCode.toUpperCase(),
+                type: task.hasRedAlert ? AshaBadgeType.highRisk : AshaBadgeType.normal,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // Visit Type & Due Info
+          Text(
+            task.visitType,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AshaColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+
+          // Urgency & Prioritisation Reason Rationale (Requirement 24.6)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: task.hasRedAlert
+                  ? AshaColors.alertHighRisk.withValues(alpha: 0.1)
+                  : (task.clinicalRiskLevel >= 2.0
+                        ? AshaColors.warningPending.withValues(alpha: 0.12)
+                        : AshaColors.surfaceMuted),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  task.hasRedAlert ? Icons.error_outline : Icons.info_outline,
+                  size: 15,
+                  color: task.hasRedAlert
+                      ? AshaColors.alertHighRisk
+                      : AshaColors.textSecondary,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    task.prioritisationReason,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: task.hasRedAlert
+                          ? AshaColors.alertHighRisk
+                          : AshaColors.textPrimary,
                     ),
-                    visualDensity: VisualDensity.compact,
                   ),
-                  icon: const Icon(Icons.play_arrow, size: 16),
-                  label: const Text(
-                    'Start Visit',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  onPressed: () => _startTaskVisit(task),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 10),
+
+          // Action Buttons
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              if (task.rescheduledCount > 0)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Text(
+                    'Rescheduled x${task.rescheduledCount}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AshaColors.warningPending,
+                    ),
+                  ),
+                ),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 38),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                ),
+                icon: const Icon(Icons.event_busy, size: 16),
+                label: const Text(
+                  'Skip / Reschedule',
+                  style: TextStyle(fontSize: 12),
+                ),
+                onPressed: () => _showSkipDialog(task),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(0, 38),
+                  backgroundColor: task.hasRedAlert
+                      ? AshaColors.alertHighRisk
+                      : AshaColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                ),
+                icon: const Icon(Icons.play_arrow, size: 16),
+                label: const Text(
+                  'Start Visit',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                ),
+                onPressed: () => _startTaskVisit(task),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

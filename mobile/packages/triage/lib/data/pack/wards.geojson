@@ -1,0 +1,277 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "ward_id": "W1",
+        "name": "PCMC sample ward W1"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              73.74,
+              18.62
+            ],
+            [
+              73.78,
+              18.62
+            ],
+            [
+              73.78,
+              18.66
+            ],
+            [
+              73.74,
+              18.66
+            ],
+            [
+              73.74,
+              18.62
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ward_id": "W2",
+        "name": "PCMC sample ward W2"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              73.78,
+              18.62
+            ],
+            [
+              73.82,
+              18.62
+            ],
+            [
+              73.82,
+              18.66
+            ],
+            [
+              73.78,
+              18.66
+            ],
+            [
+              73.78,
+              18.62
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ward_id": "W3",
+        "name": "PCMC sample ward W3"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              73.82,
+              18.62
+            ],
+            [
+              73.86,
+              18.62
+            ],
+            [
+              73.86,
+              18.66
+            ],
+            [
+              73.82,
+              18.66
+            ],
+            [
+              73.82,
+              18.62
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ward_id": "W4",
+        "name": "PCMC sample ward W4"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              73.86,
+              18.62
+            ],
+            [
+              73.9,
+              18.62
+            ],
+            [
+              73.9,
+              18.66
+            ],
+            [
+              73.86,
+              18.66
+            ],
+            [
+              73.86,
+              18.62
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ward_id": "W5",
+        "name": "PCMC sample ward W5"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              73.74,
+              18.66
+            ],
+            [
+              73.78,
+              18.66
+            ],
+            [
+              73.78,
+              18.7
+            ],
+            [
+              73.74,
+              18.7
+            ],
+            [
+              73.74,
+              18.66
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ward_id": "W6",
+        "name": "PCMC sample ward W6"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              73.78,
+              18.66
+            ],
+            [
+              73.82,
+              18.66
+            ],
+            [
+              73.82,
+              18.7
+            ],
+            [
+              73.78,
+              18.7
+            ],
+            [
+              73.78,
+              18.66
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ward_id": "W7",
+        "name": "PCMC sample ward W7"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              73.82,
+              18.66
+            ],
+            [
+              73.86,
+              18.66
+            ],
+            [
+              73.86,
+              18.7
+            ],
+            [
+              73.82,
+              18.7
+            ],
+            [
+              73.82,
+              18.66
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "ward_id": "W8",
+        "name": "PCMC sample ward W8"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              73.86,
+              18.66
+            ],
+            [
+              73.9,
+              18.66
+            ],
+            [
+              73.9,
+              18.7
+            ],
+            [
+              73.86,
+              18.7
+            ],
+            [
+              73.86,
+              18.66
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+name: triage
+description: Adaptive offline triage loop. Context pack, question flow, IMCI engine, hybrid policy.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.13.1
+
+dependencies:
+  imci_engine:
+    path: ../imci_engine
+
+dev_dependencies:
+  test: ^1.26.2

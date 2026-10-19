@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/theme/app_theme.dart';
 import '../../../shared/widgets/app_drawer.dart';
+import '../../../shared/widgets/asha_badge.dart';
+import '../../../shared/widgets/asha_card.dart';
 
 /// Central Hub for all National Health Mission (NHM) clinical programs.
 /// Provides direct access to clinical checklists, screening tools, and registers.
@@ -33,21 +36,23 @@ class _ProgramsHubScreenState extends ConsumerState<ProgramsHubScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Banner
+          // Banner (DocSpot Forest Gradient + Zevoa Leaf Mint)
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
+              gradient: const LinearGradient(
                 colors: [
-                  theme.colorScheme.primary,
-                  theme.colorScheme.primary.withValues(alpha: 0.8),
+                  AshaColors.primary,
+                  AshaColors.primaryDark,
                 ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AshaShapes.cardRadius,
             ),
             child: const Row(
               children: [
-                Icon(Icons.health_and_safety, color: Colors.white, size: 36),
+                Icon(Icons.health_and_safety, color: AshaColors.leafMint, size: 38),
                 SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -57,14 +62,15 @@ class _ProgramsHubScreenState extends ConsumerState<ProgramsHubScreen> {
                         'National Health Mission (NHM)',
                         style: TextStyle(
                           color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          letterSpacing: -0.3,
                         ),
                       ),
-                      SizedBox(height: 2),
+                      SizedBox(height: 3),
                       Text(
                         'All clinical checklists operate offline with automated danger-sign triage & eligibility tracking.',
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                        style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.3),
                       ),
                     ],
                   ),
@@ -275,73 +281,74 @@ class _ProgramsHubScreenState extends ConsumerState<ProgramsHubScreen> {
     required IconData icon,
     required VoidCallback onTap,
   }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: badgeColor.withValues(alpha: 0.12),
-                child: Icon(icon, color: badgeColor, size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return AshaCard(
+      margin: const EdgeInsets.only(bottom: 12),
+      onTap: onTap,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: badgeColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: badgeColor, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            title,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AshaColors.textPrimary,
+                          letterSpacing: -0.3,
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: badgeColor.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
-                          ),
-                          child: Text(
-                            badge,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: badgeColor,
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(fontSize: 12, color: Colors.black54),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: badgeColor.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
+                      ),
+                      child: Text(
+                        badge,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: badgeColor,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
-            ],
+                const SizedBox(height: 5),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AshaColors.textSecondary,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+          const SizedBox(width: 8),
+          const Padding(
+            padding: EdgeInsets.only(top: 4),
+            child: Icon(Icons.arrow_forward_ios, size: 14, color: AshaColors.textMuted),
+          ),
+        ],
       ),
     );
   }

@@ -121,9 +121,7 @@ void main() {
       await tester.tap(find.byKey(const Key('submit_pin_button')));
       await tester.pumpAndSettle();
 
-      // 4. Verify user reaches placeholder home screen (DueListScreen)
-      expect(find.byType(DueListScreen), findsOneWidget);
-      expect(find.text("Today's Tasks"), findsOneWidget);
+      expect(find.byKey(const Key('dashboard_screen')), findsOneWidget);
 
       // 5. Verify database is alive and can execute queries
       final users = await db.select(db.users).get();
@@ -189,7 +187,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Should reach home screen
-      expect(find.byType(DueListScreen), findsOneWidget);
+      expect(find.byKey(const Key('dashboard_screen')), findsOneWidget);
     });
   });
 }

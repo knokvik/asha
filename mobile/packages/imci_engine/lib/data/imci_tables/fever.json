@@ -1,0 +1,89 @@
+{
+  "module": "fever",
+  "guideline": "IMCI chart booklet 2014, fever",
+  "rules": [
+    {
+      "rule_id": "FV-STIFF",
+      "module": "fever",
+      "severity": "RED",
+      "reason_text": {"en": "Fever with a stiff neck. Treat as very severe febrile disease."},
+      "guideline_ref": "IMCI chart booklet 2014, fever",
+      "suspected_disease": "Very severe febrile disease",
+      "actions": ["refer_urgently", "first_dose_antibiotic", "prevent_low_blood_sugar"],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.fever", "op": "eq", "value": true},
+          {"field": "symptoms.stiff_neck", "op": "eq", "value": true}
+        ]
+      }
+    },
+    {
+      "rule_id": "FV-SEV-MAL",
+      "module": "fever",
+      "severity": "RED",
+      "reason_text": {"en": "Severe malaria."},
+      "guideline_ref": "IMCI chart booklet 2014, fever",
+      "suspected_disease": "Severe malaria",
+      "actions": ["refer_urgently", "antimalarial"],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.severe_malaria", "op": "eq", "value": true}
+        ]
+      }
+    },
+    {
+      "rule_id": "FV-YI-TEMP",
+      "module": "fever",
+      "severity": "RED",
+      "reason_text": {"en": "Young infant temperature 37.5 C or higher, or below 35.5 C."},
+      "guideline_ref": "IMNCI young infant, possible serious bacterial infection",
+      "suspected_disease": "Possible serious bacterial infection",
+      "actions": ["refer_urgently", "keep_warm"],
+      "conditions": {
+        "all": [
+          {"field": "age_months", "op": "lt", "value": 2},
+          {
+            "any": [
+              {"field": "vitals.temp_c", "op": "gte", "value": 37.5},
+              {"field": "vitals.temp_c", "op": "lt", "value": 35.5}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "rule_id": "FV-MAL",
+      "module": "fever",
+      "severity": "YELLOW",
+      "reason_text": {"en": "Malaria test positive."},
+      "guideline_ref": "IMCI chart booklet 2014, fever",
+      "suspected_disease": "Malaria",
+      "follow_up_days": 2,
+      "actions": ["antimalarial", "follow_up"],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.malaria_test_positive", "op": "eq", "value": true},
+          {"field": "symptoms.severe_malaria", "op": "eq", "value": false}
+        ]
+      }
+    },
+    {
+      "rule_id": "FV-SIMPLE",
+      "module": "fever",
+      "severity": "GREEN",
+      "reason_text": {"en": "Fever without a stiff neck and without a positive malaria test."},
+      "guideline_ref": "IMCI chart booklet 2014, fever",
+      "suspected_disease": "Fever, malaria unlikely",
+      "actions": [],
+      "conditions": {
+        "all": [
+          {"field": "age_months", "op": "gte", "value": 2},
+          {"field": "symptoms.fever", "op": "eq", "value": true},
+          {"field": "symptoms.stiff_neck", "op": "eq", "value": false},
+          {"field": "symptoms.malaria_test_positive", "op": "eq", "value": false},
+          {"field": "symptoms.severe_malaria", "op": "eq", "value": false}
+        ]
+      }
+    }
+  ]
+}

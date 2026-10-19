@@ -16,7 +16,7 @@ android {
 
     defaultConfig {
         applicationId = "com.nhm.asha.asha_platform"
-        minSdk = flutter.minSdkVersion
+        minSdk = maxOf(flutter.minSdkVersion, 24)
         targetSdk = 37
         versionCode = flutter.versionCode
         versionName = flutter.versionName

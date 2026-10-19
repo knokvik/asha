@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/presentation/pin_setup_screen.dart';
 import '../features/due_list/presentation/due_list_screen.dart';
+import '../features/home/presentation/dashboard_screen.dart';
 
 // Registry & Households
 import '../features/household/presentation/beneficiary_search_screen.dart';
@@ -15,6 +16,8 @@ import '../features/household/presentation/household_detail_screen.dart';
 
 // Triage & Referral
 import '../features/referral/presentation/referral_slip_screen.dart';
+import '../features/triage/presentation/language_bridge_screen.dart';
+import '../features/triage/presentation/setu_questions_screen.dart';
 import '../features/triage/presentation/triage_assessment_screen.dart';
 
 // Clinical Programs Hub & Protocols
@@ -79,7 +82,19 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
     ),
     GoRoute(
       path: '/home',
+      builder: (context, state) => const DashboardScreen(),
+    ),
+    GoRoute(
+      path: '/due-list',
       builder: (context, state) => const DueListScreen(),
+    ),
+    GoRoute(
+      path: '/calendar',
+      builder: (context, state) => const DueListScreen(initialTab: 1),
+    ),
+    GoRoute(
+      path: '/coverage',
+      builder: (context, state) => const DueListScreen(initialTab: 2),
     ),
     GoRoute(
       path: '/search',
@@ -128,6 +143,14 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
     GoRoute(
       path: '/triage',
       builder: (context, state) => const TriageAssessmentScreen(),
+    ),
+    GoRoute(
+      path: '/triage/questions',
+      builder: (context, state) => const SetuQuestionsScreen(),
+    ),
+    GoRoute(
+      path: '/triage/language',
+      builder: (context, state) => const LanguageBridgeScreen(),
     ),
     GoRoute(
       path: '/referral/:id',

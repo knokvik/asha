@@ -1,0 +1,166 @@
+{
+  "module": "diarrhoea",
+  "guideline": "IMCI chart booklet 2014, diarrhoea",
+  "rules": [
+    {
+      "rule_id": "DH-SEVERE",
+      "module": "diarrhoea",
+      "severity": "RED",
+      "reason_text": {"en": "Severe dehydration. Two or more of lethargy, sunken eyes, drinking poorly, or a very slow skin pinch."},
+      "guideline_ref": "IMCI chart booklet 2014, diarrhoea",
+      "suspected_disease": "Severe dehydration",
+      "actions": ["refer_urgently", "ors", "prevent_low_blood_sugar"],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.diarrhoea", "op": "eq", "value": true},
+          {
+            "op": "count_true_at_least",
+            "value": 2,
+            "fields": [
+              "symptoms.lethargic_or_unconscious",
+              "symptoms.sunken_eyes",
+              "symptoms.drinking_poorly",
+              "symptoms.skin_pinch_very_slow"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "rule_id": "DH-DYS-DS",
+      "module": "diarrhoea",
+      "severity": "RED",
+      "reason_text": {"en": "Blood in the stool together with a general danger sign."},
+      "guideline_ref": "IMCI chart booklet 2014, diarrhoea",
+      "suspected_disease": "Dysentery with danger sign",
+      "actions": ["refer_urgently", "first_dose_antibiotic", "ors"],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.blood_in_stool", "op": "eq", "value": true},
+          {
+            "any": [
+              {"field": "symptoms.unable_to_drink", "op": "eq", "value": true},
+              {"field": "symptoms.vomits_everything", "op": "eq", "value": true},
+              {"field": "symptoms.convulsions", "op": "eq", "value": true},
+              {"field": "symptoms.convulsing_now", "op": "eq", "value": true},
+              {"field": "symptoms.lethargic_or_unconscious", "op": "eq", "value": true}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "rule_id": "DH-SOME",
+      "module": "diarrhoea",
+      "severity": "YELLOW",
+      "reason_text": {"en": "Some dehydration. Two or more of restless, sunken eyes, drinks eagerly, or a slow skin pinch."},
+      "guideline_ref": "IMCI chart booklet 2014, diarrhoea",
+      "suspected_disease": "Some dehydration",
+      "follow_up_days": 5,
+      "actions": ["ors", "follow_up"],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.diarrhoea", "op": "eq", "value": true},
+          {
+            "op": "count_true_at_least",
+            "value": 2,
+            "fields": [
+              "symptoms.restless_irritable",
+              "symptoms.sunken_eyes",
+              "symptoms.drinks_eagerly",
+              "symptoms.skin_pinch_slow"
+            ]
+          },
+          {
+            "not": {
+              "op": "count_true_at_least",
+              "value": 2,
+              "fields": [
+                "symptoms.lethargic_or_unconscious",
+                "symptoms.sunken_eyes",
+                "symptoms.drinking_poorly",
+                "symptoms.skin_pinch_very_slow"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule_id": "DH-DYS",
+      "module": "diarrhoea",
+      "severity": "YELLOW",
+      "reason_text": {"en": "Blood in the stool."},
+      "guideline_ref": "IMCI chart booklet 2014, diarrhoea",
+      "suspected_disease": "Dysentery",
+      "follow_up_days": 2,
+      "actions": ["first_dose_antibiotic", "follow_up"],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.blood_in_stool", "op": "eq", "value": true},
+          {"field": "symptoms.unable_to_drink", "op": "eq", "value": false},
+          {"field": "symptoms.vomits_everything", "op": "eq", "value": false},
+          {"field": "symptoms.convulsions", "op": "eq", "value": false},
+          {"field": "symptoms.convulsing_now", "op": "eq", "value": false},
+          {"field": "symptoms.lethargic_or_unconscious", "op": "eq", "value": false}
+        ]
+      }
+    },
+    {
+      "rule_id": "DH-PERSIST",
+      "module": "diarrhoea",
+      "severity": "YELLOW",
+      "reason_text": {"en": "Diarrhoea for 14 days or more."},
+      "guideline_ref": "IMCI chart booklet 2014, diarrhoea",
+      "suspected_disease": "Persistent diarrhoea",
+      "follow_up_days": 5,
+      "actions": ["follow_up"],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.diarrhoea", "op": "eq", "value": true},
+          {"field": "symptoms.diarrhoea_duration_days", "op": "gte", "value": 14}
+        ]
+      }
+    },
+    {
+      "rule_id": "DH-NONE",
+      "module": "diarrhoea",
+      "severity": "GREEN",
+      "reason_text": {"en": "Diarrhoea with no dehydration."},
+      "guideline_ref": "IMCI chart booklet 2014, diarrhoea",
+      "suspected_disease": "No dehydration",
+      "actions": ["ors"],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.diarrhoea", "op": "eq", "value": true},
+          {"field": "symptoms.blood_in_stool", "op": "eq", "value": false},
+          {"not": {"field": "symptoms.diarrhoea_duration_days", "op": "gte", "value": 14}},
+          {
+            "not": {
+              "op": "count_true_at_least",
+              "value": 2,
+              "fields": [
+                "symptoms.lethargic_or_unconscious",
+                "symptoms.sunken_eyes",
+                "symptoms.drinking_poorly",
+                "symptoms.skin_pinch_very_slow"
+              ]
+            }
+          },
+          {
+            "not": {
+              "op": "count_true_at_least",
+              "value": 2,
+              "fields": [
+                "symptoms.restless_irritable",
+                "symptoms.sunken_eyes",
+                "symptoms.drinks_eagerly",
+                "symptoms.skin_pinch_slow"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

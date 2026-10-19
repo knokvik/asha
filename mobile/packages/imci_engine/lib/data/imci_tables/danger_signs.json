@@ -1,0 +1,81 @@
+{
+  "module": "danger_signs",
+  "guideline": "IMCI chart booklet 2014, p.2",
+  "rules": [
+    {
+      "rule_id": "DS-DRINK",
+      "module": "danger_signs",
+      "severity": "RED",
+      "reason_text": {
+        "en": "Unable to drink or breastfeed.",
+        "hi": "बच्चा पानी या स्तनपान नहीं कर पा रहा है।",
+        "mr": "मुलाला पाणी किंवा स्तनपान करता येत नाही."
+      },
+      "guideline_ref": "IMCI chart booklet 2014, p.2",
+      "suspected_disease": "Very severe disease",
+      "follow_up_days": null,
+      "actions": ["refer_urgently", "first_dose_antibiotic", "prevent_low_blood_sugar", "keep_warm"],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.unable_to_drink", "op": "eq", "value": true}
+        ]
+      }
+    },
+    {
+      "rule_id": "DS-VOMIT",
+      "module": "danger_signs",
+      "severity": "RED",
+      "reason_text": {"en": "Vomits everything."},
+      "guideline_ref": "IMCI chart booklet 2014, p.2",
+      "suspected_disease": "Very severe disease",
+      "actions": ["refer_urgently", "first_dose_antibiotic", "prevent_low_blood_sugar", "keep_warm"],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.vomits_everything", "op": "eq", "value": true}
+        ]
+      }
+    },
+    {
+      "rule_id": "DS-CONV",
+      "module": "danger_signs",
+      "severity": "RED",
+      "reason_text": {"en": "Convulsions during this illness."},
+      "guideline_ref": "IMCI chart booklet 2014, p.2",
+      "suspected_disease": "Very severe disease",
+      "actions": ["refer_urgently", "first_dose_antibiotic", "prevent_low_blood_sugar", "keep_warm"],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.convulsions", "op": "eq", "value": true}
+        ]
+      }
+    },
+    {
+      "rule_id": "DS-CONV-NOW",
+      "module": "danger_signs",
+      "severity": "RED",
+      "reason_text": {"en": "Convulsing now."},
+      "guideline_ref": "IMCI chart booklet 2014, p.2",
+      "suspected_disease": "Very severe disease",
+      "actions": ["refer_urgently", "first_dose_antibiotic", "prevent_low_blood_sugar", "keep_warm"],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.convulsing_now", "op": "eq", "value": true}
+        ]
+      }
+    },
+    {
+      "rule_id": "DS-LETH",
+      "module": "danger_signs",
+      "severity": "RED",
+      "reason_text": {"en": "Lethargic or unconscious."},
+      "guideline_ref": "IMCI chart booklet 2014, p.2",
+      "suspected_disease": "Very severe disease",
+      "actions": ["refer_urgently", "first_dose_antibiotic", "prevent_low_blood_sugar", "keep_warm"],
+      "conditions": {
+        "all": [
+          {"field": "symptoms.lethargic_or_unconscious", "op": "eq", "value": true}
+        ]
+      }
+    }
+  ]
+}

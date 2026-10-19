@@ -10,17 +10,15 @@ import {
   FileCheck2,
   CheckCircle2,
   XCircle,
-  AlertTriangle,
   Calendar,
   Layers,
-  ArrowRight,
-  Download,
-  Share2,
   ShieldCheck,
   Check,
   X,
-  FileSpreadsheet,
 } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 export function ANMWorkspacePage() {
   const queryClient = useQueryClient();
@@ -68,66 +66,68 @@ export function ANMWorkspacePage() {
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-panel p-6 rounded-2xl border border-slate-800">
-        <div className="flex items-center space-x-3">
-          <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-            <FileCheck2 className="w-6 h-6" />
+      <Card className="p-6 border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center space-x-3.5">
+            <div className="p-3 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+              <FileCheck2 className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2">
+                ANM & CHO Clinical Workspace (Requirement 40)
+              </h1>
+              <p className="text-xs text-[#525252] dark:text-[#94A3B8]">
+                Sub-centre: SC Shahpur • ANM: Kavita Kumari • Sync Review, Session Entry & Incentive Verification
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-white flex items-center gap-2">
-              ANM & CHO Clinical Workspace (Requirement 40)
-            </h1>
-            <p className="text-xs text-slate-400">
-              Sub-centre: SC Shahpur • ANM: Kavita Kumari • Sync Review, Session Entry & Incentive Verification
-            </p>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-3">
-          <div className="glass-card px-4 py-2 rounded-xl border border-amber-500/30">
-            <div className="text-[10px] text-amber-300 font-semibold uppercase tracking-wider">Pending Claims</div>
-            <div className="text-lg font-bold text-white">{pendingClaims.length} Line Items</div>
-          </div>
-          <div className="glass-card px-4 py-2 rounded-xl border border-emerald-500/30">
-            <div className="text-[10px] text-emerald-300 font-semibold uppercase tracking-wider">Verified Amount</div>
-            <div className="text-lg font-bold text-emerald-400">₹{approvedTotal.toFixed(2)}</div>
+          <div className="flex items-center gap-3">
+            <div className="px-4 py-2 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50/50 dark:bg-[#1E1E1E]">
+              <div className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold uppercase tracking-wider">Pending Claims</div>
+              <div className="text-lg font-bold text-[#0F172A] dark:text-white">{pendingClaims.length} Line Items</div>
+            </div>
+            <div className="px-4 py-2 rounded-xl border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50/50 dark:bg-[#1E1E1E]">
+              <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold uppercase tracking-wider">Verified Amount</div>
+              <div className="text-lg font-bold text-emerald-700 dark:text-emerald-400">₹{approvedTotal.toFixed(2)}</div>
+            </div>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Tabs */}
-      <div className="flex items-center space-x-2 border-b border-slate-800 pb-2">
+      <div className="flex items-center space-x-2 border-b border-[#E5E7EB] dark:border-[#2E2E2E] pb-2">
         <button
           onClick={() => setActiveTab('claims_review')}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
             activeTab === 'claims_review'
-              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30'
+              : 'text-[#525252] dark:text-[#A3A3A3] hover:text-[#0F172A] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#2A2A2A]'
           }`}
         >
-          <ShieldCheck className="w-4 h-4" />
+          <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           <span>Incentive Verification Queue ({pendingClaims.length})</span>
         </button>
         <button
           onClick={() => setActiveTab('vhsnd_session')}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
             activeTab === 'vhsnd_session'
-              ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30'
+              : 'text-[#525252] dark:text-[#A3A3A3] hover:text-[#0F172A] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#2A2A2A]'
           }`}
         >
-          <Calendar className="w-4 h-4" />
+          <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
           <span>VHSND Session Entry</span>
         </button>
         <button
           onClick={() => setActiveTab('sync_review')}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
             activeTab === 'sync_review'
-              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30'
+              : 'text-[#525252] dark:text-[#A3A3A3] hover:text-[#0F172A] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#2A2A2A]'
           }`}
         >
-          <Layers className="w-4 h-4" />
+          <Layers className="w-4 h-4 text-amber-600 dark:text-amber-400" />
           <span>Sub-centre Sync Review</span>
         </button>
       </div>
@@ -135,28 +135,29 @@ export function ANMWorkspacePage() {
       {/* Tab 1: Incentive Claim Verification Queue (Req 40.3 & Req 56.3) */}
       {activeTab === 'claims_review' && (
         <div className="space-y-4">
-          <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-400 flex items-center justify-between">
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#181818] border border-[#E5E7EB] dark:border-[#2E2E2E] text-xs text-[#525252] dark:text-[#94A3B8] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <span>
               Mandatory review of underlying clinical event records before claim approval. State-standard sampling supported.
             </span>
             <div className="flex items-center gap-2">
-              <button
+              <Button
+                size="sm"
                 onClick={() => {
                   pendingClaims.forEach((c) =>
                     verifyMutation.mutate({ id: c.id, action: 'approved' })
                   );
                 }}
-                className="px-3 py-1 rounded-lg bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-semibold text-xs hover:bg-emerald-600/50"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs"
               >
                 Approve All Pending ({pendingClaims.length})
-              </button>
+              </Button>
             </div>
           </div>
 
-          <div className="glass-panel rounded-2xl border border-slate-800 overflow-hidden">
+          <Card className="rounded-2xl border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-900/80 border-b border-slate-800 text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
+                <thead className="bg-slate-50 dark:bg-[#1E1E1E] border-b border-[#E5E7EB] dark:border-[#2E2E2E] text-[#525252] dark:text-[#94A3B8] font-semibold uppercase text-[10px] tracking-wider">
                   <tr>
                     <th className="p-3.5">ASHA Worker</th>
                     <th className="p-3.5">Activity Code & Description</th>
@@ -168,30 +169,30 @@ export function ANMWorkspacePage() {
                     <th className="p-3.5 text-right">Verification Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                <tbody className="divide-y divide-[#E5E7EB] dark:divide-[#2E2E2E] text-[#0F172A] dark:text-[#F8FAFC]">
                   {claimItems.map((item) => {
                     const isPending = item.status === 'submitted';
                     return (
-                      <tr key={item.id} className="hover:bg-slate-800/30 transition-colors">
-                        <td className="p-3.5 font-bold text-white">{item.ashaName}</td>
+                      <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-[#2A2A2A]/40 transition-colors">
+                        <td className="p-3.5 font-bold">{item.ashaName}</td>
                         <td className="p-3.5">
-                          <div className="font-semibold text-slate-200">{item.activityDescription}</div>
-                          <div className="font-mono text-[10px] text-amber-400/80">{item.activityCode}</div>
+                          <div className="font-semibold">{item.activityDescription}</div>
+                          <div className="font-mono text-[10px] text-amber-600 dark:text-amber-400">{item.activityCode}</div>
                         </td>
-                        <td className="p-3.5 font-mono text-slate-400">{item.memberCodedId}</td>
-                        <td className="p-3.5">{item.serviceDate}</td>
-                        <td className="p-3.5 font-bold text-emerald-400">₹{item.amount.toFixed(2)}</td>
-                        <td className="p-3.5 font-mono text-[11px] text-indigo-400">
+                        <td className="p-3.5 font-mono text-[#525252] dark:text-[#94A3B8]">{item.memberCodedId}</td>
+                        <td className="p-3.5 text-[#525252] dark:text-[#94A3B8]">{item.serviceDate}</td>
+                        <td className="p-3.5 font-bold text-emerald-600 dark:text-emerald-400">₹{item.amount.toFixed(2)}</td>
+                        <td className="p-3.5 font-mono text-[11px] text-indigo-600 dark:text-indigo-400">
                           {item.evidenceRefId} (Linked Encounter)
                         </td>
                         <td className="p-3.5 text-center">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase ${
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase border ${
                               item.status === 'approved'
-                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30'
                                 : item.status === 'rejected'
-                                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                                : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-500/30'
+                                : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30'
                             }`}
                           >
                             {item.status}
@@ -200,25 +201,28 @@ export function ANMWorkspacePage() {
                         <td className="p-3.5 text-right">
                           {isPending ? (
                             <div className="flex items-center justify-end gap-1.5">
-                              <button
+                              <Button
+                                size="xs"
                                 onClick={() =>
                                   verifyMutation.mutate({ id: item.id, action: 'approved' })
                                 }
-                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold flex items-center space-x-1"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center space-x-1"
                               >
                                 <Check className="w-3 h-3" />
                                 <span>Approve</span>
-                              </button>
-                              <button
+                              </Button>
+                              <Button
+                                size="xs"
+                                variant="destructive"
                                 onClick={() => setRejectingItem(item)}
-                                className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-semibold flex items-center space-x-1"
+                                className="flex items-center space-x-1"
                               >
                                 <X className="w-3 h-3" />
                                 <span>Reject</span>
-                              </button>
+                              </Button>
                             </div>
                           ) : (
-                            <span className="text-[11px] text-slate-500 font-medium">Verified</span>
+                            <span className="text-[11px] text-[#71717A] font-medium">Verified</span>
                           )}
                         </td>
                       </tr>
@@ -227,90 +231,90 @@ export function ANMWorkspacePage() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* Tab 2: VHSND Session Entry (Req 40.2) */}
       {activeTab === 'vhsnd_session' && (
-        <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-5 max-w-2xl">
-          <h2 className="text-base font-bold text-white flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-indigo-400" />
+        <Card className="p-6 border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] space-y-5 max-w-2xl shadow-xs">
+          <h2 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             VHSND / Sub-Centre Session Entry & Beneficiary Timelines
           </h2>
 
           <div className="space-y-4 text-xs">
             <div>
-              <label className="block font-semibold text-slate-300 mb-1">Session Location / Sub-Centre</label>
+              <label className="block font-semibold mb-1 text-[#0F172A] dark:text-[#F8FAFC]">Session Location / Sub-Centre</label>
               <input
                 type="text"
                 value={vhsndVillage}
                 onChange={(e) => setVhsndVillage(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 text-xs"
+                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#181818] border border-[#E5E7EB] dark:border-[#2E2E2E] text-[#0F172A] dark:text-[#F8FAFC] text-xs"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block font-semibold text-slate-300 mb-1">Beneficiaries Attended</label>
+                <label className="block font-semibold mb-1 text-[#0F172A] dark:text-[#F8FAFC]">Attendees Count</label>
                 <input
                   type="number"
                   value={attendeesCount}
                   onChange={(e) => setAttendeesCount(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 text-xs"
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#181818] border border-[#E5E7EB] dark:border-[#2E2E2E] text-[#0F172A] dark:text-[#F8FAFC] text-xs font-mono"
                 />
               </div>
               <div>
-                <label className="block font-semibold text-slate-300 mb-1">Vaccine Doses Administered</label>
+                <label className="block font-semibold mb-1 text-[#0F172A] dark:text-[#F8FAFC]">Immunizations Given</label>
                 <input
                   type="number"
                   value={immunizationsGiven}
                   onChange={(e) => setImmunizationsGiven(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 text-xs"
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#181818] border border-[#E5E7EB] dark:border-[#2E2E2E] text-[#0F172A] dark:text-[#F8FAFC] text-xs font-mono"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block font-semibold text-slate-300 mb-1">ANC Checkups & Services</label>
+                <label className="block font-semibold mb-1 text-[#0F172A] dark:text-[#F8FAFC]">ANC Checkups (with Hb/BP)</label>
                 <input
                   type="number"
                   value={ancServicesGiven}
                   onChange={(e) => setAncServicesGiven(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 text-xs"
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#181818] border border-[#E5E7EB] dark:border-[#2E2E2E] text-[#0F172A] dark:text-[#F8FAFC] text-xs font-mono"
                 />
               </div>
               <div>
-                <label className="block font-semibold text-slate-300 mb-1">CBAC NCD Screenings</label>
+                <label className="block font-semibold mb-1 text-[#0F172A] dark:text-[#F8FAFC]">NCD / CBAC Screenings (30+)</label>
                 <input
                   type="number"
                   value={cbacScreenings}
                   onChange={(e) => setCbacScreenings(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 text-xs"
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#181818] border border-[#E5E7EB] dark:border-[#2E2E2E] text-[#0F172A] dark:text-[#F8FAFC] text-xs font-mono"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-300 mb-1">Session Summary Notes</label>
+              <label className="block font-semibold mb-1 text-[#0F172A] dark:text-[#F8FAFC]">Clinical Observation Notes</label>
               <textarea
                 rows={3}
                 value={sessionNotes}
                 onChange={(e) => setSessionNotes(e.target.value)}
                 placeholder="e.g. Completed measles-rubella catchup doses. 2 pregnant mothers screened positive for severe anaemia."
-                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 text-xs"
+                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#181818] border border-[#E5E7EB] dark:border-[#2E2E2E] text-[#0F172A] dark:text-[#F8FAFC] text-xs placeholder-[#71717A]"
               />
             </div>
 
             {vhsndSaved && (
-              <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/40 text-emerald-300 text-xs flex items-center space-x-2">
+              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-500/40 text-emerald-800 dark:text-emerald-300 text-xs flex items-center space-x-2">
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Session recorded! Individual beneficiary timelines updated automatically.</span>
               </div>
             )}
 
-            <button
+            <Button
               onClick={() =>
                 vhsndMutation.mutate({
                   subcentreId: 'sc-shahpur',
@@ -323,60 +327,60 @@ export function ANMWorkspacePage() {
                   notes: sessionNotes,
                 })
               }
-              className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-lg shadow-indigo-600/30"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs py-2.5"
             >
               Submit VHSND Session & Update Timelines (Req 40.2)
-            </button>
+            </Button>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Tab 3: Sub-centre Sync Review (Req 40.1) */}
       {activeTab === 'sync_review' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-2">
-            <div className="text-xs text-slate-400">New Registrations (Synced Today)</div>
-            <div className="text-2xl font-bold text-white">6 Beneficiaries</div>
-            <p className="text-xs text-slate-400">
+          <Card className="p-5 border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] space-y-2 shadow-xs">
+            <div className="text-xs text-[#525252] dark:text-[#94A3B8]">New Registrations (Synced Today)</div>
+            <div className="text-2xl font-bold text-[#0F172A] dark:text-white">6 Beneficiaries</div>
+            <p className="text-xs text-[#525252] dark:text-[#94A3B8]">
               3 new pregnancies registered within 12 weeks; 2 infants added to immunization queue.
             </p>
-          </div>
-          <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-2">
-            <div className="text-xs text-slate-400">Validation Flags for Correction</div>
-            <div className="text-2xl font-bold text-amber-400">1 Missing Contact</div>
-            <p className="text-xs text-slate-400">
+          </Card>
+          <Card className="p-5 border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] space-y-2 shadow-xs">
+            <div className="text-xs text-[#525252] dark:text-[#94A3B8]">Validation Flags for Correction</div>
+            <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">1 Missing Contact</div>
+            <p className="text-xs text-[#525252] dark:text-[#94A3B8]">
               Household HH-402 phone number digit count mismatch; flagged for ASHA verification.
             </p>
-          </div>
-          <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-2">
-            <div className="text-xs text-slate-400">Government Portal Assistant</div>
-            <div className="text-2xl font-bold text-indigo-400">Pre-filled Export</div>
-            <p className="text-xs text-slate-400">
+          </Card>
+          <Card className="p-5 border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] space-y-2 shadow-xs">
+            <div className="text-xs text-[#525252] dark:text-[#94A3B8]">Government Portal Assistant</div>
+            <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">Pre-filled Export</div>
+            <p className="text-xs text-[#525252] dark:text-[#94A3B8]">
               Ready for one-click HMIS / ANMOL portal CSV submission.
             </p>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* Rejection Reason Modal (Req 56.3) */}
       {rejectingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="glass-panel w-full max-w-md p-6 rounded-2xl border border-slate-700 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-white text-base flex items-center gap-2">
-                <XCircle className="w-5 h-5 text-rose-400" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md p-6 rounded-2xl border border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#1E1E1E] text-[#0F172A] dark:text-[#F8FAFC] shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#E5E7EB] dark:border-[#2E2E2E] pb-3">
+              <h3 className="font-bold text-base flex items-center gap-2">
+                <XCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
                 Reject Claim Line: {rejectingItem.activityDescription}
               </h3>
               <button
                 onClick={() => setRejectingItem(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+                className="p-1 rounded-lg text-[#525252] dark:text-[#94A3B8] hover:bg-slate-100 dark:hover:bg-[#2A2A2A] transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="space-y-3">
-              <label className="block text-xs font-semibold text-slate-300">
+              <label className="block text-xs font-semibold">
                 Mandatory Rejection / Correction Reason (Req 56.3):
               </label>
               <textarea
@@ -384,18 +388,21 @@ export function ANMWorkspacePage() {
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
                 placeholder="e.g. Sputum test lab report attachment missing or unreadable; please re-upload evidence."
-                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 text-xs focus:outline-none focus:border-rose-500"
+                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#181818] border border-[#E5E7EB] dark:border-[#2E2E2E] text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder-[#71717A] focus:outline-none focus:ring-1 focus:ring-rose-500"
               />
             </div>
 
-            <div className="flex justify-end space-x-2 pt-3 border-t border-slate-800">
-              <button
+            <div className="flex justify-end space-x-2 pt-3 border-t border-[#E5E7EB] dark:border-[#2E2E2E]">
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setRejectingItem(null)}
-                className="px-4 py-2 rounded-xl border border-slate-700 text-slate-300 text-xs font-semibold hover:bg-slate-800"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
                 disabled={!rejectionReason.trim()}
                 onClick={() =>
                   verifyMutation.mutate({
@@ -404,10 +411,9 @@ export function ANMWorkspacePage() {
                     reason: rejectionReason,
                   })
                 }
-                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-lg shadow-rose-600/30 disabled:opacity-50"
               >
                 Confirm Rejection & Notify ASHA
-              </button>
+              </Button>
             </div>
           </div>
         </div>
