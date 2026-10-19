@@ -35,6 +35,7 @@ import {
   RefreshCw,
   Pill,
   MapPin,
+  Maximize2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,10 +44,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { OsmAndMapPage } from '@/features/map/OsmAndMapPage';
 
 export function PHCDashboardPage() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'referrals' | 'area_lists' | 'planning' | 'ipd_ward' | 'sms_feed'>('referrals');
+  const [activeTab, setActiveTab] = useState<'referrals' | 'area_lists' | 'planning' | 'ipd_ward' | 'sms_feed' | 'catchment_map'>('referrals');
   const [severityFilter, setSeverityFilter] = useState<'ALL' | 'RED' | 'YELLOW' | 'SMS'>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'pending' | 'arrived' | 'treated' | 'admitted'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -233,17 +235,16 @@ export function PHCDashboardPage() {
               <Volume2 className="w-3.5 h-3.5 mr-1" />
               <span>Chime {soundAlertEnabled ? 'On' : 'Off'}</span>
             </Button>
-            <NavLink to="/map">
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-500/30 gap-1.5"
-                title="Open OsmAnd Field Map"
-              >
-                <MapPin className="w-3.5 h-3.5" />
-                <span>Field Map</span>
-              </Button>
-            </NavLink>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setActiveTab('catchment_map')}
+              className="text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-500/30 gap-1.5"
+              title="Open Catchment Field Map"
+            >
+              <MapPin className="w-3.5 h-3.5" />
+              <span>Field Map</span>
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -258,17 +259,16 @@ export function PHCDashboardPage() {
 
         {/* Urgent Alert Banner (Pops if any RED is waiting) */}
         {redCount > 0 && (
-          <div className="flex items-center justify-between p-4 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-500/30 text-rose-900 dark:text-rose-200 text-xs shadow-xs">
+          <div className="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-[#222224] border-l-4 border-l-rose-500 border border-[#E5E7EB] dark:border-[#2E2E2E] text-[#0F172A] dark:text-[#F8FAFC] text-xs shadow-xs">
             <div className="flex items-center space-x-3">
               <div className="relative flex h-2.5 w-2.5 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
               </div>
               <div>
-                <span className="font-bold text-rose-950 dark:text-rose-100 text-sm">
+                <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC] text-sm">
                   CRITICAL TRIAGE ALERT: {redCount} High-Risk Beneficiar{redCount > 1 ? 'ies' : 'y'} Pending Immediate Doctor Attention!
                 </span>
-                <p className="text-rose-800/80 dark:text-[#94A3B8] text-[11px] mt-0.5">
+                <p className="text-[#525252] dark:text-[#94A3B8] text-[11px] mt-0.5">
                   Pre-eclampsia, neonatal chest indrawing, or hypertensive emergency detected in field. Standard clinical SLA: &lt; 30 minutes.
                 </p>
               </div>
@@ -289,10 +289,10 @@ export function PHCDashboardPage() {
 
         {/* Clinical KPI Metric Cards (User Palette Swatches) */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
-          <Card className="border-rose-200 dark:border-rose-500/30 bg-white dark:bg-[#222224] p-4">
+          <Card className="border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] p-4">
             <div className="flex items-center justify-between">
               <span className="text-xs text-[#F43F5E] font-semibold">Unreviewed RED</span>
-              <div className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-500/15 text-[#F43F5E]">
+              <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-[#181818] text-[#F43F5E]">
                 <AlertTriangle className="w-4 h-4" />
               </div>
             </div>
@@ -302,10 +302,10 @@ export function PHCDashboardPage() {
             </div>
           </Card>
 
-          <Card className="border-emerald-200 dark:border-emerald-500/30 bg-white dark:bg-[#222224] p-4">
+          <Card className="border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] p-4">
             <div className="flex items-center justify-between">
               <span className="text-xs text-[#10B981] font-semibold">Patient Arrivals in OPD</span>
-              <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/15 text-[#10B981]">
+              <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-[#181818] text-[#10B981]">
                 <Stethoscope className="w-4 h-4" />
               </div>
             </div>
@@ -365,6 +365,10 @@ export function PHCDashboardPage() {
           <TabsTrigger value="sms_feed" className="gap-2">
             <Radio className="w-4 h-4 text-cyan-500" />
             <span>SMS Emergency Gateway</span>
+          </TabsTrigger>
+          <TabsTrigger value="catchment_map" className="gap-2">
+            <MapPin className="w-4 h-4 text-emerald-500" />
+            <span>Catchment Field Map</span>
           </TabsTrigger>
         </TabsList>
 
@@ -735,7 +739,7 @@ export function PHCDashboardPage() {
         {/* TAB 2: Active Area Health Lists & Cohort Registries */}
         <TabsContent value="area_lists" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="border-rose-200 dark:border-rose-500/30 bg-white dark:bg-[#222224] p-5 space-y-3">
+            <Card className="border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] p-5 space-y-3">
               <div className="flex items-center space-x-2 text-[#F43F5E]">
                 <Heart className="w-5 h-5" />
                 <CardTitle className="text-sm">High-Risk Pregnancies</CardTitle>
@@ -749,7 +753,7 @@ export function PHCDashboardPage() {
               </div>
             </Card>
 
-            <Card className="border-amber-200 dark:border-amber-500/30 bg-white dark:bg-[#222224] p-5 space-y-3">
+            <Card className="border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] p-5 space-y-3">
               <div className="flex items-center space-x-2 text-[#F59E0B]">
                 <AlertTriangle className="w-5 h-5" />
                 <CardTitle className="text-sm">Sick Newborns (PSBI / IMNCI)</CardTitle>
@@ -763,7 +767,7 @@ export function PHCDashboardPage() {
               </div>
             </Card>
 
-            <Card className="border-indigo-200 dark:border-indigo-500/30 bg-white dark:bg-[#222224] p-5 space-y-3">
+            <Card className="border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] p-5 space-y-3">
               <div className="flex items-center space-x-2 text-[#8B5CF6]">
                 <Activity className="w-5 h-5" />
                 <CardTitle className="text-sm">TB Defaulters & Sputum</CardTitle>
@@ -777,7 +781,7 @@ export function PHCDashboardPage() {
               </div>
             </Card>
 
-            <Card className="border-emerald-200 dark:border-emerald-500/30 bg-white dark:bg-[#222224] p-5 space-y-3">
+            <Card className="border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] p-5 space-y-3">
               <div className="flex items-center space-x-2 text-[#10B981]">
                 <Droplet className="w-5 h-5" />
                 <CardTitle className="text-sm">NCD HTN / Diabetes Defaulters</CardTitle>
@@ -851,30 +855,33 @@ export function PHCDashboardPage() {
 
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
               {[
-                { bed: 'Bed 01', patient: 'Sunita Devi', status: 'pre-eclampsia', color: 'border-rose-300 dark:border-rose-500 bg-rose-50 dark:bg-rose-950/30 text-rose-800 dark:text-rose-300' },
-                { bed: 'Bed 02', patient: 'Baby of Kavita', status: 'PSBI Oxy', color: 'border-rose-300 dark:border-rose-500 bg-rose-50 dark:bg-rose-950/30 text-rose-800 dark:text-rose-300' },
-                { bed: 'Bed 03', patient: 'Kamlesh W.', status: 'Post-delivery', color: 'border-emerald-300 dark:border-emerald-500/50 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300' },
-                { bed: 'Bed 04', patient: 'Suman R.', status: 'Post-delivery', color: 'border-emerald-300 dark:border-emerald-500/50 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300' },
-                { bed: 'Bed 05', patient: 'Pooja T.', status: 'IV Iron', color: 'border-amber-300 dark:border-amber-500/50 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300' },
-                { bed: 'Bed 06', patient: 'Kavita M.', status: 'Observation', color: 'border-teal-300 dark:border-teal-500/50 bg-teal-50 dark:bg-teal-950/20 text-teal-800 dark:text-teal-300' },
-                { bed: 'Bed 07', patient: 'Rukhsana', status: 'Labour Room', color: 'border-rose-300 dark:border-rose-500/50 bg-rose-50 dark:bg-rose-950/20 text-rose-800 dark:text-rose-300' },
-                { bed: 'Bed 08', patient: 'Meena P.', status: 'Post-delivery', color: 'border-emerald-300 dark:border-emerald-500/50 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300' },
-                { bed: 'Bed 09', patient: 'Lata B.', status: 'Fever OBS', color: 'border-amber-300 dark:border-amber-500/50 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300' },
-                { bed: 'Bed 10', patient: 'Roshni G.', status: 'IV Fluids', color: 'border-teal-300 dark:border-teal-500/50 bg-teal-50 dark:bg-teal-950/20 text-teal-800 dark:text-teal-300' },
-                { bed: 'Bed 11', patient: 'Reena S.', status: 'Maternity', color: 'border-emerald-300 dark:border-emerald-500/50 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300' },
-                { bed: 'Bed 12', patient: 'Aarti D.', status: 'Post-Op', color: 'border-teal-300 dark:border-teal-500/50 bg-teal-50 dark:bg-teal-950/20 text-teal-800 dark:text-teal-300' },
-                { bed: 'Bed 13', patient: 'AVAILABLE', status: 'Cleaned', color: 'border-slate-200 dark:border-[#2E2E2E] bg-slate-50 dark:bg-[#1E1E1E] text-slate-400 dark:text-[#71717A]' },
-                { bed: 'Bed 14', patient: 'AVAILABLE', status: 'Cleaned', color: 'border-slate-200 dark:border-[#2E2E2E] bg-slate-50 dark:bg-[#1E1E1E] text-slate-400 dark:text-[#71717A]' },
-                { bed: 'Bed 15', patient: 'AVAILABLE', status: 'Cleaned', color: 'border-slate-200 dark:border-[#2E2E2E] bg-slate-50 dark:bg-[#1E1E1E] text-slate-400 dark:text-[#71717A]' },
-                { bed: 'Bed 16', patient: 'AVAILABLE', status: 'Cleaned', color: 'border-slate-200 dark:border-[#2E2E2E] bg-slate-50 dark:bg-[#1E1E1E] text-slate-400 dark:text-[#71717A]' },
+                { bed: 'Bed 01', patient: 'Sunita Devi', status: 'pre-eclampsia', borderAccent: 'border-l-4 border-l-rose-500' },
+                { bed: 'Bed 02', patient: 'Baby of Kavita', status: 'PSBI Oxy', borderAccent: 'border-l-4 border-l-rose-500' },
+                { bed: 'Bed 03', patient: 'Kamlesh W.', status: 'Post-delivery', borderAccent: 'border-l-4 border-l-emerald-500' },
+                { bed: 'Bed 04', patient: 'Suman R.', status: 'Post-delivery', borderAccent: 'border-l-4 border-l-emerald-500' },
+                { bed: 'Bed 05', patient: 'Pooja T.', status: 'IV Iron', borderAccent: 'border-l-4 border-l-amber-500' },
+                { bed: 'Bed 06', patient: 'Kavita M.', status: 'Observation', borderAccent: 'border-l-4 border-l-teal-500' },
+                { bed: 'Bed 07', patient: 'Rukhsana', status: 'Labour Room', borderAccent: 'border-l-4 border-l-rose-500' },
+                { bed: 'Bed 08', patient: 'Meena P.', status: 'Post-delivery', borderAccent: 'border-l-4 border-l-emerald-500' },
+                { bed: 'Bed 09', patient: 'Lata B.', status: 'Fever OBS', borderAccent: 'border-l-4 border-l-amber-500' },
+                { bed: 'Bed 10', patient: 'Roshni G.', status: 'IV Fluids', borderAccent: 'border-l-4 border-l-teal-500' },
+                { bed: 'Bed 11', patient: 'Reena S.', status: 'Maternity', borderAccent: 'border-l-4 border-l-emerald-500' },
+                { bed: 'Bed 12', patient: 'Aarti D.', status: 'Post-Op', borderAccent: 'border-l-4 border-l-teal-500' },
+                { bed: 'Bed 13', patient: 'AVAILABLE', status: 'Cleaned', borderAccent: 'border-l-4 border-l-slate-300 dark:border-l-[#404040]' },
+                { bed: 'Bed 14', patient: 'AVAILABLE', status: 'Cleaned', borderAccent: 'border-l-4 border-l-slate-300 dark:border-l-[#404040]' },
+                { bed: 'Bed 15', patient: 'AVAILABLE', status: 'Cleaned', borderAccent: 'border-l-4 border-l-slate-300 dark:border-l-[#404040]' },
+                { bed: 'Bed 16', patient: 'AVAILABLE', status: 'Cleaned', borderAccent: 'border-l-4 border-l-slate-300 dark:border-l-[#404040]' },
               ].map((b, i) => (
-                <div key={i} className={`p-3 rounded-xl border text-xs space-y-1 ${b.color}`}>
-                  <div className="font-bold text-[11px] flex items-center justify-between">
+                <div
+                  key={i}
+                  className={`p-3 rounded-xl border border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#1E1E1E] text-xs space-y-1 ${b.borderAccent}`}
+                >
+                  <div className="font-bold text-[11px] text-[#0F172A] dark:text-[#F8FAFC] flex items-center justify-between">
                     <span>{b.bed}</span>
-                    <Bed className="w-3.5 h-3.5" />
+                    <Bed className="w-3.5 h-3.5 text-[#71717A]" />
                   </div>
-                  <div className="font-semibold truncate">{b.patient}</div>
-                  <div className="text-[10px] opacity-80">{b.status}</div>
+                  <div className="font-semibold text-[#0F172A] dark:text-white truncate">{b.patient}</div>
+                  <div className="text-[10px] text-[#525252] dark:text-[#94A3B8]">{b.status}</div>
                 </div>
               ))}
             </div>
@@ -883,7 +890,7 @@ export function PHCDashboardPage() {
 
         {/* TAB 5: Emergency SMS Gateway Feed */}
         <TabsContent value="sms_feed" className="space-y-4">
-          <Card className="p-6 border-cyan-200 dark:border-cyan-500/30 bg-white dark:bg-[#222224] space-y-4">
+          <Card className="p-6 border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] space-y-4">
             <div className="flex items-center space-x-2 text-cyan-600 dark:text-cyan-400">
               <Radio className="w-5 h-5 animate-pulse" />
               <CardTitle className="text-base">Offline Dead-Zone SMS Triage Gateway (SMS-Relayed Inflow)</CardTitle>
@@ -894,7 +901,7 @@ export function PHCDashboardPage() {
 
             <div className="space-y-3 pt-2">
               {referrals.filter((r) => r.isSmsRelayed).map((smsRef) => (
-                <div key={smsRef.id} className="p-4 rounded-xl bg-slate-50 dark:bg-[#181818] border border-cyan-200 dark:border-cyan-500/30 space-y-2">
+                <div key={smsRef.id} className="p-4 rounded-xl bg-slate-50 dark:bg-[#181818] border border-[#E5E7EB] dark:border-[#2E2E2E] space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Badge variant="sms">SMS Ingest</Badge>
@@ -921,6 +928,32 @@ export function PHCDashboardPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </Card>
+        </TabsContent>
+
+        {/* TAB 6: Live Catchment GIS Field Map */}
+        <TabsContent value="catchment_map" className="space-y-4">
+          <Card className="border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] overflow-hidden rounded-2xl shadow-sm">
+            <div className="p-4 border-b border-[#E5E7EB] dark:border-[#2E2E2E] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-emerald-600" />
+                  PHC Shahpur Catchment Map & Fleet Tracking
+                </h3>
+                <p className="text-xs text-[#525252] dark:text-[#94A3B8]">
+                  Live GPS positions of 108 ambulances, 6 linked sub-centres, 15m/30m catchment isochrones, and offline SMS hamlets
+                </p>
+              </div>
+              <NavLink to="/map">
+                <Button size="xs" variant="outline" className="text-xs gap-1">
+                  <Maximize2 className="w-3.5 h-3.5" />
+                  <span>Full Screen Map &rarr;</span>
+                </Button>
+              </NavLink>
+            </div>
+            <div className="h-[620px] w-full">
+              <OsmAndMapPage />
             </div>
           </Card>
         </TabsContent>

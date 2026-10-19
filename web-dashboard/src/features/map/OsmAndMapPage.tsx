@@ -234,23 +234,24 @@ const PCMC_CENTER: [number, number] = [18.66, 73.82];
 
 function getTileLayer(style: 'osmand_topo' | 'osm_standard' | 'dark_tactical') {
   if (style === 'osmand_topo') {
-    // CartoDB Voyager: Clean, fast topographic & terrain vector raster tiles with full contours and roads
-    return L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}{r}.png', {
-      maxZoom: 19,
-      subdomains: 'abcd',
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    // OpenTopoMap: Classic OsmAnd topographic contour elevations & terrain shading
+    return L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+      maxZoom: 17,
+      subdomains: 'abc',
+      attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, SRTM | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
     });
   } else if (style === 'osm_standard') {
-    return L.tileLayer('https://tile.openstreetmap.org/{z}/{x}.png', {
+    // OpenStreetMap Standard: Ultra-fast, clean global vector raster tiles
+    return L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     });
   } else {
-    // Dark Tactical: CartoDB Dark Matter
-    return L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}{r}.png', {
+    // Dark Tactical: High-contrast night map with dark styling
+    return L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      subdomains: 'abcd',
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      className: 'dark-tiles',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     });
   }
 }
@@ -261,8 +262,8 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const layerGroupsRef = useRef<{ [key: string]: L.LayerGroup }>({});
 
-  // Map state
-  const [mapStyle, setMapStyle] = useState<'osmand_topo' | 'osm_standard' | 'dark_tactical'>('osmand_topo');
+  // Map state - default to OpenStreetMap Standard for instant reliable rendering
+  const [mapStyle, setMapStyle] = useState<'osmand_topo' | 'osm_standard' | 'dark_tactical'>('osm_standard');
   const [showSubcentres, setShowSubcentres] = useState(true);
   const [showAmbulances, setShowAmbulances] = useState(true);
   const [showAshas, setShowAshas] = useState(true);
@@ -320,10 +321,16 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
     };
 
     // Auto-resize observer to handle any DOM changes or flex calculations
-    const resizeObserver = new ResizeObserver(() => {
-      map.invalidateSize();
-    });
-    resizeObserver.observe(mapContainerRef.current);
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => {
+            map.invalidateSize();
+          })
+        : null;
+
+    if (resizeObserver && mapContainerRef.current) {
+      resizeObserver.observe(mapContainerRef.current);
+    }
 
     // Staggered size invalidations to ensure proper tile rendering
     const t1 = setTimeout(() => map.invalidateSize(), 100);
@@ -334,7 +341,9 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
-      resizeObserver.disconnect();
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
       map.remove();
       mapInstanceRef.current = null;
       tileLayerRef.current = null;

@@ -1,0 +1,10 @@
+name: sync_outbox
+description: Offline outbox for assessments and referrals. No network imports.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.13.1
+
+dev_dependencies:
+  test: ^1.26.2

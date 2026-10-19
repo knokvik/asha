@@ -565,3 +565,7 @@ class IntegrationIncident(Base):
     created_at: Mapped[int] = mapped_column(BigInteger)
 
 
+# Register the Prompt 2 desk tables on the same metadata.
+from models.db import desk as _desk_models  # noqa: E402,F401
+
+
