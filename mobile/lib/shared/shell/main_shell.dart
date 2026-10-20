@@ -147,20 +147,35 @@ class _SyncHeaderButton extends StatelessWidget {
     final pending = snapshot?.pendingCount ?? 0;
     final isSyncing = snapshot?.state == SyncConnectionState.syncing;
     final hasError = snapshot?.state == SyncConnectionState.error;
+    final isOffline = snapshot?.state == SyncConnectionState.offline;
     final color = isSyncing
         ? const Color(0xFF2563EB)
         : hasError
         ? const Color(0xFFB45309)
+        : isOffline
+        ? const Color(0xFF6B7280)
         : const Color(0xFF15803D);
     return IconButton(
       key: const Key('shell_sync_button'),
-      tooltip: pending == 0 ? 'Sync status' : '$pending packets waiting',
+      tooltip: isSyncing
+          ? 'Sending packets…'
+          : pending == 0
+          ? 'Sync complete'
+          : '$pending packets waiting to send',
       onPressed: () => context.push('/sync'),
       icon: Stack(
         clipBehavior: Clip.none,
         children: [
           Icon(
-            isSyncing ? Icons.sync_rounded : Icons.cloud_sync_outlined,
+            isSyncing
+                ? Icons.sync_rounded
+                : hasError
+                ? Icons.cloud_off_rounded
+                : pending > 0
+                ? Icons.cloud_upload_outlined
+                : isOffline
+                ? Icons.cloud_queue_outlined
+                : Icons.cloud_done_outlined,
             color: color,
             size: 22,
           ),

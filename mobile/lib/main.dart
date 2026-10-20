@@ -26,12 +26,10 @@ void main() async {
     defaultValue: 'https://asha-setu.onrender.com',
   );
   const pins = String.fromEnvironment('ASHA_API_SHA256_PINS');
-  // Deployment supplies a HTTPS base URL and comma-separated SHA-256 pins via
-  // dart-defines. Local test/debug builds omit them and do not schedule work.
-  // Remote sync still requires certificate pins; the default URL lets builds
-  // target the hosted service without weakening the production transport.
-  if (apiBaseUrl.isNotEmpty &&
-      (pins.isNotEmpty || apiBaseUrl.startsWith('http://'))) {
+  // The hosted HTTPS endpoint can use the platform trust store when no
+  // deployment pin is supplied. This keeps foreground and WorkManager sync
+  // enabled in normal debug/release builds while still allowing optional pins.
+  if (apiBaseUrl.isNotEmpty) {
     await SyncScheduler().initialise(
       apiBaseUrl: apiBaseUrl,
       certificatePins: pins.isEmpty ? const [] : pins.split(','),

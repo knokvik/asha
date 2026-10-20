@@ -115,7 +115,7 @@ class SyncCoordinator extends ChangeNotifier {
             ? null
             : hasFailedPackets
             ? 'Some packets need review or another retry.'
-            : 'Sync is waiting for a network connection.',
+            : 'Sync could not reach the server. It will retry automatically.',
       );
       notifyListeners();
     } catch (error) {

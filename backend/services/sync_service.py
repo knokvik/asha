@@ -205,8 +205,22 @@ class SyncService:
 
                 setattr(existing, field_name, new_val)
 
-        # Write audit log entry for each changed field
-        for entry in record.event_log:
+        # Keep a packet-level audit event when a client has no field
+        # provenance. The web live panel reads this persisted history.
+        audit_entries = record.event_log or [
+            type(
+                "PacketAudit",
+                (),
+                {
+                    "field": "__packet__",
+                    "old_value": None,
+                    "new_value": record.operation,
+                    "changed_by": worker_id,
+                    "device_timestamp": record.device_timestamp,
+                },
+            )()
+        ]
+        for entry in audit_entries:
             audit = AuditLog(
                 id=str(uuid.uuid4()),
                 table_name=record.table,

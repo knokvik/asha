@@ -29,8 +29,10 @@ class PinnedHttpTransport {
     if (uri.scheme != 'https') {
       throw const CertificatePinningException('Sync must use HTTPS outside a local development endpoint.');
     }
+    // When a deployment has not supplied pins, use the platform trust store.
+    // Deployments can still opt into public-key pinning through dart-defines.
     if (_pins.isEmpty) {
-      throw const CertificatePinningException('No valid SHA-256 certificate pins are configured for the API.');
+      return http.post(uri, headers: headers, body: body);
     }
     final client = SecureHttpClient.build(_pins);
     try {

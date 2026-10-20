@@ -254,6 +254,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   var _week = 12;
   var _showMyFlags = true;
   var _routeMode = false;
+  var _householdScope = _HouseholdScope.due;
   var _facilityCategory = 'all';
   LatLon? _pointingTarget;
   late final List<LatLng> _dayRoute;
@@ -377,6 +378,8 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                   ),
                 if (_layer == _MapLayer.radar)
                   PolygonLayer(polygons: _radarPolygons()),
+                if (_layer == _MapLayer.radar)
+                  CircleLayer(circles: _radarCircles()),
                 MarkerLayer(markers: _markers()),
                 if (widget.useOsmBasemap)
                   const RichAttributionWidget(
@@ -562,6 +565,35 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Text(
+                    'Map focus',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF374151),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ChoiceChip(
+                    label: const Text('Due'),
+                    selected: _householdScope == _HouseholdScope.due,
+                    onSelected: (_) =>
+                        setState(() => _householdScope = _HouseholdScope.due),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  const SizedBox(width: 6),
+                  ChoiceChip(
+                    label: const Text('Other'),
+                    selected: _householdScope == _HouseholdScope.other,
+                    onSelected: (_) =>
+                        setState(() => _householdScope = _HouseholdScope.other),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
+              ),
               const SizedBox(height: 12),
               for (final household in households.take(3)) ...[
                 _MapHouseholdRow(
@@ -646,10 +678,16 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
       }
     }
     if (_layer == _MapLayer.facilities) {
-      for (final poi in widget.pack.facilities.where(
-        (poi) =>
-            _facilityCategory == 'all' || poi.category == _facilityCategory,
-      )) {
+      final facilities = widget.pack.facilities
+          .where(
+            (poi) =>
+                _facilityCategory == 'all' || poi.category == _facilityCategory,
+          )
+          .toList();
+      if (_zoomLevel < 7) {
+        return [...markers, ..._facilityClusterMarkers(facilities)];
+      }
+      for (final poi in facilities) {
         final chosen = _selected?.id == poi.id;
         final showLabel = _zoomLevel >= 8 || chosen;
         markers.add(
@@ -688,7 +726,15 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
     }
     if (_layer == _MapLayer.households) {
       final route = todaysRoute(_fix, widget.pack.households).stops;
-      final pins = _routeMode ? route : widget.pack.households;
+      final scoped = widget.pack.households.where(
+        (household) => _householdScope == _HouseholdScope.due
+            ? household.dueToday
+            : !household.dueToday,
+      );
+      final pins = _routeMode ? route : scoped.toList();
+      if (_zoomLevel < 8) {
+        return [...markers, ..._householdClusterMarkers(pins)];
+      }
       for (final household in pins) {
         final routeIndex = route.indexWhere((pin) => pin.id == household.id);
         markers.add(
@@ -775,6 +821,96 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
       }
     }
     return markers;
+  }
+
+  List<Marker> _householdClusterMarkers(List<HouseholdPin> pins) {
+    final clusters = <String, List<HouseholdPin>>{};
+    for (final household in pins) {
+      final key =
+          '${(household.latitude * 2).floor()}:${(household.longitude * 2).floor()}';
+      clusters.putIfAbsent(key, () => []).add(household);
+    }
+    return [
+      for (final group in clusters.values)
+        Marker(
+          key: Key('household-cluster-${group.first.id}'),
+          point: LatLng(
+            group.map((item) => item.latitude).reduce((a, b) => a + b) /
+                group.length,
+            group.map((item) => item.longitude).reduce((a, b) => a + b) /
+                group.length,
+          ),
+          width: 50,
+          height: 50,
+          child: _ClusterMarker(
+            count: group.length,
+            color: const Color(0xFF2563EB),
+            onTap: () => _mapController.move(
+              LatLng(
+                group.map((item) => item.latitude).reduce((a, b) => a + b) /
+                    group.length,
+                group.map((item) => item.longitude).reduce((a, b) => a + b) /
+                    group.length,
+              ),
+              math.min(_zoomLevel + 2, 14),
+            ),
+          ),
+        ),
+    ];
+  }
+
+  List<Marker> _facilityClusterMarkers(List<FacilityPoi> facilities) {
+    final clusters = <String, List<FacilityPoi>>{};
+    for (final facility in facilities) {
+      final key =
+          '${(facility.latitude * 2).floor()}:${(facility.longitude * 2).floor()}';
+      clusters.putIfAbsent(key, () => []).add(facility);
+    }
+    return [
+      for (final group in clusters.values)
+        Marker(
+          key: Key('facility-cluster-${group.first.id}'),
+          point: LatLng(
+            group.map((item) => item.latitude).reduce((a, b) => a + b) /
+                group.length,
+            group.map((item) => item.longitude).reduce((a, b) => a + b) /
+                group.length,
+          ),
+          width: 50,
+          height: 50,
+          child: _ClusterMarker(
+            count: group.length,
+            color: const Color(0xFF1E4231),
+            onTap: () => _mapController.move(
+              LatLng(
+                group.map((item) => item.latitude).reduce((a, b) => a + b) /
+                    group.length,
+                group.map((item) => item.longitude).reduce((a, b) => a + b) /
+                    group.length,
+              ),
+              math.min(_zoomLevel + 2, 12),
+            ),
+          ),
+        ),
+    ];
+  }
+
+  List<CircleMarker> _radarCircles() {
+    return [
+      for (final ward in widget.pack.wards)
+        if (outbreakActive(widget.pack.counts, _week, ward.wardId, _condition))
+          CircleMarker(
+            point: () {
+              final center = wardCentroid(ward);
+              return LatLng(center.latitude, center.longitude);
+            }(),
+            radius: 900,
+            useRadiusInMeter: true,
+            color: _radarColor(RadarLevel.outbreak).withValues(alpha: 0.16),
+            borderColor: _radarColor(RadarLevel.outbreak),
+            borderStrokeWidth: 2,
+          ),
+    ];
   }
 
   List<Polygon<WardPolygon>> _radarPolygons() {
@@ -1182,6 +1318,8 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
 
 enum _MapLayer { facilities, radar, households }
 
+enum _HouseholdScope { due, other }
+
 class _MapControls extends StatelessWidget {
   const _MapControls({
     required this.layer,
@@ -1574,6 +1712,43 @@ class _OutbreakMarker extends StatelessWidget {
               width: 8,
               height: 8,
               decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ClusterMarker extends StatelessWidget {
+  const _ClusterMarker({
+    required this.count,
+    required this.color,
+    required this.onTap,
+  });
+
+  final int count;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 3),
+          boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 5)],
+        ),
+        child: Center(
+          child: Text(
+            '$count',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ),

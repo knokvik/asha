@@ -14,11 +14,13 @@ import json
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from fastapi.responses import Response
 from jose import JWTError
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.multi_tenant import TenantContext, set_tenant_context
 from core.security import decode_token
 from db.session import get_db
+from models.db.models import AuditLog
 from models.schemas.schemas import SyncPullResponse, SyncPushRequest, SyncPushResponse
 from services.sync_service import SyncService
 
@@ -117,3 +119,33 @@ async def sync_pull(
             headers={"Content-Encoding": "gzip"},
         )
     return Response(content=response_body, media_type="application/json")
+
+
+@router.get("/activity")
+async def sync_activity(
+    limit: int = Query(default=100, ge=1, le=500),
+    _: TenantContext = Depends(_get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Return persisted packet history for the live web sync panel."""
+    result = await db.execute(
+        select(AuditLog).order_by(desc(AuditLog.server_timestamp)).limit(limit)
+    )
+    rows = result.scalars().all()
+    return {
+        "packets": [
+            {
+                "id": row.id,
+                "table": row.table_name,
+                "record_id": row.record_id,
+                "worker_id": row.changed_by,
+                "device_id": row.device_id,
+                "app_version": row.app_version,
+                "received_at": row.server_timestamp,
+                "device_timestamp": row.device_timestamp,
+                "operation": row.new_value if row.field_name == "__packet__" else "update",
+                "status": "synced",
+            }
+            for row in rows
+        ]
+    }
