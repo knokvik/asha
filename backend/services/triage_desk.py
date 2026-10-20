@@ -2,7 +2,7 @@
 
 Merge rule: for each ward, week, and condition, the count with the later
 observed_at is kept. When the timestamps are equal, an app-reported syndromic
-flag wins over the seeded IDSP baseline. The weekly job writes that merged
+flag wins over the authoritative baseline. The weekly job writes that merged
 table into the next context pack. A pack version bump is what the on-device
 engine reads on the next sync.
 """
@@ -26,12 +26,6 @@ from models.db.desk import (
 RED_SLA = timedelta(hours=4)
 BATCH_LIMIT = 50
 POPULATION = 8000
-
-DEMO_TOKENS = {
-    "demo-asha-pcmc": {"sub": "ASHA-SUNITA", "role": "ASHA"},
-    "demo-phc-pcmc": {"sub": "PHC-PCMC-MO", "role": "PHC_MO"},
-}
-
 
 @dataclass(frozen=True)
 class CountPoint:
@@ -333,32 +327,6 @@ class TriageDesk:
         self.db.add(pack)
         await self.db.commit()
         return pack
-
-    async def seed_demo_packs(self) -> None:
-        existing = await self.latest_pack("PCMC")
-        if existing is not None:
-            return
-        for version, ward, counts in (
-            (1, "W3", [("W3", 5), ("W5", 0)]),
-            (2, "W5", [("W3", 0), ("W5", 5)]),
-        ):
-            body = {
-                "manifest": {"district_id": "PCMC", "pack_version": version, "languages": ["mr", "hi", "en"]},
-                "active_dengue_ward": ward,
-                "disease_counts": [
-                    {"ward_id": ward_id, "week": 11, "condition": "dengue_like", "count": count}
-                    for ward_id, count in counts
-                ],
-            }
-            self.db.add(
-                ContextPackBlob(
-                    district_id="PCMC",
-                    version=version,
-                    etag=pack_etag(version),
-                    body_json=json.dumps(body),
-                )
-            )
-        await self.db.commit()
 
     async def _require(self, ticket_id: str) -> DeskTicket:
         ticket = await self.get_ticket(ticket_id)

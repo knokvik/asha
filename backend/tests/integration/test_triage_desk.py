@@ -7,9 +7,20 @@ from datetime import datetime
 
 import pytest
 
+from core.security import create_token
 from services.triage_desk import CountPoint, merge_counts
 
-AUTH = {"Authorization": "Bearer demo-phc-pcmc"}
+AUTH = {
+    "Authorization": "Bearer "
+    + create_token(
+        sub="test-phc-user",
+        role="PHC_MO",
+        state_code="MH",
+        district_code="TEST",
+        block_code="TEST",
+        area_villages=[],
+    )
+}
 
 
 def _referral(key: str, referral_id: str, priority: str = "RED", created_at: str = "2026-10-19T08:00:00", ward: str = "W3") -> dict:

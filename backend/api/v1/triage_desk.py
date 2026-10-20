@@ -1,8 +1,4 @@
-"""Prompt 2 routes on the existing /api/v1 app.
-
-Demo bearer tokens, no password: demo-asha-pcmc and demo-phc-pcmc.
-A real access JWT from /auth/login is also accepted.
-"""
+"""Triage desk routes on the existing /api/v1 app."""
 from __future__ import annotations
 
 import gzip
@@ -16,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.security import decode_token
 from db.session import get_db
-from services.triage_desk import DEMO_TOKENS, TriageDesk, pack_etag
+from services.triage_desk import TriageDesk, pack_etag
 
 router = APIRouter(tags=["triage-desk"])
 
@@ -25,8 +21,6 @@ async def _actor(authorization: str | None = Header(default=None)) -> dict:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing Bearer token")
     token = authorization.removeprefix("Bearer ")
-    if token in DEMO_TOKENS:
-        return DEMO_TOKENS[token]
     try:
         payload = decode_token(token)
     except JWTError as exc:
@@ -79,7 +73,6 @@ async def latest_pack(
     if_none_match: str | None = Header(default=None),
 ) -> Response:
     desk = TriageDesk(db)
-    await desk.seed_demo_packs()
     pack = await desk.latest_pack(district_id)
     if pack is None:
         raise HTTPException(status_code=404, detail="no pack")

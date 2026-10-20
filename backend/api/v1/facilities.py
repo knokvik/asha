@@ -47,9 +47,3 @@ async def list_facilities(
         "count": len(facilities),
         "facilities": facilities,
     }
-
-
-@router.get("/facilities/dummy")
-async def dummy_facilities(db: AsyncSession = Depends(get_db)) -> dict:
-    """Backward-compatible route returning real facilities directly from the database."""
-    return await list_facilities(district=None, facility_level=None, db=db)

@@ -1,8 +1,9 @@
 # Offline maps and geo intelligence
 
-The Map tab is an embedded `flutter_map`. Streets are local PNG tiles in
-`assets/geo/pcmc.mbtiles`. Walking routes use `assets/geo/roads.json`. Nothing
-on the map render path opens a tile server or performs a geocoding request.
+The main Field Map is an embedded `flutter_map` using the original
+country-wide OpenStreetMap basemap. Walking routes and health data remain
+local, and the Maps pack screen still provides local regional MBTiles for
+offline use. The map does not perform a geocoding request.
 
 The map has three offline layers:
 
@@ -19,9 +20,9 @@ turn-by-turn routing.
 
 ## What ships
 
-- `mobile/assets/geo/pcmc.mbtiles` — street raster, zooms 8–14, around the
-  Pimpri-Chinchwad sample. Read by `MbTilesTileProvider` through `sqlite3`.
-  There is no tile URL.
+- `mobile/assets/geo/pcmc.mbtiles` — optional local street raster, zooms 8–14,
+  around the Pimpri-Chinchwad sample. It is read by `MbTilesTileProvider`
+  through `sqlite3` when the offline map mode is selected.
 - `mobile/assets/geo/roads.json` — simplified walk graph for the same area.
 - `mobile/assets/geo/facilities.geojson` — 40 synthetic facilities, one of every
   directory category, spread across W1–W8. The W3 diagnostic lab is pinned next
@@ -85,8 +86,8 @@ A future street basemap, if disk allows:
 All-India coverage:
 
 - `assets/geo/india_states.geojson` ships the state boundaries and labels.
-- The main Field Map opens on an India-wide view and overlays the directory,
-  household, referral, and disease sources on the same canvas.
+- The main Field Map opens on an India-wide OpenStreetMap view and overlays the
+  directory, household, referral, and disease sources on the same canvas.
 - The previous draggable lower field window is retained for today's household
   route and quick source counts.
 - The Maps pack screen can select a state and download its raster tiles while

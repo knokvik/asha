@@ -39,10 +39,12 @@ class GeoMapPage extends StatefulWidget {
   const GeoMapPage({
     super.key,
     this.embedded = false,
+    this.useOsmBasemap = true,
     this.openUri = openExternalUri,
   });
 
   final bool embedded;
+  final bool useOsmBasemap;
   final UriOpener openUri;
 
   @override
@@ -88,14 +90,23 @@ class _GeoMapPageState extends State<GeoMapPage> {
       );
       final roads = await rootBundle.loadString('assets/geo/roads.json');
       final labelsRaw = await rootBundle.loadString('assets/geo/labels.json');
-      final bytes = await rootBundle.load('assets/geo/pcmc.mbtiles');
-      final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/pcmc.mbtiles');
-      await file.writeAsBytes(
-        bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
-        flush: true,
-      );
-      final database = sql.sqlite3.open(file.path, mode: sql.OpenMode.readOnly);
+      TileProvider? tiles;
+      if (widget.useOsmBasemap) {
+        tiles = MemoryTileProvider(MbTilesTileProvider.blank);
+      } else {
+        final bytes = await rootBundle.load('assets/geo/pcmc.mbtiles');
+        final dir = await getTemporaryDirectory();
+        final file = File('${dir.path}/pcmc.mbtiles');
+        await file.writeAsBytes(
+          bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
+          flush: true,
+        );
+        final database = sql.sqlite3.open(
+          file.path,
+          mode: sql.OpenMode.readOnly,
+        );
+        tiles = MbTilesTileProvider(database);
+      }
       if (!mounted) return;
       setState(() {
         _pack = GeoPack.parse(
@@ -108,7 +119,7 @@ class _GeoMapPageState extends State<GeoMapPage> {
           sampleLatitude: 18.64,
           sampleLongitude: 73.84,
         );
-        _tiles = MbTilesTileProvider(database);
+        _tiles = tiles;
         _roads = RoadGraph.parse(roads);
         _labels = MapLabel.parse(labelsRaw);
         _states = _parseStateShapes(states);
@@ -143,6 +154,7 @@ class _GeoMapPageState extends State<GeoMapPage> {
       roads: _roads,
       labels: _labels,
       stateOutlines: _states,
+      useOsmBasemap: widget.useOsmBasemap,
       embedded: widget.embedded,
       openUri: widget.openUri,
     );
@@ -211,6 +223,7 @@ class GeoMapScreen extends StatefulWidget {
     this.roads,
     this.labels = const [],
     this.stateOutlines = const [],
+    this.useOsmBasemap = false,
     this.embedded = false,
     this.openUri = openExternalUri,
   });
@@ -220,6 +233,7 @@ class GeoMapScreen extends StatefulWidget {
   final RoadGraph? roads;
   final List<MapLabel> labels;
   final List<MapStateShape> stateOutlines;
+  final bool useOsmBasemap;
   final bool embedded;
   final UriOpener openUri;
 
@@ -309,13 +323,22 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                 },
               ),
               children: [
-                TileLayer(
-                  tileProvider: widget.tiles,
-                  tileDisplay: const TileDisplay.instantaneous(),
-                  minZoom: 3,
-                  maxZoom: 18,
-                  maxNativeZoom: 14,
-                ),
+                if (widget.useOsmBasemap)
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'org.mohfw.asha_platform',
+                    minZoom: 3,
+                    maxZoom: 19,
+                  )
+                else
+                  TileLayer(
+                    tileProvider: widget.tiles,
+                    tileDisplay: const TileDisplay.instantaneous(),
+                    minZoom: 3,
+                    maxZoom: 18,
+                    maxNativeZoom: 14,
+                  ),
                 if (_layer != _MapLayer.radar &&
                     widget.stateOutlines.isNotEmpty)
                   PolygonLayer(polygons: _statePolygons()),
@@ -355,6 +378,12 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                 if (_layer == _MapLayer.radar)
                   PolygonLayer(polygons: _radarPolygons()),
                 MarkerLayer(markers: _markers()),
+                if (widget.useOsmBasemap)
+                  const RichAttributionWidget(
+                    attributions: [
+                      TextSourceAttribution('OpenStreetMap contributors'),
+                    ],
+                  ),
               ],
             ),
           ),

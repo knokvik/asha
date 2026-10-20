@@ -53,12 +53,10 @@ def main() -> None:
         raise SystemExit(f"W3 dengue week 12 is {week12}, expected 5")
 
     sources = [
-        ROOT / "lib" / "features" / "map" / "presentation" / "geo_map_screen.dart",
         ROOT / "lib" / "features" / "map" / "presentation" / "field_map_screen.dart",
         ROOT / "lib" / "features" / "map" / "presentation" / "india_map_page.dart",
         ROOT / "lib" / "features" / "due_list" / "presentation" / "route_map_screen.dart",
         ROOT / "lib" / "features" / "map" / "data" / "mbtiles_tile_provider.dart",
-        ROOT / "lib" / "features" / "home" / "presentation" / "dashboard_screen.dart",
     ]
     for path in sources:
         text = path.read_text()

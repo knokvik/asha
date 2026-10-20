@@ -1,9 +1,9 @@
-"""Notification service for dispatching FCM pushes and in-app alerts.
+"""Notification service for recording dispatchable FCM and in-app alerts.
 
 Implements Requirements 10.4, 10.5, 10.6:
 - Push notifications to originating ASHA and supervising ANM / AF when referral outcome is recorded.
 - Immediate alerts for RED triage referrals and overdue non-arrival follow-ups.
-- Maintains in-memory dispatch history for testing and verification.
+- Maintains an in-memory dispatch history until a configured push provider is available.
 """
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ class NotificationService:
         data: dict[str, Any] | None = None,
         recipient_role: str | None = None,
     ) -> DispatchedNotification:
-        """Send push notification to device/user (mocked FCM for testing/offline-first)."""
+        """Record a notification event for the configured delivery worker."""
         notif = DispatchedNotification(
             recipient_id=recipient_id,
             recipient_role=recipient_role,

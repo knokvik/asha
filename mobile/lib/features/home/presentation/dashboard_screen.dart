@@ -1,20 +1,14 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:sqlite3/sqlite3.dart' as sql;
 
 import '../../../core/l10n/language_provider.dart';
 import '../../../shared/shell/shell_copy.dart';
 import '../../../shared/shell/shell_tab.dart';
 import '../../../shared/widgets/asha_bottom_nav.dart';
 import '../../../shared/widgets/asha_search_bar.dart';
-import '../../map/data/mbtiles_tile_provider.dart';
 
 /// Screen 1 & Screen 2: Master Home Dashboard & Navigation Drawer
 /// Exact replica of Screen 1 and Screen 2 from reference design.
@@ -248,7 +242,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             borderRadius: BorderRadius.circular(14),
             child: Stack(
               children: [
-                _OfflineDashboardMap(markers: markers),
+                _DashboardOsmMap(markers: markers),
                 const DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -583,51 +577,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 }
 
-class _OfflineDashboardMap extends StatefulWidget {
-  const _OfflineDashboardMap({required this.markers});
+class _DashboardOsmMap extends StatelessWidget {
+  const _DashboardOsmMap({required this.markers});
 
   final List<Marker> markers;
-
-  @override
-  State<_OfflineDashboardMap> createState() => _OfflineDashboardMapState();
-}
-
-class _OfflineDashboardMapState extends State<_OfflineDashboardMap> {
-  TileProvider? _provider;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadTiles();
-  }
-
-  Future<void> _loadTiles() async {
-    try {
-      final bytes = await rootBundle.load('assets/geo/pcmc.mbtiles');
-      final directory = await getTemporaryDirectory();
-      final file = File('${directory.path}/asha_dashboard_pmc.mbtiles');
-      await file.writeAsBytes(
-        bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
-        flush: true,
-      );
-      final database = sql.sqlite3.open(file.path, mode: sql.OpenMode.readOnly);
-      final provider = MbTilesTileProvider(database);
-      if (!mounted) {
-        provider.dispose();
-        return;
-      }
-      setState(() => _provider = provider);
-    } catch (_) {
-      // The neutral local tile below keeps the preview useful even if the
-      // optional bundled pack cannot be opened on a particular device.
-    }
-  }
-
-  @override
-  void dispose() {
-    _provider?.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -639,13 +592,15 @@ class _OfflineDashboardMapState extends State<_OfflineDashboardMap> {
       ),
       children: [
         TileLayer(
-          tileProvider:
-              _provider ?? MemoryTileProvider(MbTilesTileProvider.blank),
-          minZoom: 8,
-          maxZoom: 18,
-          maxNativeZoom: 14,
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName: 'org.mohfw.asha_platform',
+          minZoom: 3,
+          maxZoom: 19,
         ),
-        MarkerLayer(markers: widget.markers),
+        MarkerLayer(markers: markers),
+        const RichAttributionWidget(
+          attributions: [TextSourceAttribution('OpenStreetMap contributors')],
+        ),
       ],
     );
   }
