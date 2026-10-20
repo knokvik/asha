@@ -17,8 +17,10 @@ void main() {
 
     expect(find.byKey(const Key('dashboard_screen')), findsOneWidget);
     expect(find.byKey(const Key('home_map_preview')), findsOneWidget);
-    expect(find.text('Continue today\'s work'), findsOneWidget);
-    expect(find.byKey(const Key('home_continue_work_card')), findsOneWidget);
+    expect(find.text('Revenue'), findsOneWidget);
+    expect(find.text('Reports'), findsOneWidget);
+    expect(find.byKey(const Key('home_revenue_button')), findsOneWidget);
+    expect(find.byKey(const Key('home_reports_button')), findsOneWidget);
     expect(find.text('Quick actions'), findsOneWidget);
     expect(find.byKey(const Key('home_triage_button')), findsOneWidget);
     expect(find.byKey(const Key('asha_bottom_nav')), findsOneWidget);

@@ -14,7 +14,6 @@ import '../../../shared/shell/shell_copy.dart';
 import '../../../shared/shell/shell_tab.dart';
 import '../../../shared/widgets/asha_bottom_nav.dart';
 import '../../../shared/widgets/asha_search_bar.dart';
-import '../../../shared/widgets/asha_svg_illustrations.dart';
 import '../../map/data/mbtiles_tile_provider.dart';
 
 /// Screen 1 & Screen 2: Master Home Dashboard & Navigation Drawer
@@ -95,8 +94,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           _buildMetricStrip(context),
           const SizedBox(height: 16),
 
-          // 4. Continue today's work Card: 5 households • 2 follow-ups + SVG illustration
-          _buildContinueWorkCard(context),
+          // 4. Revenue and reports shortcuts
+          _buildRevenueReportsActions(context),
           const SizedBox(height: 14),
 
           // 5. Quick actions Section: 2x2 Grid
@@ -426,73 +425,33 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  /// "Continue Today's Work" Card matching Screen 1:
-  /// Title, subtitle, chevron, and the exact village hills + ASHA worker SVG illustration.
-  Widget _buildContinueWorkCard(BuildContext context) {
-    return Material(
-      color: const Color(0xFFEAF7F0),
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        key: const Key('home_continue_work_card'),
-        onTap: () => ref.read(shellTabProvider.notifier).select(2),
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            gradient: const LinearGradient(
-              colors: [Color(0xFFF1FAF4), Color(0xFFD8F0E1)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+  Widget _buildRevenueReportsActions(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildQuickActionCard(
+            key: const Key('home_revenue_button'),
+            title: 'Revenue',
+            iconWidget: _quickActionIcon(
+              Icons.payments_outlined,
+              const Color(0xFF15803D),
             ),
-            border: Border.all(color: const Color(0xFFB9DDC5), width: 1.0),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
-                child: Row(
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          shellText(_lang, 'continueWork'),
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF111827),
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          shellText(_lang, 'continueSub'),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF6B7280),
-                            fontFamily: 'SF Pro Display',
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: Color(0xFF9CA3AF),
-                      size: 20,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 2),
-              // Vector illustration of village hills & ASHA worker
-              const AshaFieldWorkerIllustrationWidget(height: 82),
-            ],
+            onTap: () => context.push('/incentives'),
           ),
         ),
-      ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _buildQuickActionCard(
+            key: const Key('home_reports_button'),
+            title: 'Reports',
+            iconWidget: _quickActionIcon(
+              Icons.assessment_outlined,
+              const Color(0xFF2563EB),
+            ),
+            onTap: () => context.push('/reports'),
+          ),
+        ),
+      ],
     );
   }
 
