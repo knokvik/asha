@@ -15,12 +15,17 @@ import '../features/household/presentation/consent_screen.dart';
 import '../features/household/presentation/household_form_screen.dart';
 import '../features/household/presentation/household_list_screen.dart';
 import '../features/household/presentation/household_detail_screen.dart';
+import '../features/household/presentation/household_profile_screen.dart';
+import '../features/triage/presentation/triage_flow_screen.dart';
+import '../features/interpreter/presentation/interpreter_screen.dart';
+import '../features/reports/presentation/reports_incentives_screen.dart';
+import '../features/map/presentation/field_map_screen.dart';
+import '../features/sync/presentation/sync_queue_screen.dart';
 
 // Triage & Referral
 import '../features/referral/presentation/referral_slip_screen.dart';
 import '../features/triage/presentation/language_bridge_screen.dart';
 import '../features/triage/presentation/setu_questions_screen.dart';
-import '../features/triage/presentation/triage_assessment_screen.dart';
 
 // Clinical Programs Hub & Protocols
 import '../features/clinical_programs/presentation/programs_hub_screen.dart';
@@ -54,7 +59,6 @@ import '../features/reports/presentation/register_viewer_screen.dart';
 import '../features/vhsnd/presentation/health_education_library_screen.dart';
 import '../features/vhsnd/domain/vhsnd_models.dart';
 import '../features/due_list/presentation/route_map_screen.dart';
-import '../features/map/presentation/india_map_page.dart';
 import '../features/due_list/presentation/coverage_analysis_screen.dart';
 import '../features/due_list/domain/route_models.dart';
 import '../features/teleconsultation/presentation/teleconsultation_screen.dart';
@@ -69,28 +73,24 @@ class UserRoleNotifier extends Notifier<String> {
   void setRole(String role) => state = role;
 }
 
-final userRoleProvider =
-    NotifierProvider<UserRoleNotifier, String>(UserRoleNotifier.new);
+final userRoleProvider = NotifierProvider<UserRoleNotifier, String>(
+  UserRoleNotifier.new,
+);
 
 /// List of routes shared across routerProvider and appRouter
 List<RouteBase> _buildAppRoutes(Ref? ref) {
   return [
-    GoRoute(
-      path: '/',
-      redirect: (context, state) => '/home',
-    ),
-    GoRoute(
-      path: '/auth',
-      builder: (context, state) => const PinSetupScreen(),
-    ),
+    GoRoute(path: '/', redirect: (context, state) => '/home'),
+    GoRoute(path: '/auth', builder: (context, state) => const PinSetupScreen()),
     GoRoute(
       path: '/home',
       builder: (context, state) => const DashboardScreen(),
     ),
     GoRoute(
-      path: '/tools',
-      builder: (context, state) => const ToolsScreen(),
+      path: '/sync',
+      builder: (context, state) => const SyncQueueScreen(),
     ),
+    GoRoute(path: '/tools', builder: (context, state) => const ToolsScreen()),
     GoRoute(
       path: '/profile',
       builder: (context, state) => const ProfileScreen(),
@@ -122,38 +122,50 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
       ],
     ),
     GoRoute(
+      path: '/household-profile',
+      builder: (context, state) => const HouseholdProfileScreen(),
+    ),
+    GoRoute(
       path: '/household/new',
       builder: (context, state) => const HouseholdFormScreen(),
     ),
     GoRoute(
       path: '/household/:id',
-      builder: (context, state) => HouseholdDetailScreen(
-        householdId: state.pathParameters['id'] ?? '',
-      ),
+      builder: (context, state) =>
+          HouseholdDetailScreen(householdId: state.pathParameters['id'] ?? ''),
     ),
     GoRoute(
       path: '/beneficiary/:id',
-      builder: (context, state) => BeneficiaryTimelineScreen(
-        memberId: state.pathParameters['id'] ?? '',
-      ),
+      builder: (context, state) =>
+          BeneficiaryTimelineScreen(memberId: state.pathParameters['id'] ?? ''),
       routes: [
         GoRoute(
           path: 'consent',
-          builder: (context, state) => ConsentScreen(
-            memberId: state.pathParameters['id'] ?? '',
-          ),
+          builder: (context, state) =>
+              ConsentScreen(memberId: state.pathParameters['id'] ?? ''),
         ),
       ],
     ),
     GoRoute(
       path: '/visit/:id',
-      builder: (context, state) => BeneficiaryTimelineScreen(
-        memberId: state.pathParameters['id'] ?? '',
-      ),
+      builder: (context, state) =>
+          BeneficiaryTimelineScreen(memberId: state.pathParameters['id'] ?? ''),
     ),
     GoRoute(
       path: '/triage',
-      builder: (context, state) => const TriageAssessmentScreen(),
+      builder: (context, state) => const TriageFlowScreen(),
+    ),
+    GoRoute(
+      path: '/triage/assessment',
+      builder: (context, state) => const TriageFlowScreen(),
+    ),
+    GoRoute(
+      path: '/clinical-programs',
+      builder: (context, state) => const ProgramsHubScreen(),
+    ),
+    GoRoute(
+      path: '/interpreter',
+      builder: (context, state) => const InterpreterScreen(),
     ),
     GoRoute(
       path: '/triage/questions',
@@ -191,9 +203,12 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
           builder: (context, state) => AncVisitScreen(
             womanId: state.uri.queryParameters['memberId'] ?? 'mem_pooja_01',
             womanName: state.uri.queryParameters['name'] ?? 'Pooja Devi',
-            visitScheduleId: state.uri.queryParameters['visitId'] ?? 'sched_anc_01',
-            contactNumber: int.tryParse(state.uri.queryParameters['contact'] ?? '3') ?? 3,
-            gestationWeeks: int.tryParse(state.uri.queryParameters['weeks'] ?? '28') ?? 28,
+            visitScheduleId:
+                state.uri.queryParameters['visitId'] ?? 'sched_anc_01',
+            contactNumber:
+                int.tryParse(state.uri.queryParameters['contact'] ?? '3') ?? 3,
+            gestationWeeks:
+                int.tryParse(state.uri.queryParameters['weeks'] ?? '28') ?? 28,
             ashaId: 'asha-01',
           ),
         ),
@@ -202,8 +217,10 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
           builder: (context, state) => PncVisitScreen(
             motherId: state.uri.queryParameters['memberId'] ?? 'mem_kavita_02',
             motherName: state.uri.queryParameters['name'] ?? 'Kavita Singh',
-            visitScheduleId: state.uri.queryParameters['visitId'] ?? 'sched_pnc_01',
-            visitDay: int.tryParse(state.uri.queryParameters['day'] ?? '7') ?? 7,
+            visitScheduleId:
+                state.uri.queryParameters['visitId'] ?? 'sched_pnc_01',
+            visitDay:
+                int.tryParse(state.uri.queryParameters['day'] ?? '7') ?? 7,
             isInstitutionalDelivery: true,
             ashaId: 'asha-01',
           ),
@@ -213,7 +230,8 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
           builder: (context, state) => HbncVisitScreen(
             newbornId: state.uri.queryParameters['memberId'] ?? 'mem_aarav_02',
             motherId: 'mem_kavita_02',
-            visitScheduleId: state.uri.queryParameters['visitId'] ?? 'sched_hbnc_01',
+            visitScheduleId:
+                state.uri.queryParameters['visitId'] ?? 'sched_hbnc_01',
             visitTitle: 'HBNC Visit 3 (Day 7)',
             birthWeightKg: 2.7,
             isPreterm: false,
@@ -226,7 +244,8 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
             childId: state.uri.queryParameters['memberId'] ?? 'mem_aarav_02',
             childName: state.uri.queryParameters['name'] ?? 'Baby Aarav',
             childDob: DateTime.now().subtract(const Duration(days: 90)),
-            visitScheduleId: state.uri.queryParameters['visitId'] ?? 'sched_hbyc_01',
+            visitScheduleId:
+                state.uri.queryParameters['visitId'] ?? 'sched_hbyc_01',
             milestone: HbycMilestone.month3,
             ashaId: 'asha-01',
           ),
@@ -234,18 +253,20 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
         GoRoute(
           path: 'cbac',
           builder: (context, state) => CbacScreeningScreen(
-            memberId: state.uri.queryParameters['memberId'] ?? 'mem_ramprasad_03',
-            beneficiaryName: state.uri.queryParameters['name'] ?? 'Ramprasad Verma',
-            ageYears: int.tryParse(state.uri.queryParameters['age'] ?? '62') ?? 62,
+            memberId:
+                state.uri.queryParameters['memberId'] ?? 'mem_ramprasad_03',
+            beneficiaryName:
+                state.uri.queryParameters['name'] ?? 'Ramprasad Verma',
+            ageYears:
+                int.tryParse(state.uri.queryParameters['age'] ?? '62') ?? 62,
             sex: state.uri.queryParameters['sex'] ?? 'M',
             ashaId: 'asha-01',
           ),
         ),
         GoRoute(
           path: 'ncd-register',
-          builder: (context, state) => const NcdRegisterScreen(
-            ashaId: 'asha-01',
-          ),
+          builder: (context, state) =>
+              const NcdRegisterScreen(ashaId: 'asha-01'),
         ),
         GoRoute(
           path: 'immunization',
@@ -269,8 +290,10 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
         GoRoute(
           path: 'tb-presumptive',
           builder: (context, state) => PresumptiveTbScreen(
-            memberId: state.uri.queryParameters['memberId'] ?? 'mem_ramprasad_03',
-            beneficiaryName: state.uri.queryParameters['name'] ?? 'Ramprasad Verma',
+            memberId:
+                state.uri.queryParameters['memberId'] ?? 'mem_ramprasad_03',
+            beneficiaryName:
+                state.uri.queryParameters['name'] ?? 'Ramprasad Verma',
             ashaId: 'asha-01',
           ),
         ),
@@ -357,6 +380,10 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
     // ── Government Registers & PDF Reports ─────────────────────────────────
     GoRoute(
       path: '/reports',
+      builder: (context, state) => const ReportsIncentivesScreen(),
+    ),
+    GoRoute(
+      path: '/reports/registers',
       builder: (context, state) {
         if (ref != null) {
           return RegisterViewerScreen(
@@ -456,7 +483,11 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
             title: 'National Immunization Day (Pulse Polio)',
             startDate: DateTime.now().subtract(const Duration(days: 2)),
             endDate: DateTime.now().add(const Duration(days: 5)),
-            checklistItems: const ['Booth setup at Anganwadi', 'House-to-house B marking', 'Zero-dose tracking'],
+            checklistItems: const [
+              'Booth setup at Anganwadi',
+              'House-to-house B marking',
+              'Zero-dose tracking',
+            ],
             targetDescription: 'All children 0-5 years in Rampur village',
           ),
           CommunityCampaign(
@@ -465,7 +496,11 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
             title: 'Active TB Case Finding Campaign',
             startDate: DateTime.now().subtract(const Duration(days: 10)),
             endDate: DateTime.now().add(const Duration(days: 20)),
-            checklistItems: const ['Screen all elderly >60', 'Sputum sample collection for cough >2 wks', 'Nikshay entry'],
+            checklistItems: const [
+              'Screen all elderly >60',
+              'Sputum sample collection for cough >2 wks',
+              'Nikshay entry',
+            ],
             targetDescription: 'Vulnerable settlements and brick-kiln hamlets',
           ),
         ],
@@ -511,7 +546,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
 
     GoRoute(
       path: '/geo-map',
-      builder: (context, state) => const IndiaMapPage(),
+      builder: (context, state) => const FieldMapScreen(),
     ),
 
     // ── Area Coverage Analysis ─────────────────────────────────────────────
@@ -558,10 +593,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
       path: '/settings',
       builder: (context, state) => const DueListScreen(),
     ),
-    GoRoute(
-      path: '/af',
-      builder: (context, state) => const DueListScreen(),
-    ),
+    GoRoute(path: '/af', builder: (context, state) => const DueListScreen()),
   ];
 }
 

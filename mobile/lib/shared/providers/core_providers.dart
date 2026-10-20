@@ -1,11 +1,14 @@
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/database/demo_data_seeder.dart';
 import '../../core/security/auth_service.dart';
 import '../../core/security/idle_lock_service.dart';
 import '../../core/security/key_manager.dart';
+import '../../core/sync/sync_coordinator.dart';
 import '../../core/sync/sync_engine.dart';
 import '../../core/triage/triage_engine.dart';
 
@@ -22,8 +25,9 @@ class DatabaseKeyNotifier extends Notifier<String?> {
   void lock() => state = null;
 }
 
-final databaseKeyProvider =
-    NotifierProvider<DatabaseKeyNotifier, String?>(DatabaseKeyNotifier.new);
+final databaseKeyProvider = NotifierProvider<DatabaseKeyNotifier, String?>(
+  DatabaseKeyNotifier.new,
+);
 
 /// Keeps key derivation injectable for tests while production uses
 /// Android-Keystore-backed secure storage.
@@ -53,6 +57,17 @@ SyncEngine syncEngine(Ref ref) {
   final db = ref.watch(appDatabaseProvider);
   return SyncEngine(db);
 }
+
+/// Foreground queue monitor used by the top-bar sync button and queue screen.
+final syncCoordinatorProvider = Provider<SyncCoordinator?>((ref) {
+  // The dashboard can be rendered before PIN unlock (for example during the
+  // setup flow), so do not open a database or fall back to plaintext storage.
+  if (ref.watch(databaseKeyProvider) == null) return null;
+  final coordinator = SyncCoordinator(ref.watch(appDatabaseProvider));
+  unawaited(coordinator.start());
+  ref.onDispose(coordinator.dispose);
+  return coordinator;
+});
 
 /// PIN and biometric authentication service provider (kept alive).
 @Riverpod(keepAlive: true)

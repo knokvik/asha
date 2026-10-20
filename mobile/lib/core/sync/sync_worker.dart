@@ -12,8 +12,6 @@ import '../security/session_service.dart';
 import 'sync_engine.dart';
 import 'certificate_pinning.dart';
 
-/// Backoff schedule in seconds: 30s → 60s → 120s → 300s (max).
-const _kBackoffSchedule = [30, 60, 120, 300];
 const _kPeriodicSyncTask = 'asha-periodic-sync';
 const _kUrgentSyncTask = 'asha-urgent-sync';
 const _kApiBaseUrlKey = 'sync_api_base_url';
@@ -121,6 +119,23 @@ class SyncWorker {
   }) : _db = db,
        _syncEngine = SyncEngine(db);
 
+  /// Creates a foreground worker from the encrypted sync configuration.
+  /// Returns null when the app has no server configured yet, which is a valid
+  /// offline-only state during onboarding or local development.
+  static Future<SyncWorker?> fromStoredConfig({
+    required AppDatabase db,
+    FlutterSecureStorage? storage,
+  }) async {
+    final secureStorage = storage ?? const FlutterSecureStorage();
+    final apiBaseUrl = await secureStorage.read(key: _kApiBaseUrlKey);
+    if (apiBaseUrl == null || apiBaseUrl.trim().isEmpty) return null;
+    final pinsJson = await secureStorage.read(key: _kCertificatePinsKey);
+    final pins = pinsJson == null || pinsJson.isEmpty
+        ? const <String>[]
+        : List<String>.from(jsonDecode(pinsJson) as List);
+    return SyncWorker(db: db, apiBaseUrl: apiBaseUrl, certificatePins: pins);
+  }
+
   // ── WorkManager entry point ───────────────────────────────────────────────
 
   /// Invoked by the WorkManager callback dispatcher.
@@ -143,6 +158,7 @@ class SyncWorker {
     final accessToken = await _storage.read(key: 'access_token') ?? '';
     const appVersion = '1.0.0'; // TODO: read from package_info_plus
 
+    await _syncEngine.requeueRetryable();
     final batch = await _syncEngine.fetchPendingBatch(limit: 50);
     if (batch.isEmpty) return;
 
@@ -170,8 +186,52 @@ class SyncWorker {
               .timeout(const Duration(seconds: 30));
 
     if (response.statusCode == 200) {
-      final queueIds = batch.map((r) => r.id).toList();
-      await _syncEngine.markSynced(queueIds);
+      final queueIdsByRecordId = {
+        for (final record in batch) record.recordId: record.id,
+      };
+      try {
+        final payload = jsonDecode(response.body) as Map<String, dynamic>;
+        final syncedRecordIds = (payload['synced'] as List<dynamic>? ?? [])
+            .whereType<String>()
+            .toSet();
+        final conflicts = (payload['conflicts'] as List<dynamic>? ?? [])
+            .whereType<Map<String, dynamic>>()
+            .toList();
+        final conflictRecordIds = conflicts
+            .map((item) => item['record_id'])
+            .whereType<String>()
+            .toSet();
+
+        // A duplicate batch is intentionally returned with empty arrays by
+        // the server because it has already been applied. It is safe to
+        // acknowledge the local batch in that case.
+        final acknowledged =
+            syncedRecordIds.isEmpty && conflictRecordIds.isEmpty
+            ? queueIdsByRecordId.keys.toSet()
+            : syncedRecordIds;
+        await _syncEngine.markSynced(
+          acknowledged
+              .map((recordId) => queueIdsByRecordId[recordId])
+              .whereType<String>()
+              .toList(),
+        );
+        if (conflictRecordIds.isNotEmpty) {
+          await _syncEngine.markFailed(
+            conflictRecordIds
+                .map((recordId) => queueIdsByRecordId[recordId])
+                .whereType<String>()
+                .toList(),
+            'conflict: review required on server',
+          );
+        }
+      } catch (_) {
+        // A 200 with an unreadable response must not silently discard packets.
+        await _syncEngine.markFailed(
+          batch.map((record) => record.id).toList(),
+          'invalid_sync_response',
+        );
+        rethrow;
+      }
     } else if (response.statusCode == 401) {
       // Access tokens are short-lived. Refresh first; only a rejected refresh
       // token is proof of a remote revocation and triggers RemoteWipe.
@@ -212,8 +272,6 @@ class SyncWorker {
   }
 
   /// Compute the backoff duration for the given [attemptCount] (0-indexed).
-  static Duration backoffFor(int attemptCount) {
-    final idx = attemptCount.clamp(0, _kBackoffSchedule.length - 1);
-    return Duration(seconds: _kBackoffSchedule[idx]);
-  }
+  static Duration backoffFor(int attemptCount) =>
+      SyncBackoff.forAttempt(attemptCount);
 }

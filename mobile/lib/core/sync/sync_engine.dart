@@ -59,7 +59,9 @@ class SyncEngine {
     SyncPriority priority = SyncPriority.metadata,
   }) async {
     final now = DateTime.now().millisecondsSinceEpoch;
-    await _db.into(_db.syncQueue).insertOnConflictUpdate(
+    await _db
+        .into(_db.syncQueue)
+        .insertOnConflictUpdate(
           SyncQueueCompanion.insert(
             id: _uuid.v4(),
             targetTable: table,
@@ -109,6 +111,39 @@ class SyncEngine {
         .get();
   }
 
+  /// Requeues failed packets whose exponential backoff window has elapsed.
+  Future<int> requeueRetryable({DateTime? now}) async {
+    final currentMs = (now ?? DateTime.now()).millisecondsSinceEpoch;
+    final failed = await (_db.select(
+      _db.syncQueue,
+    )..where((t) => t.syncStatus.equals('failed'))).get();
+    var requeued = 0;
+    for (final record in failed) {
+      final lastAttempt = record.lastAttemptAt;
+      final wait = SyncBackoff.forAttempt(record.attemptCount).inMilliseconds;
+      if (lastAttempt == null || currentMs - lastAttempt >= wait) {
+        await (_db.update(
+          _db.syncQueue,
+        )..where((t) => t.id.equals(record.id))).write(
+          const SyncQueueCompanion(
+            syncStatus: Value('pending'),
+            errorMessage: Value(null),
+          ),
+        );
+        requeued++;
+      }
+    }
+    return requeued;
+  }
+
+  /// Returns the newest queue entries for the in-app sync monitor.
+  Future<List<SyncQueueData>> fetchQueue({int limit = 100}) {
+    return (_db.select(_db.syncQueue)
+          ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
+          ..limit(limit))
+        .get();
+  }
+
   /// Build a gzip-compressed JSON payload from a batch of sync queue records.
   ///
   /// Returns the compressed bytes ready for `POST /api/v1/sync/push`.
@@ -151,20 +186,24 @@ class SyncEngine {
 
   /// Mark records as synced after a successful push.
   Future<void> markSynced(List<String> recordIds) async {
-    await (_db.update(_db.syncQueue)
-          ..where((t) => t.id.isIn(recordIds)))
-        .write(const SyncQueueCompanion(syncStatus: Value('synced')));
+    await (_db.update(_db.syncQueue)..where((t) => t.id.isIn(recordIds))).write(
+      const SyncQueueCompanion(syncStatus: Value('synced')),
+    );
   }
 
   /// Mark records as failed and increment attempt count.
   Future<void> markFailed(List<String> queueIds, String errorMessage) async {
     final now = DateTime.now().millisecondsSinceEpoch;
     for (final qid in queueIds) {
+      final record = await (_db.select(
+        _db.syncQueue,
+      )..where((t) => t.id.equals(qid))).getSingleOrNull();
+      if (record == null) continue;
       await (_db.update(_db.syncQueue)..where((t) => t.id.equals(qid))).write(
         SyncQueueCompanion(
           syncStatus: const Value('failed'),
           lastAttemptAt: Value(now),
-          attemptCount: const Value(1), // incremented in raw SQL if possible
+          attemptCount: Value(record.attemptCount + 1),
           errorMessage: Value(errorMessage),
         ),
       );
@@ -173,8 +212,20 @@ class SyncEngine {
 
   /// Delete all synced entries (housekeeping).
   Future<void> purgeSynced() async {
-    await (_db.delete(_db.syncQueue)
-          ..where((t) => t.syncStatus.equals('synced')))
-        .go();
+    await (_db.delete(
+      _db.syncQueue,
+    )..where((t) => t.syncStatus.equals('synced'))).go();
+  }
+}
+
+/// Shared retry schedule used by both foreground and WorkManager sync.
+class SyncBackoff {
+  static const _seconds = [30, 60, 120, 300];
+
+  const SyncBackoff._();
+
+  static Duration forAttempt(int attemptCount) {
+    final index = attemptCount.clamp(0, _seconds.length - 1);
+    return Duration(seconds: _seconds[index]);
   }
 }

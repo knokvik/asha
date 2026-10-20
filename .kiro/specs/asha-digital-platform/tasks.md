@@ -103,7 +103,7 @@ Language choices from the design document:
     - Return compressed delta with updated watermarks and `has_more` flag
     - _Requirements: 31.1_
 
-  - [-] 2.6 Implement Flutter sync engine with priority queue and WorkManager
+  - [x] 2.6 Implement Flutter sync engine with priority queue and WorkManager
     - Create `lib/core/sync/sync_engine.dart`: enqueue records into `sync_queue` table on every write with priority tags (P1–P4)
     - Create `lib/core/sync/sync_worker.dart`: WorkManager Dart entry point; drain top-N pending queue entries ordered by `(priority ASC, created_at ASC)`; build gzip delta payload; POST to `/sync/push`; update `sync_status` per record
     - Implement exponential backoff: 30 s → 60 s → 120 s → 300 s max; schedule periodic sync every 15 min and expedited one-shot for P1 records
