@@ -270,6 +270,7 @@ Language choices from the design document:
     - On explicit form submit, call `triageEngine.evaluate()`; guarantee < 1 s on 2 GB RAM Android 9 (benchmark in CI)
     - On RED flag, auto-open referral workflow (Task 7)
     - Speak triage result via `TtsService` (colour + primary reason + action)
+    - Capture optional triage image and voice evidence; gzip-compress and store them in the encrypted sync outbox, then persist the packet and attachments on the backend
     - _Requirements: 8.1, 8.5, 8.6, 46.1, 46.2_
 
   - [x] 6.5 Write unit tests for triage determinism, ML monotonicity, and missing-input escalation

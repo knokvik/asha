@@ -43,6 +43,7 @@ from models.db.models import (
     StockTransaction,
     SyncQueue,
     TriageResult,
+    TriageTicket,
     VisitSchedule,
 )
 from models.schemas.schemas import ConflictItem, SyncPushRequest, SyncPushResponse, SyncRecord
@@ -55,6 +56,7 @@ _TABLE_MAP: dict[str, type] = {
     "clinical_encounters": ClinicalEncounter,
     "clinical_observations": ClinicalObservation,
     "triage_results": TriageResult,
+    "triage_tickets": TriageTicket,
     "referral_records": ReferralRecord,
     "visit_schedules": VisitSchedule,
     "incentive_events": IncentiveEvent,

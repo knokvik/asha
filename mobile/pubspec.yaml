@@ -50,6 +50,7 @@ dependencies:
 
   # QR code
   qr_flutter: ^4.1.0
+  image_picker: ^1.2.1
 
   # BLE
   flutter_reactive_ble: ^5.3.0

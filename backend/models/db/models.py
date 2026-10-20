@@ -234,6 +234,31 @@ class TriageResult(Base):
     encounter: Mapped[ClinicalEncounter] = relationship("ClinicalEncounter", back_populates="triage_result")
 
 
+class TriageTicket(Base):
+    """Offline triage packet, including optional compressed evidence."""
+
+    __tablename__ = "triage_tickets"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    name: Mapped[str | None] = mapped_column(String(255))
+    age_months: Mapped[int | None] = mapped_column(Integer)
+    location: Mapped[str | None] = mapped_column(String(255))
+    additional_details: Mapped[str | None] = mapped_column(Text)
+    ward_id: Mapped[str | None] = mapped_column(String(32))
+    flag: Mapped[str | None] = mapped_column(String(16))
+    sms: Mapped[str | None] = mapped_column(Text)
+    modules_json: Mapped[str] = mapped_column(Text, default="[]")
+    worker_modules_json: Mapped[str] = mapped_column(Text, default="[]")
+    attachments_json: Mapped[str] = mapped_column(Text, default="[]")
+    created_at: Mapped[int | None] = mapped_column(BigInteger)
+    updated_at: Mapped[int | None] = mapped_column(BigInteger)
+    sync_status: Mapped[str] = mapped_column(String(20), default="synced")
+    worker_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"))
+    server_received_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    block_code: Mapped[str | None] = mapped_column(String(10))
+    server_seq: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+
 class ReferralRecord(Base):
     __tablename__ = "referral_records"
 

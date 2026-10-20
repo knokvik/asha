@@ -144,6 +144,31 @@ class SyncEngine {
         .get();
   }
 
+  /// Updates an unsent packet without creating a second queue entry. This is
+  /// used when a triage worker adds an image or voice note after the clinical
+  /// decision has already been created but before it is sent.
+  Future<void> updatePendingPayload({
+    required String table,
+    required String recordId,
+    required Map<String, dynamic> payload,
+  }) async {
+    final row =
+        await (_db.select(_db.syncQueue)
+              ..where(
+                (t) =>
+                    t.targetTable.equals(table) &
+                    t.recordId.equals(recordId) &
+                    t.syncStatus.isNotIn(const ['synced']),
+              )
+              ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
+              ..limit(1))
+            .getSingleOrNull();
+    if (row == null) return;
+    await (_db.update(_db.syncQueue)..where((t) => t.id.equals(row.id))).write(
+      SyncQueueCompanion(payloadJson: Value(jsonEncode(payload))),
+    );
+  }
+
   /// Build a gzip-compressed JSON payload from a batch of sync queue records.
   ///
   /// Returns the compressed bytes ready for `POST /api/v1/sync/push`.

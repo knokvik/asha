@@ -91,6 +91,7 @@ export function RootLayout() {
   const [offlineMode, setOfflineMode] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [clinicalToolsOpen, setClinicalToolsOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -226,7 +227,54 @@ export function RootLayout() {
         {/* 4. Navigation Menu */}
         <div className={`flex-1 overflow-y-auto py-1 space-y-0.5 ${sidebarCollapsed ? 'px-0' : 'px-3'}`}>
           <nav className="space-y-1">
-            {NAV_ITEMS.map((item) => {
+            <button
+              type="button"
+              onClick={() => setClinicalToolsOpen((open) => !open)}
+              title={sidebarCollapsed ? 'Clinical tools' : undefined}
+              aria-expanded={clinicalToolsOpen}
+              className={`flex items-center rounded-xl text-xs font-semibold transition-all relative w-full cursor-pointer ${
+                sidebarCollapsed ? 'w-10 h-10 mx-auto justify-center' : 'justify-between px-3 py-2'
+              } text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#232328] hover:text-slate-900 dark:hover:text-white`}
+            >
+              <span className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'space-x-3 truncate'}`}>
+                <Activity className="h-4.5 w-4.5 shrink-0 text-rose-500" />
+                {!sidebarCollapsed && <span className="truncate">Clinical tools</span>}
+              </span>
+              {!sidebarCollapsed && (
+                <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${clinicalToolsOpen ? 'rotate-180' : ''}`} />
+              )}
+            </button>
+
+            {clinicalToolsOpen && (
+              <div className={`${sidebarCollapsed ? 'mt-1' : 'ml-2 mt-1 pl-2 border-l border-slate-200 dark:border-slate-700'} space-y-1`}>
+                {NAV_ITEMS.filter((item) => ['/phc', '/queue', '/resources'].includes(item.path)).map((item) => {
+                  const Icon = item.icon;
+                  const isActive = location.pathname.startsWith(item.path);
+                  return (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      title={sidebarCollapsed ? item.label : undefined}
+                      className={`flex items-center rounded-xl text-xs font-semibold transition-all relative ${
+                        sidebarCollapsed ? 'w-10 h-10 mx-auto justify-center' : 'justify-between px-3 py-2'
+                      } ${
+                        isActive
+                          ? 'bg-[#0C5A3E] text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#232328] hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <span className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'space-x-3 truncate'}`}>
+                        <Icon className={`h-4.5 w-4.5 shrink-0 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
+                        {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+                      </span>
+                      {item.badge && !sidebarCollapsed && <span className="h-4.5 min-w-4.5 px-1 rounded-full text-[10px] font-bold flex items-center justify-center bg-[#DC2626] text-white">{item.badge}</span>}
+                    </NavLink>
+                  );
+                })}
+              </div>
+            )}
+
+            {NAV_ITEMS.filter((item) => !['/phc', '/queue', '/resources'].includes(item.path)).map((item) => {
               const Icon = item.icon;
               const isActive =
                 item.path === '/dashboard'
@@ -268,6 +316,7 @@ export function RootLayout() {
                 </NavLink>
               );
             })}
+
           </nav>
 
           {/* Divider & Utilities */}

@@ -51,7 +51,9 @@ class SessionService {
 
   Future<SessionRefreshResult> refreshAccessToken() async {
     final refreshToken = await _storage.read(key: _refreshTokenKey);
-    final deviceId = await _storage.read(key: _deviceIdKey);
+    final deviceId =
+        await _storage.read(key: _deviceIdKey) ??
+        await _storage.read(key: 'asha_device_id_v1');
     if (refreshToken == null ||
         refreshToken.isEmpty ||
         deviceId == null ||

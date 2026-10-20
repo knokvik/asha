@@ -254,6 +254,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   var _week = 12;
   var _showMyFlags = true;
   var _routeMode = false;
+  var _showLiveLocation = false;
   var _householdScope = _HouseholdScope.due;
   var _facilityCategory = 'all';
   LatLon? _pointingTarget;
@@ -343,7 +344,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                 if (_layer != _MapLayer.radar &&
                     widget.stateOutlines.isNotEmpty)
                   PolygonLayer(polygons: _statePolygons()),
-                if (_dayRoute.length > 1)
+                if ((_showLiveLocation || _routeMode) && _dayRoute.length > 1)
                   PolylineLayer(
                     polylines: [
                       Polyline(
@@ -380,6 +381,8 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                   PolygonLayer(polygons: _radarPolygons()),
                 if (_layer == _MapLayer.radar)
                   CircleLayer(circles: _radarCircles()),
+                if (_showLiveLocation)
+                  CircleLayer(circles: _liveLocationCircles()),
                 MarkerLayer(markers: _markers()),
                 if (widget.useOsmBasemap)
                   const RichAttributionWidget(
@@ -421,9 +424,13 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
           Positioned(
             left: 12,
             top: widget.embedded ? 116 : 128,
-            child: _LocationChip(
-              wardId: widget.pack.index.resolve(_fix).wardId ?? 'district',
-              label: 'cached location',
+            child: GestureDetector(
+              onTap: _toggleLiveLocation,
+              child: _LocationChip(
+                wardId: widget.pack.index.resolve(_fix).wardId ?? 'district',
+                label: _showLiveLocation ? 'live location' : 'cached location',
+                active: _showLiveLocation,
+              ),
             ),
           ),
           if (_pointingTarget != null)
@@ -479,11 +486,11 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
     final route = todaysRoute(_fix, households).stops;
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.24,
-      minChildSize: 0.14,
-      maxChildSize: 0.62,
+      initialChildSize: 0.18,
+      minChildSize: 0.12,
+      maxChildSize: 0.44,
       snap: true,
-      snapSizes: const [0.14, 0.24, 0.62],
+      snapSizes: const [0.12, 0.18, 0.44],
       builder: (context, scrollController) {
         return Material(
           color: Colors.white,
@@ -566,6 +573,49 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                 ],
               ),
               const SizedBox(height: 10),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _MapLayerChip(
+                      icon: Icons.local_hospital_outlined,
+                      label: 'Facilities',
+                      selected: _layer == _MapLayer.facilities,
+                      onTap: () => _setMapLayer(_MapLayer.facilities),
+                    ),
+                    _MapLayerChip(
+                      icon: Icons.track_changes_outlined,
+                      label: 'Disease radar',
+                      selected: _layer == _MapLayer.radar,
+                      onTap: () => _setMapLayer(_MapLayer.radar),
+                    ),
+                    _MapLayerChip(
+                      icon: Icons.people_alt_outlined,
+                      label: 'People',
+                      selected: _layer == _MapLayer.households,
+                      onTap: () => _setMapLayer(_MapLayer.households),
+                    ),
+                    const SizedBox(width: 6),
+                    OutlinedButton.icon(
+                      onPressed: _toggleLiveLocation,
+                      icon: Icon(
+                        _showLiveLocation
+                            ? Icons.gps_fixed_rounded
+                            : Icons.my_location_rounded,
+                        size: 17,
+                      ),
+                      label: Text(
+                        _showLiveLocation ? 'Tracking' : 'Live location',
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        foregroundColor: const Color(0xFF2563EB),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
               Row(
                 children: [
                   const Text(
@@ -595,7 +645,14 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              for (final household in households.take(3)) ...[
+              for (final household
+                  in households
+                      .where(
+                        (household) => _householdScope == _HouseholdScope.due
+                            ? household.dueToday
+                            : !household.dueToday,
+                      )
+                      .take(3)) ...[
                 _MapHouseholdRow(
                   household: household,
                   onTap: () => _selectHouseholdFromSheet(household),
@@ -635,6 +692,25 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
     );
   }
 
+  void _setMapLayer(_MapLayer layer) {
+    setState(() {
+      _layer = layer;
+      _selected = null;
+      _selectedHousehold = null;
+      _selectedWard = null;
+    });
+  }
+
+  void _toggleLiveLocation() {
+    setState(() => _showLiveLocation = !_showLiveLocation);
+    if (_showLiveLocation) {
+      _mapController.move(
+        LatLng(_fix.latitude, _fix.longitude),
+        math.max(_mapController.camera.zoom, 13.5),
+      );
+    }
+  }
+
   void _changeZoom(double delta) {
     final camera = _mapController.camera;
     final next = (camera.zoom + delta).clamp(3.0, 18.0);
@@ -643,28 +719,19 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   }
 
   List<Marker> _markers() {
-    final markers = <Marker>[
-      Marker(
-        key: const Key('asha_fix'),
-        point: LatLng(_fix.latitude, _fix.longitude),
-        width: 72,
-        height: 36,
-        alignment: Alignment.topCenter,
-        child: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _NameChip('You'),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: Color(0xFF1D4E89),
-                shape: BoxShape.circle,
-              ),
-              child: SizedBox(width: 14, height: 14),
-            ),
-          ],
+    final markers = <Marker>[];
+    if (_showLiveLocation) {
+      markers.add(
+        Marker(
+          key: const Key('asha_live_location'),
+          point: LatLng(_fix.latitude, _fix.longitude),
+          width: 76,
+          height: 58,
+          alignment: Alignment.center,
+          child: const _LiveLocationMarker(),
         ),
-      ),
-    ];
+      );
+    }
     if (_zoomLevel >= 13) {
       for (final label in widget.labels) {
         markers.add(
@@ -821,6 +888,28 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
       }
     }
     return markers;
+  }
+
+  List<CircleMarker> _liveLocationCircles() {
+    final point = LatLng(_fix.latitude, _fix.longitude);
+    return [
+      CircleMarker(
+        point: point,
+        radius: 650,
+        useRadiusInMeter: true,
+        color: const Color(0x142563EB),
+        borderColor: const Color(0x552563EB),
+        borderStrokeWidth: 1.5,
+      ),
+      CircleMarker(
+        point: point,
+        radius: 90,
+        useRadiusInMeter: true,
+        color: const Color(0x223B82F6),
+        borderColor: const Color(0x993B82F6),
+        borderStrokeWidth: 2,
+      ),
+    ];
   }
 
   List<Marker> _householdClusterMarkers(List<HouseholdPin> pins) {
@@ -1366,21 +1455,6 @@ class _MapControls extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _layerChip(
-                    _MapLayer.facilities,
-                    Icons.local_hospital_outlined,
-                    'Facilities',
-                  ),
-                  _layerChip(
-                    _MapLayer.radar,
-                    Icons.track_changes_outlined,
-                    'Disease radar',
-                  ),
-                  _layerChip(
-                    _MapLayer.households,
-                    Icons.home_work_outlined,
-                    'Households',
-                  ),
                   IconButton(
                     key: const Key('facility_search_button'),
                     tooltip: 'Search facilities',
@@ -1496,15 +1570,30 @@ class _MapControls extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _layerChip(_MapLayer value, IconData icon, String label) {
+class _MapLayerChip extends StatelessWidget {
+  const _MapLayerChip({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(right: 6),
       child: ChoiceChip(
         avatar: Icon(icon, size: 16),
         label: Text(label),
-        selected: layer == value,
-        onSelected: (_) => onLayerChanged(value),
+        selected: selected,
+        onSelected: (_) => onTap(),
         visualDensity: VisualDensity.compact,
       ),
     );
@@ -1512,28 +1601,35 @@ class _MapControls extends StatelessWidget {
 }
 
 class _LocationChip extends StatelessWidget {
-  const _LocationChip({required this.wardId, required this.label});
+  const _LocationChip({
+    required this.wardId,
+    required this.label,
+    this.active = false,
+  });
 
   final String wardId;
   final String label;
+  final bool active;
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.95),
+        color: active
+            ? const Color(0xFFEFF6FF)
+            : Colors.white.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(16),
         boxShadow: const [BoxShadow(color: Color(0x16000000), blurRadius: 5)],
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.location_on_outlined,
               size: 15,
-              color: Color(0xFF2563EB),
+              color: active ? Color(0xFF2563EB) : Color(0xFF6B7280),
             ),
             const SizedBox(width: 4),
             Text(
@@ -1714,6 +1810,41 @@ class _OutbreakMarker extends StatelessWidget {
               decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LiveLocationMarker extends StatelessWidget {
+  const _LiveLocationMarker();
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.85, end: 1.12),
+      duration: const Duration(milliseconds: 1200),
+      curve: Curves.easeInOut,
+      onEnd: () {},
+      builder: (context, scale, child) => Transform.scale(
+        scale: scale,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const _NameChip('You · live'),
+            Container(
+              width: 18,
+              height: 18,
+              decoration: BoxDecoration(
+                color: const Color(0xFF2563EB),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 3),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x663B82F6), blurRadius: 10),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

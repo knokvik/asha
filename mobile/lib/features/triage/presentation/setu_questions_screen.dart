@@ -90,8 +90,12 @@ class _SetuQuestionsScreenState extends State<SetuQuestionsScreen> {
 
   Future<void> _loadRules() async {
     try {
-      final raw = await rootBundle.loadString('assets/triage/imci-mvp-1.0.0.json');
-      final ruleset = RuleSet.fromJson((jsonDecode(raw) as Map).cast<String, dynamic>());
+      final raw = await rootBundle.loadString(
+        'assets/triage/imci-mvp-1.0.0.json',
+      );
+      final ruleset = RuleSet.fromJson(
+        (jsonDecode(raw) as Map).cast<String, dynamic>(),
+      );
       final session = await AdaptiveSession.load();
       if (!mounted) return;
       final ward = session.resolve(session.loop.pack.sampleFix).wardId ?? 'W3';
@@ -103,7 +107,9 @@ class _SetuQuestionsScreenState extends State<SetuQuestionsScreen> {
       });
     } catch (error) {
       if (!mounted) return;
-      setState(() => _loadError = 'Could not load the triage questions. $error');
+      setState(
+        () => _loadError = 'Could not load the triage questions. $error',
+      );
     }
   }
 
@@ -128,7 +134,7 @@ class _SetuQuestionsScreenState extends State<SetuQuestionsScreen> {
         _showOutOfScope(months);
         return;
       }
-      final flow = session.loop.openAssessment(wardId: _wardId);
+      final flow = session.loop.openAssessment(wardId: _wardId, month: months);
       final visible = _visible(flow);
       setState(() {
         _ageMonths = months;
@@ -147,7 +153,9 @@ class _SetuQuestionsScreenState extends State<SetuQuestionsScreen> {
       _showOutOfScope(months);
       return;
     }
-    final questions = SetuQuestionCatalogue.forPaths(FieldPaths.redRequiredFields);
+    final questions = SetuQuestionCatalogue.forPaths(
+      FieldPaths.redRequiredFields,
+    );
     setState(() {
       _ageMonths = months;
       _questions = questions;
@@ -173,11 +181,20 @@ class _SetuQuestionsScreenState extends State<SetuQuestionsScreen> {
       kind: kind,
       options: [
         for (final option in question.options)
-          SetuQuestionOption(value: option.value, label: option.label, icon: Icons.circle_outlined),
+          SetuQuestionOption(
+            value: option.value,
+            label: option.label,
+            icon: Icons.circle_outlined,
+          ),
       ],
       numeric: bounds == null
           ? null
-          : SetuNumericSpec(unit: bounds.unit, min: bounds.min, max: bounds.max, decimals: bounds.decimals),
+          : SetuNumericSpec(
+              unit: bounds.unit,
+              min: bounds.min,
+              max: bounds.max,
+              decimals: bounds.decimals,
+            ),
     );
   }
 
@@ -185,11 +202,9 @@ class _SetuQuestionsScreenState extends State<SetuQuestionsScreen> {
     final ruleset = _ruleset;
     if (ruleset == null) return;
     final result = SetuCase(ageMonths: months).evaluate(ruleset);
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => _OutOfScopePage(result: result),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => _OutOfScopePage(result: result)));
   }
 
   void _answer(String path, SourcedValue? value) {
@@ -244,7 +259,8 @@ class _SetuQuestionsScreenState extends State<SetuQuestionsScreen> {
         return yes('symptoms.ear_pain') || yes('symptoms.ear_discharge');
       case 'core.zscore':
       case 'core.weight':
-        return yes('symptoms.visible_severe_wasting') || yes('symptoms.oedema_both_feet');
+        return yes('symptoms.visible_severe_wasting') ||
+            yes('symptoms.oedema_both_feet');
       case 'dengue.breeding':
         return false;
       default:
@@ -252,11 +268,16 @@ class _SetuQuestionsScreenState extends State<SetuQuestionsScreen> {
     }
   }
 
-  List<BankQuestion> _visible(FlowState flow) => [for (final question in flow.questions) if (_show(flow, question)) question];
+  List<BankQuestion> _visible(FlowState flow) => [
+    for (final question in flow.questions)
+      if (_show(flow, question)) question,
+  ];
 
   void _syncVisible(FlowState flow) {
     final visible = _visible(flow);
-    final next = visible.indexWhere((question) => !flow.answeredIds.contains(question.id));
+    final next = visible.indexWhere(
+      (question) => !flow.answeredIds.contains(question.id),
+    );
     if (next < 0) {
       setState(() => _questions = visible.map(_asSetu).toList(growable: false));
       _finish();
@@ -317,7 +338,10 @@ class _SetuQuestionsScreenState extends State<SetuQuestionsScreen> {
       return;
     }
     final code = 'CASE-${DateTime.now().millisecondsSinceEpoch % 100000}';
-    final note = SetuCase(ageMonths: age, fields: _fields).referral(result, caseCode: code);
+    final note = SetuCase(
+      ageMonths: age,
+      fields: _fields,
+    ).referral(result, caseCode: code);
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => SetuReferralQrScreen(note: note, result: result),
@@ -326,13 +350,16 @@ class _SetuQuestionsScreenState extends State<SetuQuestionsScreen> {
   }
 
   void _finishAdaptive(FlowState flow, AdaptiveSession session, int age) {
-    if (flow.answers['symptoms.convulsions'] != true && !flow.answers.containsKey('symptoms.convulsing_now')) {
+    if (flow.answers['symptoms.convulsions'] != true &&
+        !flow.answers.containsKey('symptoms.convulsing_now')) {
       flow.answers['symptoms.convulsing_now'] = false;
     }
     if (!flow.earlyStopped && !flow.dangerComplete) {
       final missing = [
         for (final question in flow.questions)
-          if (dangerFields.contains(question.inputField) && !flow.answers.containsKey(question.inputField)) question,
+          if (dangerFields.contains(question.inputField) &&
+              !flow.answers.containsKey(question.inputField))
+            question,
       ];
       if (missing.isNotEmpty && !_reaskedDanger) {
         setState(() {
@@ -349,7 +376,11 @@ class _SetuQuestionsScreenState extends State<SetuQuestionsScreen> {
       }
     }
     final code = 'CASE-${DateTime.now().millisecondsSinceEpoch % 100000}';
-    final input = flow.toAssessmentInput(patientId: code, ageMonths: age, sex: 'F');
+    final input = flow.toAssessmentInput(
+      patientId: code,
+      ageMonths: age,
+      sex: 'F',
+    );
     final score = session.model?.score(input, session.prior);
     final decision = session.loop.decide(input, score: score);
     final facility = session.loop.pack.facilityForWard(flow.wardId);
@@ -383,7 +414,8 @@ class _SetuQuestionsScreenState extends State<SetuQuestionsScreen> {
   }
 
   String _moduleLine() {
-    final active = _session?.loop.pack.activeModuleIds(_wardId) ?? const <String>[];
+    final active =
+        _session?.loop.pack.activeModuleIds(_wardId) ?? const <String>[];
     if (active.isEmpty) return 'Ward $_wardId · no outbreak module';
     return 'Ward $_wardId · ${active.join(', ')}';
   }
@@ -392,8 +424,7 @@ class _SetuQuestionsScreenState extends State<SetuQuestionsScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => const LanguageBridgeScreen(
-          notice:
-              'Use this to hear the family, or to ask this question in their language. Come back and tap Yes or No yourself. The voice model does not answer the question.',
+          notice: 'Use this to hear the family, or to ask this question in their language. Come back and tap Yes or No yourself. The voice model does not answer the question.',
         ),
       ),
     );
@@ -402,7 +433,10 @@ class _SetuQuestionsScreenState extends State<SetuQuestionsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loadError != null) {
-      return Scaffold(appBar: AppBar(title: const Text('Triage questions')), body: Center(child: Text(_loadError!)));
+      return Scaffold(
+        appBar: AppBar(title: const Text('Triage questions')),
+        body: Center(child: Text(_loadError!)),
+      );
     }
     if (!_booted || _ruleset == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -443,10 +477,16 @@ class _SetuQuestionsScreenState extends State<SetuQuestionsScreen> {
             DropdownButtonFormField<String>(
               key: const Key('ward_picker'),
               initialValue: _wardId,
-              decoration: const InputDecoration(labelText: 'Ward', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: 'Ward',
+                border: OutlineInputBorder(),
+              ),
               items: [
                 for (final ward in _session!.loop.pack.wards)
-                  DropdownMenuItem(value: ward.wardId, child: Text(ward.wardId)),
+                  DropdownMenuItem(
+                    value: ward.wardId,
+                    child: Text(ward.wardId),
+                  ),
               ],
               onChanged: (value) {
                 if (value == null) return;
@@ -500,7 +540,10 @@ class _SetuQuestionsScreenState extends State<SetuQuestionsScreen> {
                 Text(
                   'Ward ${_flow!.wardId}',
                   key: const Key('question_ward'),
-                  style: const TextStyle(fontSize: 13, color: AshaColors.textSecondary),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AshaColors.textSecondary,
+                  ),
                 ),
               const SizedBox(height: 10),
               Text(
@@ -533,8 +576,13 @@ class _SetuQuestionsScreenState extends State<SetuQuestionsScreen> {
                   const Spacer(),
                   FilledButton.tonalIcon(
                     key: const Key('speak_question'),
-                    onPressed: _speaking ? null : () => _speakQuestion(question),
-                    icon: Icon(_speaking ? Icons.hearing : Icons.volume_up_rounded, size: 18),
+                    onPressed: _speaking
+                        ? null
+                        : () => _speakQuestion(question),
+                    icon: Icon(
+                      _speaking ? Icons.hearing : Icons.volume_up_rounded,
+                      size: 18,
+                    ),
                     label: const Text('Speak'),
                   ),
                 ],
@@ -544,7 +592,12 @@ class _SetuQuestionsScreenState extends State<SetuQuestionsScreen> {
                 Text(
                   _spokenLine!,
                   key: const Key('spoken_question'),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, height: 1.35, color: AshaColors.primaryDark),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    height: 1.35,
+                    color: AshaColors.primaryDark,
+                  ),
                 ),
               ],
               const SizedBox(height: 6),
@@ -556,7 +609,8 @@ class _SetuQuestionsScreenState extends State<SetuQuestionsScreen> {
               Expanded(
                 child: _AnswerArea(
                   question: question,
-                  safeYes: _flow?.questionById(question.path)?.invertYes ?? false,
+                  safeYes:
+                      _flow?.questionById(question.path)?.invertYes ?? false,
                   onAnswer: (value) => _answer(question.path, value),
                 ),
               ),
@@ -610,7 +664,9 @@ class _OutOfScopePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final reason = result.firedRules.isEmpty ? 'Outside the Setu age range.' : result.firedRules.first.reasonText;
+    final reason = result.firedRules.isEmpty
+        ? 'Outside the Setu age range.'
+        : result.firedRules.first.reasonText;
     return Scaffold(
       appBar: AppBar(title: const Text('Outside these questions')),
       body: Padding(
@@ -625,7 +681,11 @@ class _OutOfScopePage extends StatelessWidget {
 }
 
 class _AnswerArea extends StatefulWidget {
-  const _AnswerArea({required this.question, required this.onAnswer, this.safeYes = false});
+  const _AnswerArea({
+    required this.question,
+    required this.onAnswer,
+    this.safeYes = false,
+  });
 
   final SetuQuestion question;
   final void Function(SourcedValue? value) onAnswer;
@@ -667,90 +727,100 @@ class _AnswerAreaState extends State<_AnswerArea> {
   Widget build(BuildContext context) {
     return switch (widget.question.kind) {
       SetuAnswerKind.yesNo => ListView(
-          children: [
-            if (widget.safeYes) ...[
-              _AnswerButton(
-                key: const Key('answer_yes'),
-                label: 'Yes',
-                icon: Icons.check_circle_outline_rounded,
-                color: AshaColors.primary,
-                onTap: () => widget.onAnswer(const SourcedValue.guided('YES')),
-              ),
-              const SizedBox(height: 8),
-              _AnswerButton(
-                key: const Key('answer_no'),
-                label: 'No',
-                icon: Icons.cancel_outlined,
-                color: AshaColors.alertHighRisk,
-                onTap: () => widget.onAnswer(const SourcedValue.guided('NO')),
-              ),
-            ] else ...[
-              _AnswerButton(
-                key: const Key('answer_no'),
-                label: 'No',
-                icon: Icons.cancel_outlined,
-                color: AshaColors.primary,
-                onTap: () => widget.onAnswer(const SourcedValue.guided('NO')),
-              ),
-              const SizedBox(height: 8),
-              _AnswerButton(
-                key: const Key('answer_yes'),
-                label: 'Yes',
-                icon: Icons.check_circle_outline_rounded,
-                color: AshaColors.alertHighRisk,
-                onTap: () => widget.onAnswer(const SourcedValue.guided('YES')),
-              ),
-            ],
+        children: [
+          if (widget.safeYes) ...[
+            _AnswerButton(
+              key: const Key('answer_yes'),
+              label: 'Yes',
+              icon: Icons.check_circle_outline_rounded,
+              color: AshaColors.primary,
+              onTap: () => widget.onAnswer(const SourcedValue.guided('YES')),
+            ),
             const SizedBox(height: 8),
             _AnswerButton(
-              key: const Key('answer_unknown'),
-              label: 'Unknown',
-              icon: Icons.help_outline_rounded,
-              color: AshaColors.warningPending,
-              onTap: () => widget.onAnswer(null),
+              key: const Key('answer_no'),
+              label: 'No',
+              icon: Icons.cancel_outlined,
+              color: AshaColors.alertHighRisk,
+              onTap: () => widget.onAnswer(const SourcedValue.guided('NO')),
             ),
-          ],
-        ),
-      SetuAnswerKind.choice => ListView(
-          children: [
-            for (final option in widget.question.options) ...[
-              _AnswerButton(
-                label: option.label,
-                icon: option.icon,
-                color: AshaColors.primary,
-                onTap: () => widget.onAnswer(SourcedValue.confirmed(option.value)),
-              ),
-              const SizedBox(height: 12),
-            ],
+          ] else ...[
             _AnswerButton(
-              label: 'Unknown',
-              icon: Icons.help_outline_rounded,
-              color: AshaColors.warningPending,
-              onTap: () => widget.onAnswer(null),
+              key: const Key('answer_no'),
+              label: 'No',
+              icon: Icons.cancel_outlined,
+              color: AshaColors.primary,
+              onTap: () => widget.onAnswer(const SourcedValue.guided('NO')),
+            ),
+            const SizedBox(height: 8),
+            _AnswerButton(
+              key: const Key('answer_yes'),
+              label: 'Yes',
+              icon: Icons.check_circle_outline_rounded,
+              color: AshaColors.alertHighRisk,
+              onTap: () => widget.onAnswer(const SourcedValue.guided('YES')),
             ),
           ],
-        ),
-      SetuAnswerKind.numeric => ListView(
-          children: [
-            TextField(
-              key: const Key('setu_numeric'),
-              controller: _controller,
-              keyboardType: TextInputType.numberWithOptions(decimal: widget.question.numeric!.decimals > 0),
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
-              decoration: InputDecoration(suffixText: widget.question.numeric!.unit, errorText: _error),
-              onChanged: (_) => setState(() => _error = null),
+          const SizedBox(height: 8),
+          _AnswerButton(
+            key: const Key('answer_unknown'),
+            label: 'Unknown',
+            icon: Icons.help_outline_rounded,
+            color: AshaColors.warningPending,
+            onTap: () => widget.onAnswer(null),
+          ),
+        ],
+      ),
+      SetuAnswerKind.choice => ListView(
+        children: [
+          for (final option in widget.question.options) ...[
+            _AnswerButton(
+              label: option.label,
+              icon: option.icon,
+              color: AshaColors.primary,
+              onTap: () =>
+                  widget.onAnswer(SourcedValue.confirmed(option.value)),
             ),
             const SizedBox(height: 12),
-            FilledButton(onPressed: _submitNumeric, child: const Text('Save measurement')),
-            if (widget.question.allowUnobtainable) ...[
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: () => widget.onAnswer(const SourcedValue.notAvailable()),
-                child: const Text('Cannot check'),
-              ),
-            ],
           ],
-        ),
+          _AnswerButton(
+            label: 'Unknown',
+            icon: Icons.help_outline_rounded,
+            color: AshaColors.warningPending,
+            onTap: () => widget.onAnswer(null),
+          ),
+        ],
+      ),
+      SetuAnswerKind.numeric => ListView(
+        children: [
+          TextField(
+            key: const Key('setu_numeric'),
+            controller: _controller,
+            keyboardType: TextInputType.numberWithOptions(
+              decimal: widget.question.numeric!.decimals > 0,
+            ),
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+            decoration: InputDecoration(
+              suffixText: widget.question.numeric!.unit,
+              errorText: _error,
+            ),
+            onChanged: (_) => setState(() => _error = null),
+          ),
+          const SizedBox(height: 12),
+          FilledButton(
+            onPressed: _submitNumeric,
+            child: const Text('Save measurement'),
+          ),
+          if (widget.question.allowUnobtainable) ...[
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: () =>
+                  widget.onAnswer(const SourcedValue.notAvailable()),
+              child: const Text('Cannot check'),
+            ),
+          ],
+        ],
+      ),
     };
   }
 }
@@ -779,7 +849,9 @@ class _AnswerButton extends StatelessWidget {
         style: FilledButton.styleFrom(
           backgroundColor: color,
           foregroundColor: Colors.white,
-          shape: const RoundedRectangleBorder(borderRadius: AshaShapes.buttonRadius),
+          shape: const RoundedRectangleBorder(
+            borderRadius: AshaShapes.buttonRadius,
+          ),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
         icon: Icon(icon, size: 22),

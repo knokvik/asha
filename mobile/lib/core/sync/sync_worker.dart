@@ -154,13 +154,28 @@ class SyncWorker {
 
   Future<void> _drainQueue({bool retriedAfterRefresh = false}) async {
     final workerId = await _storage.read(key: 'worker_id') ?? '';
-    final deviceId = await _storage.read(key: 'device_id') ?? '';
+    // The local auth flow historically used the namespaced device key while
+    // the network session used the shorter key. Accept both so an existing
+    // installed app keeps the same device identity after upgrading.
+    final deviceId =
+        await _storage.read(key: 'device_id') ??
+        await _storage.read(key: 'asha_device_id_v1') ??
+        '';
     final accessToken = await _storage.read(key: 'access_token') ?? '';
     const appVersion = '1.0.0'; // TODO: read from package_info_plus
 
     await _syncEngine.requeueRetryable();
     final batch = await _syncEngine.fetchPendingBatch(limit: 50);
     if (batch.isEmpty) return;
+    if (accessToken.isEmpty) {
+      await _syncEngine.markFailed(
+        batch.map((record) => record.id).toList(),
+        'missing_server_session',
+      );
+      throw StateError(
+        'Sync needs an online server session. Sign in once while connected, then retry.',
+      );
+    }
 
     final batchId = _uuid.v4();
     final gzipBody = await _syncEngine.buildGzipPayload(

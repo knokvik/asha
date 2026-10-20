@@ -88,11 +88,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           _buildMetricStrip(context),
           const SizedBox(height: 16),
 
-          // 4. Revenue and reports shortcuts
-          _buildRevenueReportsActions(context),
-          const SizedBox(height: 14),
-
-          // 5. Quick actions Section: 2x2 Grid
+          // 4. Quick actions Section: first four actions
           Text(
             shellText(_lang, 'quick'),
             style: TextStyle(
@@ -104,6 +100,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
           const SizedBox(height: 12),
           _buildQuickActionsGrid(context),
+          const SizedBox(height: 10),
+          // Actions 5 and 6: Revenue and Reports
+          _buildRevenueReportsActions(context),
           const SizedBox(height: 24),
         ],
       ),

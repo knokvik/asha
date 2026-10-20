@@ -24,7 +24,7 @@ class MainShell extends ConsumerWidget {
     final index = ref.watch(shellTabProvider);
     final lang = ref.watch(languageProvider).languageCode;
     final sync = ref.watch(syncCoordinatorProvider);
-    return Scaffold(
+    final shell = Scaffold(
       backgroundColor: Colors.white,
       drawer: const AshaNavigationDrawer(),
       bottomNavigationBar: AshaBottomNav(
@@ -53,7 +53,66 @@ class MainShell extends ConsumerWidget {
         ),
       ),
     );
+    if (sync == null) return shell;
+    return _SyncToastListener(sync: sync, child: shell);
   }
+}
+
+class _SyncToastListener extends StatefulWidget {
+  const _SyncToastListener({required this.sync, required this.child});
+
+  final SyncCoordinator sync;
+  final Widget child;
+
+  @override
+  State<_SyncToastListener> createState() => _SyncToastListenerState();
+}
+
+class _SyncToastListenerState extends State<_SyncToastListener> {
+  DateTime? _shownSync;
+
+  @override
+  void initState() {
+    super.initState();
+    _shownSync = widget.sync.snapshot.lastSyncedAt;
+    widget.sync.addListener(_onSyncChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant _SyncToastListener oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.sync != widget.sync) {
+      oldWidget.sync.removeListener(_onSyncChanged);
+      _shownSync = widget.sync.snapshot.lastSyncedAt;
+      widget.sync.addListener(_onSyncChanged);
+    }
+  }
+
+  void _onSyncChanged() {
+    final snapshot = widget.sync.snapshot;
+    final syncedAt = snapshot.lastSyncedAt;
+    if (!mounted || syncedAt == null || syncedAt == _shownSync) return;
+    _shownSync = syncedAt;
+    if (snapshot.state != SyncConnectionState.ready) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Synced to server'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+  }
+
+  @override
+  void dispose() {
+    widget.sync.removeListener(_onSyncChanged);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class _ShellHeader extends StatelessWidget {

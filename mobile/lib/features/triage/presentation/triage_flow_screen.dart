@@ -1,8 +1,15 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:record/record.dart';
 import 'package:triage/triage.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -33,6 +40,8 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   final _questionScrollController = ScrollController();
   final _questionKeys = <String, GlobalKey>{};
   final _tts = TtsService();
+  final _imagePicker = ImagePicker();
+  final _audioRecorder = AudioRecorder();
   AdaptiveSession? _session;
   FlowState? _flow;
   String _wardId = 'W3';
@@ -50,6 +59,11 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   List<(String, String)> _answers = const [];
   String? _error;
   String? _answerError;
+  XFile? _triageImage;
+  String? _triageAudioPath;
+  bool _recordingAttachment = false;
+  String? _attachmentMessage;
+  List<Map<String, dynamic>> _queuedAttachments = const [];
 
   static const _illnesses = <(String, String)>[
     ('dengue', 'Dengue-like'),
@@ -72,7 +86,197 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
     _details.dispose();
     _answerController.dispose();
     _questionScrollController.dispose();
+    _audioRecorder.dispose();
     super.dispose();
+  }
+
+  Future<void> _captureTriageImage() async {
+    try {
+      final image = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 72,
+      );
+      if (image == null || !mounted) return;
+      setState(() {
+        _triageImage = image;
+        _attachmentMessage = 'Image added and ready to compress.';
+      });
+      await _saveAttachmentsToQueue();
+    } catch (error) {
+      if (mounted) {
+        setState(() => _attachmentMessage = 'Could not capture image: $error');
+      }
+    }
+  }
+
+  Future<void> _toggleTriageAudio() async {
+    if (_recordingAttachment) {
+      final path = await _audioRecorder.stop();
+      if (!mounted) return;
+      setState(() {
+        _recordingAttachment = false;
+        _triageAudioPath = path;
+        _attachmentMessage = path == null
+            ? 'No voice note was captured.'
+            : 'Voice note added and ready to compress.';
+      });
+      await _saveAttachmentsToQueue();
+      return;
+    }
+
+    try {
+      if (!await _audioRecorder.hasPermission()) {
+        if (mounted) {
+          setState(
+            () => _attachmentMessage =
+                'Allow microphone access to record a voice note.',
+          );
+        }
+        return;
+      }
+      final directory = await getTemporaryDirectory();
+      final path =
+          '${directory.path}/triage_${_caseCode ?? DateTime.now().millisecondsSinceEpoch}.m4a';
+      await _audioRecorder.start(
+        const RecordConfig(
+          encoder: AudioEncoder.aacLc,
+          bitRate: 64000,
+          sampleRate: 16000,
+          numChannels: 1,
+        ),
+        path: path,
+      );
+      if (mounted) {
+        setState(() {
+          _recordingAttachment = true;
+          _attachmentMessage = 'Recording voice note… tap again to stop.';
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() => _attachmentMessage = 'Could not record audio: $error');
+      }
+    }
+  }
+
+  Future<Map<String, dynamic>> _compressedAttachment(
+    String path, {
+    required String type,
+    required String mimeType,
+  }) async {
+    final raw = await File(path).readAsBytes();
+    if (raw.length > 6 * 1024 * 1024) {
+      throw StateError(
+        'Attachment is larger than 6 MB. Please capture a shorter file.',
+      );
+    }
+    final compressed = GZipEncoder().encode(raw) ?? const <int>[];
+    return {
+      'type': type,
+      'mime_type': mimeType,
+      'encoding': 'gzip+base64',
+      'original_bytes': raw.length,
+      'compressed_bytes': compressed.length,
+      'data_base64': base64Encode(compressed),
+    };
+  }
+
+  Future<List<Map<String, dynamic>>> _compressedTriageAttachments() async {
+    final attachments = <Map<String, dynamic>>[..._queuedAttachments];
+    final image = _triageImage;
+    if (image != null && !attachments.any((item) => item['type'] == 'image')) {
+      attachments.add(
+        await _compressedAttachment(
+          image.path,
+          type: 'image',
+          mimeType: 'image/jpeg',
+        ),
+      );
+    }
+    final audioPath = _triageAudioPath;
+    if (audioPath != null &&
+        !attachments.any((item) => item['type'] == 'audio') &&
+        await File(audioPath).exists()) {
+      attachments.add(
+        await _compressedAttachment(
+          audioPath,
+          type: 'audio',
+          mimeType: 'audio/mp4',
+        ),
+      );
+    }
+    return attachments;
+  }
+
+  Future<void> _saveAttachmentsToQueue() async {
+    final caseCode = _caseCode;
+    if (caseCode == null) return;
+    try {
+      final attachments = await _compressedTriageAttachments();
+      final basePayload = {
+        'name': _name.text.trim(),
+        'age_months': _ageMonths,
+        'location': _location.text.trim(),
+        'additional_details': _details.text.trim(),
+        'ward_id': _flow?.wardId,
+        'flag': _decision?.flag.wireName,
+        'sms': _note?.toSms(),
+        'modules_json': jsonEncode(_flow?.activeModules ?? const <String>[]),
+        'worker_modules_json': jsonEncode(_chosen.toList()),
+        'attachments_json': jsonEncode(attachments),
+      };
+      await ref
+          .read(syncEngineProvider)
+          .updatePendingPayload(
+            table: 'triage_tickets',
+            recordId: caseCode,
+            payload: basePayload,
+          );
+      _queuedAttachments = attachments;
+      if (_triageImage != null) {
+        await _deleteTemporaryFile(_triageImage!.path);
+      }
+      if (_triageAudioPath != null) {
+        await _deleteTemporaryFile(_triageAudioPath!);
+      }
+      if (mounted) {
+        setState(
+          () => _attachmentMessage = attachments.isEmpty
+              ? 'No attachments selected.'
+              : '${attachments.length} attachment(s) compressed and queued.',
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(
+          () => _attachmentMessage = 'Attachment could not be prepared: $error',
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteTemporaryFile(String path) async {
+    try {
+      final file = File(path);
+      if (await file.exists()) await file.delete();
+    } catch (_) {
+      // The compressed copy is already in the encrypted queue; cleanup is
+      // best effort because camera providers may own their cache file.
+    }
+  }
+
+  Future<void> _sendTriagePacket() async {
+    if (_recordingAttachment) {
+      await _toggleTriageAudio();
+    }
+    await _saveAttachmentsToQueue();
+    await ref.read(syncCoordinatorProvider)?.syncNow();
+    if (!mounted) return;
+    setState(
+      () => _queueNote = 'Triage ticket and compressed attachments are queued for server sync.',
+    );
   }
 
   Future<void> _boot() async {
@@ -282,7 +486,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
     );
     session.loop.enqueue(input, decision, note);
     var queueNote =
-        'Ticket is in the sync queue. It sends when the network is up, and retries on a fixed interval.';
+        'Ticket is ready. Add an image or voice note, then send it when the network is available.';
     try {
       await ref
           .read(syncEngineProvider)
@@ -298,17 +502,17 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
               'ward_id': flow.wardId,
               'flag': decision.flag.wireName,
               'sms': note.toSms(),
-              'modules': flow.activeModules,
-              'worker_modules': _chosen.toList(),
+              'modules_json': jsonEncode(flow.activeModules),
+              'worker_modules_json': jsonEncode(_chosen.toList()),
+              'attachments_json': '[]',
             },
             priority: decision.flag == TriageFlag.red
                 ? SyncPriority.critical
                 : SyncPriority.metadata,
           );
-      await ref.read(syncCoordinatorProvider)?.syncNow();
     } catch (error) {
       queueNote =
-          'QR is ready. The phone queue opens after the PIN session: $error';
+          'QR is ready, but the phone queue could not be prepared: $error';
     }
     final answers = <(String, String)>[];
     for (final question in flow.questions) {
@@ -1116,6 +1320,15 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
           ),
         ),
         const SizedBox(height: 14),
+        _TriageAttachmentPanel(
+          imageAdded: _triageImage != null,
+          audioAdded: _triageAudioPath != null,
+          recording: _recordingAttachment,
+          message: _attachmentMessage,
+          onCaptureImage: _captureTriageImage,
+          onToggleAudio: _toggleTriageAudio,
+        ),
+        const SizedBox(height: 14),
         OutlinedButton.icon(
           key: const Key('triage_emergency_call_button'),
           onPressed: _callEmergencyNumber,
@@ -1131,6 +1344,13 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
           ),
         ),
         const SizedBox(height: 18),
+        FilledButton.icon(
+          key: const Key('triage_send_packet_button'),
+          onPressed: _sendTriagePacket,
+          icon: const Icon(Icons.cloud_upload_outlined),
+          label: const Text('Send ticket and attachments'),
+        ),
+        const SizedBox(height: 12),
         _TicketSection(
           title: 'Assessment findings',
           icon: Icons.fact_check_outlined,
@@ -1204,6 +1424,110 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
           label: const Text('Back to dashboard'),
         ),
       ],
+    );
+  }
+}
+
+class _TriageAttachmentPanel extends StatelessWidget {
+  const _TriageAttachmentPanel({
+    required this.imageAdded,
+    required this.audioAdded,
+    required this.recording,
+    required this.message,
+    required this.onCaptureImage,
+    required this.onToggleAudio,
+  });
+
+  final bool imageAdded;
+  final bool audioAdded;
+  final bool recording;
+  final String? message;
+  final VoidCallback onCaptureImage;
+  final VoidCallback onToggleAudio;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      color: const Color(0xFFF4F8F5),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: AshaColors.borderSubtle),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.attach_file_rounded, color: AshaColors.primary),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Add supporting evidence',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Optional image and voice note. They are compressed before being placed in the encrypted sync queue.',
+              style: TextStyle(color: AshaColors.textSecondary, height: 1.3),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    key: const Key('triage_add_image_button'),
+                    onPressed: onCaptureImage,
+                    icon: Icon(
+                      imageAdded
+                          ? Icons.check_circle
+                          : Icons.camera_alt_outlined,
+                    ),
+                    label: Text(imageAdded ? 'Image added' : 'Add image'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    key: const Key('triage_record_audio_button'),
+                    onPressed: onToggleAudio,
+                    icon: Icon(
+                      recording
+                          ? Icons.stop_circle_outlined
+                          : audioAdded
+                          ? Icons.check_circle
+                          : Icons.mic_none_rounded,
+                    ),
+                    label: Text(
+                      recording
+                          ? 'Stop recording'
+                          : audioAdded
+                          ? 'Audio added'
+                          : 'Record audio',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (message != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                message!,
+                style: const TextStyle(
+                  color: AshaColors.primaryDark,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
