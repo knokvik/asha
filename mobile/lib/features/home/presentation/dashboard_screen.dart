@@ -1,5 +1,3 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -43,7 +41,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
     return Scaffold(
       key: const Key('dashboard_screen'),
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: Colors.white,
       drawer: const AshaNavigationDrawer(),
       bottomNavigationBar: const AshaBottomNav(
         key: Key('asha_bottom_nav'),
@@ -70,6 +68,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               key: const Key('home_search_bar'),
               controller: _searchController,
               hintText: 'Search households, beneficiaries, ABHA...',
+              onTap: () => context.push('/search'),
               onChanged: (_) => setState(() {}),
               onSubmitted: (query) {
                 final value = query.trim();
@@ -92,7 +91,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
           // 4. Continue today's work Card: 5 households • 2 follow-ups + SVG illustration
           _buildContinueWorkCard(context),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
 
           // 5. Quick actions Section: 2x2 Grid
           Text(
@@ -115,97 +114,80 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   /// Top App Bar matching Screen 1:
   /// Far-left hamburger menu ☰, centered 'asha' wordmark, notification bell 🔔 with unread badge.
   Widget _buildTopBar(BuildContext context) {
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          decoration: BoxDecoration(
-            // Match the shared shell with a translucent, blurred glass header.
-            color: Colors.white.withValues(alpha: 0.22),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.46)),
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x140F5138),
-                blurRadius: 18,
-                offset: Offset(0, 6),
+    return Container(
+      color: Colors.transparent,
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Builder(
+            builder: (scaffoldContext) => InkWell(
+              key: const Key('home_menu_button'),
+              onTap: () => Scaffold.of(scaffoldContext).openDrawer(),
+              borderRadius: BorderRadius.circular(8),
+              child: const Padding(
+                padding: EdgeInsets.all(4),
+                child: Icon(
+                  Icons.menu_rounded,
+                  size: 26,
+                  color: Color(0xFF111827),
+                ),
               ),
-            ],
+            ),
           ),
-          child: Row(
-            children: [
-              Builder(
-                builder: (scaffoldContext) => InkWell(
-                  key: const Key('home_menu_button'),
-                  onTap: () => Scaffold.of(scaffoldContext).openDrawer(),
-                  borderRadius: BorderRadius.circular(8),
-                  child: const Padding(
-                    padding: EdgeInsets.all(4),
-                    child: Icon(
-                      Icons.menu_rounded,
-                      size: 26,
-                      color: Color(0xFF111827),
+          const SizedBox(width: 10),
+
+          // Keep the title bar focused on the ASHA wordmark.
+          const Text(
+            'asha',
+            style: TextStyle(
+              fontFamily: 'SF Pro Display',
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF1E4231),
+              letterSpacing: -1.0,
+            ),
+          ),
+
+          const Spacer(),
+
+          // Notification Bell with unread indicator dot
+          InkWell(
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(shellText(_lang, 'notif')),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(6),
+                  child: Icon(
+                    Icons.notifications_none_rounded,
+                    size: 24,
+                    color: Color(0xFF111827),
+                  ),
+                ),
+                Positioned(
+                  right: 7,
+                  top: 7,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFEF4444),
+                      shape: BoxShape.circle,
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-
-              // Keep the title bar focused on the ASHA wordmark.
-              const Text(
-                'asha',
-                style: TextStyle(
-                  fontFamily: 'SF Pro Display',
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF1E4231),
-                  letterSpacing: -1.0,
-                ),
-              ),
-
-              const Spacer(),
-
-              // Notification Bell with unread indicator dot
-              InkWell(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(shellText(_lang, 'notif')),
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                },
-                borderRadius: BorderRadius.circular(20),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.all(6),
-                      child: Icon(
-                        Icons.notifications_none_rounded,
-                        size: 24,
-                        color: Color(0xFF111827),
-                      ),
-                    ),
-                    Positioned(
-                      right: 7,
-                      top: 7,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFEF4444),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -251,116 +233,120 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         borderRadius: BorderRadius.circular(18),
         child: Container(
           height: 184,
+          padding: const EdgeInsets.all(4),
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFC9E4D3)),
+            border: Border.all(color: const Color(0xFFD1D5DB)),
           ),
-          child: Stack(
-            children: [
-              FlutterMap(
-                options: const MapOptions(
-                  initialCenter: currentLocation,
-                  initialZoom: 14.8,
-                  interactionOptions: InteractionOptions(
-                    flags: InteractiveFlag.none,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Stack(
+              children: [
+                FlutterMap(
+                  options: const MapOptions(
+                    initialCenter: currentLocation,
+                    initialZoom: 14.8,
+                    interactionOptions: InteractionOptions(
+                      flags: InteractiveFlag.none,
+                    ),
                   ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.nhm.asha.asha_platform',
+                    ),
+                    MarkerLayer(markers: markers),
+                  ],
                 ),
-                children: [
-                  TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.nhm.asha.asha_platform',
-                  ),
-                  MarkerLayer(markers: markers),
-                ],
-              ),
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0x330F5138), Colors.transparent],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-                child: SizedBox.expand(),
-              ),
-              Positioned(
-                top: 12,
-                left: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 11,
-                    vertical: 7,
-                  ),
+                const DecoratedBox(
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.94),
-                    borderRadius: BorderRadius.circular(20),
+                    gradient: LinearGradient(
+                      colors: [Color(0x330F5138), Colors.transparent],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
                   ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.map_outlined,
-                        size: 16,
-                        color: Color(0xFF166534),
-                      ),
-                      SizedBox(width: 6),
-                      Text(
-                        'My area',
-                        style: TextStyle(
+                  child: SizedBox.expand(),
+                ),
+                Positioned(
+                  top: 12,
+                  left: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 11,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.94),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.map_outlined,
+                          size: 16,
                           color: Color(0xFF166534),
-                          fontWeight: FontWeight.w800,
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          'My area',
+                          style: TextStyle(
+                            color: Color(0xFF166534),
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 12,
+                  right: 12,
+                  bottom: 12,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.94),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Text(
+                            '5 households today · 3 due',
+                            style: TextStyle(
+                              color: Color(0xFF111827),
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF166534),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.arrow_forward_rounded,
+                          color: Colors.white,
+                          size: 19,
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-              Positioned(
-                left: 12,
-                right: 12,
-                bottom: 12,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.94),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Text(
-                          '5 households today · 3 due',
-                          style: TextStyle(
-                            color: Color(0xFF111827),
-                            fontWeight: FontWeight.w800,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      width: 38,
-                      height: 38,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF166534),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.arrow_forward_rounded,
-                        color: Colors.white,
-                        size: 19,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -374,28 +360,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _buildMetricBlock(
           count: '12',
           label: shellText(_lang, 'today'),
-          color: const Color(0xFF16A34A),
+          color: const Color(0xFF6B7280),
           onTap: () => ref.read(shellTabProvider.notifier).select(2),
         ),
         const SizedBox(width: 8),
         _buildMetricBlock(
           count: '3',
           label: shellText(_lang, 'overdue'),
-          color: const Color(0xFFEF4444),
+          color: const Color(0xFF6B7280),
           onTap: () => ref.read(shellTabProvider.notifier).select(2),
         ),
         const SizedBox(width: 8),
         _buildMetricBlock(
           count: '8',
           label: shellText(_lang, 'completed'),
-          color: const Color(0xFF16A34A),
+          color: const Color(0xFF6B7280),
           onTap: () => ref.read(shellTabProvider.notifier).select(2),
         ),
         const SizedBox(width: 8),
         _buildMetricBlock(
           count: '2',
           label: shellText(_lang, 'followUps'),
-          color: const Color(0xFFF59E0B),
+          color: const Color(0xFF6B7280),
           onTap: () => ref.read(shellTabProvider.notifier).select(2),
         ),
       ],
@@ -465,17 +451,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             gradient: const LinearGradient(
-              colors: [Color(0xFFF5FBF7), Color(0xFFDDEFE4)],
+              colors: [Color(0xFFF1FAF4), Color(0xFFD8F0E1)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            border: Border.all(color: const Color(0xFFC9E4D3), width: 1.0),
+            border: Border.all(color: const Color(0xFFB9DDC5), width: 1.0),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
                 child: Row(
                   children: [
                     Column(
@@ -510,9 +496,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               // Vector illustration of village hills & ASHA worker
-              const AshaFieldWorkerIllustrationWidget(height: 105),
+              const AshaFieldWorkerIllustrationWidget(height: 82),
             ],
           ),
         ),
@@ -533,10 +519,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             Expanded(
               child: _buildQuickActionCard(
                 title: shellText(_lang, 'addHousehold'),
-                iconWidget: const Icon(
+                iconWidget: _quickActionIcon(
                   Icons.group_add_rounded,
-                  color: Color(0xFF1E4231),
-                  size: 27,
+                  const Color(0xFF15803D),
                 ),
                 onTap: () => context.push('/households/new'),
               ),
@@ -546,18 +531,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               child: _buildQuickActionCard(
                 key: const Key('home_triage_button'),
                 title: shellText(_lang, 'triage'),
-                iconWidget: Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3F4F6),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.emergency_rounded,
-                    color: Color(0xFF374151),
-                    size: 22,
-                  ),
+                iconWidget: _quickActionIcon(
+                  Icons.emergency_rounded,
+                  const Color(0xFFDC2626),
                 ),
                 onTap: () => context.push('/triage'),
               ),
@@ -570,10 +546,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             Expanded(
               child: _buildQuickActionCard(
                 title: shellText(_lang, 'interpreter'),
-                iconWidget: const Icon(
+                iconWidget: _quickActionIcon(
                   Icons.translate_rounded,
-                  color: Color(0xFF1E4231),
-                  size: 27,
+                  const Color(0xFF2563EB),
                 ),
                 onTap: () => context.push('/interpreter'),
               ),
@@ -582,10 +557,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             Expanded(
               child: _buildQuickActionCard(
                 title: shellText(_lang, 'programs'),
-                iconWidget: const Icon(
+                iconWidget: _quickActionIcon(
                   Icons.medical_services_rounded,
-                  color: Color(0xFF1E4231),
-                  size: 27,
+                  const Color(0xFF7C3AED),
                 ),
                 onTap: () => context.push('/clinical-programs'),
               ),
@@ -593,6 +567,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _quickActionIcon(IconData icon, Color color) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Icon(icon, color: color, size: 32),
     );
   }
 
@@ -610,8 +596,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          constraints: const BoxConstraints(minHeight: 94),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          constraints: const BoxConstraints(minHeight: 116),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: const Color(0xFFE5E7EB), width: 1.0),
@@ -630,7 +616,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Text(
                 title,
                 style: const TextStyle(

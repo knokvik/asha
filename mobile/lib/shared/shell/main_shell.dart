@@ -1,5 +1,3 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -27,7 +25,7 @@ class MainShell extends ConsumerWidget {
     final lang = ref.watch(languageProvider).languageCode;
     final sync = ref.watch(syncCoordinatorProvider);
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: Colors.white,
       drawer: const AshaNavigationDrawer(),
       bottomNavigationBar: AshaBottomNav(
         key: const Key('asha_bottom_nav'),
@@ -66,92 +64,73 @@ class _ShellHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: Container(
-          margin: const EdgeInsets.fromLTRB(10, 4, 10, 4),
-          padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
-          decoration: BoxDecoration(
-            // Keep the title bar translucent so the blurred content/background
-            // remains visible instead of rendering as a solid white strip.
-            color: Colors.white.withValues(alpha: 0.22),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.46)),
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x140F5138),
-                blurRadius: 18,
-                offset: Offset(0, 6),
+    return Container(
+      color: Colors.transparent,
+      padding: const EdgeInsets.fromLTRB(18, 4, 18, 4),
+      child: SizedBox(
+        height: 36,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Builder(
+                builder: (scaffoldContext) => InkWell(
+                  key: const Key('home_menu_button'),
+                  onTap: () => Scaffold.of(scaffoldContext).openDrawer(),
+                  borderRadius: BorderRadius.circular(8),
+                  child: const Padding(
+                    padding: EdgeInsets.all(4),
+                    child: Icon(
+                      Icons.menu_rounded,
+                      size: 26,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
+                ),
               ),
-            ],
-          ),
-          child: SizedBox(
-            height: 36,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Builder(
-                    builder: (scaffoldContext) => InkWell(
-                      key: const Key('home_menu_button'),
-                      onTap: () => Scaffold.of(scaffoldContext).openDrawer(),
-                      borderRadius: BorderRadius.circular(8),
-                      child: const Padding(
-                        padding: EdgeInsets.all(4),
-                        child: Icon(
-                          Icons.menu_rounded,
-                          size: 26,
-                          color: Color(0xFF111827),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const Center(
-                  child: Text(
-                    'asha',
-                    style: TextStyle(
-                      fontFamily: 'SF Pro Display',
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFF1E4231),
-                      letterSpacing: -1.0,
-                    ),
-                  ),
-                ),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _SyncHeaderButton(snapshot: snapshot),
-                      InkWell(
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(shellText(lang, 'notif')),
-                              duration: const Duration(seconds: 2),
-                            ),
-                          );
-                        },
-                        borderRadius: BorderRadius.circular(20),
-                        child: const Padding(
-                          padding: EdgeInsets.all(6),
-                          child: Icon(
-                            Icons.notifications_none_rounded,
-                            size: 24,
-                            color: Color(0xFF111827),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
             ),
-          ),
+            const Center(
+              child: Text(
+                'asha',
+                style: TextStyle(
+                  fontFamily: 'SF Pro Display',
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF1E4231),
+                  letterSpacing: -1.0,
+                ),
+              ),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _SyncHeaderButton(snapshot: snapshot),
+                  InkWell(
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(shellText(lang, 'notif')),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: const Padding(
+                      padding: EdgeInsets.all(6),
+                      child: Icon(
+                        Icons.notifications_none_rounded,
+                        size: 24,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -293,6 +272,7 @@ class _ShellSearchBarState extends State<_ShellSearchBar> {
       key: const Key('home_search_bar'),
       controller: _controller,
       hintText: 'Search households, beneficiaries, ABHA...',
+      onTap: () => context.push('/search'),
       onChanged: (_) => setState(() {}),
       onSubmitted: (query) {
         final value = query.trim();

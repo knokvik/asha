@@ -10,6 +10,7 @@ class AshaSearchBar extends StatelessWidget {
   final VoidCallback? onVoicePressed;
   final VoidCallback? onScanPressed;
   final VoidCallback? onClear;
+  final VoidCallback? onTap;
   final String hintText;
   final bool autofocus;
 
@@ -21,6 +22,7 @@ class AshaSearchBar extends StatelessWidget {
     this.onVoicePressed,
     this.onScanPressed,
     this.onClear,
+    this.onTap,
     this.hintText = 'Search beneficiaries, ABHA, phone...',
     this.autofocus = false,
   });
@@ -28,28 +30,24 @@ class AshaSearchBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 52,
+      height: 56,
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: AshaColors.cardSurface,
         borderRadius: AshaShapes.searchRadius,
-        border: Border.all(color: AshaColors.borderSubtle, width: 1.0),
-        boxShadow: const [
-          BoxShadow(
-            color: Color.fromRGBO(18, 26, 21, 0.04),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: const Color(0xFFD1D5DB), width: 1.0),
       ),
       child: Row(
         children: [
-          const SizedBox(width: 16),
+          const SizedBox(width: 6),
           const _AnimatedAshaSearchMark(),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: TextField(
               controller: controller,
               autofocus: autofocus,
+              readOnly: onTap != null,
+              onTap: onTap,
               onChanged: onChanged,
               onSubmitted: onSubmitted,
               style: const TextStyle(
@@ -60,7 +58,7 @@ class AshaSearchBar extends StatelessWidget {
               decoration: InputDecoration(
                 hintText: hintText,
                 hintStyle: const TextStyle(
-                  color: AshaColors.textMuted,
+                  color: Color(0xFF374151),
                   fontSize: 14,
                 ),
                 border: InputBorder.none,
@@ -140,15 +138,64 @@ class _AnimatedAshaSearchMarkState extends State<_AnimatedAshaSearchMark>
 
   @override
   Widget build(BuildContext context) {
-    return RotationTransition(
+    return AnimatedBuilder(
       key: const Key('animated_search_logo'),
-      turns: _controller,
+      animation: _controller,
+      builder: (context, child) => SizedBox(
+        width: 30,
+        height: 30,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            CustomPaint(
+              size: const Size.square(30),
+              painter: _SearchOrbitPainter(progress: _controller.value),
+            ),
+            Transform.rotate(
+              angle: _controller.value * 2 * 3.14159265359,
+              child: child,
+            ),
+          ],
+        ),
+      ),
       child: const Image(
         image: AssetImage('assets/branding/favicon.png'),
-        width: 24,
-        height: 24,
+        width: 22,
+        height: 22,
         fit: BoxFit.contain,
       ),
     );
   }
+}
+
+class _SearchOrbitPainter extends CustomPainter {
+  const _SearchOrbitPainter({required this.progress});
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final basePaint = Paint()
+      ..color = const Color(0xFFD1D5DB)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    final orbitPaint = Paint()
+      ..color = const Color(0xFF2D5F47)
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 1.8;
+    canvas.drawCircle(size.center(Offset.zero), 13, basePaint);
+    canvas.drawArc(
+      rect.deflate(2),
+      progress * 2 * 3.14159265359,
+      1.5,
+      false,
+      orbitPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _SearchOrbitPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }

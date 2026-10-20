@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../features/auth/presentation/pin_setup_screen.dart';
 import '../features/due_list/presentation/due_list_screen.dart';
 import '../features/home/presentation/tools_screen.dart';
+import '../features/settings/presentation/settings_screen.dart';
 
 // Registry & Households
 import '../features/household/presentation/beneficiary_search_screen.dart';
@@ -60,6 +61,7 @@ import '../features/due_list/presentation/route_map_screen.dart';
 import '../features/due_list/presentation/coverage_analysis_screen.dart';
 import '../features/due_list/domain/route_models.dart';
 import '../features/teleconsultation/presentation/teleconsultation_screen.dart';
+import '../features/map/presentation/map_pack_screen.dart';
 import '../shared/providers/core_providers.dart';
 
 /// Notifier holding current authenticated worker role ('asha', 'af', 'admin', etc.).
@@ -619,6 +621,11 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
         ),
       ),
     ),
+    GoRoute(
+      path: '/map-packs',
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const MapPackScreen()),
+    ),
 
     GoRoute(
       path: '/geo-map',
@@ -670,7 +677,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
     // ── Settings & Supervisor Guard ────────────────────────────────────────
     GoRoute(
       path: '/settings',
-      builder: (context, state) => const DueListScreen(),
+      builder: (context, state) => const SettingsScreen(),
     ),
     GoRoute(path: '/af', builder: (context, state) => const DueListScreen()),
   ];

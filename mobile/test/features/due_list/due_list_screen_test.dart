@@ -17,5 +17,13 @@ void main() {
     expect(find.byType(CalendarDatePicker), findsOneWidget);
     expect(find.text('Tasks'), findsOneWidget);
     expect(find.text('Savitri Devi'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('due_calendar_toggle')));
+    await tester.pumpAndSettle();
+    expect(find.byType(CalendarDatePicker), findsNothing);
+
+    await tester.tap(find.byKey(const Key('due_calendar_toggle')));
+    await tester.pumpAndSettle();
+    expect(find.byType(CalendarDatePicker), findsOneWidget);
   });
 }

@@ -3,8 +3,13 @@ import 'package:flutter/material.dart';
 class AshaDockItem {
   final IconData icon;
   final String label;
+  final bool isAction;
 
-  const AshaDockItem({required this.icon, required this.label});
+  const AshaDockItem({
+    required this.icon,
+    required this.label,
+    this.isAction = false,
+  });
 }
 
 /// Floating icon-only navigation dock for Home, Map, Tasks, and Profile.
@@ -25,22 +30,22 @@ class AshaBottomDock extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
-      minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      minimum: const EdgeInsets.fromLTRB(16, 6, 16, 12),
       child: Material(
-        color: const Color(0xFFFCFDFC),
-        elevation: 12,
+        color: Colors.white,
+        elevation: 6,
         shadowColor: const Color(0x22000000),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
         clipBehavior: Clip.antiAlias,
         child: Container(
           decoration: BoxDecoration(
             border: Border.all(color: const Color(0xFFE5E7EB)),
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
             child: SizedBox(
-              height: 56,
+              height: 44,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: List.generate(items.length, (idx) {
@@ -48,10 +53,11 @@ class AshaBottomDock extends StatelessWidget {
                   final isSelected = idx == currentIndex;
                   const activeColor = Color(0xFF1E4231);
                   const inactiveColor = Color(0xFF6B7280);
+                  final actionColor = const Color(0xFFDC2626);
 
                   return Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 1),
                       child: Semantics(
                         label: item.label,
                         button: true,
@@ -65,14 +71,23 @@ class AshaBottomDock extends StatelessWidget {
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 220),
                               curve: Curves.easeOutCubic,
-                              width: isSelected ? 50 : 42,
-                              height: 40,
+                              width: item.isAction
+                                  ? 38
+                                  : (isSelected ? 42 : 38),
+                              height: item.isAction ? 38 : 34,
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
-                                color: isSelected
+                                color: item.isAction
+                                    ? actionColor
+                                    : isSelected
                                     ? activeColor
                                     : Colors.transparent,
-                                borderRadius: BorderRadius.circular(12),
+                                shape: item.isAction
+                                    ? BoxShape.circle
+                                    : BoxShape.rectangle,
+                                borderRadius: item.isAction
+                                    ? null
+                                    : BorderRadius.circular(10),
                               ),
                               child: AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 180),
@@ -84,8 +99,10 @@ class AshaBottomDock extends StatelessWidget {
                                 child: Icon(
                                   item.icon,
                                   key: ValueKey('${item.icon}_$isSelected'),
-                                  size: isSelected ? 21 : 23,
-                                  color: isSelected
+                                  size: item.isAction
+                                      ? 22
+                                      : (isSelected ? 20 : 22),
+                                  color: item.isAction || isSelected
                                       ? Colors.white
                                       : inactiveColor,
                                 ),

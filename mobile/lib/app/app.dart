@@ -21,7 +21,10 @@ class AshaApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'ASHA Platform',
       theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
+      // Keep the first release intentionally simple and predictable. The
+      // dark theme remains available for the future low-power mode, but it is
+      // not selectable in the current app shell.
+      themeMode: ThemeMode.light,
       routerConfig: ref.watch(routerProvider),
       locale: currentLocale,
       localizationsDelegates: const [

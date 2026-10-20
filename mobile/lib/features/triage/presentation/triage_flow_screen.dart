@@ -27,6 +27,8 @@ class TriageFlowScreen extends ConsumerStatefulWidget {
 class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   final _name = TextEditingController();
   final _age = TextEditingController();
+  final _location = TextEditingController();
+  final _details = TextEditingController();
   final _answerController = TextEditingController();
   final _questionScrollController = ScrollController();
   final _questionKeys = <String, GlobalKey>{};
@@ -66,6 +68,8 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   void dispose() {
     _name.dispose();
     _age.dispose();
+    _location.dispose();
+    _details.dispose();
     _answerController.dispose();
     _questionScrollController.dispose();
     super.dispose();
@@ -103,13 +107,16 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   Future<void> _startQuestions() async {
     final session = _session;
     final age = int.tryParse(_age.text.trim());
+    final name = _name.text.trim();
+    final location = _location.text.trim();
     if (session == null ||
         age == null ||
         age < 0 ||
         age > 59 ||
-        _name.text.trim().isEmpty) {
+        name.isEmpty ||
+        location.isEmpty) {
       setState(
-        () => _error = 'Enter the child’s name and an age from 0 to 59 months.',
+        () => _error = 'Enter the name, age from 0 to 59 months, and location before starting.',
       );
       return;
     }
@@ -237,7 +244,8 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   Future<void> _finish(FlowState flow) async {
     final session = _session;
     final age = int.tryParse(_age.text.trim());
-    if (session == null || age == null) return;
+    final location = _location.text.trim();
+    if (session == null || age == null || location.isEmpty) return;
     if (flow.answers['symptoms.convulsions'] != true &&
         !flow.answers.containsKey('symptoms.convulsing_now')) {
       flow.answers['symptoms.convulsing_now'] = false;
@@ -259,7 +267,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         name: _name.text.trim(),
         ageMonths: age,
         sex: 'F',
-        village: 'Pimpri',
+        village: location,
       ),
       FacilityProfile(
         id: facility?.id ?? 'HFR-UNSET',
@@ -285,6 +293,8 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
             payload: {
               'name': _name.text.trim(),
               'age_months': age,
+              'location': location,
+              'additional_details': _details.text.trim(),
               'ward_id': flow.wardId,
               'flag': decision.flag.wireName,
               'sms': note.toSms(),
@@ -413,6 +423,31 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
           decoration: const InputDecoration(
             labelText: 'Age in months',
             border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _location,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(
+            labelText: 'Village / location',
+            hintText: 'Where is the child or patient located?',
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.location_on_outlined),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _details,
+          minLines: 2,
+          maxLines: 4,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(
+            labelText: 'Other details (optional)',
+            hintText: 'Add any context to carry with this triage case.',
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.notes_outlined),
+            alignLabelWithHint: true,
           ),
         ),
         const SizedBox(height: 16),
@@ -986,6 +1021,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                       _TicketGrid(
                         values: [
                           ('Age', '${_ageMonths ?? ''} months'),
+                          ('Location', note.patient.village),
                           ('Ward', _flow?.wardId ?? '—'),
                           ('Facility', note.facility.name),
                           ('Status', _online ? 'Online' : 'Offline queue'),
@@ -994,6 +1030,20 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                       const SizedBox(height: 16),
                       const _TicketDashedDivider(),
                       const SizedBox(height: 14),
+                      if (_details.text.trim().isNotEmpty) ...[
+                        _TicketSection(
+                          title: 'Additional details',
+                          icon: Icons.notes_rounded,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              _details.text.trim(),
+                              style: AshaTypography.bodyMedium,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
                       Row(
                         children: [
                           const Icon(

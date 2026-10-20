@@ -5,12 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
 /// Authentication state for the current session.
-enum AuthState {
-  unauthenticated,
-  authenticated,
-  lockedOut,
-  requiresOtp,
-}
+enum AuthState { unauthenticated, authenticated, lockedOut, requiresOtp }
 
 class AuthService {
   static const _pinHashKey = 'asha_pin_hash_v1';
@@ -19,6 +14,7 @@ class AuthService {
   static const _offlineCredKey = 'asha_offline_cred_v1';
   static const _offlineCredExpKey = 'asha_offline_exp_v1';
   static const _deviceIdKey = 'asha_device_id_v1';
+  static const _databaseKeyKey = 'asha_database_key_v1';
 
   static const int _maxAttempts = 5;
   static const int _maxLockoutSecs = 600;
@@ -29,13 +25,10 @@ class AuthService {
 
   int _biometricFailures = 0;
 
-  AuthService({
-    FlutterSecureStorage? storage,
-    LocalAuthentication? localAuth,
-  })  : _storage = storage ??
-            const FlutterSecureStorage(
-                aOptions: AndroidOptions()),
-        _localAuth = localAuth ?? LocalAuthentication();
+  AuthService({FlutterSecureStorage? storage, LocalAuthentication? localAuth})
+    : _storage =
+          storage ?? const FlutterSecureStorage(aOptions: AndroidOptions()),
+      _localAuth = localAuth ?? LocalAuthentication();
 
   // ── PIN setup ─────────────────────────────────────────────────────────────
 
@@ -52,6 +45,28 @@ class AuthService {
   Future<bool> get isPinConfigured async {
     final hash = await _storage.read(key: _pinHashKey);
     return hash != null;
+  }
+
+  /// Returns whether the device can currently perform biometric auth.
+  Future<bool> get isBiometricAvailable async {
+    try {
+      final canCheck = await _localAuth.canCheckBiometrics;
+      final supported = await _localAuth.isDeviceSupported();
+      return canCheck && supported;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Keeps the SQLCipher session key in hardware-backed secure storage so a
+  /// successful biometric unlock can open the encrypted local database without
+  /// persisting the user's PIN.
+  Future<void> cacheDatabaseKey(String key) async {
+    await _storage.write(key: _databaseKeyKey, value: key);
+  }
+
+  Future<String?> readCachedDatabaseKey() async {
+    return _storage.read(key: _databaseKeyKey);
   }
 
   // ── PIN verification ──────────────────────────────────────────────────────
@@ -97,8 +112,7 @@ class AuthService {
     final expStr = await _storage.read(key: _offlineCredExpKey);
     if (credHash == null || expStr == null) return false;
 
-    final expiry =
-        DateTime.fromMillisecondsSinceEpoch(int.parse(expStr));
+    final expiry = DateTime.fromMillisecondsSinceEpoch(int.parse(expStr));
     if (DateTime.now().isAfter(expiry)) return false;
 
     final deviceId = await _getOrCreateDeviceId();
@@ -160,7 +174,7 @@ class AuthService {
   }
 
   Future<({AuthState state, int lockoutRemainingSeconds})>
-      _checkLockout() async {
+  _checkLockout() async {
     final attemptsStr = await _storage.read(key: _failedAttemptsKey);
     final lockoutStr = await _storage.read(key: _lockoutUntilKey);
     final attempts = int.tryParse(attemptsStr ?? '0') ?? 0;
@@ -173,7 +187,7 @@ class AuthService {
       if (attempts >= _maxAttempts) {
         return (
           state: AuthState.requiresOtp,
-          lockoutRemainingSeconds: remaining
+          lockoutRemainingSeconds: remaining,
         );
       }
       return (state: AuthState.lockedOut, lockoutRemainingSeconds: remaining);
@@ -182,9 +196,7 @@ class AuthService {
   }
 
   Future<({AuthState state, int lockoutRemainingSeconds})>
-      _handleFailedAttempt({
-    required int maxAttempts,
-  }) async {
+  _handleFailedAttempt({required int maxAttempts}) async {
     final attemptsStr = await _storage.read(key: _failedAttemptsKey);
     final attempts = (int.tryParse(attemptsStr ?? '0') ?? 0) + 1;
     await _storage.write(key: _failedAttemptsKey, value: attempts.toString());
@@ -199,23 +211,19 @@ class AuthService {
       );
       return (
         state: AuthState.requiresOtp,
-        lockoutRemainingSeconds: lockoutSecs
+        lockoutRemainingSeconds: lockoutSecs,
       );
     }
 
     // Escalating lockout: 30s * 2^(attempts-1), capped at _maxLockoutSecs
     final rawSecs = 30 * (1 << (attempts - 1));
-    final lockoutSecs =
-        rawSecs > _maxLockoutSecs ? _maxLockoutSecs : rawSecs;
+    final lockoutSecs = rawSecs > _maxLockoutSecs ? _maxLockoutSecs : rawSecs;
     final until = DateTime.now().add(Duration(seconds: lockoutSecs));
     await _storage.write(
       key: _lockoutUntilKey,
       value: until.millisecondsSinceEpoch.toString(),
     );
-    return (
-      state: AuthState.lockedOut,
-      lockoutRemainingSeconds: lockoutSecs
-    );
+    return (state: AuthState.lockedOut, lockoutRemainingSeconds: lockoutSecs);
   }
 
   Future<void> _resetLockout() async {
@@ -245,8 +253,9 @@ class AuthService {
 
   String _randomHex(int bytes) {
     final rng = Random.secure();
-    return List.generate(bytes, (_) => rng.nextInt(256))
-        .map((b) => b.toRadixString(16).padLeft(2, '0'))
-        .join();
+    return List.generate(
+      bytes,
+      (_) => rng.nextInt(256),
+    ).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   }
 }

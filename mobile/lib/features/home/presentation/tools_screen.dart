@@ -10,14 +10,39 @@ class ToolsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const tools = <_Tool>[
-      _Tool(Icons.medical_services_outlined, 'Clinical triage', 'Assess and classify', '/triage/questions'),
-      _Tool(Icons.translate, 'Interpreter', 'They speak / I ask', '/triage/language'),
+      _Tool(
+        Icons.medical_services_outlined,
+        'Clinical triage',
+        'Start with name, age and location',
+        '/triage',
+      ),
+      _Tool(
+        Icons.translate,
+        'Interpreter',
+        'They speak / I ask',
+        '/triage/language',
+      ),
       _Tool(Icons.checklist_rtl, 'Due list', 'Visits due today', '/due-list'),
       _Tool(Icons.calendar_month, 'Calendar', 'Visits by day', '/calendar'),
-      _Tool(Icons.pie_chart_outline, 'Coverage', 'Programme reach', '/coverage'),
+      _Tool(
+        Icons.pie_chart_outline,
+        'Coverage',
+        'Programme reach',
+        '/coverage',
+      ),
       _Tool(Icons.people_alt_outlined, 'Households', 'Registry', '/households'),
-      _Tool(Icons.medical_information_outlined, 'Clinical programs', 'ANC, immunisation, NCD, TB', '/programs'),
-      _Tool(Icons.calculate_outlined, 'Calculators', 'EDD, BMI, breath count', '/calculators'),
+      _Tool(
+        Icons.medical_information_outlined,
+        'Clinical programs',
+        'ANC, immunisation, NCD, TB',
+        '/programs',
+      ),
+      _Tool(
+        Icons.calculate_outlined,
+        'Calculators',
+        'EDD, BMI, breath count',
+        '/calculators',
+      ),
     ];
     return Scaffold(
       key: const Key('tools_screen'),
@@ -49,8 +74,17 @@ class ToolsScreen extends StatelessWidget {
                     children: [
                       Icon(tool.icon, color: AshaColors.primary),
                       const Spacer(),
-                      Text(tool.title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                      Text(tool.subtitle, style: const TextStyle(fontSize: 12, color: AshaColors.textMuted)),
+                      Text(
+                        tool.title,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      Text(
+                        tool.subtitle,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AshaColors.textMuted,
+                        ),
+                      ),
                     ],
                   ),
                 ),

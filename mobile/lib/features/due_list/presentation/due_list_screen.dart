@@ -24,6 +24,7 @@ class DueListScreen extends ConsumerStatefulWidget {
 class _DueListScreenState extends ConsumerState<DueListScreen> {
   late int _selectedFilter;
   late DateTime _selectedDate;
+  var _calendarExpanded = true;
 
   @override
   void initState() {
@@ -271,46 +272,62 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
       ),
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.calendar_month_rounded,
-                  color: Color(0xFF166534),
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  MaterialLocalizations.of(context)
-                      .formatMonthYear(_selectedDate),
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF111827),
-                    fontFamily: 'SF Pro Display',
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  tooltip: 'Choose date',
-                  onPressed: () => _chooseDate(context),
-                  icon: const Icon(
-                    Icons.edit_calendar_outlined,
+          InkWell(
+            key: const Key('due_calendar_toggle'),
+            onTap: () => setState(() => _calendarExpanded = !_calendarExpanded),
+            borderRadius: BorderRadius.circular(18),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.calendar_month_rounded,
                     color: Color(0xFF166534),
                     size: 20,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Text(
+                    MaterialLocalizations.of(context)
+                        .formatMonthYear(_selectedDate),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF111827),
+                      fontFamily: 'SF Pro Display',
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    tooltip: 'Choose date',
+                    onPressed: () => _chooseDate(context),
+                    icon: const Icon(
+                      Icons.edit_calendar_outlined,
+                      color: Color(0xFF166534),
+                      size: 20,
+                    ),
+                  ),
+                  Icon(
+                    _calendarExpanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    color: const Color(0xFF6B7280),
+                  ),
+                ],
+              ),
             ),
           ),
-          CalendarDatePicker(
-            initialDate: _selectedDate,
-            firstDate: DateTime(2024),
-            lastDate: DateTime(2035, 12, 31),
-            onDateChanged: (date) {
-              setState(() => _selectedDate = DateUtils.dateOnly(date));
-            },
+          AnimatedSize(
+            duration: const Duration(milliseconds: 180),
+            child: _calendarExpanded
+                ? CalendarDatePicker(
+                    initialDate: _selectedDate,
+                    firstDate: DateTime(2024),
+                    lastDate: DateTime(2035, 12, 31),
+                    onDateChanged: (date) {
+                      setState(() => _selectedDate = DateUtils.dateOnly(date));
+                    },
+                  )
+                : const SizedBox.shrink(),
           ),
         ],
       ),

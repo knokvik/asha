@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/material.dart';
@@ -32,6 +33,7 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
   final _pinController = TextEditingController();
   final _confirmPinController = TextEditingController();
   bool _isPinConfigured = false;
+  bool _biometricAvailable = false;
   bool _isSubmitting = false;
   String? _errorMessage;
 
@@ -59,9 +61,63 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
         setState(() {
           _isPinConfigured = configured;
         });
+        if (configured) {
+          final biometricAvailable = await auth.isBiometricAvailable;
+          if (mounted) {
+            setState(() => _biometricAvailable = biometricAvailable);
+          }
+        }
       }
     } catch (_) {
       // Default to false in testing or uninitialized environments
+    }
+  }
+
+  Future<void> _handleBiometric() async {
+    if (_isSubmitting) return;
+    setState(() {
+      _isSubmitting = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final auth = ref.read(authServiceProvider);
+      final authenticated = await auth.authenticateWithBiometric(
+        localizedReason: 'Use fingerprint or face unlock to open ASHA records',
+      );
+      if (!authenticated) {
+        if (mounted) {
+          setState(() {
+            _isSubmitting = false;
+            _errorMessage = auth.shouldFallBackToPin
+                ? 'Biometric unlock failed three times. Please use your PIN.'
+                : 'Biometric unlock was not completed. You can use your PIN instead.';
+          });
+        }
+        return;
+      }
+
+      final key = await auth.readCachedDatabaseKey();
+      if (key == null) {
+        if (mounted) {
+          setState(() {
+            _isSubmitting = false;
+            _errorMessage = 'Enter your PIN once to enable biometric unlock on this device.';
+          });
+        }
+        return;
+      }
+
+      ref.read(databaseKeyProvider.notifier).unlock(key);
+      await ref.read(appDatabaseProvider).customSelect('SELECT 1').get();
+      if (mounted) context.go('/home');
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+          _errorMessage = 'Biometric unlock could not open the encrypted database. Use your PIN.';
+        });
+      }
     }
   }
 
@@ -72,7 +128,9 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
     final pin = _pinController.text.trim();
     if (pin.length < 4 || pin.length > 8 || !RegExp(r'^\d+$').hasMatch(pin)) {
       setState(() {
-        _errorMessage = l10n?.pinLengthError ?? 'PIN must be between 4 and 8 numeric digits.';
+        _errorMessage =
+            l10n?.pinLengthError ??
+            'PIN must be between 4 and 8 numeric digits.';
       });
       return;
     }
@@ -83,7 +141,8 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
       final confirmPin = _confirmPinController.text.trim();
       if (pin != confirmPin) {
         setState(() {
-          _errorMessage = l10n?.pinMismatch ?? 'PINs do not match. Please re-enter.';
+          _errorMessage =
+              l10n?.pinMismatch ?? 'PINs do not match. Please re-enter.';
         });
         return;
       }
@@ -141,14 +200,17 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
           if (mounted) {
             setState(() {
               _isSubmitting = false;
-              _errorMessage = l10n?.tooManyAttempts ?? 'Too many attempts. Supervisor OTP required.';
+              _errorMessage =
+                  l10n?.tooManyAttempts ??
+                  'Too many attempts. Supervisor OTP required.';
             });
           }
         } else {
           if (mounted) {
             setState(() {
               _isSubmitting = false;
-              _errorMessage = l10n?.incorrectPin ?? 'Incorrect PIN. Please try again.';
+              _errorMessage =
+                  l10n?.incorrectPin ?? 'Incorrect PIN. Please try again.';
             });
           }
         }
@@ -172,6 +234,7 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
     final db = ref.read(appDatabaseProvider);
     try {
       await db.customSelect('SELECT 1').get();
+      await ref.read(authServiceProvider).cacheDatabaseKey(key);
     } catch (e) {
       if (!_isPinConfigured) {
         try {
@@ -182,6 +245,7 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
           }
         } catch (_) {}
         await db.customSelect('SELECT 1').get();
+        await ref.read(authServiceProvider).cacheDatabaseKey(key);
       } else {
         rethrow;
       }
@@ -228,9 +292,8 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                         ? (l10n?.welcomeBack ?? 'Welcome Back')
                         : (l10n?.securitySetup ?? 'Security Setup'),
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                    style: Theme.of(context).textTheme.headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -238,9 +301,8 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                         ? 'Enter your security PIN to unlock patient records'
                         : 'Set a 4 to 8 digit PIN to encrypt your local database',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey.shade600,
-                        ),
+                    style: Theme.of(context).textTheme.bodyMedium
+                        ?.copyWith(color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 32),
                   TextField(
@@ -285,12 +347,19 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                          const Icon(
+                            Icons.error_outline,
+                            color: Colors.red,
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               _errorMessage!,
-                              style: const TextStyle(color: Colors.red, fontSize: 13),
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 13,
+                              ),
                             ),
                           ),
                         ],
@@ -311,11 +380,24 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                       _isSubmitting
                           ? 'Processing...'
                           : (_isPinConfigured
-                              ? (l10n?.unlockDatabase ?? 'Unlock Database')
-                              : (l10n?.setPinAndInitialize ?? 'Set PIN & Initialize')),
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                ? (l10n?.unlockDatabase ?? 'Unlock Database')
+                                : (l10n?.setPinAndInitialize ??
+                                      'Set PIN & Initialize')),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
+                  if (_isPinConfigured && _biometricAvailable) ...[
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      key: const Key('biometric_unlock_button'),
+                      onPressed: _isSubmitting ? null : _handleBiometric,
+                      icon: const Icon(Icons.fingerprint_rounded),
+                      label: const Text('Unlock with fingerprint / face'),
+                    ),
+                  ],
                 ],
               ),
             ),
