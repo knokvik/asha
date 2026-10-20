@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
-import 'package:latlong2/latlong.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../core/l10n/language_selector_dialog.dart';
 import '../../../shared/widgets/app_drawer.dart';
+import '../../../shared/widgets/asha_bottom_nav.dart';
 
 /// Field home. Sidebar items open their own routes, so this page stays put.
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
-
-  static const _pcmc = LatLng(18.6298, 73.7997);
 
   @override
   Widget build(BuildContext context) {
@@ -19,6 +16,7 @@ class DashboardScreen extends StatelessWidget {
       key: const Key('dashboard_screen'),
       backgroundColor: AshaColors.screenBg,
       drawer: const AppDrawer(),
+      bottomNavigationBar: const AshaBottomNav(index: 0),
       appBar: AppBar(
         backgroundColor: AshaColors.cardSurface,
         surfaceTintColor: Colors.transparent,
@@ -91,6 +89,7 @@ class DashboardScreen extends StatelessWidget {
           _DeskTile(icon: Icons.people_alt_outlined, title: 'Household registry', subtitle: 'Census and ABHA', onTap: () => context.push('/households')),
           _DeskTile(icon: Icons.medical_information_outlined, title: 'Clinical programs', subtitle: 'ANC, immunisation, NCD, TB', onTap: () => context.push('/programs')),
           _DeskTile(icon: Icons.map_outlined, title: 'Visit route', subtitle: 'Hamlet map', onTap: () => context.push('/route-map')),
+          _DeskTile(icon: Icons.public_off, title: 'Offline map', subtitle: 'Government facilities, no network', onTap: () => context.go('/geo-map')),
         ],
       ),
     );
@@ -102,32 +101,45 @@ class _MapWindow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
+    const wards = ['W5', 'W6', 'W7', 'W8', 'W1', 'W2', 'W3', 'W4'];
+    return Material(
+      color: const Color(0xFFE8E0C4),
       borderRadius: BorderRadius.circular(16),
-      child: SizedBox(
-        height: 168,
-        child: FlutterMap(
-          options: const MapOptions(
-            initialCenter: DashboardScreen._pcmc,
-            initialZoom: 12,
-            interactionOptions: InteractionOptions(flags: InteractiveFlag.none),
-          ),
-          children: [
-            TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.nhm.asha.asha_platform',
-            ),
-            const MarkerLayer(
-              markers: [
-                Marker(
-                  point: DashboardScreen._pcmc,
-                  width: 16,
-                  height: 16,
-                  child: Icon(Icons.location_on, color: AshaColors.primary, size: 22),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        key: const Key('open_offline_map'),
+        onTap: () => context.go('/geo-map'),
+        child: SizedBox(
+          height: 168,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Offline map · Pimpri-Chinchwad', style: TextStyle(fontWeight: FontWeight.w700)),
+                const Text('Streets stored in the app.', style: TextStyle(fontSize: 12)),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: GridView.count(
+                    crossAxisCount: 4,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 4,
+                    crossAxisSpacing: 4,
+                    children: [
+                      for (final ward in wards)
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: ward == 'W3' ? const Color(0xFFE11D48) : const Color(0xFFBBD7B0),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Center(child: Text(ward, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700))),
+                        ),
+                    ],
+                  ),
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );

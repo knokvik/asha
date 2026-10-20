@@ -259,6 +259,13 @@ class _AppDrawerState extends ConsumerState<AppDrawer> {
             ),
             _buildDrawerTile(
               context: context,
+              icon: Icons.public_off,
+              title: 'Offline field map',
+              subtitle: 'Facilities, disease radar, today\'s route',
+              route: '/geo-map',
+            ),
+            _buildDrawerTile(
+              context: context,
               icon: Icons.support_agent_outlined,
               title: 'Teleconsultation & Helpline',
               subtitle: 'Doctor connect & emergency 108',

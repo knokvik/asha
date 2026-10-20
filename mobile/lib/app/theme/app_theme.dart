@@ -111,7 +111,6 @@ class AshaShapes {
   static const double dockRadius = 28.0;
 
   static const BorderRadius buttonRadius = BorderRadius.all(Radius.circular(buttonPillRadius));
-  static const BorderRadius pillRadius = BorderRadius.all(Radius.circular(buttonPillRadius));
   static const BorderRadius searchRadius = BorderRadius.all(Radius.circular(searchPillRadius));
   static const BorderRadius serviceRadius = BorderRadius.all(Radius.circular(serviceCardRadius));
   static const BorderRadius cardRadius = BorderRadius.all(Radius.circular(beneficiaryCardRadius));

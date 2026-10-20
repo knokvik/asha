@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../features/auth/presentation/pin_setup_screen.dart';
 import '../features/due_list/presentation/due_list_screen.dart';
 import '../features/home/presentation/dashboard_screen.dart';
+import '../features/home/presentation/profile_screen.dart';
+import '../features/home/presentation/tools_screen.dart';
 
 // Registry & Households
 import '../features/household/presentation/beneficiary_search_screen.dart';
@@ -52,6 +54,7 @@ import '../features/reports/presentation/register_viewer_screen.dart';
 import '../features/vhsnd/presentation/health_education_library_screen.dart';
 import '../features/vhsnd/domain/vhsnd_models.dart';
 import '../features/due_list/presentation/route_map_screen.dart';
+import '../features/map/presentation/india_map_page.dart';
 import '../features/due_list/presentation/coverage_analysis_screen.dart';
 import '../features/due_list/domain/route_models.dart';
 import '../features/teleconsultation/presentation/teleconsultation_screen.dart';
@@ -83,6 +86,14 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
     GoRoute(
       path: '/home',
       builder: (context, state) => const DashboardScreen(),
+    ),
+    GoRoute(
+      path: '/tools',
+      builder: (context, state) => const ToolsScreen(),
+    ),
+    GoRoute(
+      path: '/profile',
+      builder: (context, state) => const ProfileScreen(),
     ),
     GoRoute(
       path: '/due-list',
@@ -496,6 +507,11 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
           blockedWaypoints: [],
         ),
       ),
+    ),
+
+    GoRoute(
+      path: '/geo-map',
+      builder: (context, state) => const IndiaMapPage(),
     ),
 
     // ── Area Coverage Analysis ─────────────────────────────────────────────

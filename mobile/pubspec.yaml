@@ -76,10 +76,13 @@ dependencies:
     path: packages/core_referral
   triage:
     path: packages/triage
+  geo_intel:
+    path: packages/geo_intel
 
-  # Maps
+  # Maps. Offline raster MBTiles via flutter_map. See packages/geo_intel/README.md.
   flutter_map: ^8.3.2
   latlong2: ^0.10.1
+  url_launcher: ^6.3.1
 
   cupertino_icons: ^2.0.0
 
@@ -107,6 +110,7 @@ flutter:
   generate: true
   assets:
     - assets/branding/
+    - assets/geo/
     - assets/lexicon/
     - assets/incentives/
     - assets/triage/

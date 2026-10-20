@@ -83,13 +83,13 @@ export function ANMWorkspacePage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="px-4 py-2 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50/50 dark:bg-[#1E1E1E]">
-              <div className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold uppercase tracking-wider">Pending Claims</div>
+            <div className="px-4 py-2 rounded-xl border border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224]">
+              <div className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold uppercase tracking-wider">Pending Claims</div>
               <div className="text-lg font-bold text-[#0F172A] dark:text-white">{pendingClaims.length} Line Items</div>
             </div>
-            <div className="px-4 py-2 rounded-xl border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50/50 dark:bg-[#1E1E1E]">
-              <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold uppercase tracking-wider">Verified Amount</div>
-              <div className="text-lg font-bold text-emerald-700 dark:text-emerald-400">₹{approvedTotal.toFixed(2)}</div>
+            <div className="px-4 py-2 rounded-xl border border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224]">
+              <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold uppercase tracking-wider">Verified Amount</div>
+              <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">₹{approvedTotal.toFixed(2)}</div>
             </div>
           </div>
         </div>
@@ -101,33 +101,33 @@ export function ANMWorkspacePage() {
           onClick={() => setActiveTab('claims_review')}
           className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
             activeTab === 'claims_review'
-              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30'
-              : 'text-[#525252] dark:text-[#A3A3A3] hover:text-[#0F172A] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#2A2A2A]'
+              ? 'bg-white dark:bg-[#222224] text-[#0F172A] dark:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#3F3F46] shadow-xs'
+              : 'text-[#525252] dark:text-[#A3A3A3] hover:text-[#0F172A] dark:hover:text-white hover:bg-slate-50 dark:hover:bg-[#262626]'
           }`}
         >
-          <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <ShieldCheck className="w-4 h-4 text-slate-700 dark:text-slate-300" />
           <span>Incentive Verification Queue ({pendingClaims.length})</span>
         </button>
         <button
           onClick={() => setActiveTab('vhsnd_session')}
           className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
             activeTab === 'vhsnd_session'
-              ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30'
-              : 'text-[#525252] dark:text-[#A3A3A3] hover:text-[#0F172A] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#2A2A2A]'
+              ? 'bg-white dark:bg-[#222224] text-[#0F172A] dark:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#3F3F46] shadow-xs'
+              : 'text-[#525252] dark:text-[#A3A3A3] hover:text-[#0F172A] dark:hover:text-white hover:bg-slate-50 dark:hover:bg-[#262626]'
           }`}
         >
-          <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          <Calendar className="w-4 h-4 text-slate-700 dark:text-slate-300" />
           <span>VHSND Session Entry</span>
         </button>
         <button
           onClick={() => setActiveTab('sync_review')}
           className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
             activeTab === 'sync_review'
-              ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30'
-              : 'text-[#525252] dark:text-[#A3A3A3] hover:text-[#0F172A] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#2A2A2A]'
+              ? 'bg-white dark:bg-[#222224] text-[#0F172A] dark:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#3F3F46] shadow-xs'
+              : 'text-[#525252] dark:text-[#A3A3A3] hover:text-[#0F172A] dark:hover:text-white hover:bg-slate-50 dark:hover:bg-[#262626]'
           }`}
         >
-          <Layers className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+          <Layers className="w-4 h-4 text-slate-700 dark:text-slate-300" />
           <span>Sub-centre Sync Review</span>
         </button>
       </div>
@@ -189,10 +189,10 @@ export function ANMWorkspacePage() {
                           <span
                             className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase border ${
                               item.status === 'approved'
-                                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30'
+                                ? 'bg-white dark:bg-[#222224] text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-500/30'
                                 : item.status === 'rejected'
-                                ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-500/30'
-                                : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30'
+                                ? 'bg-white dark:bg-[#222224] text-rose-600 dark:text-rose-400 border-rose-300 dark:border-rose-500/30'
+                                : 'bg-white dark:bg-[#222224] text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-500/30'
                             }`}
                           >
                             {item.status}

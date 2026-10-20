@@ -1,0 +1,14 @@
+name: geo_intel
+description: Offline ward, facility, and household geometry for the ASHA map. No network imports.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.13.1
+
+dependencies:
+  triage:
+    path: ../triage
+
+dev_dependencies:
+  test: ^1.26.2

@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { RootLayout } from '@/layouts/RootLayout';
+import { MainDashboardPage } from '@/features/dashboard/MainDashboardPage';
 import { PHCDashboardPage } from '@/features/phc-dashboard/PHCDashboardPage';
 import { AFSupervisionPage } from '@/features/af-supervision/AFSupervisionPage';
 import { ANMWorkspacePage } from '@/features/anm-workspace/ANMWorkspacePage';
@@ -8,15 +9,24 @@ import { AdminConsolePage } from '@/features/admin/AdminConsolePage';
 import { OsmAndMapPage } from '@/features/map/OsmAndMapPage';
 import { TicketPage } from '@/features/phc-dashboard/TicketPage';
 import { ResourcesPage } from '@/features/phc-dashboard/ResourcesPage';
+import { LoginPage } from '@/features/auth/LoginPage';
 
 export const router = createBrowserRouter([
+  {
+    path: '/login',
+    element: <LoginPage />,
+  },
   {
     path: '/',
     element: <RootLayout />,
     children: [
       {
         index: true,
-        element: <Navigate to="/phc" replace />,
+        element: <MainDashboardPage />,
+      },
+      {
+        path: 'dashboard',
+        element: <MainDashboardPage />,
       },
       {
         path: 'phc',
@@ -64,7 +74,7 @@ export const router = createBrowserRouter([
       },
       {
         path: '*',
-        element: <Navigate to="/phc" replace />,
+        element: <Navigate to="/dashboard" replace />,
       },
     ],
   },

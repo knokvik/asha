@@ -218,214 +218,191 @@ class _TriageAssessmentScreenState extends ConsumerState<TriageAssessmentScreen>
             ),
             const SizedBox(height: 16),
             // Protocol age-band selection (Requirement 11.1)
-            AshaCard(
-              margin: const EdgeInsets.only(bottom: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Patient Group (Protocol Scope)',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
-                      color: AshaColors.textPrimary,
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Patient Group (Protocol Scope)',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<AgeBandCode>(
-                    key: const Key('age_band_dropdown'),
-                    isExpanded: true,
-                    initialValue: _selectedAgeBand,
-                    decoration: const InputDecoration(
-                      labelText: 'Select Age Band / Condition',
-                      border: OutlineInputBorder(),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<AgeBandCode>(
+                      key: const Key('age_band_dropdown'),
+                      initialValue: _selectedAgeBand,
+                      decoration: const InputDecoration(
+                        labelText: 'Select Age Band / Condition',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: AgeBandCode.infant02m,
+                          child: Text('Young Infant (0–2 Months) — IMNCI / HBNC'),
+                        ),
+                        DropdownMenuItem(
+                          value: AgeBandCode.child2m5y,
+                          child: Text('Child (2 Months–5 Years) — IMNCI / HBYC'),
+                        ),
+                        DropdownMenuItem(
+                          value: AgeBandCode.adolescent,
+                          child: Text('Adolescent (5–19 Years) — WIFS'),
+                        ),
+                        DropdownMenuItem(
+                          value: AgeBandCode.adult,
+                          child: Text('Adult — NP-NCD'),
+                        ),
+                        DropdownMenuItem(
+                          value: AgeBandCode.pregnant,
+                          child: Text('Pregnant Woman — PMSMA / ANC'),
+                        ),
+                      ],
+                      onChanged: _onAgeBandChanged,
                     ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: AgeBandCode.infant02m,
-                        child: Text(
-                          'Young Infant (0–2 Months) — IMNCI / HBNC',
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      key: const Key('age_days_field'),
+                      controller: _ageDaysController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Exact Age in Days (optional)',
+                        border: OutlineInputBorder(),
                       ),
-                      DropdownMenuItem(
-                        value: AgeBandCode.child2m5y,
-                        child: Text(
-                          'Child (2 Months–5 Years) — IMNCI / HBYC',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      DropdownMenuItem(
-                        value: AgeBandCode.adolescent,
-                        child: Text(
-                          'Adolescent (5–19 Years) — WIFS',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      DropdownMenuItem(
-                        value: AgeBandCode.adult,
-                        child: Text(
-                          'Adult — NP-NCD',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      DropdownMenuItem(
-                        value: AgeBandCode.pregnant,
-                        child: Text(
-                          'Pregnant Woman — PMSMA / ANC',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                    onChanged: _onAgeBandChanged,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    key: const Key('age_days_field'),
-                    controller: _ageDaysController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Exact Age in Days (optional)',
-                      border: OutlineInputBorder(),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 16),
 
             // Clinical Vitals Entry
-            AshaCard(
-              margin: const EdgeInsets.only(bottom: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Measured Vitals',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
-                      color: AshaColors.textPrimary,
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Measured Vitals',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    key: const Key('respiratory_rate_field'),
-                    controller: _respiratoryRateController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Respiratory Rate (breaths/min)',
-                      hintText: 'e.g. 62',
-                      border: OutlineInputBorder(),
-                      suffixText: '/min',
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      key: const Key('respiratory_rate_field'),
+                      controller: _respiratoryRateController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Respiratory Rate (breaths/min)',
+                        hintText: 'e.g. 62',
+                        border: OutlineInputBorder(),
+                        suffixText: '/min',
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    key: const Key('temperature_field'),
-                    controller: _temperatureController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
-                      labelText: 'Axillary Temperature (°C)',
-                      hintText: 'e.g. 38.5',
-                      border: OutlineInputBorder(),
-                      suffixText: '°C',
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      key: const Key('temperature_field'),
+                      controller: _temperatureController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Axillary Temperature (°C)',
+                        hintText: 'e.g. 38.5',
+                        border: OutlineInputBorder(),
+                        suffixText: '°C',
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          key: const Key('systolic_bp_field'),
-                          controller: _systolicBpController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Systolic BP',
-                            hintText: '120',
-                            border: OutlineInputBorder(),
-                            suffixText: 'mmHg',
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            key: const Key('systolic_bp_field'),
+                            controller: _systolicBpController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'Systolic BP',
+                              hintText: '120',
+                              border: OutlineInputBorder(),
+                              suffixText: 'mmHg',
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextFormField(
-                          key: const Key('diastolic_bp_field'),
-                          controller: _diastolicBpController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Diastolic BP',
-                            hintText: '80',
-                            border: OutlineInputBorder(),
-                            suffixText: 'mmHg',
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            key: const Key('diastolic_bp_field'),
+                            controller: _diastolicBpController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'Diastolic BP',
+                              hintText: '80',
+                              border: OutlineInputBorder(),
+                              suffixText: 'mmHg',
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    key: const Key('pulse_rate_field'),
-                    controller: _pulseRateController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Pulse Rate (bpm)',
-                      hintText: '72',
-                      border: OutlineInputBorder(),
-                      suffixText: 'bpm',
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      key: const Key('pulse_rate_field'),
+                      controller: _pulseRateController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Pulse Rate (bpm)',
+                        hintText: '72',
+                        border: OutlineInputBorder(),
+                        suffixText: 'bpm',
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 16),
 
             // Danger Sign Observations Checklist (Requirement 11.2)
-            AshaCard(
-              margin: const EdgeInsets.only(bottom: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Danger Sign Observations',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
-                      color: AshaColors.textPrimary,
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Danger Sign Observations',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
-                  ),
-                  CheckboxListTile(
-                    key: const Key('chest_indrawing_checkbox'),
-                    title: const Text('Severe chest indrawing'),
-                    value: _chestIndrawing,
-                    onChanged: (val) => setState(() => _chestIndrawing = val ?? false),
-                  ),
-                  CheckboxListTile(
-                    key: const Key('vomiting_checkbox'),
-                    title: const Text('Vomiting everything'),
-                    value: _vomitingEverything,
-                    onChanged: (val) => setState(() => _vomitingEverything = val ?? false),
-                  ),
-                  CheckboxListTile(
-                    key: const Key('convulsions_checkbox'),
-                    title: const Text('Convulsions or lethargy'),
-                    value: _convulsions,
-                    onChanged: (val) => setState(() => _convulsions = val ?? false),
-                  ),
-                ],
+                    CheckboxListTile(
+                      key: const Key('chest_indrawing_checkbox'),
+                      title: const Text('Severe chest indrawing'),
+                      value: _chestIndrawing,
+                      onChanged: (val) => setState(() => _chestIndrawing = val ?? false),
+                    ),
+                    CheckboxListTile(
+                      key: const Key('vomiting_checkbox'),
+                      title: const Text('Vomiting everything'),
+                      value: _vomitingEverything,
+                      onChanged: (val) => setState(() => _vomitingEverything = val ?? false),
+                    ),
+                    CheckboxListTile(
+                      key: const Key('convulsions_checkbox'),
+                      title: const Text('Convulsions or lethargy'),
+                      value: _convulsions,
+                      onChanged: (val) => setState(() => _convulsions = val ?? false),
+                    ),
+                  ],
+                ),
               ),
             ),
+            const SizedBox(height: 24),
 
             // Designated Submit Button (Requirement 8.1)
             ElevatedButton(
               key: const Key('submit_triage_button'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: AshaColors.primary,
+                backgroundColor: const Color(0xFF1976D2),
                 foregroundColor: Colors.white,
-                shape: const RoundedRectangleBorder(borderRadius: AshaShapes.buttonRadius),
-                elevation: 0,
               ),
               onPressed: _isEvaluating ? null : _submitAssessment,
               child: _isEvaluating

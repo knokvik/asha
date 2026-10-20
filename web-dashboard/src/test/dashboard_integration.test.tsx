@@ -3,10 +3,13 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
-import { AuthProvider } from '@/shared/hooks/useAuth';
+import { RootLayout } from '@/layouts/RootLayout';
+import { AuthProvider, DEMO_CREDENTIALS, useAuth } from '@/shared/hooks/useAuth';
 import { PHCDashboardPage } from '@/features/phc-dashboard/PHCDashboardPage';
 import { ANMWorkspacePage } from '@/features/anm-workspace/ANMWorkspacePage';
 import { AdminConsolePage } from '@/features/admin/AdminConsolePage';
+import { LoginPage } from '@/features/auth/LoginPage';
+import { MainDashboardPage } from '@/features/dashboard/MainDashboardPage';
 import { getReferralQueue, recordReferralOutcome } from '@/shared/api/referralApi';
 import { getIncentiveVerificationQueue, verifyClaimLineItem } from '@/shared/api/anmApi';
 import { bulkUploadUsers } from '@/shared/api/adminApi';
@@ -129,4 +132,56 @@ Pooja Rani,ANM,+919811199990,Shahpur,SC Shahpur`;
     expect(claimsOffline.length).toBeGreaterThanOrEqual(4);
     expect(claimsOffline.some((c) => c.activityCode === 'INSTITUTIONAL_DELIVERY')).toBe(true);
   });
+
+  it('Requirement 44.1: Role-based credential authentication renders login form and demo accounts', async () => {
+    renderWithProviders(<LoginPage />);
+
+    expect(screen.getByText(/Role-Based Portal Access/i)).toBeInTheDocument();
+    expect(screen.getByText(/Quick-Login Demo Accounts/i)).toBeInTheDocument();
+    expect(screen.getByText('Dr. Alok Verma')).toBeInTheDocument();
+    expect(screen.getByText('Kavita Kumari')).toBeInTheDocument();
+    expect(screen.getByText('Sarita Singh')).toBeInTheDocument();
+    expect(screen.getByText(/Authenticate & Open Command Center/i)).toBeInTheDocument();
+  });
+
+  it('Requirement 44.2: Main Dashboard command center displays key KPIs and priority emergencies', async () => {
+    renderWithProviders(<MainDashboardPage />);
+
+    expect(screen.getByText(/PHC Shahpur Integrated Command Center/i)).toBeInTheDocument();
+    expect(screen.getByText(/CRITICAL RED TRIAGE ALERT/i)).toBeInTheDocument();
+    expect(screen.getByText(/Emergency Triage & Active Referral Cases/i)).toBeInTheDocument();
+    expect(screen.getByText(/Health System Workspaces & Portals/i)).toBeInTheDocument();
+    expect(screen.getByText(/Catchment Sub-Centre Facility Performance/i)).toBeInTheDocument();
+  });
+
+  it('Requirement 44.3: Credentials store covers all 5 health frontline roles with valid logins', () => {
+    expect(DEMO_CREDENTIALS.length).toBe(5);
+    const roles = DEMO_CREDENTIALS.map((c) => c.role);
+    expect(roles).toContain('PHC_MO');
+    expect(roles).toContain('ANM');
+    expect(roles).toContain('AF');
+    expect(roles).toContain('DISTRICT_OFFICER');
+    expect(roles).toContain('STATE_ADMIN');
+
+    DEMO_CREDENTIALS.forEach((cred) => {
+      expect(cred.username.length).toBeGreaterThan(0);
+      expect(cred.password.length).toBeGreaterThanOrEqual(4);
+      expect(cred.name.length).toBeGreaterThan(0);
+    });
+  });
+
+  it('Requirement 44.4: RootLayout renders unified navigation with all portals available and active role badge', async () => {
+    renderWithProviders(<RootLayout />);
+
+    expect(screen.getByText(/Primary Health Centre Shahpur/i)).toBeInTheDocument();
+    expect(screen.getByText(/Main Dashboard/i)).toBeInTheDocument();
+    expect(screen.getByText(/Emergency Triage/i)).toBeInTheDocument();
+    expect(screen.getByText(/ANM \/ Sub-Centre/i)).toBeInTheDocument();
+    expect(screen.getByText(/ASHA Supervision/i)).toBeInTheDocument();
+    expect(screen.getByText(/District Analytics/i)).toBeInTheDocument();
+    expect(screen.getByText(/State Admin Console/i)).toBeInTheDocument();
+    expect(screen.getByText(/Call 108 Ambulance/i)).toBeInTheDocument();
+  });
 });
+
+

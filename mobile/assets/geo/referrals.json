@@ -1,0 +1,23 @@
+[
+  {
+    "id": "ref-w3-red",
+    "flag": "red",
+    "lat": 18.642,
+    "lng": 73.843,
+    "ward_id": "W3"
+  },
+  {
+    "id": "ref-w3-yellow",
+    "flag": "yellow",
+    "lat": 18.638,
+    "lng": 73.836,
+    "ward_id": "W3"
+  },
+  {
+    "id": "ref-w3-green",
+    "flag": "green",
+    "lat": 18.635,
+    "lng": 73.832,
+    "ward_id": "W3"
+  }
+]

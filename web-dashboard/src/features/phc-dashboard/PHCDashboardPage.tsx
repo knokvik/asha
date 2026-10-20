@@ -205,7 +205,7 @@ export function PHCDashboardPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-white dark:bg-[#222224] border border-[#E5E7EB] dark:border-[#2E2E2E] shadow-xs backdrop-blur-xl transition-colors">
           <div className="space-y-1">
             <div className="flex items-center space-x-3">
-              <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-[#F43F5E]">
+              <div className="p-2.5 rounded-xl bg-white dark:bg-[#222224] border border-rose-300 dark:border-rose-500/30 text-rose-600 dark:text-rose-400 shadow-xs">
                 <Activity className="w-6 h-6" />
               </div>
               <div>
@@ -464,7 +464,7 @@ export function PHCDashboardPage() {
                     data-fresh-red={freshRedIds.includes(item.id) ? 'true' : 'false'}
                     className={`transition-all ${
                       freshRedIds.includes(item.id)
-                        ? 'border-rose-600 ring-2 ring-rose-500 bg-rose-50 dark:bg-rose-950/40'
+                        ? 'border-2 border-rose-500 bg-white dark:bg-[#222224] shadow-xs'
                         : isRed
                         ? 'border-l-4 border-l-rose-500 border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] shadow-xs'
                         : 'border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224]'
@@ -479,8 +479,8 @@ export function PHCDashboardPage() {
                             <span
                               className={`px-2.5 py-0.5 rounded-full text-xs font-bold tracking-wide uppercase border flex items-center gap-1.5 ${
                                 isRed
-                                  ? 'bg-rose-500/15 text-[#F43F5E] border-rose-500/40 pulse-urgent'
-                                  : 'bg-amber-500/15 text-[#F59E0B] border-amber-500/40'
+                                  ? 'bg-white dark:bg-[#222224] text-rose-600 dark:text-rose-400 border-rose-300 dark:border-rose-500/40'
+                                  : 'bg-white dark:bg-[#222224] text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-500/40'
                               }`}
                             >
                               <AlertTriangle className="w-3.5 h-3.5" />
@@ -509,10 +509,10 @@ export function PHCDashboardPage() {
                             {item.abhaId && (
                               <div
                                 onClick={() => handleCopyAbha(item.abhaId!)}
-                                className="group inline-flex items-center space-x-1.5 px-2 py-0.5 rounded bg-sky-50 dark:bg-sky-950/60 border border-sky-300 dark:border-sky-500/30 text-sky-800 dark:text-sky-300 text-[11px] font-mono cursor-pointer hover:bg-sky-100 dark:hover:bg-sky-900/60 transition-colors"
+                                className="group inline-flex items-center space-x-1.5 px-2 py-0.5 rounded bg-white dark:bg-[#222224] border border-[#E5E7EB] dark:border-[#2E2E2E] text-slate-700 dark:text-slate-300 text-[11px] font-mono cursor-pointer hover:border-slate-400 transition-colors"
                                 title="Click to copy ABHA ID"
                               >
-                                <span className="font-semibold text-sky-600 dark:text-sky-400">ABHA:</span>
+                                <span className="font-semibold text-slate-900 dark:text-white">ABHA:</span>
                                 <span>{item.abhaId}</span>
                                 {copiedAbha === item.abhaId ? (
                                   <Check className="w-3 h-3 text-[#10B981]" />
@@ -565,8 +565,8 @@ export function PHCDashboardPage() {
                                     key={idx}
                                     className={`px-2 py-0.5 rounded-md text-[11px] font-medium flex items-center gap-1 border ${
                                       ds.present
-                                        ? 'bg-rose-50 dark:bg-rose-500/15 text-[#F43F5E] border-rose-200 dark:border-rose-500/30 font-bold'
-                                        : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20'
+                                        ? 'bg-white dark:bg-[#222224] text-rose-600 dark:text-rose-400 border-rose-300 dark:border-rose-500/30 font-bold'
+                                        : 'bg-white dark:bg-[#222224] text-slate-600 dark:text-slate-400 border-[#E5E7EB] dark:border-[#2E2E2E]'
                                     }`}
                                   >
                                     {ds.present ? (
@@ -632,16 +632,16 @@ export function PHCDashboardPage() {
                               <span className="font-mono text-[11px]">{item.ashaPhone}</span>
                               <a
                                 href={`tel:${item.ashaPhone}`}
-                                className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-600/20 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-600/30 font-semibold text-xs transition-colors"
+                                className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-white dark:bg-[#222224] text-slate-700 dark:text-slate-300 border border-[#E5E7EB] dark:border-[#2E2E2E] hover:border-slate-400 font-semibold text-xs transition-colors"
                               >
-                                <Phone className="w-3 h-3" />
+                                <Phone className="w-3 h-3 text-slate-500" />
                                 <span>Call ASHA</span>
                               </a>
                             </div>
                           </div>
 
                           {/* Status and Time Tracking */}
-                          <div className="flex items-center justify-between text-xs p-2 rounded-lg bg-slate-50 dark:bg-[#181818] border border-slate-200 dark:border-[#2E2E2E]">
+                          <div className="flex items-center justify-between text-xs p-2 rounded-lg bg-white dark:bg-[#181818] border border-slate-200 dark:border-[#2E2E2E]">
                             <div className="space-y-0.5">
                               <div className="text-[#71717A] text-[11px]">
                                 Referred: {new Date(item.referredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -658,12 +658,12 @@ export function PHCDashboardPage() {
                             <span
                               className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
                                 item.status === 'pending'
-                                  ? 'bg-amber-50 dark:bg-amber-500/15 text-[#F59E0B] border-amber-200 dark:border-amber-500/30'
+                                  ? 'bg-white dark:bg-[#222224] text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-500/40'
                                   : item.status === 'arrived'
-                                  ? 'bg-sky-50 dark:bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-500/30'
+                                  ? 'bg-white dark:bg-[#222224] text-sky-600 dark:text-sky-400 border-sky-300 dark:border-sky-500/40'
                                   : item.status === 'treated' || item.status === 'admitted'
-                                  ? 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30'
-                                  : 'bg-slate-100 dark:bg-[#2E2E2E] text-slate-700 dark:text-[#A3A3A3] border-slate-200 dark:border-[#404040]'
+                                  ? 'bg-white dark:bg-[#222224] text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-500/40'
+                                  : 'bg-white dark:bg-[#222224] text-slate-700 dark:text-[#A3A3A3] border-slate-200 dark:border-[#404040]'
                               }`}
                             >
                               {item.status.replace('_', ' ')}
@@ -679,9 +679,9 @@ export function PHCDashboardPage() {
                                 variant="outline"
                                 onClick={() => acknowledgeMutation.mutate(item.id)}
                                 disabled={acknowledgeMutation.isPending}
-                                className="w-full text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/30 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                                className="w-full text-slate-800 dark:text-slate-200 border-[#E5E7EB] dark:border-[#2E2E2E] hover:border-slate-400"
                               >
-                                <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-[#10B981]" />
+                                <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-slate-600 dark:text-slate-400" />
                                 <span>ACKNOWLEDGE</span>
                               </Button>
                             )}
@@ -691,12 +691,12 @@ export function PHCDashboardPage() {
                                 variant="outline"
                                 onClick={() => consultMutation.mutate(item.id)}
                                 disabled={consultMutation.isPending}
-                                className="w-full"
+                                className="w-full border-[#E5E7EB] dark:border-[#2E2E2E] hover:border-slate-400"
                               >
                                 <span>START CONSULT</span>
                               </Button>
                             )}
-                            <NavLink to={`/ticket/${item.id}`} className="block text-center text-xs font-semibold text-emerald-700 dark:text-emerald-300 underline">
+                            <NavLink to={`/ticket/${item.id}`} className="block text-center text-xs font-semibold text-slate-700 dark:text-slate-300 underline">
                               Open ticket
                             </NavLink>
 
@@ -706,9 +706,9 @@ export function PHCDashboardPage() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleOpenAbdmHiu(item)}
-                                className="text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-500/30 hover:bg-sky-50 dark:hover:bg-sky-950/40"
+                                className="text-slate-700 dark:text-slate-300 border-[#E5E7EB] dark:border-[#2E2E2E] hover:border-slate-400"
                               >
-                                <FileText className="w-3.5 h-3.5 mr-1 text-sky-500" />
+                                <FileText className="w-3.5 h-3.5 mr-1 text-slate-500" />
                                 <span>ABDM HIU</span>
                               </Button>
 

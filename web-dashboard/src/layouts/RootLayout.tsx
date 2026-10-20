@@ -4,6 +4,7 @@ import { useAuth } from '@/shared/hooks/useAuth';
 import { useTheme } from '@/shared/hooks/useTheme';
 import { UserRole } from '@/types';
 import {
+  LayoutDashboard,
   Activity,
   Users,
   FileCheck2,
@@ -21,6 +22,9 @@ import {
   MapPin,
   Layers,
   Package,
+  TrendingUp,
+  LogOut,
+  UserCheck,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -32,42 +36,154 @@ const ROLE_CONFIG: Record<
   PHC_MO: {
     label: 'PHC Medical Officer (Doctor)',
     shortTitle: 'PHC Doctor',
-    badgeClass: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/30',
+    badgeClass: 'bg-white dark:bg-[#222224] text-slate-800 dark:text-slate-200 border-[#E5E7EB] dark:border-[#2E2E2E]',
     path: '/phc',
     icon: Stethoscope,
   },
   ANM: {
     label: 'ANM / CHO Sub-Centre',
     shortTitle: 'ANM Workspace',
-    badgeClass: 'bg-teal-500/15 text-teal-600 dark:text-teal-300 border-teal-500/30',
+    badgeClass: 'bg-white dark:bg-[#222224] text-slate-800 dark:text-slate-200 border-[#E5E7EB] dark:border-[#2E2E2E]',
     path: '/anm',
     icon: FileCheck2,
   },
   AF: {
     label: 'ASHA Facilitator (AF)',
     shortTitle: 'AF Supervision',
-    badgeClass: 'bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30',
+    badgeClass: 'bg-white dark:bg-[#222224] text-slate-800 dark:text-slate-200 border-[#E5E7EB] dark:border-[#2E2E2E]',
     path: '/af',
     icon: Users,
   },
   DISTRICT_OFFICER: {
     label: 'District Health Officer',
     shortTitle: 'District Health',
-    badgeClass: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border-indigo-500/30',
+    badgeClass: 'bg-white dark:bg-[#222224] text-slate-800 dark:text-slate-200 border-[#E5E7EB] dark:border-[#2E2E2E]',
     path: '/district',
     icon: BarChart3,
   },
   STATE_ADMIN: {
     label: 'State Administrator',
     shortTitle: 'State Admin',
-    badgeClass: 'bg-purple-500/15 text-purple-600 dark:text-purple-300 border-purple-500/30',
+    badgeClass: 'bg-white dark:bg-[#222224] text-slate-800 dark:text-slate-200 border-[#E5E7EB] dark:border-[#2E2E2E]',
     path: '/admin',
     icon: ShieldCheck,
   },
 };
 
+interface NavSection {
+  title: string;
+  items: {
+    label: string;
+    path: string;
+    icon: any;
+    activeColor: string;
+    end?: boolean;
+    badge?: (isActive: boolean) => React.ReactNode;
+  }[];
+}
+
+const NAV_SECTIONS: NavSection[] = [
+  {
+    title: 'Command Center & GIS',
+    items: [
+      {
+        label: 'Main Dashboard',
+        path: '/dashboard',
+        end: true,
+        icon: LayoutDashboard,
+        activeColor: 'text-emerald-600 dark:text-emerald-400',
+      },
+      {
+        label: 'Catchment Field Map',
+        path: '/map',
+        icon: MapPin,
+        activeColor: 'text-emerald-600 dark:text-emerald-400',
+        badge: () => (
+          <Badge variant="outline" className="h-4 px-1 text-[9px] text-slate-600 dark:text-slate-400 border-[#E5E7EB] dark:border-[#2E2E2E]">
+            GPS
+          </Badge>
+        ),
+      },
+    ],
+  },
+  {
+    title: 'Clinical Facility Desk',
+    items: [
+      {
+        label: 'Emergency Triage',
+        path: '/phc',
+        icon: Activity,
+        activeColor: 'text-[#F43F5E]',
+        badge: () => (
+          <Badge variant="destructive" className="h-4.5 px-1.5 text-[9px] font-bold">
+            2 RED
+          </Badge>
+        ),
+      },
+      {
+        label: 'Child IMCI Queue',
+        path: '/queue',
+        icon: Layers,
+        activeColor: 'text-rose-500 dark:text-rose-400',
+      },
+      {
+        label: 'PCMC Heatmap',
+        path: '/heatmap',
+        icon: TrendingUp,
+        activeColor: 'text-orange-500 dark:text-orange-400',
+      },
+      {
+        label: 'Drug & Bed Inventory',
+        path: '/resources',
+        icon: Package,
+        activeColor: 'text-amber-500 dark:text-amber-400',
+      },
+    ],
+  },
+  {
+    title: 'Frontline & Field Operations',
+    items: [
+      {
+        label: 'ANM / Sub-Centre',
+        path: '/anm',
+        icon: FileCheck2,
+        activeColor: 'text-teal-600 dark:text-teal-400',
+      },
+      {
+        label: 'ASHA Supervision',
+        path: '/af',
+        icon: Users,
+        activeColor: 'text-amber-600 dark:text-amber-400',
+      },
+      {
+        label: 'IMCI Supervisor',
+        path: '/supervisor',
+        icon: Users,
+        activeColor: 'text-amber-600 dark:text-amber-400',
+      },
+    ],
+  },
+  {
+    title: 'Governance & Analytics',
+    items: [
+      {
+        label: 'District Analytics',
+        path: '/district',
+        icon: BarChart3,
+        activeColor: 'text-indigo-600 dark:text-indigo-400',
+      },
+      {
+        label: 'State Admin Console',
+        path: '/admin',
+        icon: ShieldCheck,
+        activeColor: 'text-purple-600 dark:text-purple-400',
+      },
+    ],
+  },
+];
+
 export function RootLayout() {
-  const { user, role, switchRole } = useAuth();
+  const { user, role, switchRole, logout, isAuthenticated } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -80,6 +196,12 @@ export function RootLayout() {
     switchRole(newRole);
     setRoleDropdownOpen(false);
     navigate(ROLE_CONFIG[newRole].path);
+  };
+
+  const handleLogout = () => {
+    logout();
+    setRoleDropdownOpen(false);
+    navigate('/login');
   };
 
   return (
@@ -126,17 +248,17 @@ export function RootLayout() {
 
         {/* 2. Facility Status Pill (Fixed, Non-scrolling) */}
         {sidebarOpen && (
-          <div className="shrink-0 mx-3 mt-3 p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-500/20 text-xs text-emerald-800 dark:text-emerald-300 space-y-1">
+          <div className="shrink-0 mx-3 mt-3 p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-500/20 text-xs text-[#0F172A] dark:text-[#F8FAFC] space-y-1">
             <div className="flex items-center justify-between text-[11px] font-semibold">
-              <span className="flex items-center gap-1">
-                <Radio className="h-3 w-3 text-[#10B981] animate-pulse" />
+              <span className="flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#10B981]" />
                 ABDM Gateway Active
               </span>
-              <span className="font-mono text-[10px] bg-emerald-100 dark:bg-emerald-900/50 px-1.5 py-0.2 rounded text-emerald-800 dark:text-emerald-200">
+              <span className="font-mono text-[10px] bg-emerald-100/70 dark:bg-emerald-900/40 px-1.5 py-0.2 rounded text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30">
                 24x7 MO
               </span>
             </div>
-            <div className="text-[10px] text-slate-600 dark:text-slate-400 flex items-center justify-between">
+            <div className="text-[10px] text-emerald-700/80 dark:text-emerald-400/80 flex items-center justify-between">
               <span>Beds: 12/16 Occupied</span>
               <span>Sub-Centres: 6</span>
             </div>
@@ -145,170 +267,49 @@ export function RootLayout() {
 
         {/* 3. Navigation Links (Scrollable area ONLY if screen is very short, no outer scroll) */}
         <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4 min-h-0">
-          <div>
-            {sidebarOpen && (
-              <div className="px-2 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#71717A]">
-                Clinical Facility Portal
-              </div>
-            )}
-            <nav className="space-y-1">
-              <NavLink
-                to="/phc"
-                className={({ isActive }) =>
-                  `flex items-center space-x-3 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
-                    isActive
-                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 shadow-xs'
-                      : 'text-[#525252] dark:text-[#A3A3A3] hover:bg-slate-100 dark:hover:bg-[#2A2A2A] hover:text-[#0F172A] dark:hover:text-white'
-                  } ${!sidebarOpen ? 'justify-center px-2' : ''}`
-                }
-              >
-                <Activity className="h-4 w-4 shrink-0 text-[#F43F5E]" />
-                {sidebarOpen && (
-                  <div className="flex flex-1 items-center justify-between">
-                    <span>Emergency Triage</span>
-                    <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">
-                      2 RED
-                    </Badge>
-                  </div>
-                )}
-              </NavLink>
+          {NAV_SECTIONS.map((section) => (
+            <div key={section.title}>
+              {sidebarOpen && (
+                <div className="px-2 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#71717A]">
+                  {section.title}
+                </div>
+              )}
+              <nav className="space-y-1">
+                {section.items.map((item) => (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    end={item.end}
+                    className={({ isActive }) =>
+                      `flex items-center space-x-3 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
+                        isActive
+                          ? 'bg-slate-100 dark:bg-[#2E2E2E] text-[#0F172A] dark:text-[#F8FAFC] border border-[#E5E7EB] dark:border-[#3F3F46] shadow-xs'
+                          : 'text-[#525252] dark:text-[#A3A3A3] hover:bg-slate-50 dark:hover:bg-[#262626] hover:text-[#0F172A] dark:hover:text-white border border-transparent'
+                      } ${!sidebarOpen ? 'justify-center px-2' : ''}`
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <item.icon
+                          className={`h-4 w-4 shrink-0 transition-colors ${
+                            isActive ? item.activeColor : 'text-[#71717A] dark:text-[#A3A3A3]'
+                          }`}
+                        />
+                        {sidebarOpen && (
+                          <div className="flex flex-1 items-center justify-between min-w-0">
+                            <span className="truncate">{item.label}</span>
+                            {item.badge && item.badge(isActive)}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </NavLink>
+                ))}
+              </nav>
+            </div>
+          ))}
 
-              <NavLink
-                to="/queue"
-                className={({ isActive }) =>
-                  `flex items-center space-x-3 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
-                    isActive
-                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 shadow-xs'
-                      : 'text-[#525252] dark:text-[#A3A3A3] hover:bg-slate-100 dark:hover:bg-[#2A2A2A] hover:text-[#0F172A] dark:hover:text-white'
-                  } ${!sidebarOpen ? 'justify-center px-2' : ''}`
-                }
-              >
-                <Layers className="h-4 w-4 shrink-0 text-rose-500" />
-                {sidebarOpen && <span>Child IMCI queue</span>}
-              </NavLink>
-
-              <NavLink
-                to="/heatmap"
-                className={({ isActive }) =>
-                  `flex items-center space-x-3 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
-                    isActive
-                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 shadow-xs'
-                      : 'text-[#525252] dark:text-[#A3A3A3] hover:bg-slate-100 dark:hover:bg-[#2A2A2A] hover:text-[#0F172A] dark:hover:text-white'
-                  } ${!sidebarOpen ? 'justify-center px-2' : ''}`
-                }
-              >
-                <MapPin className="h-4 w-4 shrink-0 text-rose-500" />
-                {sidebarOpen && <span>PCMC heatmap</span>}
-              </NavLink>
-
-              <NavLink
-                to="/resources"
-                className={({ isActive }) =>
-                  `flex items-center space-x-3 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
-                    isActive
-                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 shadow-xs'
-                      : 'text-[#525252] dark:text-[#A3A3A3] hover:bg-slate-100 dark:hover:bg-[#2A2A2A] hover:text-[#0F172A] dark:hover:text-white'
-                  } ${!sidebarOpen ? 'justify-center px-2' : ''}`
-                }
-              >
-                <Package className="h-4 w-4 shrink-0 text-amber-500" />
-                {sidebarOpen && <span>Early-warning stock</span>}
-              </NavLink>
-
-              <NavLink
-                to="/supervisor"
-                className={({ isActive }) =>
-                  `flex items-center space-x-3 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
-                    isActive
-                      ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 shadow-xs'
-                      : 'text-[#525252] dark:text-[#A3A3A3] hover:bg-slate-100 dark:hover:bg-[#2A2A2A] hover:text-[#0F172A] dark:hover:text-white'
-                  } ${!sidebarOpen ? 'justify-center px-2' : ''}`
-                }
-              >
-                <Users className="h-4 w-4 shrink-0 text-amber-500" />
-                {sidebarOpen && <span>IMCI supervisor</span>}
-              </NavLink>
-
-              <NavLink
-                to="/map"
-                className={({ isActive }) =>
-                  `flex items-center space-x-3 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
-                    isActive
-                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 shadow-xs'
-                      : 'text-[#525252] dark:text-[#A3A3A3] hover:bg-slate-100 dark:hover:bg-[#2A2A2A] hover:text-[#0F172A] dark:hover:text-white'
-                  } ${!sidebarOpen ? 'justify-center px-2' : ''}`
-                }
-              >
-                <MapPin className="h-4 w-4 shrink-0 text-emerald-500" />
-                {sidebarOpen && (
-                  <div className="flex flex-1 items-center justify-between">
-                    <span>OsmAnd Field Map</span>
-                    <Badge variant="outline" className="h-4 px-1 text-[9px] text-emerald-600 dark:text-emerald-400">
-                      GPS
-                    </Badge>
-                  </div>
-                )}
-              </NavLink>
-
-              <NavLink
-                to="/anm"
-                className={({ isActive }) =>
-                  `flex items-center space-x-3 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
-                    isActive
-                      ? 'bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-500/30 shadow-xs'
-                      : 'text-[#525252] dark:text-[#A3A3A3] hover:bg-slate-100 dark:hover:bg-[#2A2A2A] hover:text-[#0F172A] dark:hover:text-white'
-                  } ${!sidebarOpen ? 'justify-center px-2' : ''}`
-                }
-              >
-                <FileCheck2 className="h-4 w-4 shrink-0 text-teal-500" />
-                {sidebarOpen && <span>ANM / Sub-Centre</span>}
-              </NavLink>
-
-              <NavLink
-                to="/af"
-                className={({ isActive }) =>
-                  `flex items-center space-x-3 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
-                    isActive
-                      ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 shadow-xs'
-                      : 'text-[#525252] dark:text-[#A3A3A3] hover:bg-slate-100 dark:hover:bg-[#2A2A2A] hover:text-[#0F172A] dark:hover:text-white'
-                  } ${!sidebarOpen ? 'justify-center px-2' : ''}`
-                }
-              >
-                <Users className="h-4 w-4 shrink-0 text-[#F59E0B]" />
-                {sidebarOpen && <span>ASHA Supervision</span>}
-              </NavLink>
-
-              <NavLink
-                to="/district"
-                className={({ isActive }) =>
-                  `flex items-center space-x-3 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
-                    isActive
-                      ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 shadow-xs'
-                      : 'text-[#525252] dark:text-[#A3A3A3] hover:bg-slate-100 dark:hover:bg-[#2A2A2A] hover:text-[#0F172A] dark:hover:text-white'
-                  } ${!sidebarOpen ? 'justify-center px-2' : ''}`
-                }
-              >
-                <BarChart3 className="h-4 w-4 shrink-0 text-indigo-500" />
-                {sidebarOpen && <span>District Analytics</span>}
-              </NavLink>
-
-              <NavLink
-                to="/admin"
-                className={({ isActive }) =>
-                  `flex items-center space-x-3 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
-                    isActive
-                      ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-500/30 shadow-xs'
-                      : 'text-[#525252] dark:text-[#A3A3A3] hover:bg-slate-100 dark:hover:bg-[#2A2A2A] hover:text-[#0F172A] dark:hover:text-white'
-                  } ${!sidebarOpen ? 'justify-center px-2' : ''}`
-                }
-              >
-                <ShieldCheck className="h-4 w-4 shrink-0 text-purple-500" />
-                {sidebarOpen && <span>Admin Console</span>}
-              </NavLink>
-            </nav>
-          </div>
-
-          {/* Quick Hotline */}
+          {/* Quick Hotline (Minimalist: white background, clean red border) */}
           {sidebarOpen && (
             <div className="pt-2 border-t border-[#E5E7EB] dark:border-[#2E2E2E]">
               <div className="px-2 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#71717A]">
@@ -316,7 +317,7 @@ export function RootLayout() {
               </div>
               <a
                 href="tel:108"
-                className="flex items-center space-x-2.5 p-2 rounded-xl bg-rose-50 dark:bg-rose-950/20 text-[#F43F5E] border border-rose-200 dark:border-rose-500/20 text-xs font-semibold hover:bg-rose-100 transition-colors"
+                className="flex items-center space-x-2.5 p-2 rounded-xl bg-white dark:bg-[#222224] text-rose-600 dark:text-rose-400 border border-rose-300 dark:border-rose-500/40 text-xs font-semibold hover:bg-rose-50/40 transition-colors shadow-xs"
               >
                 <PhoneCall className="h-3.5 w-3.5" />
                 <span>Call 108 Ambulance</span>
@@ -325,7 +326,7 @@ export function RootLayout() {
           )}
         </div>
 
-        {/* 4. Lower Footer & Doctor Profile (Firmly Pinned to Bottom, NOT Scrollable!) */}
+        {/* 4. Lower Footer & User Profile (Firmly Pinned to Bottom, NOT Scrollable!) */}
         <div className="shrink-0 mt-auto border-t border-[#E5E7EB] dark:border-[#2E2E2E] p-3 space-y-2 bg-[#FFFFFF] dark:bg-[#1E1E1E]">
           {/* Theme Mode Toggle Row */}
           <div className="flex items-center justify-between px-1">
@@ -339,7 +340,7 @@ export function RootLayout() {
               size="xs"
               variant="outline"
               onClick={toggleTheme}
-              className="h-7 px-2 text-[11px] gap-1 ml-auto"
+              className="h-7 px-2 text-[11px] gap-1 ml-auto border-[#E5E7EB] dark:border-[#2E2E2E]"
               title="Toggle Light / Dark mode"
             >
               {theme === 'dark' ? (
@@ -356,60 +357,96 @@ export function RootLayout() {
             </Button>
           </div>
 
-          {/* Doctor Profile & Role Switcher */}
-          <div className="relative">
-            <button
-              onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
-              className="flex w-full items-center space-x-2.5 rounded-xl bg-slate-50 dark:bg-[#222224] p-2 border border-[#E5E7EB] dark:border-[#2E2E2E] hover:border-slate-300 dark:hover:border-slate-600 transition-colors text-left"
-            >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30">
-                <currentRoleConfig.icon className="h-4 w-4" />
-              </div>
-              {sidebarOpen && (
-                <div className="flex flex-1 flex-col truncate">
-                  <span className="text-xs font-bold text-[#0F172A] dark:text-white truncate">
-                    {user?.name || 'Dr. Rajesh Sharma'}
-                  </span>
-                  <span className="text-[10px] text-[#10B981] font-medium flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#10B981]" />
-                    {role} • On Duty
-                  </span>
+          {/* User Profile & Role Switcher */}
+          {isAuthenticated && user ? (
+            <div className="relative">
+              <button
+                onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
+                className="flex w-full items-center space-x-2.5 rounded-xl bg-white dark:bg-[#222224] p-2 border border-[#E5E7EB] dark:border-[#2E2E2E] hover:border-slate-300 dark:hover:border-slate-600 transition-colors text-left"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white dark:bg-[#1E1E1E] text-slate-700 dark:text-slate-300 border border-[#E5E7EB] dark:border-[#2E2E2E]">
+                  <currentRoleConfig.icon className="h-4 w-4" />
+                </div>
+                {sidebarOpen && (
+                  <div className="flex flex-1 flex-col truncate">
+                    <span className="text-xs font-bold text-[#0F172A] dark:text-white truncate">
+                      {user.name}
+                    </span>
+                    <span className="text-[10px] text-slate-600 dark:text-slate-400 font-medium flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#10B981]" />
+                      {role} • On Duty
+                    </span>
+                  </div>
+                )}
+                {sidebarOpen && <ChevronDown className="h-3.5 w-3.5 text-[#71717A]" />}
+              </button>
+
+              {/* Popup Role Switcher & Account Dropdown */}
+              {roleDropdownOpen && (
+                <div className="absolute bottom-full left-0 mb-2 w-64 rounded-xl border border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#1E1E1E] p-2 shadow-2xl z-50">
+                  <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#71717A] border-b border-[#E5E7EB] dark:border-[#2E2E2E] mb-1 flex items-center justify-between">
+                    <span>Switch Active Role</span>
+                    <span className="font-mono text-[9px] text-slate-600 dark:text-slate-400">Authenticated</span>
+                  </div>
+                  <div className="space-y-0.5">
+                    {(Object.keys(ROLE_CONFIG) as UserRole[]).map((r) => {
+                      const cfg = ROLE_CONFIG[r];
+                      const Icon = cfg.icon;
+                      const isCurrent = r === role;
+                      return (
+                        <button
+                          key={r}
+                          onClick={() => handleRoleSelect(r)}
+                          className={`flex w-full items-center space-x-2.5 rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
+                            isCurrent
+                              ? 'bg-slate-100 dark:bg-[#2E2E2E] text-slate-900 dark:text-white font-bold'
+                              : 'text-[#0F172A] dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#262626]'
+                          }`}
+                        >
+                          <Icon className="h-3.5 w-3.5 text-[#71717A]" />
+                          <div className="flex flex-1 items-center justify-between">
+                            <span>{cfg.label}</span>
+                            {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-[#10B981]" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="pt-2 mt-1 border-t border-[#E5E7EB] dark:border-[#2E2E2E] space-y-1">
+                    <button
+                      onClick={() => {
+                        setRoleDropdownOpen(false);
+                        navigate('/login');
+                      }}
+                      className="flex w-full items-center space-x-2 rounded-lg px-2.5 py-1.5 text-xs text-[#525252] dark:text-[#A3A3A3] hover:bg-slate-100 dark:hover:bg-[#2A2A2A] hover:text-[#0F172A] dark:hover:text-white transition-colors"
+                    >
+                      <UserCheck className="h-3.5 w-3.5 text-[#71717A]" />
+                      <span>Switch Account Credentials</span>
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="flex w-full items-center space-x-2 rounded-lg px-2.5 py-1.5 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
                 </div>
               )}
-              {sidebarOpen && <ChevronDown className="h-3.5 w-3.5 text-[#71717A]" />}
-            </button>
-
-            {/* Popup Role Switcher */}
-            {roleDropdownOpen && (
-              <div className="absolute bottom-full left-0 mb-2 w-64 rounded-xl border border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#1E1E1E] p-2 shadow-2xl z-50">
-                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[#71717A] border-b border-[#E5E7EB] dark:border-[#2E2E2E] mb-1">
-                  Switch Active Role Shell
-                </div>
-                {(Object.keys(ROLE_CONFIG) as UserRole[]).map((r) => {
-                  const cfg = ROLE_CONFIG[r];
-                  const Icon = cfg.icon;
-                  const isCurrent = r === role;
-                  return (
-                    <button
-                      key={r}
-                      onClick={() => handleRoleSelect(r)}
-                      className={`flex w-full items-center space-x-2.5 rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
-                        isCurrent
-                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold'
-                          : 'text-[#0F172A] dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#2A2A2A]'
-                      }`}
-                    >
-                      <Icon className="h-3.5 w-3.5 text-slate-400" />
-                      <div className="flex flex-1 items-center justify-between">
-                        <span>{cfg.label}</span>
-                        {isCurrent && <span className="h-1.5 w-1.5 rounded-full bg-[#10B981]" />}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => navigate('/login')}
+                className="w-full text-xs font-semibold rounded-xl h-8"
+              >
+                Sign In to Portal
+              </Button>
+            </div>
+          )}
         </div>
       </aside>
 
@@ -439,7 +476,7 @@ export function RootLayout() {
               <span className="text-xs font-bold text-[#0F172A] dark:text-white">
                 Primary Health Centre Shahpur
               </span>
-              <Badge variant="outline" className="hidden md:inline-flex text-[10px] text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-500/30">
+              <Badge variant="outline" className="hidden md:inline-flex text-[10px] text-slate-600 dark:text-slate-400 border-[#E5E7EB] dark:border-[#2E2E2E]">
                 ABDM Verified
               </Badge>
             </div>
@@ -447,8 +484,8 @@ export function RootLayout() {
 
           {/* Right: Live Sync, Theme Toggle & Status */}
           <div className="flex items-center space-x-2.5">
-            <div className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-[11px] text-emerald-700 dark:text-emerald-300 font-medium">
-              <span className="h-2 w-2 rounded-full bg-[#10B981] animate-pulse" />
+            <div className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-white dark:bg-[#222224] border border-[#E5E7EB] dark:border-[#2E2E2E] text-[11px] text-slate-700 dark:text-slate-300 font-medium">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#10B981] animate-pulse" />
               <span>Live Sync 30s</span>
             </div>
 
@@ -457,7 +494,7 @@ export function RootLayout() {
               size="icon"
               variant="outline"
               onClick={toggleTheme}
-              className="h-8 w-8 rounded-lg"
+              className="h-8 w-8 rounded-lg border-[#E5E7EB] dark:border-[#2E2E2E]"
               title="Toggle Theme (Light / Dark)"
             >
               {theme === 'dark' ? (
@@ -467,10 +504,33 @@ export function RootLayout() {
               )}
             </Button>
 
-            <div className="hidden md:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#222224] border border-[#E5E7EB] dark:border-[#2E2E2E] text-xs">
+            {/* Role indicator pill */}
+            <div className="hidden md:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-white dark:bg-[#222224] border border-[#E5E7EB] dark:border-[#2E2E2E] text-xs">
               <span className="text-[#71717A]">Role:</span>
-              <span className="font-bold text-emerald-700 dark:text-emerald-300">{currentRoleConfig.shortTitle}</span>
+              <span className="font-bold text-[#0F172A] dark:text-white">{currentRoleConfig.shortTitle}</span>
             </div>
+
+            {/* Auth link / Logout button */}
+            {isAuthenticated ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleLogout}
+                className="h-8 px-2 text-xs text-[#71717A] hover:text-rose-600 dark:hover:text-rose-400"
+                title="Sign Out"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => navigate('/login')}
+                className="h-8 px-3 text-xs"
+              >
+                Sign In
+              </Button>
+            )}
           </div>
         </header>
 
@@ -491,7 +551,7 @@ export function RootLayout() {
           <div className="text-[11px] flex items-center space-x-2">
             <span>ABDM HIU & DPDP Act 2023 Compliant</span>
             <span>•</span>
-            <span className="text-emerald-600 dark:text-emerald-400">Confidential Health Records</span>
+            <span className="text-slate-600 dark:text-slate-400">Confidential Health Records</span>
           </div>
         </footer>
       </div>

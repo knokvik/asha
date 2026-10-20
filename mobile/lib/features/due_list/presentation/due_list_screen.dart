@@ -15,7 +15,6 @@ import '../domain/task_scheduler.dart';
 class DueListScreen extends ConsumerStatefulWidget {
   const DueListScreen({super.key, this.initialTab = 0});
 
-  /// 0 due list, 1 calendar, 2 coverage. Each route opens on its own page.
   final int initialTab;
 
   @override
@@ -581,53 +580,25 @@ class _DueListScreenState extends ConsumerState<DueListScreen>
           Row(
             children: [
               Expanded(
-                child: OutlinedButton(
+                child: OutlinedButton.icon(
                   key: const Key('home_register_household_button'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    shape: const RoundedRectangleBorder(borderRadius: AshaShapes.pillRadius),
-                  ),
                   onPressed: () => context.push('/household/new'),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.person_add, size: 16),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          l10n?.registerHousehold ?? 'Register Household',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      ),
-                    ],
+                  icon: const Icon(Icons.person_add, size: 18),
+                  label: Text(
+                    l10n?.registerHousehold ?? 'Register Household',
+                    style: const TextStyle(fontSize: 12),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: OutlinedButton(
+                child: OutlinedButton.icon(
                   key: const Key('home_triage_button'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    shape: const RoundedRectangleBorder(borderRadius: AshaShapes.pillRadius),
-                  ),
                   onPressed: () => context.push('/triage'),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.medical_services_outlined, size: 16),
-                      SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          'Triage Assessment',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      ),
-                    ],
+                  icon: const Icon(Icons.medical_services_outlined, size: 18),
+                  label: const Text(
+                    'Triage Assessment',
+                    style: TextStyle(fontSize: 12),
                   ),
                 ),
               ),
