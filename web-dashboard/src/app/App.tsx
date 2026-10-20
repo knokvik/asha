@@ -4,13 +4,16 @@ import { queryClient } from './queryClient';
 import { router } from './router';
 import { AuthProvider } from '@/shared/hooks/useAuth';
 import { ThemeProvider } from '@/shared/hooks/useTheme';
+import { SyncProvider } from '@/shared/context/SyncContext';
 
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
-          <RouterProvider router={router} />
+          <SyncProvider>
+            <RouterProvider router={router} />
+          </SyncProvider>
         </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>

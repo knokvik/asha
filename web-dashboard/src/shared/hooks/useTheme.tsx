@@ -13,10 +13,22 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlTheme = urlParams.get('theme') as Theme | null;
+      if (urlTheme === 'light' || urlTheme === 'dark') {
+        document.documentElement.classList.remove(urlTheme === 'dark' ? 'light' : 'dark');
+        document.documentElement.classList.add(urlTheme);
+        return urlTheme;
+      }
+
       const saved = localStorage.getItem('asha-theme') as Theme | null;
-      if (saved === 'light' || saved === 'dark') return saved;
+      if (saved === 'light' || saved === 'dark') {
+        document.documentElement.classList.remove(saved === 'dark' ? 'light' : 'dark');
+        document.documentElement.classList.add(saved);
+        return saved;
+      }
     }
-    return 'dark'; // Always default to dark mode (#1E1E1E)
+    return 'light';
   });
 
   useEffect(() => {

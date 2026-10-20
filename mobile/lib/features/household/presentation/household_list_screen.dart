@@ -16,16 +16,27 @@ import 'household_providers.dart';
 /// - Instant offline search by head name, hamlet, or phone.
 /// - Direct navigation to register household screen.
 class HouseholdListScreen extends ConsumerStatefulWidget {
-  const HouseholdListScreen({super.key});
+  const HouseholdListScreen({super.key, this.initialQuery});
+
+  final String? initialQuery;
 
   @override
-  ConsumerState<HouseholdListScreen> createState() => _HouseholdListScreenState();
+  ConsumerState<HouseholdListScreen> createState() =>
+      _HouseholdListScreenState();
 }
 
 class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String? _selectedHamletFilter;
+
+  @override
+  void initState() {
+    super.initState();
+    final initialQuery = widget.initialQuery?.trim() ?? '';
+    _searchQuery = initialQuery.toLowerCase();
+    _searchController.text = initialQuery;
+  }
 
   @override
   void dispose() {
@@ -91,7 +102,10 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                     : null,
                 filled: true,
                 fillColor: theme.colorScheme.surface,
-                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 0,
+                  horizontal: 16,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30),
                   borderSide: BorderSide.none,
@@ -200,8 +214,9 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                               selected: _selectedHamletFilter == hamlet,
                               onSelected: (selected) {
                                 setState(() {
-                                  _selectedHamletFilter =
-                                      selected ? hamlet : null;
+                                  _selectedHamletFilter = selected
+                                      ? hamlet
+                                      : null;
                                 });
                               },
                             ),
@@ -260,7 +275,9 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                           ],
                         ),
                       ),
-                      ...households.map((household) => _buildHouseholdCard(household)),
+                      ...households.map(
+                        (household) => _buildHouseholdCard(household),
+                      ),
                       const SizedBox(height: 8),
                     ],
                   );
@@ -311,16 +328,16 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
               key: const Key('empty_state_register_button'),
               onPressed: () async {
                 await Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const HouseholdFormScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => const HouseholdFormScreen(),
+                  ),
                 );
                 ref.invalidate(householdListProvider);
                 ref.invalidate(householdsGroupedByHamletProvider);
               },
               icon: const Icon(Icons.person_add),
               label: Text(l10n?.registerHousehold ?? 'Register Household'),
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(200, 48),
-              ),
+              style: ElevatedButton.styleFrom(minimumSize: const Size(200, 48)),
             ),
           ],
         ),
@@ -355,7 +372,8 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   CircleAvatar(
-                    backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.12),
+                    backgroundColor: Theme.of(context).primaryColor
+                        .withValues(alpha: 0.12),
                     child: Icon(
                       Icons.home,
                       color: Theme.of(context).primaryColor,
@@ -419,11 +437,7 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
-                          Icons.people,
-                          size: 14,
-                          color: Colors.blue,
-                        ),
+                        const Icon(Icons.people, size: 14, color: Colors.blue),
                         const SizedBox(width: 4),
                         Text(
                           '${household.memberCount} members',
@@ -485,11 +499,7 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
-                          Icons.phone,
-                          size: 13,
-                          color: Colors.grey,
-                        ),
+                        const Icon(Icons.phone, size: 13, color: Colors.grey),
                         const SizedBox(width: 4),
                         Text(
                           household.contactPhone!,

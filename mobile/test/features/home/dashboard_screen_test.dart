@@ -16,8 +16,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('dashboard_screen')), findsOneWidget);
-    expect(find.text('Sunita Sharma'), findsOneWidget);
-    expect(find.text('Offline mode'), findsOneWidget);
+    expect(find.byKey(const Key('home_map_preview')), findsOneWidget);
     expect(find.text('Continue today\'s work'), findsOneWidget);
     expect(find.byKey(const Key('home_continue_work_card')), findsOneWidget);
     expect(find.text('Quick actions'), findsOneWidget);

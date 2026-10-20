@@ -65,35 +65,32 @@ export function ANMWorkspacePage() {
 
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-6">
-      {/* Banner */}
-      <Card className="p-6 border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center space-x-3.5">
-            <div className="p-3 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-              <FileCheck2 className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2">
-                ANM & CHO Clinical Workspace (Requirement 40)
-              </h1>
-              <p className="text-xs text-[#525252] dark:text-[#94A3B8]">
-                Sub-centre: SC Shahpur • ANM: Kavita Kumari • Sync Review, Session Entry & Incentive Verification
-              </p>
+      {/* Header Row */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+            ANM & CHO Clinical Workspace (Requirement 40)
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Sub-centre: SC Shahpur • ANM: Kavita Kumari • Sync Review, Session Entry & Incentive Verification
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center gap-2 bg-white dark:bg-[#1E1E1E] border border-slate-200 dark:border-[#2E2E2E] rounded-xl px-3 py-1.5 shadow-xs">
+            <div className="flex flex-col">
+              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold uppercase tracking-wider">Pending Claims</span>
+              <span className="text-xs font-bold text-slate-900 dark:text-white">{pendingClaims.length} Line Items</span>
             </div>
           </div>
-
-          <div className="flex items-center gap-3">
-            <div className="px-4 py-2 rounded-xl border border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224]">
-              <div className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold uppercase tracking-wider">Pending Claims</div>
-              <div className="text-lg font-bold text-[#0F172A] dark:text-white">{pendingClaims.length} Line Items</div>
-            </div>
-            <div className="px-4 py-2 rounded-xl border border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224]">
-              <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold uppercase tracking-wider">Verified Amount</div>
-              <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">₹{approvedTotal.toFixed(2)}</div>
+          <div className="flex items-center gap-2 bg-white dark:bg-[#1E1E1E] border border-slate-200 dark:border-[#2E2E2E] rounded-xl px-3 py-1.5 shadow-xs">
+            <div className="flex flex-col">
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold uppercase tracking-wider">Verified Amount</span>
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">₹{approvedTotal.toFixed(2)}</span>
             </div>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* Tabs */}
       <div className="flex items-center space-x-2 border-b border-[#E5E7EB] dark:border-[#2E2E2E] pb-2">

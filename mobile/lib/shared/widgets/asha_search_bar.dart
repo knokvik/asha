@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+
 import '../../app/theme/app_theme.dart';
 
-/// Tactile Search Pill with Voice & Clear shortcuts.
+/// Tactile Search Pill with an animated ASHA mark, Voice, and Clear shortcuts.
 class AshaSearchBar extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
   final VoidCallback? onVoicePressed;
   final VoidCallback? onScanPressed;
   final VoidCallback? onClear;
@@ -15,6 +17,7 @@ class AshaSearchBar extends StatelessWidget {
     super.key,
     required this.controller,
     this.onChanged,
+    this.onSubmitted,
     this.onVoicePressed,
     this.onScanPressed,
     this.onClear,
@@ -41,13 +44,14 @@ class AshaSearchBar extends StatelessWidget {
       child: Row(
         children: [
           const SizedBox(width: 16),
-          const Icon(Icons.search, color: AshaColors.textMuted, size: 22),
+          const _AnimatedAshaSearchMark(),
           const SizedBox(width: 10),
           Expanded(
             child: TextField(
               controller: controller,
               autofocus: autofocus,
               onChanged: onChanged,
+              onSubmitted: onSubmitted,
               style: const TextStyle(
                 fontSize: 15,
                 color: AshaColors.textPrimary,
@@ -55,7 +59,10 @@ class AshaSearchBar extends StatelessWidget {
               ),
               decoration: InputDecoration(
                 hintText: hintText,
-                hintStyle: const TextStyle(color: AshaColors.textMuted, fontSize: 14),
+                hintStyle: const TextStyle(
+                  color: AshaColors.textMuted,
+                  fontSize: 14,
+                ),
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
@@ -66,7 +73,11 @@ class AshaSearchBar extends StatelessWidget {
           ),
           if (controller.text.isNotEmpty)
             IconButton(
-              icon: const Icon(Icons.cancel, color: AshaColors.textMuted, size: 20),
+              icon: const Icon(
+                Icons.cancel,
+                color: AshaColors.textMuted,
+                size: 20,
+              ),
               tooltip: 'Clear search',
               onPressed: () {
                 controller.clear();
@@ -78,7 +89,11 @@ class AshaSearchBar extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(right: 6),
               child: IconButton(
-                icon: const Icon(Icons.mic, color: AshaColors.primary, size: 22),
+                icon: const Icon(
+                  Icons.mic,
+                  color: AshaColors.primary,
+                  size: 22,
+                ),
                 tooltip: 'Voice Search',
                 onPressed: onVoicePressed,
               ),
@@ -87,12 +102,52 @@ class AshaSearchBar extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(right: 6),
               child: IconButton(
-                icon: const Icon(Icons.qr_code_scanner, color: AshaColors.primary, size: 22),
+                icon: const Icon(
+                  Icons.qr_code_scanner,
+                  color: AshaColors.primary,
+                  size: 22,
+                ),
                 tooltip: 'Scan QR / ABHA',
                 onPressed: onScanPressed,
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _AnimatedAshaSearchMark extends StatefulWidget {
+  const _AnimatedAshaSearchMark();
+
+  @override
+  State<_AnimatedAshaSearchMark> createState() =>
+      _AnimatedAshaSearchMarkState();
+}
+
+class _AnimatedAshaSearchMarkState extends State<_AnimatedAshaSearchMark>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 7),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RotationTransition(
+      key: const Key('animated_search_logo'),
+      turns: _controller,
+      child: const Image(
+        image: AssetImage('assets/branding/favicon.png'),
+        width: 24,
+        height: 24,
+        fit: BoxFit.contain,
       ),
     );
   }

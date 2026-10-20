@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/l10n/language_provider.dart';
 import '../../../core/l10n/language_selector_dialog.dart';
+import '../../../shared/shell/shell_copy.dart';
 import '../../../shared/widgets/asha_bottom_nav.dart';
 import 'dashboard_screen.dart';
 
@@ -11,22 +14,31 @@ import 'dashboard_screen.dart';
 /// Performance: This Month (28 Visits | 24 Completed | 4 Pending)
 /// Options List: Earnings & Incentives, Reports, App Settings
 /// Fixed 4-item bottom navigation dock (Profile active).
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+class ProfileScreen extends ConsumerWidget {
+  const ProfileScreen({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lang = ref.watch(languageProvider).languageCode;
     final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
+    final body = _body(context, lang, scaffoldKey);
+    if (embedded) return body;
 
     return Scaffold(
       key: scaffoldKey,
       backgroundColor: const Color(0xFFF9FAFB),
       drawer: const AshaNavigationDrawer(),
       bottomNavigationBar: const AshaBottomNav(index: 3),
-      body: SafeArea(
-        child: Column(
+      body: SafeArea(child: body),
+    );
+  }
+
+  Widget _body(BuildContext context, String lang, GlobalKey<ScaffoldState> scaffoldKey) {
+    return Column(
           children: [
-            // 1. Top App Bar: [ ☰ ]  Profile  [ ⚙ ]
+            if (!embedded)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               child: Row(
@@ -41,8 +53,8 @@ class ProfileScreen extends StatelessWidget {
                     onPressed: () => scaffoldKey.currentState?.openDrawer(),
                   ),
 
-                  const Text(
-                    'Profile',
+                  Text(
+                    shellText(lang, 'profile'),
                     style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w800,
@@ -118,8 +130,8 @@ class ProfileScreen extends StatelessWidget {
                                 ],
                               ),
                               const SizedBox(height: 2),
-                              const Text(
-                                'ASHA Worker • Rampur PHC',
+                              Text(
+                                shellText(lang, 'worker'),
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Color(0xFF6B7280),
@@ -136,7 +148,7 @@ class ProfileScreen extends StatelessWidget {
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
-                                  children: const [
+                                  children: [
                                     Icon(
                                       Icons.lock_outline_rounded,
                                       size: 11,
@@ -144,7 +156,7 @@ class ProfileScreen extends StatelessWidget {
                                     ),
                                     SizedBox(width: 4),
                                     Text(
-                                      'Offline Mode',
+                                      shellText(lang, 'offline'),
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600,
@@ -170,8 +182,8 @@ class ProfileScreen extends StatelessWidget {
                   const SizedBox(height: 18),
 
                   // Performance Metric: "This Month"
-                  const Text(
-                    'This Month',
+                  Text(
+                    shellText(lang, 'thisMonth'),
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -183,11 +195,11 @@ class ProfileScreen extends StatelessWidget {
 
                   Row(
                     children: [
-                      _buildMonthStat('28', 'Visits', const Color(0xFF111827)),
+                      _buildMonthStat('28', shellText(lang, 'visits'), const Color(0xFF111827)),
                       const SizedBox(width: 8),
-                      _buildMonthStat('24', 'Completed', const Color(0xFF16A34A)),
+                      _buildMonthStat('24', shellText(lang, 'completed'), const Color(0xFF16A34A)),
                       const SizedBox(width: 8),
-                      _buildMonthStat('4', 'Pending', const Color(0xFFEF4444)),
+                      _buildMonthStat('4', shellText(lang, 'pending'), const Color(0xFFEF4444)),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -196,8 +208,8 @@ class ProfileScreen extends StatelessWidget {
                   // 1. Earnings & Incentives (₹4,200 claimed)
                   _buildListOption(
                     icon: Icons.receipt_long_outlined,
-                    title: 'Earnings & Incentives',
-                    subtitle: '₹4,200 claimed',
+                    title: shellText(lang, 'earnings'),
+                    subtitle: shellText(lang, 'earningsSub'),
                     onTap: () => context.push('/reports'),
                   ),
                   const SizedBox(height: 10),
@@ -205,8 +217,8 @@ class ProfileScreen extends StatelessWidget {
                   // 2. Reports (Monthly summary)
                   _buildListOption(
                     icon: Icons.bar_chart_rounded,
-                    title: 'Reports',
-                    subtitle: 'Monthly summary',
+                    title: shellText(lang, 'reports'),
+                    subtitle: shellText(lang, 'reportsSub'),
                     onTap: () => context.push('/reports'),
                   ),
                   const SizedBox(height: 10),
@@ -214,8 +226,8 @@ class ProfileScreen extends StatelessWidget {
                   // 3. App Settings (Language, sync, help)
                   _buildListOption(
                     icon: Icons.settings_outlined,
-                    title: 'App Settings',
-                    subtitle: 'Language, sync, help',
+                    title: shellText(lang, 'settings'),
+                    subtitle: shellText(lang, 'settingsSub'),
                     onTap: () => showDialog(
                       context: context,
                       builder: (_) => const LanguageSelectorDialog(),
@@ -226,8 +238,6 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
     );
   }
 

@@ -169,7 +169,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
               options: MapOptions(
                 initialCenter: LatLng(_fix.latitude, _fix.longitude),
                 initialZoom: 14,
-                minZoom: 11,
+                minZoom: 3,
                 maxZoom: 18,
                 backgroundColor: const Color(0xFFF2EFE9),
                 cameraConstraint: CameraConstraint.containCenter(

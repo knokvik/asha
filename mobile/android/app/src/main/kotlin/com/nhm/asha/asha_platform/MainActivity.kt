@@ -10,5 +10,6 @@ class MainActivity : FlutterActivity() {
         // via the 'com.nhm.asha/security' MethodChannel.
         // Requirements: 2.2
         flutterEngine.plugins.add(SecurityPlugin())
+        flutterEngine.plugins.add(LocationPlugin())
     }
 }

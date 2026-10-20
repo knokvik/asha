@@ -147,12 +147,22 @@
   max-width: none !important;
   max-height: none !important;
 }
-.leaflet-pane {
-  z-index: 10 !important;
+
+/* Smooth live news bulletin marquee */
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
 }
-.leaflet-top,
-.leaflet-bottom {
-  z-index: 20 !important;
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 32s linear infinite;
 }
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
 
 

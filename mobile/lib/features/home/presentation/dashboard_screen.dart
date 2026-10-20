@@ -1,62 +1,208 @@
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'dart:ui' as ui;
 
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
+
+import '../../../core/l10n/language_provider.dart';
+import '../../../shared/shell/shell_copy.dart';
+import '../../../shared/shell/shell_tab.dart';
 import '../../../shared/widgets/asha_bottom_nav.dart';
+import '../../../shared/widgets/asha_search_bar.dart';
 import '../../../shared/widgets/asha_svg_illustrations.dart';
 
 /// Screen 1 & Screen 2: Master Home Dashboard & Navigation Drawer
 /// Exact replica of Screen 1 and Screen 2 from reference design.
-class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+class DashboardScreen extends ConsumerStatefulWidget {
+  const DashboardScreen({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  final _searchController = TextEditingController();
+
+  String get _lang => ref.watch(languageProvider).languageCode;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final body = _body(context);
+    if (widget.embedded) {
+      return KeyedSubtree(key: const Key('dashboard_screen'), child: body);
+    }
     return Scaffold(
       key: const Key('dashboard_screen'),
       backgroundColor: const Color(0xFFF9FAFB),
       drawer: const AshaNavigationDrawer(),
-      bottomNavigationBar: const AshaBottomNav(key: Key('asha_bottom_nav'), index: 0),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      bottomNavigationBar: const AshaBottomNav(
+        key: Key('asha_bottom_nav'),
+        index: 0,
+      ),
+      body: SafeArea(child: body),
+    );
+  }
+
+  Widget _body(BuildContext context) {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!widget.embedded) ...[
+            _buildTopBar(context),
+            const SizedBox(height: 16),
+          ],
+
+          if (!widget.embedded) ...[
+            AshaSearchBar(
+              key: const Key('home_search_bar'),
+              controller: _searchController,
+              hintText: 'Search households, beneficiaries, ABHA...',
+              onChanged: (_) => setState(() {}),
+              onSubmitted: (query) {
+                final value = query.trim();
+                final suffix = value.isEmpty
+                    ? ''
+                    : '?q=${Uri.encodeQueryComponent(value)}';
+                context.push('/households$suffix');
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // 2. Compact field map preview replaces the profile block.
+          _buildMapPreview(context),
+          const SizedBox(height: 16),
+
+          // 3. 4 Metric Blocks: 12 Today | 3 Overdue | 8 Completed | 2 Follow-ups
+          _buildMetricStrip(context),
+          const SizedBox(height: 16),
+
+          // 4. Continue today's work Card: 5 households • 2 follow-ups + SVG illustration
+          _buildContinueWorkCard(context),
+          const SizedBox(height: 20),
+
+          // 5. Quick actions Section: 2x2 Grid
+          Text(
+            shellText(_lang, 'quick'),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF111827),
+              fontFamily: 'SF Pro Display',
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildQuickActionsGrid(context),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  /// Top App Bar matching Screen 1:
+  /// Far-left hamburger menu ☰, centered 'asha' wordmark, notification bell 🔔 with unread badge.
+  Widget _buildTopBar(BuildContext context) {
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          decoration: BoxDecoration(
+            // Match the shared shell with a translucent, blurred glass header.
+            color: Colors.white.withValues(alpha: 0.22),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.46)),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x140F5138),
+                blurRadius: 18,
+                offset: Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
             children: [
-              // 1. Top App Bar: [ ☰ ]  [logo] asha        [ 🔔 ]
-              _buildTopBar(context),
-              const SizedBox(height: 16),
-
-              // 2. Worker Profile Card: SS | Sunita Sharma ✓ | ASHA Worker • Rampur PHC | 🔒 Offline mode >
-              _buildWorkerProfileCard(context),
-              const SizedBox(height: 16),
-
-              // 3. 4 Metric Blocks: 12 Today | 3 Overdue | 8 Completed | 2 Follow-ups
-              _buildMetricStrip(context),
-              const SizedBox(height: 16),
-
-              // 4. Continue today's work Card: 5 households • 2 follow-ups + SVG illustration
-              _buildContinueWorkCard(context),
-              const SizedBox(height: 20),
-
-              // 5. Quick actions Section: 2x2 Grid
-              const Text(
-                'Quick actions',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF111827),
-                  fontFamily: 'SF Pro Display',
+              Builder(
+                builder: (scaffoldContext) => InkWell(
+                  key: const Key('home_menu_button'),
+                  onTap: () => Scaffold.of(scaffoldContext).openDrawer(),
+                  borderRadius: BorderRadius.circular(8),
+                  child: const Padding(
+                    padding: EdgeInsets.all(4),
+                    child: Icon(
+                      Icons.menu_rounded,
+                      size: 26,
+                      color: Color(0xFF111827),
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(height: 12),
-              _buildQuickActionsGrid(context),
-              const SizedBox(height: 24),
+              const SizedBox(width: 10),
+
+              // Keep the title bar focused on the ASHA wordmark.
+              const Text(
+                'asha',
+                style: TextStyle(
+                  fontFamily: 'SF Pro Display',
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF1E4231),
+                  letterSpacing: -1.0,
+                ),
+              ),
+
+              const Spacer(),
+
+              // Notification Bell with unread indicator dot
+              InkWell(
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(shellText(_lang, 'notif')),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.all(6),
+                      child: Icon(
+                        Icons.notifications_none_rounded,
+                        size: 24,
+                        color: Color(0xFF111827),
+                      ),
+                    ),
+                    Positioned(
+                      right: 7,
+                      top: 7,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFEF4444),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -64,199 +210,155 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  /// Top App Bar matching Screen 1:
-  /// Far-left hamburger menu ☰, 'asha' logo with favicon emblem, notification bell 🔔 with unread badge.
-  Widget _buildTopBar(BuildContext context) {
-    return Row(
-      children: [
-        Builder(
-          builder: (scaffoldContext) => InkWell(
-            key: const Key('home_menu_button'),
-            onTap: () => Scaffold.of(scaffoldContext).openDrawer(),
-            borderRadius: BorderRadius.circular(8),
-            child: const Padding(
-              padding: EdgeInsets.all(4),
-              child: Icon(
-                Icons.menu_rounded,
-                size: 26,
-                color: Color(0xFF111827),
-              ),
-            ),
+  Widget _buildMapPreview(BuildContext context) {
+    const currentLocation = LatLng(18.6279, 73.8131);
+    final markers = [
+      Marker(
+        point: currentLocation,
+        width: 42,
+        height: 42,
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0x332563EB),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2),
+          ),
+          child: const Center(
+            child: CircleAvatar(radius: 7, backgroundColor: Color(0xFF2563EB)),
           ),
         ),
-        const SizedBox(width: 10),
-
-        // Logo with favicon emblem + bold lowercase asha
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(
-              'assets/branding/favicon.png',
-              width: 22,
-              height: 22,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
-            ),
-            const SizedBox(width: 6),
-            const Text(
-              'asha',
-              style: TextStyle(
-                fontFamily: 'SF Pro Display',
-                fontSize: 24,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF1E4231),
-                letterSpacing: -1.0,
-              ),
-            ),
-          ],
+      ),
+      for (final entry in const [
+        (18.6304, 73.8101, Color(0xFFEF4444)),
+        (18.6251, 73.8105, Color(0xFFF59E0B)),
+        (18.6327, 73.8093, Color(0xFF16A34A)),
+        (18.6299, 73.8165, Color(0xFFF59E0B)),
+      ])
+        Marker(
+          point: LatLng(entry.$1, entry.$2),
+          width: 30,
+          height: 30,
+          child: Icon(Icons.home_rounded, color: entry.$3, size: 25),
         ),
+    ];
 
-        const Spacer(),
-
-        // Notification Bell with unread indicator dot
-        InkWell(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Notifications: 2 pending immunizations & 1 overdue ANC visit.'),
-                duration: Duration(seconds: 2),
-              ),
-            );
-          },
-          borderRadius: BorderRadius.circular(20),
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        key: const Key('home_map_preview'),
+        onTap: () => ref.read(shellTabProvider.notifier).select(1),
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          height: 184,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFC9E4D3)),
+          ),
           child: Stack(
-            clipBehavior: Clip.none,
             children: [
-              const Padding(
-                padding: EdgeInsets.all(6),
-                child: Icon(
-                  Icons.notifications_none_rounded,
-                  size: 24,
-                  color: Color(0xFF111827),
+              FlutterMap(
+                options: const MapOptions(
+                  initialCenter: currentLocation,
+                  initialZoom: 14.8,
+                  interactionOptions: InteractionOptions(
+                    flags: InteractiveFlag.none,
+                  ),
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.nhm.asha.asha_platform',
+                  ),
+                  MarkerLayer(markers: markers),
+                ],
+              ),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0x330F5138), Colors.transparent],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+                child: SizedBox.expand(),
+              ),
+              Positioned(
+                top: 12,
+                left: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 11,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.94),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.map_outlined,
+                        size: 16,
+                        color: Color(0xFF166534),
+                      ),
+                      SizedBox(width: 6),
+                      Text(
+                        'My area',
+                        style: TextStyle(
+                          color: Color(0xFF166534),
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               Positioned(
-                right: 7,
-                top: 7,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFEF4444),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Worker Profile Card matching Screen 1:
-  /// Dark green SS avatar, Sunita Sharma verified badge, ASHA Worker subtitle, Offline Mode pill, and chevron.
-  Widget _buildWorkerProfileCard(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: () => context.go('/profile'),
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE5E7EB), width: 1.0),
-          ),
-          child: Row(
-            children: [
-              // Avatar SS
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: const Color(0xFF1E4231),
-                child: const Text(
-                  'SS',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 16,
-                    fontFamily: 'SF Pro Display',
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-
-              // Name, designation, offline pill
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                left: 12,
+                right: 12,
+                bottom: 12,
+                child: Row(
                   children: [
-                    Row(
-                      children: const [
-                        Text(
-                          'Sunita Sharma',
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.94),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Text(
+                          '5 households today · 3 due',
                           style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
                             color: Color(0xFF111827),
-                            fontFamily: 'SF Pro Display',
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
                           ),
                         ),
-                        SizedBox(width: 4),
-                        Icon(
-                          Icons.verified_rounded,
-                          size: 15,
-                          color: Color(0xFF16A34A),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'ASHA Worker • Rampur PHC',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF6B7280),
-                        fontFamily: 'SF Pro Display',
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F6),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFE5E7EB), width: 0.8),
+                      width: 38,
+                      height: 38,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF166534),
+                        shape: BoxShape.circle,
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(
-                            Icons.lock_outline_rounded,
-                            size: 11,
-                            color: Color(0xFF6B7280),
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            'Offline mode',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF4B5563),
-                              fontFamily: 'SF Pro Display',
-                            ),
-                          ),
-                        ],
+                      child: const Icon(
+                        Icons.arrow_forward_rounded,
+                        color: Colors.white,
+                        size: 19,
                       ),
                     ),
                   ],
                 ),
-              ),
-
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: Color(0xFF9CA3AF),
-                size: 20,
               ),
             ],
           ),
@@ -271,30 +373,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         _buildMetricBlock(
           count: '12',
-          label: 'Today',
+          label: shellText(_lang, 'today'),
           color: const Color(0xFF16A34A),
-          onTap: () => context.go('/due-list'),
+          onTap: () => ref.read(shellTabProvider.notifier).select(2),
         ),
         const SizedBox(width: 8),
         _buildMetricBlock(
           count: '3',
-          label: 'Overdue',
+          label: shellText(_lang, 'overdue'),
           color: const Color(0xFFEF4444),
-          onTap: () => context.go('/due-list'),
+          onTap: () => ref.read(shellTabProvider.notifier).select(2),
         ),
         const SizedBox(width: 8),
         _buildMetricBlock(
           count: '8',
-          label: 'Completed',
+          label: shellText(_lang, 'completed'),
           color: const Color(0xFF16A34A),
-          onTap: () => context.go('/due-list'),
+          onTap: () => ref.read(shellTabProvider.notifier).select(2),
         ),
         const SizedBox(width: 8),
         _buildMetricBlock(
           count: '2',
-          label: 'Follow-ups',
+          label: shellText(_lang, 'followUps'),
           color: const Color(0xFFF59E0B),
-          onTap: () => context.go('/due-list'),
+          onTap: () => ref.read(shellTabProvider.notifier).select(2),
         ),
       ],
     );
@@ -352,17 +454,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   /// Title, subtitle, chevron, and the exact village hills + ASHA worker SVG illustration.
   Widget _buildContinueWorkCard(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: const Color(0xFFEAF7F0),
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         key: const Key('home_continue_work_card'),
-        onTap: () => context.go('/due-list'),
+        onTap: () => ref.read(shellTabProvider.notifier).select(2),
         borderRadius: BorderRadius.circular(18),
         child: Container(
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE5E7EB), width: 1.0),
+            gradient: const LinearGradient(
+              colors: [Color(0xFFF5FBF7), Color(0xFFDDEFE4)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(color: const Color(0xFFC9E4D3), width: 1.0),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -373,9 +480,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
+                      children: [
                         Text(
-                          "Continue today's work",
+                          shellText(_lang, 'continueWork'),
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
@@ -385,7 +492,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         SizedBox(height: 2),
                         Text(
-                          '5 households • 2 follow-ups',
+                          shellText(_lang, 'continueSub'),
                           style: TextStyle(
                             fontSize: 12,
                             color: Color(0xFF6B7280),
@@ -425,11 +532,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             Expanded(
               child: _buildQuickActionCard(
-                title: 'Add Household',
+                title: shellText(_lang, 'addHousehold'),
                 iconWidget: const Icon(
                   Icons.group_add_rounded,
-                  color: Color(0xFF16A34A),
-                  size: 22,
+                  color: Color(0xFF1E4231),
+                  size: 27,
                 ),
                 onTap: () => context.push('/households/new'),
               ),
@@ -438,18 +545,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Expanded(
               child: _buildQuickActionCard(
                 key: const Key('home_triage_button'),
-                title: 'Triage Assessment',
+                title: shellText(_lang, 'triage'),
                 iconWidget: Container(
-                  width: 28,
-                  height: 28,
+                  width: 34,
+                  height: 34,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFEE2E2),
+                    color: const Color(0xFFF3F4F6),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
                     Icons.emergency_rounded,
-                    color: Color(0xFFDC2626),
-                    size: 18,
+                    color: Color(0xFF374151),
+                    size: 22,
                   ),
                 ),
                 onTap: () => context.push('/triage'),
@@ -462,11 +569,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             Expanded(
               child: _buildQuickActionCard(
-                title: 'Speak / Interpreter',
+                title: shellText(_lang, 'interpreter'),
                 iconWidget: const Icon(
                   Icons.translate_rounded,
-                  color: Color(0xFF16A34A),
-                  size: 22,
+                  color: Color(0xFF1E4231),
+                  size: 27,
                 ),
                 onTap: () => context.push('/interpreter'),
               ),
@@ -474,11 +581,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: _buildQuickActionCard(
-                title: 'Clinical Programs',
+                title: shellText(_lang, 'programs'),
                 iconWidget: const Icon(
                   Icons.medical_services_rounded,
-                  color: Color(0xFF2563EB),
-                  size: 22,
+                  color: Color(0xFF1E4231),
+                  size: 27,
                 ),
                 onTap: () => context.push('/clinical-programs'),
               ),
@@ -503,7 +610,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          constraints: const BoxConstraints(minHeight: 94),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: const Color(0xFFE5E7EB), width: 1.0),
@@ -518,15 +626,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const Icon(
                     Icons.chevron_right_rounded,
                     color: Color(0xFFD1D5DB),
-                    size: 18,
+                    size: 20,
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF111827),
                   fontFamily: 'SF Pro Display',
@@ -543,11 +651,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 /// Screen 2: Master Navigation Drawer
 /// Exact replica of Screen 2 in reference image.
 /// Deep Forest Green background (#1A402D), SS avatar, offline pill, 8 items.
-class AshaNavigationDrawer extends StatelessWidget {
+class AshaNavigationDrawer extends ConsumerWidget {
   const AshaNavigationDrawer({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lang = ref.watch(languageProvider).languageCode;
     return Drawer(
       backgroundColor: const Color(0xFF183D2B),
       child: SafeArea(
@@ -624,15 +733,21 @@ class AshaNavigationDrawer extends StatelessWidget {
 
                   // Pill: 🔒 Offline • Data Encrypted
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF112E20),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF29563E), width: 1),
+                      border: Border.all(
+                        color: const Color(0xFF29563E),
+                        width: 1,
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: const [
+                      children: [
                         Icon(
                           Icons.lock_rounded,
                           size: 13,
@@ -640,7 +755,7 @@ class AshaNavigationDrawer extends StatelessWidget {
                         ),
                         SizedBox(width: 6),
                         Text(
-                          'Offline • Data Encrypted',
+                          shellText(lang, 'encrypted'),
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 11,
@@ -659,116 +774,122 @@ class AshaNavigationDrawer extends StatelessWidget {
 
             // 8 Menu Items
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                children: [
-                  // 1. Home (Active white card)
-                  _buildDrawerItem(
-                    context: context,
-                    icon: Icons.home_rounded,
-                    title: 'Home',
-                    subtitle: 'Dashboard, map, and field desk',
-                    isActive: true,
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.go('/home');
-                    },
-                  ),
-                  const SizedBox(height: 6),
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                ),
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(14, 16, 14, 20),
+                  children: [
+                    // 1. Home (Active white card)
+                    _buildDrawerItem(
+                      context: context,
+                      icon: Icons.home_rounded,
+                      title: shellText(lang, 'drawerHome'),
+                      subtitle: shellText(lang, 'drawerHomeSub'),
+                      isActive: true,
+                      onTap: () {
+                        Navigator.pop(context);
+                        ref.read(shellTabProvider.notifier).select(0);
+                      },
+                    ),
+                    const SizedBox(height: 6),
 
-                  // 2. Today's Due List with red badge 3
-                  _buildDrawerItem(
-                    context: context,
-                    icon: Icons.checklist_rounded,
-                    title: "Today's Due List",
-                    subtitle: 'Overdue, upcoming visits',
-                    badgeCount: '3',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.go('/due-list');
-                    },
-                  ),
-                  const SizedBox(height: 6),
+                    // 2. Today's Due List with red badge 3
+                    _buildDrawerItem(
+                      context: context,
+                      icon: Icons.checklist_rounded,
+                      title: shellText(lang, 'drawerDue'),
+                      subtitle: shellText(lang, 'drawerDueSub'),
+                      badgeCount: '3',
+                      onTap: () {
+                        Navigator.pop(context);
+                        ref.read(shellTabProvider.notifier).select(2);
+                      },
+                    ),
+                    const SizedBox(height: 6),
 
-                  // 3. Household Registry
-                  _buildDrawerItem(
-                    context: context,
-                    icon: Icons.people_alt_outlined,
-                    title: 'Household Registry',
-                    subtitle: 'Census, ABHA IDs',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.push('/households');
-                    },
-                  ),
-                  const SizedBox(height: 6),
+                    // 3. Household Registry
+                    _buildDrawerItem(
+                      context: context,
+                      icon: Icons.people_alt_outlined,
+                      title: shellText(lang, 'drawerHomes'),
+                      subtitle: shellText(lang, 'drawerHomesSub'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/households');
+                      },
+                    ),
+                    const SizedBox(height: 6),
 
-                  // 4. Clinical Programs
-                  _buildDrawerItem(
-                    context: context,
-                    icon: Icons.medical_information_outlined,
-                    title: 'Clinical Programs',
-                    subtitle: 'ANC, PNC, Immunization',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.push('/clinical-programs');
-                    },
-                  ),
-                  const SizedBox(height: 6),
+                    // 4. Clinical Programs
+                    _buildDrawerItem(
+                      context: context,
+                      icon: Icons.medical_information_outlined,
+                      title: shellText(lang, 'drawerPrograms'),
+                      subtitle: shellText(lang, 'drawerProgramsSub'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/clinical-programs');
+                      },
+                    ),
+                    const SizedBox(height: 6),
 
-                  // 5. Emergency Triage (Red asterisk icon)
-                  _buildDrawerItem(
-                    context: context,
-                    icon: Icons.emergency_rounded,
-                    title: 'Emergency Triage',
-                    subtitle: 'Maternal & child danger signs',
-                    iconColor: const Color(0xFFEF4444),
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.push('/triage');
-                    },
-                  ),
-                  const SizedBox(height: 6),
+                    // 5. Emergency Triage (Red asterisk icon)
+                    _buildDrawerItem(
+                      context: context,
+                      icon: Icons.emergency_rounded,
+                      title: shellText(lang, 'drawerTriage'),
+                      subtitle: shellText(lang, 'drawerTriageSub'),
+                      iconColor: const Color(0xFFEF4444),
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/triage');
+                      },
+                    ),
+                    const SizedBox(height: 6),
 
-                  // 6. Interpreter
-                  _buildDrawerItem(
-                    context: context,
-                    icon: Icons.translate_rounded,
-                    title: 'Interpreter',
-                    subtitle: 'They speak / I ask',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.push('/interpreter');
-                    },
-                  ),
-                  const SizedBox(height: 6),
+                    // 6. Interpreter
+                    _buildDrawerItem(
+                      context: context,
+                      icon: Icons.translate_rounded,
+                      title: shellText(lang, 'drawerInterp'),
+                      subtitle: shellText(lang, 'drawerInterpSub'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/interpreter');
+                      },
+                    ),
+                    const SizedBox(height: 6),
 
-                  // 7. Reports & Incentives
-                  _buildDrawerItem(
-                    context: context,
-                    icon: Icons.receipt_long_outlined,
-                    title: 'Reports & Incentives',
-                    subtitle: 'Earnings, monthly reports',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.push('/reports');
-                    },
-                  ),
-                  const SizedBox(height: 6),
+                    // 7. Reports & Incentives
+                    _buildDrawerItem(
+                      context: context,
+                      icon: Icons.receipt_long_outlined,
+                      title: shellText(lang, 'drawerReports'),
+                      subtitle: shellText(lang, 'drawerReportsSub'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/reports');
+                      },
+                    ),
+                    const SizedBox(height: 6),
 
-                  // 8. Settings
-                  _buildDrawerItem(
-                    context: context,
-                    icon: Icons.settings_outlined,
-                    title: 'Settings',
-                    subtitle: 'App settings, language, help',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.push('/settings');
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                ],
+                    // 8. Settings
+                    _buildDrawerItem(
+                      context: context,
+                      icon: Icons.settings_outlined,
+                      title: shellText(lang, 'drawerSettings'),
+                      subtitle: shellText(lang, 'drawerSettingsSub'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/settings');
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
               ),
             ),
           ],
@@ -787,76 +908,35 @@ class AshaNavigationDrawer extends StatelessWidget {
     Color? iconColor,
     required VoidCallback onTap,
   }) {
-    if (isActive) {
-      return Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-            child: Row(
-              children: [
-                Icon(icon, color: const Color(0xFF183D2B), size: 22),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          color: Color(0xFF183D2B),
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                      const SizedBox(height: 1),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(
-                          color: Color(0xFF5A7A6A),
-                          fontSize: 11,
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: Color(0xFF183D2B),
-                  size: 18,
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
+    final isEmergency = iconColor == const Color(0xFFEF4444);
+    final surfaceColor = isActive
+        ? const Color(0xFFEAF7F0)
+        : isEmergency
+        ? const Color(0xFFFFF0EF)
+        : Colors.transparent;
+    final resolvedIconColor = iconColor ?? const Color(0xFF087F5B);
     return Material(
-      color: Colors.transparent,
+      color: surfaceColor,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFF26563E), width: 0.8),
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
-              Icon(
-                icon,
-                color: iconColor ?? Colors.white,
-                size: 21,
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: isEmergency
+                      ? const Color(0xFFFFE1DF)
+                      : const Color(0xFFF0F7F3),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: resolvedIconColor, size: 22),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -864,9 +944,9 @@ class AshaNavigationDrawer extends StatelessWidget {
                     Text(
                       title,
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
+                        color: Color(0xFF111815),
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
                         fontFamily: 'SF Pro Display',
                       ),
                     ),
@@ -874,7 +954,7 @@ class AshaNavigationDrawer extends StatelessWidget {
                     Text(
                       subtitle,
                       style: const TextStyle(
-                        color: Color(0xFFA7C7B7),
+                        color: Color(0xFF68756E),
                         fontSize: 11,
                         fontFamily: 'SF Pro Display',
                       ),
@@ -903,7 +983,7 @@ class AshaNavigationDrawer extends StatelessWidget {
               ],
               const Icon(
                 Icons.chevron_right_rounded,
-                color: Color(0xFF7CA692),
+                color: Color(0xFF5A7265),
                 size: 18,
               ),
             ],

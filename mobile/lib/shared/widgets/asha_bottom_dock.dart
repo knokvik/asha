@@ -4,17 +4,11 @@ class AshaDockItem {
   final IconData icon;
   final String label;
 
-  const AshaDockItem({
-    required this.icon,
-    required this.label,
-  });
+  const AshaDockItem({required this.icon, required this.label});
 }
 
-/// Fixed bottom navigation bar matching stitch_untitled_project:
-/// Full-width pure white bar, subtle top line, and 4 items:
-/// Home, Map, Tasks, Profile.
-/// Active item: Soft mint circle (#EAF7EE) with vibrant dark green (#15803D) icon & label.
-/// Inactive item: Soft grey (#9CA3AF) icon & label.
+/// Floating icon-only navigation dock for Home, Map, Tasks, and Profile.
+/// The selected item uses a compact rectangular ASHA forest-green treatment.
 class AshaBottomDock extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTabSelected;
@@ -29,70 +23,82 @@ class AshaBottomDock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          top: BorderSide(color: Color(0xFFF3F4F6), width: 1.0),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x06000000),
-            blurRadius: 6,
-            offset: Offset(0, -2),
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Material(
+        color: const Color(0xFFFCFDFC),
+        elevation: 12,
+        shadowColor: const Color(0x22000000),
+        borderRadius: BorderRadius.circular(22),
+        clipBehavior: Clip.antiAlias,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            borderRadius: BorderRadius.circular(22),
           ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(items.length, (idx) {
-              final item = items[idx];
-              final isSelected = idx == currentIndex;
-              const activeColor = Color(0xFF15803D);
-              const inactiveColor = Color(0xFF9CA3AF);
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: SizedBox(
+              height: 56,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: List.generate(items.length, (idx) {
+                  final item = items[idx];
+                  final isSelected = idx == currentIndex;
+                  const activeColor = Color(0xFF1E4231);
+                  const inactiveColor = Color(0xFF6B7280);
 
-              return Expanded(
-                child: InkWell(
-                  onTap: () => onTabSelected(idx),
-                  splashColor: Colors.transparent,
-                  highlightColor: Colors.transparent,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: isSelected ? const Color(0xFFEAF7EE) : Colors.transparent,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Icon(
-                            item.icon,
-                            size: isSelected ? 20 : 22,
-                            color: isSelected ? activeColor : inactiveColor,
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 3),
+                      child: Semantics(
+                        label: item.label,
+                        button: true,
+                        selected: isSelected,
+                        child: InkWell(
+                          onTap: () => onTabSelected(idx),
+                          borderRadius: BorderRadius.circular(12),
+                          splashColor: const Color(0x14000000),
+                          highlightColor: Colors.transparent,
+                          child: Center(
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 220),
+                              curve: Curves.easeOutCubic,
+                              width: isSelected ? 50 : 42,
+                              height: 40,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? activeColor
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 180),
+                                transitionBuilder: (child, animation) =>
+                                    ScaleTransition(
+                                      scale: animation,
+                                      child: child,
+                                    ),
+                                child: Icon(
+                                  item.icon,
+                                  key: ValueKey('${item.icon}_$isSelected'),
+                                  size: isSelected ? 21 : 23,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : inactiveColor,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        item.label,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                          color: isSelected ? activeColor : inactiveColor,
-                          fontFamily: 'SF Pro Display',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
+                    ),
+                  );
+                }),
+              ),
+            ),
           ),
         ),
       ),

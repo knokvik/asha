@@ -8,7 +8,9 @@ import 'language_provider.dart';
 /// Touch targets adhere to WCAG 48×48 dp minimum.
 /// Requirements: 3.1, 3.4
 class LanguageSelectorDialog extends ConsumerWidget {
-  const LanguageSelectorDialog({super.key});
+  const LanguageSelectorDialog({super.key, this.onSelected});
+
+  final ValueChanged<AppLanguage>? onSelected;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -51,18 +53,14 @@ class LanguageSelectorDialog extends ConsumerWidget {
               ),
               subtitle: Text(
                 lang.englishName,
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
               ),
               trailing: isSelected
                   ? const Icon(Icons.check_circle, color: Colors.green)
                   : null,
               onTap: () {
-                ref
-                    .read(languageProvider.notifier)
-                    .setLanguageCode(lang.code);
+                ref.read(languageProvider.notifier).setLanguageCode(lang.code);
+                onSelected?.call(lang);
                 Navigator.of(context).pop();
               },
             );

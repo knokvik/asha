@@ -158,8 +158,8 @@ class FlowBuilder {
 
   final ContextPack pack;
 
-  FlowState build({required String wardId, int? month}) {
-    final active = pack.activeModuleIds(wardId, month: month);
+  FlowState build({required String wardId, int? month, Set<String> extraModules = const {}}) {
+    final active = {...pack.activeModuleIds(wardId, month: month), ...extraModules}.toList();
     final activeSet = active.toSet();
     final byField = <String, BankQuestion>{};
     for (final question in pack.questions) {

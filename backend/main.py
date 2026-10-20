@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.v1 import auth, incentives, integrations, referrals, reminders, rules, stock, sync, triage_desk
+from api.v1 import auth, facilities, incentives, integrations, referrals, reminders, rules, stock, sync, triage_desk
 from core.config import get_settings
 
 settings = get_settings()
@@ -53,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router, prefix="/api/v1")
     app.include_router(sync.router, prefix="/api/v1")
     app.include_router(triage_desk.router, prefix="/api/v1")
+    app.include_router(facilities.router, prefix="/api/v1")
     app.include_router(rules.router, prefix="/api/v1")
     app.include_router(referrals.router, prefix="/api/v1")
     app.include_router(reminders.router, prefix="/api/v1")

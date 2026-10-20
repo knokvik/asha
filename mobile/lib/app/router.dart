@@ -4,8 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/presentation/pin_setup_screen.dart';
 import '../features/due_list/presentation/due_list_screen.dart';
-import '../features/home/presentation/dashboard_screen.dart';
-import '../features/home/presentation/profile_screen.dart';
 import '../features/home/presentation/tools_screen.dart';
 
 // Registry & Households
@@ -17,9 +15,9 @@ import '../features/household/presentation/household_list_screen.dart';
 import '../features/household/presentation/household_detail_screen.dart';
 import '../features/household/presentation/household_profile_screen.dart';
 import '../features/triage/presentation/triage_flow_screen.dart';
-import '../features/interpreter/presentation/interpreter_screen.dart';
 import '../features/reports/presentation/reports_incentives_screen.dart';
-import '../features/map/presentation/field_map_screen.dart';
+import '../shared/shell/main_shell.dart';
+import '../shared/shell/shell_tab.dart';
 import '../features/sync/presentation/sync_queue_screen.dart';
 
 // Triage & Referral
@@ -112,7 +110,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
     GoRoute(
       path: '/home',
       pageBuilder: (context, state) =>
-          _buildSlidePage(state: state, child: const DashboardScreen()),
+          _buildSlidePage(state: state, child: const MainShell()),
     ),
     GoRoute(
       path: '/sync',
@@ -126,13 +124,17 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
     ),
     GoRoute(
       path: '/profile',
-      pageBuilder: (context, state) =>
-          _buildSlidePage(state: state, child: const ProfileScreen()),
+      redirect: (context, state) {
+        ref?.read(shellTabProvider.notifier).select(3);
+        return '/home';
+      },
     ),
     GoRoute(
       path: '/due-list',
-      pageBuilder: (context, state) =>
-          _buildSlidePage(state: state, child: const DueListScreen()),
+      redirect: (context, state) {
+        ref?.read(shellTabProvider.notifier).select(2);
+        return '/home';
+      },
     ),
     GoRoute(
       path: '/calendar',
@@ -150,15 +152,17 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
     ),
     GoRoute(
       path: '/search',
-      pageBuilder: (context, state) => _buildSlidePage(
-        state: state,
-        child: const BeneficiarySearchScreen(),
-      ),
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const BeneficiarySearchScreen()),
     ),
     GoRoute(
       path: '/households',
-      pageBuilder: (context, state) =>
-          _buildSlidePage(state: state, child: const HouseholdListScreen()),
+      pageBuilder: (context, state) => _buildSlidePage(
+        state: state,
+        child: HouseholdListScreen(
+          initialQuery: state.uri.queryParameters['q'],
+        ),
+      ),
       routes: [
         GoRoute(
           path: 'new',
@@ -181,8 +185,9 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
       path: '/household/:id',
       pageBuilder: (context, state) => _buildSlidePage(
         state: state,
-        child:
-            HouseholdDetailScreen(householdId: state.pathParameters['id'] ?? ''),
+        child: HouseholdDetailScreen(
+          householdId: state.pathParameters['id'] ?? '',
+        ),
       ),
     ),
     GoRoute(
@@ -230,7 +235,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
     GoRoute(
       path: '/interpreter',
       pageBuilder: (context, state) =>
-          _buildSlidePage(state: state, child: const InterpreterScreen()),
+          _buildSlidePage(state: state, child: const LanguageBridgeScreen()),
     ),
     GoRoute(
       path: '/triage/questions',
@@ -617,8 +622,10 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
 
     GoRoute(
       path: '/geo-map',
-      pageBuilder: (context, state) =>
-          _buildSlidePage(state: state, child: const FieldMapScreen()),
+      redirect: (context, state) {
+        ref?.read(shellTabProvider.notifier).select(1);
+        return '/home';
+      },
     ),
 
     // ── Area Coverage Analysis ─────────────────────────────────────────────

@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getAshaPerformanceCards,
   submitSupervisionChecklist,
   sendAshaRecognition,
 } from '@/shared/api/supervisionApi';
+import { useSync } from '@/shared/context/SyncContext';
 import { AshaPerformanceCard, SupervisionChecklist } from '@/types';
 import {
   Users,
@@ -18,6 +20,14 @@ import {
   Search,
   X,
   Star,
+  RefreshCw,
+  Activity,
+  Layers,
+  Clock,
+  Radio,
+  ShieldCheck,
+  ArrowRight,
+  Filter,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,7 +36,26 @@ import { ImciAshaTable } from '@/features/af-supervision/ImciAshaTable';
 
 export function AFSupervisionPage() {
   const queryClient = useQueryClient();
-  const [searchTerm, setSearchTerm] = useState('');
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') || searchParams.get('worker') || '';
+  const urlTab = searchParams.get('tab');
+  const [searchTerm, setSearchTerm] = useState(urlSearch);
+  const [activeTab, setActiveTab] = useState<'supervision' | 'sync_feed'>(urlTab === 'sync' ? 'sync_feed' : 'supervision');
+
+  const { syncActivities, triggerManualSync, isSyncing, lastSyncTime } = useSync();
+  const [syncSearch, setSyncSearch] = useState('');
+  const [syncCategoryFilter, setSyncCategoryFilter] = useState<string>('ALL');
+  const [syncSeverityFilter, setSyncSeverityFilter] = useState<'ALL' | 'RED' | 'YELLOW' | 'GREEN'>('ALL');
+
+  useEffect(() => {
+    if (urlSearch) {
+      setSearchTerm(urlSearch);
+    }
+    if (urlTab === 'sync') {
+      setActiveTab('sync_feed');
+    }
+  }, [urlSearch, urlTab]);
   const [selectedAsha, setSelectedAsha] = useState<AshaPerformanceCard | null>(null);
   const [checklistOpen, setChecklistOpen] = useState(false);
   const [badgeModalOpen, setBadgeModalOpen] = useState(false);
@@ -78,175 +107,526 @@ export function AFSupervisionPage() {
       a.village.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const filteredSyncActivities = syncActivities.filter((act) => {
+    if (syncCategoryFilter !== 'ALL' && act.category !== syncCategoryFilter) return false;
+    if (syncSeverityFilter !== 'ALL') {
+      if (syncSeverityFilter === 'RED' && act.severity !== 'RED') return false;
+      if (syncSeverityFilter === 'YELLOW' && act.severity !== 'YELLOW') return false;
+      if (syncSeverityFilter === 'GREEN' && act.severity !== 'GREEN') return false;
+    }
+    if (syncSearch.trim()) {
+      const q = syncSearch.toLowerCase();
+      const matchWorker = act.workerName.toLowerCase().includes(q);
+      const matchVillage = act.village.toLowerCase().includes(q);
+      const matchDetails = act.details.toLowerCase().includes(q);
+      const matchPatient = act.patientName?.toLowerCase().includes(q);
+      const matchPayload = act.clinicalPayload.toLowerCase().includes(q);
+      if (!matchWorker && !matchVillage && !matchDetails && !matchPatient && !matchPayload) return false;
+    }
+    return true;
+  });
+
+  const urgentCount = syncActivities.filter((s) => s.severity === 'RED').length;
+
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-6">
-      {/* Header Banner */}
-      <Card className="p-6 border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center space-x-3.5">
-            <div className="p-3 rounded-xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20 text-amber-600 dark:text-amber-400">
-              <Users className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2">
-                ASHA Facilitator (AF) Supportive Supervision
-              </h1>
-              <p className="text-xs text-[#525252] dark:text-[#94A3B8]">
-                Facilitator: Sarita Singh • Sector: Shahpur Central • Mentoring, Checklists & Recognition
-              </p>
-            </div>
-          </div>
-
-          {/* Global Stats */}
-          <div className="flex items-center gap-3">
-            <div className="px-4 py-2 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50/50 dark:bg-[#1E1E1E]">
-              <div className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold uppercase tracking-wider">Supervised ASHAs</div>
-              <div className="text-lg font-bold text-[#0F172A] dark:text-white">{ashas.length} Active Workers</div>
-            </div>
-            <div className="px-4 py-2 rounded-xl border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50/50 dark:bg-[#1E1E1E]">
-              <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold uppercase tracking-wider">Avg Sector Coverage</div>
-              <div className="text-lg font-bold text-emerald-700 dark:text-emerald-400">89.0% Target Met</div>
-            </div>
-          </div>
+      {/* 1. Header Row */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+            ASHA Facilitator (AF) Supportive Supervision & Field Sync
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Facilitator: Sarita Singh • Sector: Shahpur Central • ABDM Gateway Live Sync Feed & Performance
+          </p>
         </div>
-      </Card>
 
-      <ImciAshaTable />
+        {/* Global Stats & Manual Sync Trigger */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-2 bg-white dark:bg-[#1E1E1E] border border-slate-200 dark:border-[#2E2E2E] rounded-xl px-3 py-1.5 shadow-xs">
+            <div className="flex flex-col">
+              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold uppercase tracking-wider">Supervised ASHAs</span>
+              <span className="text-xs font-bold text-slate-900 dark:text-white">{ashas.length} Active Workers</span>
+            </div>
+          </div>
 
-      {/* Search Bar */}
-      <div className="relative max-w-md">
-        <Search className="w-4 h-4 text-[#71717A] absolute left-3.5 top-3" />
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search ASHA by name or village..."
-          className="w-full pl-10 pr-4 py-2 rounded-xl bg-white dark:bg-[#1E1E1E] border border-[#E5E7EB] dark:border-[#2E2E2E] text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder-[#71717A] focus:outline-none focus:ring-1 focus:ring-amber-500 transition-colors"
-        />
+          <div className="flex items-center gap-2 bg-white dark:bg-[#1E1E1E] border border-slate-200 dark:border-[#2E2E2E] rounded-xl px-3 py-1.5 shadow-xs">
+            <div className="flex flex-col">
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold uppercase tracking-wider">Last Sync</span>
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>{lastSyncTime}</span>
+              </span>
+            </div>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => triggerManualSync()}
+            disabled={isSyncing}
+            className="bg-white dark:bg-[#1E1E1E] border-emerald-300 dark:border-emerald-500/40 text-[#0C5A3E] dark:text-[#34D399] hover:bg-emerald-50 dark:hover:bg-emerald-950/40 gap-1.5 shadow-xs"
+            title="Trigger simulated live field synchronization packet"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+            <span>{isSyncing ? 'Syncing...' : 'Trigger Frontline Sync'}</span>
+          </Button>
+        </div>
       </div>
 
-      {/* ASHA Performance Cards Grid (Req 39.1) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {filteredAshas.map((asha) => {
-          return (
-            <Card
-              key={asha.ashaId}
-              className="p-6 border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] hover:border-slate-300 dark:hover:border-[#404040] transition-all space-y-4 shadow-xs"
-            >
-              {/* Card Top: Name, Village, Sync Time */}
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <h2 className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC]">{asha.ashaName}</h2>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#2E2E2E] text-[#525252] dark:text-[#94A3B8] font-mono border border-slate-200 dark:border-[#404040]">
-                      {asha.village}
-                    </span>
-                  </div>
-                  <div className="text-xs text-[#525252] dark:text-[#94A3B8] flex items-center space-x-2 pt-0.5">
-                    <span>{asha.totalAssignedHouseholds} HHs</span>
-                    <span>•</span>
-                    <span>{asha.hamletsCount} Hamlets</span>
-                    <span>•</span>
-                    <span className="text-emerald-600 dark:text-emerald-400">Synced {new Date(asha.lastSyncAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                  </div>
-                </div>
+      {/* Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-[#26262A] pb-1">
+        <button
+          onClick={() => setActiveTab('supervision')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'supervision'
+              ? 'bg-[#0C5A3E] text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#222226]'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>ASHA Team Supervision & Performance ({ashas.length})</span>
+        </button>
 
-                <a
-                  href={`tel:${asha.phone}`}
-                  className="p-2 rounded-xl bg-slate-100 dark:bg-[#2A2A2A] hover:bg-slate-200 dark:hover:bg-[#383838] text-[#0F172A] dark:text-[#F8FAFC] text-xs flex items-center space-x-1.5 transition-colors"
+        <button
+          onClick={() => setActiveTab('sync_feed')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'sync_feed'
+              ? 'bg-[#0C5A3E] text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#222226]'
+          }`}
+        >
+          <div className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          </div>
+          <Activity className="w-4 h-4 text-emerald-500" />
+          <span>Live Frontline Data Sync Feed ({syncActivities.length})</span>
+          {urgentCount > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-500 text-white font-bold">
+              {urgentCount} RED
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'supervision' ? (
+        /* TAB 1: ASHA Team Supervision & Performance */
+        <div className="space-y-6">
+          <ImciAshaTable />
+
+          {/* Search Bar */}
+          <div className="relative max-w-md">
+            <Search className="w-4 h-4 text-[#71717A] absolute left-3.5 top-3" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search ASHA by name or village..."
+              className="w-full pl-10 pr-4 py-2 rounded-xl bg-white dark:bg-[#1E1E1E] border border-[#E5E7EB] dark:border-[#2E2E2E] text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder-[#71717A] focus:outline-none focus:ring-1 focus:ring-amber-500 transition-colors"
+            />
+          </div>
+
+          {/* ASHA Performance Cards Grid (Req 39.1) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {filteredAshas.map((asha) => {
+              return (
+                <Card
+                  key={asha.ashaId}
+                  className="p-6 border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] hover:border-slate-300 dark:hover:border-[#404040] transition-all space-y-4 shadow-xs"
                 >
-                  <Phone className="w-3.5 h-3.5 text-slate-500" />
-                  <span className="hidden sm:inline font-mono">{asha.phone}</span>
-                </a>
-              </div>
+                  {/* Card Top: Name, Village, Sync Time */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <h2 className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC]">{asha.ashaName}</h2>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#2E2E2E] text-[#525252] dark:text-[#94A3B8] font-mono border border-slate-200 dark:border-[#404040]">
+                          {asha.village}
+                        </span>
+                      </div>
+                      <div className="text-xs text-[#525252] dark:text-[#94A3B8] flex items-center space-x-2 pt-0.5">
+                        <span>{asha.totalAssignedHouseholds} HHs</span>
+                        <span>•</span>
+                        <span>{asha.hamletsCount} Hamlets</span>
+                        <span>•</span>
+                        <span className="text-emerald-600 dark:text-emerald-400">Synced {new Date(asha.lastSyncAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                    </div>
 
-              {/* 4 Core Metrics Grid */}
-              <div className="grid grid-cols-4 gap-2 pt-1">
-                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#1E1E1E] border border-[#E5E7EB] dark:border-[#2E2E2E] text-center">
-                  <div className="text-[10px] text-[#525252] dark:text-[#94A3B8]">Coverage</div>
-                  <div className={`text-base font-bold ${asha.coveragePct >= 90 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                    {asha.coveragePct}%
-                  </div>
-                </div>
-                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#1E1E1E] border border-[#E5E7EB] dark:border-[#2E2E2E] text-center">
-                  <div className="text-[10px] text-[#525252] dark:text-[#94A3B8]">Overdue</div>
-                  <div className={`text-base font-bold ${asha.overdueVisitsCount > 4 ? 'text-rose-600 dark:text-rose-400' : 'text-[#0F172A] dark:text-[#F8FAFC]'}`}>
-                    {asha.overdueVisitsCount}
-                  </div>
-                </div>
-                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#1E1E1E] border border-[#E5E7EB] dark:border-[#2E2E2E] text-center">
-                  <div className="text-[10px] text-[#525252] dark:text-[#94A3B8]">Data Quality</div>
-                  <div className="text-base font-bold text-indigo-600 dark:text-indigo-400">
-                    {asha.dataQualityScorePct}%
-                  </div>
-                </div>
-                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#1E1E1E] border border-[#E5E7EB] dark:border-[#2E2E2E] text-center">
-                  <div className="text-[10px] text-[#525252] dark:text-[#94A3B8]">Learning</div>
-                  <div className="text-base font-bold text-amber-600 dark:text-amber-400">
-                    {asha.learningModulesCompleted} / 16
-                  </div>
-                </div>
-              </div>
-
-              {/* Mentoring Pattern Detection Callout (Req 39.3) */}
-              {asha.mentoringFlags && asha.mentoringFlags.length > 0 && (
-                <div className="space-y-2">
-                  {asha.mentoringFlags.map((flag, idx) => (
-                    <div
-                      key={idx}
-                      className={`p-3 rounded-xl border text-xs flex items-start space-x-2.5 ${
-                        flag.type === 'positive'
-                          ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300'
-                          : flag.type === 'warning'
-                          ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-300'
-                          : 'bg-indigo-50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-500/30 text-indigo-800 dark:text-indigo-300'
-                      }`}
+                    <a
+                      href={`tel:${asha.phone}`}
+                      className="p-2 rounded-xl bg-slate-100 dark:bg-[#2A2A2A] hover:bg-slate-200 dark:hover:bg-[#383838] text-[#0F172A] dark:text-[#F8FAFC] text-xs flex items-center space-x-1.5 transition-colors"
                     >
-                      <Sparkles className="w-4 h-4 shrink-0 mt-0.5" />
-                      <div>
-                        <div className="font-semibold">{flag.message}</div>
-                        {flag.suggestedModule && (
-                          <div className="text-[11px] text-[#525252] dark:text-[#94A3B8] pt-0.5 flex items-center gap-1">
-                            <BookOpen className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                            <span>Recommended Micro-Lesson: <span className="font-mono font-medium text-amber-700 dark:text-amber-300">{flag.suggestedModule}</span></span>
+                      <Phone className="w-3.5 h-3.5 text-slate-500" />
+                      <span className="hidden sm:inline font-mono">{asha.phone}</span>
+                    </a>
+                  </div>
+
+                  {/* 4 Core Metrics Grid */}
+                  <div className="grid grid-cols-4 gap-2 pt-1">
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#1E1E1E] border border-[#E5E7EB] dark:border-[#2E2E2E] text-center">
+                      <div className="text-[10px] text-[#525252] dark:text-[#94A3B8]">Coverage</div>
+                      <div className={`text-base font-bold ${asha.coveragePct >= 90 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                        {asha.coveragePct}%
+                      </div>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#1E1E1E] border border-[#E5E7EB] dark:border-[#2E2E2E] text-center">
+                      <div className="text-[10px] text-[#525252] dark:text-[#94A3B8]">Overdue</div>
+                      <div className={`text-base font-bold ${asha.overdueVisitsCount > 4 ? 'text-rose-600 dark:text-rose-400' : 'text-[#0F172A] dark:text-[#F8FAFC]'}`}>
+                        {asha.overdueVisitsCount}
+                      </div>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#1E1E1E] border border-[#E5E7EB] dark:border-[#2E2E2E] text-center">
+                      <div className="text-[10px] text-[#525252] dark:text-[#94A3B8]">Data Quality</div>
+                      <div className="text-base font-bold text-indigo-600 dark:text-indigo-400">
+                        {asha.dataQualityScorePct}%
+                      </div>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#1E1E1E] border border-[#E5E7EB] dark:border-[#2E2E2E] text-center">
+                      <div className="text-[10px] text-[#525252] dark:text-[#94A3B8]">Learning</div>
+                      <div className="text-base font-bold text-amber-600 dark:text-amber-400">
+                        {asha.learningModulesCompleted} / 16
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mentoring Pattern Detection Callout (Req 39.3) */}
+                  {asha.mentoringFlags && asha.mentoringFlags.length > 0 && (
+                    <div className="space-y-2">
+                      {asha.mentoringFlags.map((flag, idx) => (
+                        <div
+                          key={idx}
+                          className={`p-3 rounded-xl border text-xs flex items-start space-x-2.5 ${
+                            flag.type === 'positive'
+                              ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300'
+                              : flag.type === 'warning'
+                              ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-300'
+                              : 'bg-indigo-50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-500/30 text-indigo-800 dark:text-indigo-300'
+                          }`}
+                        >
+                          <Sparkles className="w-4 h-4 shrink-0 mt-0.5" />
+                          <div>
+                            <div className="font-semibold">{flag.message}</div>
+                            {flag.suggestedModule && (
+                              <div className="text-[11px] text-[#525252] dark:text-[#94A3B8] pt-0.5 flex items-center gap-1">
+                                <BookOpen className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                                <span>Recommended Micro-Lesson: <span className="font-mono font-medium text-amber-700 dark:text-amber-300">{flag.suggestedModule}</span></span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Card Actions: Checklist & Recognition */}
+                  <div className="flex items-center gap-2 pt-2 border-t border-[#E5E7EB] dark:border-[#2E2E2E]">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedAsha(asha);
+                        setChecklistOpen(true);
+                      }}
+                      className="flex-1 gap-1.5"
+                    >
+                      <ClipboardCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                      <span>Digital Supervision Checklist (Req 39.2)</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setSelectedAsha(asha);
+                        setBadgeModalOpen(true);
+                      }}
+                      className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 gap-1.5 shadow-none"
+                    >
+                      <Award className="w-3.5 h-3.5" />
+                      <span>Give Recognition (Req 39.5)</span>
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        /* TAB 2: Live Frontline Data Sync Feed (What Was Received & When) */
+        <div className="space-y-4">
+          {/* Real-time Ingest Status Strip */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="p-3.5 rounded-xl bg-white dark:bg-[#18181B] border border-slate-200 dark:border-[#26262A] shadow-xs">
+              <span className="text-[11px] text-slate-500 font-medium">Frontline Records Synced</span>
+              <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5">
+                {syncActivities.length} Records
+              </div>
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-0.5">
+                <CheckCircle2 className="h-3 w-3" />
+                <span>Auto-ingested via ABDM Gateway</span>
+              </span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-white dark:bg-[#18181B] border border-slate-200 dark:border-[#26262A] shadow-xs">
+              <span className="text-[11px] text-slate-500 font-medium">Emergency Triage Referrals</span>
+              <div className="text-xl font-black text-[#DC2626] mt-0.5">
+                {urgentCount} High-Risk
+              </div>
+              <span className="text-[10px] text-slate-500 mt-0.5">
+                Auto-routed to PHC Doctor Triage Desk
+              </span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-white dark:bg-[#18181B] border border-slate-200 dark:border-[#26262A] shadow-xs">
+              <span className="text-[11px] text-slate-500 font-medium">Frontline ASHAs Active</span>
+              <div className="text-xl font-black text-[#0C5A3E] dark:text-[#34D399] mt-0.5">
+                42 / 44 Online
+              </div>
+              <span className="text-[10px] text-slate-500 mt-0.5">
+                2 devices on SMS fallback queue
+              </span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-white dark:bg-[#18181B] border border-slate-200 dark:border-[#26262A] shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-slate-500 font-medium">ABDM Gateway Link</span>
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              </div>
+              <div className="text-sm font-bold text-slate-900 dark:text-white mt-1">
+                Last sync: {lastSyncTime}
+              </div>
+              <Button
+                size="xs"
+                variant="outline"
+                onClick={() => triggerManualSync()}
+                disabled={isSyncing}
+                className="mt-1 w-full text-xs text-[#0C5A3E] dark:text-[#34D399] border-emerald-300 dark:border-emerald-700"
+              >
+                <RefreshCw className={`w-3 h-3 mr-1 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span>Simulate Inbound Sync Now</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Sync Search & Category Filters */}
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 p-3.5 rounded-xl bg-white dark:bg-[#18181B] border border-slate-200 dark:border-[#26262A] shadow-xs">
+            {/* Search Input */}
+            <div className="relative flex-1 max-w-md">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                placeholder="Search what was synced, ASHA name, patient, village..."
+                value={syncSearch}
+                onChange={(e) => setSyncSearch(e.target.value)}
+                className="w-full pl-9 pr-8 h-9 rounded-lg bg-slate-50 dark:bg-[#202024] border border-slate-200 dark:border-[#2E2E34] text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-[#0C5A3E]"
+              />
+              {syncSearch && (
+                <button
+                  onClick={() => setSyncSearch('')}
+                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-semibold text-slate-500 mr-1 flex items-center gap-1">
+                <Filter className="w-3 h-3" />
+                <span>Category:</span>
+              </span>
+              {[
+                'ALL',
+                'Maternal (ANC)',
+                'Child (IMNCI)',
+                'Postnatal (PNC)',
+                'NCD Screening',
+                'Immunization',
+              ].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSyncCategoryFilter(cat)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors cursor-pointer ${
+                    syncCategoryFilter === cat
+                      ? 'bg-[#0C5A3E] text-white shadow-xs'
+                      : 'bg-slate-100 dark:bg-[#222226] text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#2A2A2E]'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+
+              <span className="text-slate-300 dark:text-slate-700 mx-1">|</span>
+
+              {/* Severity Pills */}
+              {(['ALL', 'RED', 'YELLOW', 'GREEN'] as const).map((sev) => (
+                <button
+                  key={sev}
+                  onClick={() => setSyncSeverityFilter(sev)}
+                  className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-colors cursor-pointer ${
+                    syncSeverityFilter === sev
+                      ? sev === 'RED'
+                        ? 'bg-rose-600 text-white'
+                        : sev === 'YELLOW'
+                        ? 'bg-amber-500 text-white'
+                        : sev === 'GREEN'
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-slate-800 dark:bg-white text-white dark:text-slate-900'
+                      : 'bg-slate-100 dark:bg-[#222226] text-slate-500 dark:text-slate-400 hover:bg-slate-200'
+                  }`}
+                >
+                  {sev === 'ALL' ? 'All Risks' : sev}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Synced Inflow Stream (What Was Received & When) */}
+          <div className="space-y-3">
+            {filteredSyncActivities.length === 0 ? (
+              <div className="py-12 text-center rounded-xl bg-white dark:bg-[#18181B] border border-slate-200 dark:border-[#26262A] text-slate-500 text-xs">
+                No synced frontline records match your filter.
+              </div>
+            ) : (
+              filteredSyncActivities.map((act) => {
+                const isRed = act.severity === 'RED';
+                const isYellow = act.severity === 'YELLOW';
+
+                return (
+                  <div
+                    key={act.id}
+                    className={`p-4 rounded-xl border bg-white dark:bg-[#18181B] transition-all shadow-xs ${
+                      isRed
+                        ? 'border-l-4 border-l-rose-500 border-slate-200 dark:border-[#26262A]'
+                        : isYellow
+                        ? 'border-l-4 border-l-amber-500 border-slate-200 dark:border-[#26262A]'
+                        : 'border-l-4 border-l-emerald-500 border-slate-200 dark:border-[#26262A]'
+                    }`}
+                  >
+                    <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                      {/* Left: When, Who, What Was Received */}
+                      <div className="flex-1 space-y-2">
+                        {/* Row 1: Timestamp (When) + ASHA Worker + Program Category */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          {/* When received */}
+                          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-[#222226] text-slate-700 dark:text-slate-300 text-[11px] font-mono">
+                            <Clock className="w-3 h-3 text-slate-400" />
+                            <span className="font-bold">{act.syncTime}</span>
+                          </div>
+
+                          {/* Who sent it */}
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900 dark:text-white">
+                            <Users className="w-3.5 h-3.5 text-[#0C5A3E] dark:text-[#34D399]" />
+                            <span>ASHA {act.workerName}</span>
+                            <span className="text-slate-400 font-normal">({act.village})</span>
+                          </div>
+
+                          <a
+                            href={`tel:${act.workerPhone}`}
+                            className="text-[11px] text-slate-500 hover:text-[#0C5A3E] dark:hover:text-[#34D399] flex items-center gap-1 ml-1"
+                          >
+                            <Phone className="w-3 h-3" />
+                            <span className="font-mono">{act.workerPhone}</span>
+                          </a>
+
+                          {/* Category Badge */}
+                          <span
+                            className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                              isRed
+                                ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+                                : isYellow
+                                ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                                : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                            }`}
+                          >
+                            {act.category}
+                          </span>
+                        </div>
+
+                        {/* Row 2: Headline / What was done */}
+                        <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                          <span>{act.details}</span>
+                          {act.patientName && (
+                            <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-[#222226] px-2 py-0.5 rounded">
+                              Beneficiary: {act.patientName}
+                            </span>
+                          )}
+                          {act.abhaId && (
+                            <span className="text-[10px] font-mono text-slate-500 bg-slate-50 dark:bg-[#202024] px-1.5 py-0.2 rounded border border-slate-200 dark:border-[#2E2E34]">
+                              ABHA: {act.abhaId}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Row 3: What Was Received (Clinical Data Payload) */}
+                        <div className="text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-[#202024] p-2.5 rounded-lg border border-slate-100 dark:border-[#26262A] leading-relaxed">
+                          <strong className="text-slate-800 dark:text-slate-200">Clinical Observations & Field Ingest: </strong>
+                          {act.clinicalPayload}
+                        </div>
+
+                        {/* Row 4: Vitals Summary Pills */}
+                        {act.vitalsSummary && (
+                          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mr-1">
+                              Vitals Ingested:
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-slate-100 dark:bg-[#222226] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-[#2E2E34]">
+                              {act.vitalsSummary}
+                            </span>
                           </div>
                         )}
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
 
-              {/* Card Actions: Checklist & Recognition */}
-              <div className="flex items-center gap-2 pt-2 border-t border-[#E5E7EB] dark:border-[#2E2E2E]">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedAsha(asha);
-                    setChecklistOpen(true);
-                  }}
-                  className="flex-1 gap-1.5"
-                >
-                  <ClipboardCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                  <span>Digital Supervision Checklist (Req 39.2)</span>
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setSelectedAsha(asha);
-                    setBadgeModalOpen(true);
-                  }}
-                  className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 gap-1.5 shadow-none"
-                >
-                  <Award className="w-3.5 h-3.5" />
-                  <span>Give Recognition (Req 39.5)</span>
-                </Button>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
+                      {/* Right: Channel, Status & Quick Action */}
+                      <div className="lg:w-64 lg:border-l lg:border-slate-100 dark:lg:border-[#26262A] lg:pl-4 flex flex-col justify-between space-y-3 shrink-0">
+                        <div className="space-y-1.5">
+                          <div className="text-[10px] uppercase font-bold text-slate-400">
+                            Ingest Channel
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                            <Radio className="w-3.5 h-3.5 text-slate-400" />
+                            <span>{act.channel}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[11px]">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                            <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+                              Verified on ABDM Gateway
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="pt-2">
+                          {isRed ? (
+                            <button
+                              onClick={() => navigate('/phc')}
+                              className="w-full py-1.5 px-3 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                            >
+                              <Activity className="w-3.5 h-3.5" />
+                              <span>Review in Triage Desk</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setSearchTerm(act.workerName);
+                                setActiveTab('supervision');
+                              }}
+                              className="w-full py-1.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                            >
+                              <span>View ASHA Performance</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Digital Field Supervision Checklist Modal (Req 39.2) */}
       {checklistOpen && selectedAsha && (

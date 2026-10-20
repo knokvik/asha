@@ -66,15 +66,15 @@ interface AshaFieldLocation {
   phone: string;
 }
 
-const PHC_COORDINATES: [number, number] = [25.5350, 84.4420];
+const PHC_COORDINATES: [number, number] = [25.3176, 82.9739];
 
 const SUBCENTRES: FacilityLocation[] = [
   {
     id: 'sc-1',
     name: 'SC Ramnagar',
     type: 'SUBCENTRE',
-    lat: 25.5280,
-    lng: 84.3980,
+    lat: 25.2780,
+    lng: 83.0250,
     anm: 'Meena Kumari (ANM)',
     phone: '+91 94150 11201',
     distanceKm: 4.4,
@@ -85,8 +85,8 @@ const SUBCENTRES: FacilityLocation[] = [
     id: 'sc-2',
     name: 'SC Kalyanpur',
     type: 'SUBCENTRE',
-    lat: 25.5760,
-    lng: 84.4320,
+    lat: 25.3560,
+    lng: 82.9420,
     anm: 'Rekha Devi (ANM)',
     phone: '+91 94150 11202',
     distanceKm: 4.8,
@@ -97,8 +97,8 @@ const SUBCENTRES: FacilityLocation[] = [
     id: 'sc-3',
     name: 'SC Shivpur',
     type: 'SUBCENTRE',
-    lat: 25.5680,
-    lng: 84.4920,
+    lat: 25.3620,
+    lng: 82.9820,
     anm: 'Sunita Singh (CHO)',
     phone: '+91 94150 11203',
     distanceKm: 6.2,
@@ -109,8 +109,8 @@ const SUBCENTRES: FacilityLocation[] = [
     id: 'sc-4',
     name: 'SC Belwa',
     type: 'SUBCENTRE',
-    lat: 25.4980,
-    lng: 84.4550,
+    lat: 25.2950,
+    lng: 82.9350,
     anm: 'Pooja Rani (ANM)',
     phone: '+91 94150 11204',
     distanceKm: 4.3,
@@ -121,8 +121,8 @@ const SUBCENTRES: FacilityLocation[] = [
     id: 'sc-5',
     name: 'SC Pipra',
     type: 'SUBCENTRE',
-    lat: 25.5020,
-    lng: 84.5080,
+    lat: 25.2650,
+    lng: 83.0450,
     anm: 'Anjali Sharma (ANM)',
     phone: '+91 94150 11205',
     distanceKm: 7.5,
@@ -133,8 +133,8 @@ const SUBCENTRES: FacilityLocation[] = [
     id: 'sc-6',
     name: 'SC Madhuban',
     type: 'SUBCENTRE',
-    lat: 25.5420,
-    lng: 84.5120,
+    lat: 25.3420,
+    lng: 83.0280,
     anm: 'Geeta Verma (CHO)',
     phone: '+91 94150 11206',
     distanceKm: 7.0,
@@ -147,8 +147,8 @@ const AMBULANCES: AmbulanceAsset[] = [
   {
     id: 'amb-1',
     code: '108-UP-42',
-    lat: 25.5390,
-    lng: 84.4120,
+    lat: 25.3340,
+    lng: 82.9850,
     speedKmH: 48,
     patient: 'Sunita Devi (24y, G2P1)',
     condition: 'CRITICAL: Severe Pre-Eclampsia (BP 190/125)',
@@ -160,8 +160,8 @@ const AMBULANCES: AmbulanceAsset[] = [
   {
     id: 'amb-2',
     code: '108-UP-09',
-    lat: 25.5580,
-    lng: 84.4750,
+    lat: 25.3210,
+    lng: 83.0020,
     speedKmH: 52,
     patient: 'Rajesh Kumar (52y)',
     condition: 'CRITICAL: Acute Chest Pain & Hypertensive Crisis',
@@ -173,8 +173,8 @@ const AMBULANCES: AmbulanceAsset[] = [
   {
     id: 'amb-3',
     code: '108-UP-18',
-    lat: 25.4985,
-    lng: 84.4545,
+    lat: 25.2950,
+    lng: 82.9350,
     speedKmH: 0,
     etaMinutes: 0,
     destination: 'Stationed at Belwa Sub-Centre',
@@ -188,8 +188,8 @@ const ASHA_WORKERS: AshaFieldLocation[] = [
     id: 'asha-1',
     name: 'Kamla Devi',
     village: 'Ramnagar Hamlet 2',
-    lat: 25.5305,
-    lng: 84.4050,
+    lat: 25.2805,
+    lng: 83.0220,
     batteryPct: 82,
     currentActivity: 'High-risk Pregnancy HBNC Check',
     lastSyncMinsAgo: 4,
@@ -199,8 +199,8 @@ const ASHA_WORKERS: AshaFieldLocation[] = [
     id: 'asha-2',
     name: 'Radha Yadav',
     village: 'Kalyanpur East',
-    lat: 25.5720,
-    lng: 84.4380,
+    lat: 25.3520,
+    lng: 82.9480,
     batteryPct: 68,
     currentActivity: 'Infant Measles-Rubella Follow-up',
     lastSyncMinsAgo: 12,
@@ -210,8 +210,8 @@ const ASHA_WORKERS: AshaFieldLocation[] = [
     id: 'asha-3',
     name: 'Meera Kumari',
     village: 'Pipra Tola',
-    lat: 25.5080,
-    lng: 84.5020,
+    lat: 25.2680,
+    lng: 83.0420,
     batteryPct: 45,
     currentActivity: 'NCD CBAC Hypertension Screening',
     lastSyncMinsAgo: 22,
@@ -221,8 +221,8 @@ const ASHA_WORKERS: AshaFieldLocation[] = [
     id: 'asha-4',
     name: 'Sita Devi',
     village: 'Shahpur Ward 3',
-    lat: 25.5380,
-    lng: 84.4550,
+    lat: 25.3220,
+    lng: 82.9680,
     batteryPct: 91,
     currentActivity: 'Routine Household Survey Entry',
     lastSyncMinsAgo: 2,
@@ -234,14 +234,14 @@ const PCMC_CENTER: [number, number] = [18.66, 73.82];
 
 function getTileLayer(style: 'osmand_topo' | 'osm_standard' | 'dark_tactical') {
   if (style === 'osmand_topo') {
-    // OpenTopoMap: Classic OsmAnd topographic contour elevations & terrain shading
+    // OpenTopoMap / OsmAnd Topo styling
     return L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
       maxZoom: 17,
       subdomains: 'abc',
-      attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, SRTM | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
+      attribution: '&copy; OpenStreetMap contributors, SRTM | OpenTopoMap',
     });
   } else if (style === 'osm_standard') {
-    // OpenStreetMap Standard: Ultra-fast, clean global vector raster tiles
+    // OpenStreetMap Standard: Ultra-fast, clean global vector raster tiles (100% free, no API key required)
     return L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -310,6 +310,37 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
     const ringsLayer = L.layerGroup().addTo(map);
     const deadZoneLayer = L.layerGroup().addTo(map);
     const pcmcLayer = L.layerGroup().addTo(map);
+    const dummyFacilityLayer = L.layerGroup().addTo(map);
+    void paintDummyFacilities(rows: Array<{ name?: string; kind?: string; lat?: number; lng?: number; lon?: number; phone?: string }>) {
+      dummyFacilityLayer.clearLayers();
+      for (const row of rows) {
+        const lat = row.lat;
+        const lng = row.lng ?? row.lon;
+        if (lat == null || lng == null) continue;
+        L.circleMarker([lat, lng], {
+          radius: 7,
+          color: '#1E4231',
+          weight: 2,
+          fillColor: row.kind === 'hospital' || row.kind === 'phc' ? '#B42318' : '#1D4E89',
+          fillOpacity: 0.9,
+        })
+          .bindPopup(`<strong>${row.name ?? 'Facility'}</strong><br/>${row.kind ?? ''}<br/>${row.phone ?? ''}<br/>Demo point, not HFR`)
+          .addTo(dummyFacilityLayer);
+      }
+    }
+    const bundled = [
+      { name: 'PHC Ramnagar (demo)', kind: 'phc', lat: 25.318, lon: 82.974, phone: '05426700101' },
+      { name: 'Sub-centre Lanka', kind: 'subcentre', lat: 25.282, lon: 83.002, phone: '05426700102' },
+      { name: 'CHC Shivpur', kind: 'chc', lat: 25.355, lon: 82.98, phone: '05426700103' },
+      { name: 'Anganwadi Sigra', kind: 'anganwadi', lat: 25.317, lon: 82.991, phone: '05426700104' },
+    ];
+    paintDummyFacilities(bundled);
+    fetch('/api/v1/facilities/dummy')
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body: { facilities?: Array<{ name?: string; kind?: string; lat?: number; lon?: number; phone?: string }> } | null) => {
+        if (body?.facilities?.length) paintDummyFacilities(body.facilities);
+      })
+      .catch(() => undefined);
 
     layerGroupsRef.current = {
       subcentres: subcentreLayer,
@@ -478,10 +509,10 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
     // 3. Offline Dead-Zone Polygon
     if (showDeadZone) {
       const deadZoneCoords: [number, number][] = [
-        [25.5000, 84.4950],
-        [25.5200, 84.5250],
-        [25.4950, 84.5350],
-        [25.4850, 84.5050],
+        [25.2600, 83.0350],
+        [25.2750, 83.0600],
+        [25.2550, 83.0700],
+        [25.2480, 83.0400],
       ];
       L.polygon(deadZoneCoords, {
         color: '#F43F5E',
@@ -617,42 +648,37 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
 
   // Focus Emergency Cases
   const handleFocusEmergency = () => {
-    mapInstanceRef.current?.setView([25.5390, 84.4120], 14, { animate: true });
+    mapInstanceRef.current?.setView([25.3340, 82.9850], 14, { animate: true });
   };
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden bg-white dark:bg-[#1E1E1E]">
       {mode === 'heatmap' && <PcmcHeatPanel onView={onHeatView} />}
       {/* 1. Header Toolbar */}
-      <div className="shrink-0 p-4 border-b border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
-        <div className="flex items-center space-x-3">
-          <div className="p-2.5 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-            <Compass className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-base font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2">
-              Catchment GIS Field Map & Fleet Surveillance
-              <Badge variant="default" className="text-[10px]">
-                OsmAnd Topo Powered
-              </Badge>
-            </h1>
-            <p className="text-xs text-[#525252] dark:text-[#94A3B8]">
-              Rural terrain contours, 108 ambulance vector lines, 6 linked sub-centres & live ASHA field tracking
-            </p>
-          </div>
+      <div className="shrink-0 p-4 border-b border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#1E1E1E] flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
+        <div>
+          <h1 className="text-lg lg:text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+            Catchment GIS Field Map & Fleet Surveillance
+            <Badge variant="default" className="text-[10px]">
+              OsmAnd Topo Powered
+            </Badge>
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Rural terrain contours, 108 ambulance vector lines, 6 linked sub-centres & live ASHA field tracking
+          </p>
         </div>
 
         {/* Stats Pill Strip */}
         <div className="flex items-center gap-2 flex-wrap text-xs">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] text-[#0F172A] dark:text-[#F8FAFC] font-semibold">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-[#2E2E2E] bg-white dark:bg-[#222224] text-[#0F172A] dark:text-[#F8FAFC] font-semibold shadow-xs">
             <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
             <span>2 En-Route (ETA &lt; 15m)</span>
           </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] text-[#0F172A] dark:text-[#F8FAFC] font-semibold">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-[#2E2E2E] bg-white dark:bg-[#222224] text-[#0F172A] dark:text-[#F8FAFC] font-semibold shadow-xs">
             <Radio className="w-3.5 h-3.5 text-emerald-600" />
             <span>6 Sub-Centres Linked</span>
           </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] text-[#525252] dark:text-[#94A3B8]">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-[#2E2E2E] bg-white dark:bg-[#222224] text-[#525252] dark:text-[#94A3B8] shadow-xs">
             <Activity className="w-3.5 h-3.5 text-purple-500" />
             <span>14 ASHAs in Field</span>
           </div>

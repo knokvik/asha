@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useState, useMemo, useEffect, useRef, Fragment } from 'react';
+import { NavLink, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getReferralQueue,
@@ -9,6 +9,7 @@ import {
   fetchAbdmHiuRecords,
   startConsult,
 } from '@/shared/api/referralApi';
+import { useSync } from '@/shared/context/SyncContext';
 import { slaLabel, unseenRedIds } from '@/features/clinical-desk/logic';
 import { ReferralItem } from '@/types';
 import {
@@ -36,6 +37,11 @@ import {
   Pill,
   MapPin,
   Maximize2,
+  LayoutList,
+  LayoutGrid,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -48,10 +54,22 @@ import { OsmAndMapPage } from '@/features/map/OsmAndMapPage';
 
 export function PHCDashboardPage() {
   const queryClient = useQueryClient();
+  const { triggerManualSync, isSyncing, lastSyncTime, recordDoctorOutcomeSync } = useSync();
   const [activeTab, setActiveTab] = useState<'referrals' | 'area_lists' | 'planning' | 'ipd_ward' | 'sms_feed' | 'catchment_map'>('referrals');
+  const [triageView, setTriageView] = useState<'table' | 'cards'>('table');
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const [severityFilter, setSeverityFilter] = useState<'ALL' | 'RED' | 'YELLOW' | 'SMS'>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'pending' | 'arrived' | 'treated' | 'admitted'>('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') || '';
+  const [searchQuery, setSearchQuery] = useState(urlSearch);
+
+  useEffect(() => {
+    if (urlSearch) {
+      setSearchQuery(urlSearch);
+      setActiveTab('referrals');
+    }
+  }, [urlSearch]);
   
   // Selection states for Modals
   const [selectedReferral, setSelectedReferral] = useState<ReferralItem | null>(null);
@@ -84,6 +102,13 @@ export function PHCDashboardPage() {
       recordReferralOutcome(id, status, notes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['referrals'] });
+      if (selectedReferral) {
+        recordDoctorOutcomeSync(
+          selectedReferral.patientName,
+          selectedReferral.ashaName,
+          `Outcome (${outcomeStatus.toUpperCase()}): ${outcomeNotes ? outcomeNotes.slice(0, 45) + '...' : 'Clinical action saved'}`
+        );
+      }
       setSelectedReferral(null);
       setOutcomeNotes('');
       setSelectedPrescriptions([]);
@@ -201,35 +226,28 @@ export function PHCDashboardPage() {
     <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* 1. Emergency Triage Banner & Facility Stats Strip */}
       <div className="space-y-4">
-        {/* Top Header Card */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-white dark:bg-[#222224] border border-[#E5E7EB] dark:border-[#2E2E2E] shadow-xs backdrop-blur-xl transition-colors">
-          <div className="space-y-1">
-            <div className="flex items-center space-x-3">
-              <div className="p-2.5 rounded-xl bg-white dark:bg-[#222224] border border-rose-300 dark:border-rose-500/30 text-rose-600 dark:text-rose-400 shadow-xs">
-                <Activity className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="text-xl font-extrabold text-[#0F172A] dark:text-white flex items-center gap-2 tracking-tight">
-                  PHC Shahpur Emergency Triage & Referral Queue
-                  {isRefetching && (
-                    <span className="text-[11px] text-[#10B981] font-normal animate-pulse">
-                      (Syncing live...)
-                    </span>
-                  )}
-                </h1>
-                <p className="text-xs text-[#525252] dark:text-[#A3A3A3]">
-                  Primary Health Centre Shahpur • Facility Code: PHC-SHP-04 • National Health Mission (NHM) • Polling live every 30s
-                </p>
-              </div>
-            </div>
+        {/* Header Row */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+              PHC Shahpur Emergency Triage & Referral Queue
+              {isRefetching && (
+                <span className="text-[11px] text-[#10B981] font-normal animate-pulse">
+                  (Syncing live...)
+                </span>
+              )}
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Primary Health Centre Shahpur • Facility Code: PHC-SHP-04 • National Health Mission (NHM) • Polling live every 30s
+            </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setSoundAlertEnabled(!soundAlertEnabled)}
-              className={soundAlertEnabled ? 'text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-500/30' : 'text-[#71717A]'}
+              className={`bg-white dark:bg-[#1E1E1E] shadow-xs ${soundAlertEnabled ? 'text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-500/30' : 'text-[#71717A] border-slate-200 dark:border-[#2E2E2E]'}`}
               title="Audio alert chime on incoming emergency"
             >
               <Volume2 className="w-3.5 h-3.5 mr-1" />
@@ -239,7 +257,7 @@ export function PHCDashboardPage() {
               variant="outline"
               size="sm"
               onClick={() => setActiveTab('catchment_map')}
-              className="text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-500/30 gap-1.5"
+              className="bg-white dark:bg-[#1E1E1E] border-slate-200 dark:border-[#2E2E2E] text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-500/30 gap-1.5 shadow-xs"
               title="Open Catchment Field Map"
             >
               <MapPin className="w-3.5 h-3.5" />
@@ -249,7 +267,7 @@ export function PHCDashboardPage() {
               variant="outline"
               size="sm"
               onClick={() => refetch()}
-              className="text-[#0F172A] dark:text-[#F8FAFC]"
+              className="bg-white dark:bg-[#1E1E1E] border-slate-200 dark:border-[#2E2E2E] text-[#0F172A] dark:text-[#F8FAFC] shadow-xs"
             >
               <RefreshCw className={`w-3.5 h-3.5 mr-1 ${isRefetching ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
@@ -375,16 +393,16 @@ export function PHCDashboardPage() {
         {/* TAB 1: Live Emergency Referral Queue */}
         <TabsContent value="referrals" className="space-y-4">
           {/* Search & Filter Command Bar */}
-          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 p-3 rounded-xl bg-white dark:bg-[#222224] border border-[#E5E7EB] dark:border-[#2E2E2E] shadow-xs">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 p-3.5 rounded-2xl bg-white dark:bg-[#18181B] border border-slate-200 dark:border-[#26262A] shadow-xs">
             {/* Search Input */}
             <div className="relative flex-1 max-w-md">
-              <Search className="w-4 h-4 text-[#71717A] absolute left-3 top-2.5" />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
               <Input
                 type="text"
                 placeholder="Search patient, ABHA ID, village, or ASHA..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 h-9 bg-slate-50 dark:bg-[#1E1E1E]"
+                className="pl-9 pr-8 h-9 bg-slate-50 dark:bg-[#202024] border-slate-200 dark:border-[#2E2E34] text-xs"
               />
               {searchQuery && (
                 <button
@@ -396,54 +414,434 @@ export function PHCDashboardPage() {
               )}
             </div>
 
-            {/* Severity Pill Filters */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] text-[#525252] dark:text-[#A3A3A3] font-semibold mr-1">Severity:</span>
-              <Button
-                size="xs"
-                variant={severityFilter === 'ALL' ? 'default' : 'outline'}
-                onClick={() => setSeverityFilter('ALL')}
-              >
-                All ({referrals.length})
-              </Button>
-              <Button
-                size="xs"
-                variant={severityFilter === 'RED' ? 'destructive' : 'outline'}
-                onClick={() => setSeverityFilter('RED')}
-                className="flex items-center gap-1"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
-                RED ({referrals.filter((r) => r.severity === 'RED').length})
-              </Button>
-              <Button
-                size="xs"
-                variant={severityFilter === 'YELLOW' ? 'warning' : 'outline'}
-                onClick={() => setSeverityFilter('YELLOW')}
-                className="flex items-center gap-1"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                YELLOW ({referrals.filter((r) => r.severity === 'YELLOW').length})
-              </Button>
-              <Button
-                size="xs"
-                variant={severityFilter === 'SMS' ? 'default' : 'outline'}
-                onClick={() => setSeverityFilter('SMS')}
-                className="flex items-center gap-1 text-cyan-600 dark:text-cyan-300 border-cyan-300 dark:border-cyan-500/30"
-              >
-                <Radio className="w-3 h-3 text-cyan-500" />
-                SMS Relayed ({referrals.filter((r) => r.isSmsRelayed).length})
-              </Button>
+            {/* Severity Pill Filters & View Mode Switcher */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1">
+                <span className="text-[11px] text-slate-500 font-semibold mr-1">Severity:</span>
+                <Button
+                  size="xs"
+                  variant={severityFilter === 'ALL' ? 'default' : 'outline'}
+                  onClick={() => setSeverityFilter('ALL')}
+                >
+                  All ({referrals.length})
+                </Button>
+                <Button
+                  size="xs"
+                  variant={severityFilter === 'RED' ? 'destructive' : 'outline'}
+                  onClick={() => setSeverityFilter('RED')}
+                  className="flex items-center gap-1"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                  RED ({referrals.filter((r) => r.severity === 'RED').length})
+                </Button>
+                <Button
+                  size="xs"
+                  variant={severityFilter === 'YELLOW' ? 'warning' : 'outline'}
+                  onClick={() => setSeverityFilter('YELLOW')}
+                  className="flex items-center gap-1"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                  YELLOW ({referrals.filter((r) => r.severity === 'YELLOW').length})
+                </Button>
+                <Button
+                  size="xs"
+                  variant={severityFilter === 'SMS' ? 'default' : 'outline'}
+                  onClick={() => setSeverityFilter('SMS')}
+                  className="flex items-center gap-1 text-cyan-700 dark:text-cyan-300 border-cyan-300 dark:border-cyan-500/30"
+                >
+                  <Radio className="w-3 h-3 text-cyan-500" />
+                  SMS Relayed ({referrals.filter((r) => r.isSmsRelayed).length})
+                </Button>
+              </div>
+
+              <div className="hidden sm:block h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
+
+              {/* View Switcher: Table vs Cards */}
+              <div className="flex items-center rounded-lg bg-slate-100 dark:bg-[#202024] p-0.5 border border-slate-200 dark:border-[#2E2E34]">
+                <button
+                  onClick={() => setTriageView('table')}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                    triageView === 'table'
+                      ? 'bg-white dark:bg-[#18181B] text-[#0C5A3E] dark:text-[#34D399] shadow-xs'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900'
+                  }`}
+                  title="Structured Triage Board Table View"
+                >
+                  <LayoutList className="w-3.5 h-3.5" />
+                  <span>Table View</span>
+                </button>
+                <button
+                  onClick={() => setTriageView('cards')}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                    triageView === 'cards'
+                      ? 'bg-white dark:bg-[#18181B] text-[#0C5A3E] dark:text-[#34D399] shadow-xs'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900'
+                  }`}
+                  title="Detailed Clinical Case Cards View"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span>Cards View</span>
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Referral Cards Feed */}
+          {/* Referral Queue View */}
           {filteredReferrals.length === 0 ? (
-            <div className="py-16 text-center text-slate-500 space-y-2 rounded-2xl border border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224]">
+            <div className="py-16 text-center text-slate-500 space-y-2 rounded-2xl border border-slate-200 dark:border-[#26262A] bg-white dark:bg-[#18181B]">
               <CheckCircle className="w-8 h-8 text-[#10B981] mx-auto" />
-              <p className="font-semibold text-[#0F172A] dark:text-slate-200">No pending referrals match your filter.</p>
-              <p className="text-xs text-[#71717A]">All emergency patients have been reviewed or discharged.</p>
+              <p className="font-semibold text-slate-900 dark:text-slate-200">No pending referrals match your filter.</p>
+              <p className="text-xs text-slate-500">All emergency patients have been reviewed or discharged.</p>
+            </div>
+          ) : triageView === 'table' ? (
+            /* STRUCTURED TRIAGE MATRIX TABLE (Formal Clinical Hospital Format) */
+            <div className="rounded-2xl border border-slate-200 dark:border-[#26262A] bg-white dark:bg-[#18181B] overflow-hidden shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[1120px] text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-[#26262A] bg-slate-50/80 dark:bg-[#202024] text-slate-600 dark:text-slate-300 font-bold uppercase text-[10px] tracking-wider">
+                      <th className="py-2.5 px-3 w-36">Priority / Triage</th>
+                      <th className="py-2.5 px-3 w-44">Patient & ABHA</th>
+                      <th className="py-2.5 px-3 min-w-[240px]">Clinical Complaint & Danger Signs</th>
+                      <th className="py-2.5 px-3 w-36">Field Vitals</th>
+                      <th className="py-2.5 px-3 w-40">Referring ASHA</th>
+                      <th className="py-2.5 px-3 w-32 whitespace-nowrap">Wait & SLA</th>
+                      <th className="py-2.5 px-3 text-right min-w-[260px]">Clinical Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-[#26262A]">
+                    {filteredReferrals.map((item) => {
+                      const isRed = item.severity === 'RED';
+                      const minutesWaiting = Math.round(
+                        (Date.now() - new Date(item.referredAt).getTime()) / (1000 * 60)
+                      );
+                      const sla = isRed ? slaLabel(item.referredAt, Date.now()) : null;
+                      const ageLabel =
+                        item.ageMonths != null
+                          ? `${item.ageMonths} mo`
+                          : item.patientAge < 1
+                            ? `${Math.round(item.patientAge * 12)} months`
+                            : `${item.patientAge} yrs`;
+                      const isExpanded = expandedRowId === item.id;
+
+                      return (
+                        <React.Fragment key={item.id}>
+                          <tr
+                            data-fresh-red={freshRedIds.includes(item.id) ? 'true' : 'false'}
+                            className={`transition-colors hover:bg-slate-50/90 dark:hover:bg-[#202024]/60 ${
+                              isRed ? 'bg-rose-50/20 dark:bg-rose-950/10' : ''
+                            }`}
+                          >
+                            {/* Priority / Triage Badge */}
+                            <td className="py-3 px-3 align-top whitespace-nowrap">
+                              <div className="flex flex-col gap-1 items-start">
+                                <span
+                                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wide uppercase border flex items-center gap-1.5 ${
+                                    isRed
+                                      ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800'
+                                      : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800'
+                                  }`}
+                                >
+                                  <AlertTriangle className="w-3 h-3 text-inherit" />
+                                  <span>{item.severity} TRIAGE</span>
+                                </span>
+
+                                {item.isSmsRelayed && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-bold bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800">
+                                    <Radio className="w-2.5 h-2.5 animate-pulse" />
+                                    <span>SMS Relay</span>
+                                  </span>
+                                )}
+
+                                <span
+                                  className={`px-2 py-0.2 rounded-full text-[9px] font-bold uppercase mt-0.5 ${
+                                    item.status === 'pending'
+                                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                                      : item.status === 'arrived'
+                                      ? 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300'
+                                      : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                                  }`}
+                                >
+                                  {item.status.replace('_', ' ')}
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* Patient & ABHA */}
+                            <td className="py-3 px-3 align-top">
+                              <div className="space-y-1">
+                                <div className="font-bold text-slate-900 dark:text-white text-sm leading-tight flex items-center gap-1.5">
+                                  <span>{item.patientName}</span>
+                                  <span className="text-[11px] font-normal text-slate-500">
+                                    ({ageLabel}, {item.patientGender})
+                                  </span>
+                                </div>
+
+                                <div className="text-[11px] text-slate-500 flex items-center gap-1">
+                                  <span>{item.village}</span>
+                                  <span>•</span>
+                                  <span className="font-mono text-[10px] text-slate-400">{item.subcentreId}</span>
+                                </div>
+
+                                {item.abhaId && (
+                                  <button
+                                    onClick={() => handleCopyAbha(item.abhaId!)}
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-[#26262A] hover:bg-slate-200 text-slate-700 dark:text-slate-300 text-[10px] font-mono border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                                    title="Click to copy ABHA ID"
+                                  >
+                                    <span className="font-bold">ABHA:</span>
+                                    <span>{item.abhaId}</span>
+                                    {copiedAbha === item.abhaId ? (
+                                      <Check className="w-2.5 h-2.5 text-emerald-600" />
+                                    ) : (
+                                      <Copy className="w-2.5 h-2.5 text-slate-400" />
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Clinical Complaint & Danger Signs */}
+                            <td className="py-3 px-3 align-top">
+                              <div className="space-y-1.5">
+                                <div className="font-semibold text-rose-700 dark:text-rose-300 text-xs leading-snug">
+                                  {item.reason}
+                                </div>
+
+                                {/* Danger signs chips */}
+                                {item.screenedDangerSigns && item.screenedDangerSigns.length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {item.screenedDangerSigns.slice(0, 3).map((ds, idx) => (
+                                      <span
+                                        key={idx}
+                                        className={`px-1.5 py-0.2 rounded text-[10px] font-medium flex items-center gap-1 border ${
+                                          ds.present
+                                            ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-200 border-rose-300 font-bold'
+                                            : 'bg-slate-100 dark:bg-[#202024] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                                        }`}
+                                      >
+                                        <span>{ds.sign}</span>
+                                        <strong className={ds.present ? 'text-rose-700 font-bold' : 'text-slate-400'}>
+                                          {ds.present ? '✓' : '✗'}
+                                        </strong>
+                                      </span>
+                                    ))}
+                                    {item.screenedDangerSigns.length > 3 && (
+                                      <button
+                                        onClick={() => setExpandedRowId(isExpanded ? null : item.id)}
+                                        className="text-[10px] text-[#0C5A3E] dark:text-[#34D399] font-bold hover:underline"
+                                      >
+                                        +{item.screenedDangerSigns.length - 3} more
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Field Vitals */}
+                            <td className="py-3 px-3 align-top whitespace-nowrap">
+                              {item.vitals ? (
+                                <div className="flex flex-col gap-1 text-[11px] font-mono">
+                                  {item.vitals.bpSystolic && (
+                                    <span className="px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900 font-bold">
+                                      BP: {item.vitals.bpSystolic}/{item.vitals.bpDiastolic}
+                                    </span>
+                                  )}
+                                  {item.vitals.spo2 && (
+                                    <span className="px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900 font-bold">
+                                      SpO2: {item.vitals.spo2}%
+                                    </span>
+                                  )}
+                                  {item.vitals.respRate && (
+                                    <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-[#222226] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-[#2E2E34]">
+                                      Resp: {item.vitals.respRate}/m
+                                    </span>
+                                  )}
+                                  {item.vitals.hemoglobin && (
+                                    <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-[#222226] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-[#2E2E34]">
+                                      Hb: {item.vitals.hemoglobin} g/dL
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-slate-400 text-[11px]">No vitals</span>
+                              )}
+                            </td>
+
+                            {/* Referring ASHA */}
+                            <td className="py-3 px-3 align-top whitespace-nowrap">
+                              <div className="space-y-1">
+                                <div className="font-bold text-slate-900 dark:text-white text-xs">
+                                  {item.ashaName}
+                                </div>
+                                <div className="text-[10px] text-slate-400">
+                                  ASHA Worker
+                                </div>
+                                <a
+                                  href={`tel:${item.ashaPhone}`}
+                                  className="inline-flex items-center gap-1 text-[11px] font-mono text-[#0C5A3E] dark:text-[#34D399] hover:underline"
+                                >
+                                  <Phone className="w-3 h-3" />
+                                  <span>{item.ashaPhone}</span>
+                                </a>
+                              </div>
+                            </td>
+
+                            {/* Wait & SLA */}
+                            <td className="py-3 px-3 align-top whitespace-nowrap">
+                              <div className="space-y-1">
+                                <div className={`text-[11px] font-bold ${minutesWaiting > 30 && isRed ? 'text-rose-600' : 'text-slate-700 dark:text-slate-300'}`}>
+                                  Wait: {minutesWaiting} mins
+                                </div>
+                                {sla && (
+                                  <div
+                                    data-testid={`sla-${item.id}`}
+                                    className={`px-2 py-0.5 rounded text-[10px] font-bold border inline-block ${
+                                      sla.overdue
+                                        ? 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/60 dark:text-rose-200'
+                                        : 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-200'
+                                    }`}
+                                  >
+                                    SLA {sla.text}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Clinical Actions */}
+                            <td className="py-3 px-3 align-top text-right whitespace-nowrap min-w-[280px]">
+                              <div className="flex flex-col gap-1.5 items-end">
+                                <div className="flex flex-wrap justify-end gap-1.5 max-w-[280px]">
+                                  {item.status === 'pending' && (
+                                    <Button
+                                      size="xs"
+                                      variant="outline"
+                                      onClick={() => acknowledgeMutation.mutate(item.id)}
+                                      disabled={acknowledgeMutation.isPending}
+                                      className="text-[10px] h-7 px-2"
+                                    >
+                                      <CheckCircle2 className="w-3 h-3 mr-1 text-slate-500" />
+                                      <span>ACKNOWLEDGE</span>
+                                    </Button>
+                                  )}
+
+                                  {(item.status === 'pending' || item.status === 'arrived') && (
+                                    <Button
+                                      size="xs"
+                                      variant="outline"
+                                      onClick={() => consultMutation.mutate(item.id)}
+                                      disabled={consultMutation.isPending}
+                                      className="text-[10px] h-7 px-2"
+                                    >
+                                      <span>START CONSULT</span>
+                                    </Button>
+                                  )}
+
+                                  <Button
+                                    size="xs"
+                                    variant="outline"
+                                    onClick={() => handleOpenAbdmHiu(item)}
+                                    className="text-[10px] h-7 px-2"
+                                  >
+                                    <FileText className="w-3 h-3 mr-1 text-slate-500" />
+                                    <span>ABDM HIU</span>
+                                  </Button>
+
+                                  <Button
+                                    size="xs"
+                                    variant="default"
+                                    onClick={() => {
+                                      setSelectedReferral(item);
+                                      setOutcomeStatus('treated');
+                                    }}
+                                    className="text-[10px] h-7 px-2.5 bg-[#0C5A3E] hover:bg-[#08422E] text-white font-bold"
+                                  >
+                                    <Stethoscope className="w-3 h-3 mr-1" />
+                                    <span>Record Outcome</span>
+                                  </Button>
+                                </div>
+
+                                <div className="flex items-center gap-2 text-[11px]">
+                                  <NavLink
+                                    to={`/ticket/${item.id}`}
+                                    className="text-slate-500 hover:text-slate-800 dark:hover:text-white underline"
+                                  >
+                                    Open ticket
+                                  </NavLink>
+                                  <button
+                                    onClick={() => setExpandedRowId(isExpanded ? null : item.id)}
+                                    className="text-[#0C5A3E] dark:text-[#34D399] font-semibold flex items-center gap-0.5 hover:underline cursor-pointer"
+                                  >
+                                    <span>{isExpanded ? 'Hide Details' : 'View Observation'}</span>
+                                    {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                  </button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+
+                          {/* Expanded Observation Drawer */}
+                          {isExpanded && (
+                            <tr className="bg-slate-50/90 dark:bg-[#1A1A1E]">
+                              <td colSpan={7} className="p-4 border-b border-slate-200 dark:border-[#26262A]">
+                                <div className="space-y-3">
+                                  <div className="p-3 rounded-xl bg-white dark:bg-[#202024] border border-slate-200 dark:border-[#2E2E34] text-xs">
+                                    <strong className="text-slate-900 dark:text-white block mb-1">
+                                      ASHA Clinical Field Observation:
+                                    </strong>
+                                    <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
+                                      {item.clinicalNote}
+                                    </p>
+                                  </div>
+
+                                  {/* Danger Signs Screened Matrix */}
+                                  {item.screenedDangerSigns && (
+                                    <div className="p-3 rounded-xl bg-white dark:bg-[#202024] border border-slate-200 dark:border-[#2E2E34] text-xs space-y-1.5">
+                                      <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
+                                        Full Danger Signs Screened Matrix
+                                      </div>
+                                      <div className="flex flex-wrap gap-2">
+                                        {item.screenedDangerSigns.map((ds, idx) => (
+                                          <span
+                                            key={idx}
+                                            className={`px-2 py-0.5 rounded-md text-[11px] font-medium flex items-center gap-1 border ${
+                                              ds.present
+                                                ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-300 font-bold'
+                                                : 'bg-slate-50 dark:bg-[#18181B] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-[#26262A]'
+                                            }`}
+                                          >
+                                            {ds.present ? (
+                                              <AlertTriangle className="w-3 h-3 text-rose-600" />
+                                            ) : (
+                                              <Check className="w-3 h-3 text-emerald-600" />
+                                            )}
+                                            <span>{ds.sign}: {ds.present ? 'PRESENT' : 'ABSENT'}</span>
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {item.sms && (
+                                    <div className="text-[11px] font-mono text-slate-600 dark:text-slate-400 bg-white dark:bg-[#202024] p-2 rounded border border-slate-200 dark:border-[#2E2E34]">
+                                      <span className="font-bold text-slate-800 dark:text-slate-200">Raw Relayed Ingest: </span>
+                                      {item.sms}
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ) : (
+            /* DETAILED CLINICAL CASE CARDS */
             <div className="space-y-4">
               {filteredReferrals.map((item) => {
                 const isRed = item.severity === 'RED';
@@ -464,10 +862,10 @@ export function PHCDashboardPage() {
                     data-fresh-red={freshRedIds.includes(item.id) ? 'true' : 'false'}
                     className={`transition-all ${
                       freshRedIds.includes(item.id)
-                        ? 'border-2 border-rose-500 bg-white dark:bg-[#222224] shadow-xs'
+                        ? 'border-2 border-rose-500 bg-white dark:bg-[#18181B] shadow-xs'
                         : isRed
-                        ? 'border-l-4 border-l-rose-500 border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] shadow-xs'
-                        : 'border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224]'
+                        ? 'border-l-4 border-l-rose-500 border-slate-200 dark:border-[#26262A] bg-white dark:bg-[#18181B] shadow-xs'
+                        : 'border-slate-200 dark:border-[#26262A] bg-white dark:bg-[#18181B]'
                     }`}
                   >
                     <CardContent className="p-5">
@@ -479,8 +877,8 @@ export function PHCDashboardPage() {
                             <span
                               className={`px-2.5 py-0.5 rounded-full text-xs font-bold tracking-wide uppercase border flex items-center gap-1.5 ${
                                 isRed
-                                  ? 'bg-white dark:bg-[#222224] text-rose-600 dark:text-rose-400 border-rose-300 dark:border-rose-500/40'
-                                  : 'bg-white dark:bg-[#222224] text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-500/40'
+                                  ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800'
+                                  : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800'
                               }`}
                             >
                               <AlertTriangle className="w-3.5 h-3.5" />
@@ -496,12 +894,12 @@ export function PHCDashboardPage() {
 
                             <h2 className="text-lg font-bold text-[#0F172A] dark:text-white flex items-center gap-2">
                               {item.patientName}
-                              <span className="text-xs font-normal text-[#525252] dark:text-[#A3A3A3]">
+                              <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
                                 ({ageLabel}, {item.patientGender}{item.wardId ? `, ${item.wardId}` : ''})
                               </span>
                             </h2>
 
-                            <span className="text-xs px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#2E2E2E] text-slate-700 dark:text-[#F8FAFC] font-medium border border-slate-200 dark:border-[#404040]">
+                            <span className="text-xs px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#202024] text-slate-700 dark:text-slate-300 font-medium border border-slate-200 dark:border-[#2E2E34]">
                               {item.village} • {item.subcentreId}
                             </span>
 
@@ -509,7 +907,7 @@ export function PHCDashboardPage() {
                             {item.abhaId && (
                               <div
                                 onClick={() => handleCopyAbha(item.abhaId!)}
-                                className="group inline-flex items-center space-x-1.5 px-2 py-0.5 rounded bg-white dark:bg-[#222224] border border-[#E5E7EB] dark:border-[#2E2E2E] text-slate-700 dark:text-slate-300 text-[11px] font-mono cursor-pointer hover:border-slate-400 transition-colors"
+                                className="group inline-flex items-center space-x-1.5 px-2 py-0.5 rounded bg-slate-50 dark:bg-[#202024] border border-slate-200 dark:border-[#2E2E34] text-slate-700 dark:text-slate-300 text-[11px] font-mono cursor-pointer hover:border-slate-400 transition-colors"
                                 title="Click to copy ABHA ID"
                               >
                                 <span className="font-semibold text-slate-900 dark:text-white">ABHA:</span>
@@ -524,40 +922,22 @@ export function PHCDashboardPage() {
                           </div>
 
                           {/* Primary Referral Reason (Clinical Trigger) */}
-                          <div className="text-sm font-semibold text-rose-700 dark:text-rose-200">
+                          <div className="text-sm font-semibold text-rose-700 dark:text-rose-300">
                             {item.reason}
                           </div>
-                          {item.firedRules && item.firedRules.length > 0 && (
-                            <details className="text-xs text-slate-700 dark:text-slate-300">
-                              <summary className="cursor-pointer font-semibold">Reasons</summary>
-                              <ul className="mt-1 space-y-1">
-                                {item.firedRules.map((rule) => (
-                                  <li key={rule.ruleId}>
-                                    {rule.ruleId}: {rule.reason}
-                                  </li>
-                                ))}
-                              </ul>
-                            </details>
-                          )}
-                          {item.sms && (
-                            <p className="font-mono text-[11px] text-slate-600 dark:text-slate-300">{item.sms}</p>
-                          )}
-                          {item.outbreakContext && (
-                            <p className="text-xs text-amber-700 dark:text-amber-300">{item.outbreakContext}</p>
-                          )}
 
                           {/* ASHA Clinical Field Observation */}
-                          <div className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-[#181818] p-3 rounded-xl border border-slate-200 dark:border-[#2E2E2E]">
-                            <span className="font-bold text-[#0F172A] dark:text-white">ASHA Field Observation: </span>
+                          <div className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-[#202024] p-3 rounded-xl border border-slate-200 dark:border-[#2E2E34]">
+                            <span className="font-bold text-slate-900 dark:text-white">ASHA Field Observation: </span>
                             {item.clinicalNote}
                           </div>
 
-                          {/* Explicit Danger Signs Screened (Absent vs Present Matrix - §6a.3) */}
+                          {/* Screened Danger Signs */}
                           {item.screenedDangerSigns && item.screenedDangerSigns.length > 0 && (
-                            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-[#1A1A1A] border border-slate-200 dark:border-[#2E2E2E] text-xs space-y-1.5">
-                              <div className="text-[11px] font-bold uppercase tracking-wider text-[#71717A] flex items-center justify-between">
+                            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-[#202024]/80 border border-slate-200 dark:border-[#2E2E34] text-xs space-y-1.5">
+                              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
                                 <span>IMNCI / Triage Danger Signs Screened</span>
-                                <span className="text-[10px] text-slate-500 font-normal">Explicit negatives verified</span>
+                                <span className="text-[10px] text-slate-400 font-normal">Explicit negatives verified</span>
                               </div>
                               <div className="flex flex-wrap gap-2">
                                 {item.screenedDangerSigns.map((ds, idx) => (
@@ -565,14 +945,14 @@ export function PHCDashboardPage() {
                                     key={idx}
                                     className={`px-2 py-0.5 rounded-md text-[11px] font-medium flex items-center gap-1 border ${
                                       ds.present
-                                        ? 'bg-white dark:bg-[#222224] text-rose-600 dark:text-rose-400 border-rose-300 dark:border-rose-500/30 font-bold'
-                                        : 'bg-white dark:bg-[#222224] text-slate-600 dark:text-slate-400 border-[#E5E7EB] dark:border-[#2E2E2E]'
+                                        ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-300 font-bold'
+                                        : 'bg-white dark:bg-[#18181B] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-[#26262A]'
                                     }`}
                                   >
                                     {ds.present ? (
-                                      <AlertTriangle className="w-3 h-3 text-[#F43F5E]" />
+                                      <AlertTriangle className="w-3 h-3 text-rose-600" />
                                     ) : (
-                                      <Check className="w-3 h-3 text-[#10B981]" />
+                                      <Check className="w-3 h-3 text-emerald-600" />
                                     )}
                                     <span>
                                       {ds.sign}: {ds.present ? 'PRESENT' : 'ABSENT'}
@@ -587,52 +967,43 @@ export function PHCDashboardPage() {
                           {item.vitals && (
                             <div className="flex flex-wrap items-center gap-2 pt-0.5">
                               {item.vitals.bpSystolic && (
-                                <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#181818] border border-slate-200 dark:border-[#2E2E2E] text-slate-800 dark:text-slate-200 font-mono">
-                                  BP: <span className="font-bold text-[#F43F5E]">{item.vitals.bpSystolic}/{item.vitals.bpDiastolic}</span> mmHg
+                                <span className="text-xs px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 font-mono font-bold">
+                                  BP: {item.vitals.bpSystolic}/{item.vitals.bpDiastolic} mmHg
                                 </span>
                               )}
                               {item.vitals.respRate && (
-                                <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#181818] border border-slate-200 dark:border-[#2E2E2E] text-slate-800 dark:text-slate-200 font-mono">
-                                  Resp Rate: <span className="font-bold text-[#F43F5E]">{item.vitals.respRate}</span>/min
+                                <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#202024] border border-slate-200 dark:border-[#2E2E34] text-slate-800 dark:text-slate-200 font-mono">
+                                  Resp Rate: <span className="font-bold text-rose-600">{item.vitals.respRate}</span>/min
                                 </span>
                               )}
                               {item.vitals.spo2 && (
-                                <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#181818] border border-slate-200 dark:border-[#2E2E2E] text-slate-800 dark:text-slate-200 font-mono">
-                                  SpO2: <span className="font-bold text-[#F59E0B]">{item.vitals.spo2}%</span>
+                                <span className="text-xs px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-200 font-mono font-bold">
+                                  SpO2: {item.vitals.spo2}%
                                 </span>
                               )}
                               {item.vitals.hemoglobin && (
-                                <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#181818] border border-slate-200 dark:border-[#2E2E2E] text-slate-800 dark:text-slate-200 font-mono">
-                                  Hb: <span className="font-bold text-[#F43F5E]">{item.vitals.hemoglobin}</span> g/dL
+                                <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#202024] border border-slate-200 dark:border-[#2E2E34] text-slate-800 dark:text-slate-200 font-mono">
+                                  Hb: {item.vitals.hemoglobin} g/dL
                                 </span>
                               )}
-                              {item.tempC != null ? (
-                                <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#181818] border border-slate-200 dark:border-[#2E2E2E] text-slate-800 dark:text-slate-200 font-mono">
-                                  Temp: {item.tempC} °C
-                                </span>
-                              ) : item.vitals.temp ? (
-                                <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#181818] border border-slate-200 dark:border-[#2E2E2E] text-slate-800 dark:text-slate-200 font-mono">
-                                  Temp: {item.vitals.temp} °F
-                                </span>
-                              ) : null}
                             </div>
                           )}
                         </div>
 
                         {/* Right: ASHA details, Arrival state, Clinical Actions */}
-                        <div className="lg:w-84 space-y-3 lg:border-l lg:border-[#E5E7EB] dark:lg:border-[#2E2E2E] lg:pl-5 flex flex-col justify-between">
+                        <div className="lg:w-84 space-y-3 lg:border-l lg:border-slate-200 dark:lg:border-[#26262A] lg:pl-5 flex flex-col justify-between shrink-0">
                           {/* Originating ASHA Context */}
-                          <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#181818] border border-slate-200 dark:border-[#2E2E2E] text-xs space-y-1.5">
-                            <div className="text-[11px] font-bold uppercase tracking-wider text-[#71717A]">Referring Frontline Worker</div>
-                            <div className="font-bold text-[#0F172A] dark:text-white flex items-center justify-between">
+                          <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#202024] border border-slate-200 dark:border-[#2E2E34] text-xs space-y-1.5">
+                            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Referring Frontline Worker</div>
+                            <div className="font-bold text-slate-900 dark:text-white flex items-center justify-between">
                               <span>{item.ashaName}</span>
-                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-200 dark:bg-[#2E2E2E] text-slate-700 dark:text-[#A3A3A3]">ASHA</span>
+                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-200 dark:bg-[#26262A] text-slate-700 dark:text-slate-300 font-mono">ASHA</span>
                             </div>
-                            <div className="flex items-center justify-between text-[#525252] dark:text-[#A3A3A3] pt-1 border-t border-slate-200 dark:border-[#2E2E2E]">
+                            <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 pt-1 border-t border-slate-200 dark:border-[#2E2E34]">
                               <span className="font-mono text-[11px]">{item.ashaPhone}</span>
                               <a
                                 href={`tel:${item.ashaPhone}`}
-                                className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-white dark:bg-[#222224] text-slate-700 dark:text-slate-300 border border-[#E5E7EB] dark:border-[#2E2E2E] hover:border-slate-400 font-semibold text-xs transition-colors"
+                                className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-white dark:bg-[#18181B] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-slate-400 font-semibold text-xs transition-colors"
                               >
                                 <Phone className="w-3 h-3 text-slate-500" />
                                 <span>Call ASHA</span>
@@ -641,16 +1012,16 @@ export function PHCDashboardPage() {
                           </div>
 
                           {/* Status and Time Tracking */}
-                          <div className="flex items-center justify-between text-xs p-2 rounded-lg bg-white dark:bg-[#181818] border border-slate-200 dark:border-[#2E2E2E]">
+                          <div className="flex items-center justify-between text-xs p-2.5 rounded-xl bg-white dark:bg-[#202024] border border-slate-200 dark:border-[#2E2E34]">
                             <div className="space-y-0.5">
-                              <div className="text-[#71717A] text-[11px]">
+                              <div className="text-slate-500 text-[11px]">
                                 Referred: {new Date(item.referredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </div>
-                              <div className={`text-[11px] font-semibold ${minutesWaiting > 30 && isRed ? 'text-[#F43F5E] font-bold' : 'text-[#71717A]'}`}>
+                              <div className={`text-[11px] font-semibold ${minutesWaiting > 30 && isRed ? 'text-rose-600 font-bold' : 'text-slate-500'}`}>
                                 Wait: {minutesWaiting} mins {minutesWaiting > 30 && isRed ? '(OVERDUE)' : ''}
                               </div>
                               {sla && (
-                                <div data-testid={`sla-${item.id}`} className={`text-[11px] font-bold ${sla.overdue ? 'text-[#F43F5E]' : 'text-emerald-700'}`}>
+                                <div data-testid={`sla-${item.id}`} className={`text-[11px] font-bold ${sla.overdue ? 'text-rose-600' : 'text-emerald-700 dark:text-emerald-400'}`}>
                                   SLA {sla.text}
                                 </div>
                               )}
@@ -658,12 +1029,10 @@ export function PHCDashboardPage() {
                             <span
                               className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
                                 item.status === 'pending'
-                                  ? 'bg-white dark:bg-[#222224] text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-500/40'
+                                  ? 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300'
                                   : item.status === 'arrived'
-                                  ? 'bg-white dark:bg-[#222224] text-sky-600 dark:text-sky-400 border-sky-300 dark:border-sky-500/40'
-                                  : item.status === 'treated' || item.status === 'admitted'
-                                  ? 'bg-white dark:bg-[#222224] text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-500/40'
-                                  : 'bg-white dark:bg-[#222224] text-slate-700 dark:text-[#A3A3A3] border-slate-200 dark:border-[#404040]'
+                                  ? 'bg-sky-50 text-sky-800 border-sky-300 dark:bg-sky-950/40 dark:text-sky-300'
+                                  : 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300'
                               }`}
                             >
                               {item.status.replace('_', ' ')}
@@ -672,14 +1041,13 @@ export function PHCDashboardPage() {
 
                           {/* Doctor Action Buttons */}
                           <div className="space-y-2 pt-1">
-                            {/* Doctor Ack: Mark Patient Arrived */}
                             {item.status === 'pending' && (
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => acknowledgeMutation.mutate(item.id)}
                                 disabled={acknowledgeMutation.isPending}
-                                className="w-full text-slate-800 dark:text-slate-200 border-[#E5E7EB] dark:border-[#2E2E2E] hover:border-slate-400"
+                                className="w-full text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700"
                               >
                                 <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-slate-600 dark:text-slate-400" />
                                 <span>ACKNOWLEDGE</span>
@@ -691,7 +1059,7 @@ export function PHCDashboardPage() {
                                 variant="outline"
                                 onClick={() => consultMutation.mutate(item.id)}
                                 disabled={consultMutation.isPending}
-                                className="w-full border-[#E5E7EB] dark:border-[#2E2E2E] hover:border-slate-400"
+                                className="w-full border-slate-200 dark:border-slate-700"
                               >
                                 <span>START CONSULT</span>
                               </Button>
@@ -701,18 +1069,16 @@ export function PHCDashboardPage() {
                             </NavLink>
 
                             <div className="grid grid-cols-2 gap-2">
-                              {/* ABDM Longitudinal HIU Button */}
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleOpenAbdmHiu(item)}
-                                className="text-slate-700 dark:text-slate-300 border-[#E5E7EB] dark:border-[#2E2E2E] hover:border-slate-400"
+                                className="text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
                               >
                                 <FileText className="w-3.5 h-3.5 mr-1 text-slate-500" />
                                 <span>ABDM HIU</span>
                               </Button>
 
-                              {/* Record Clinical Outcome Button (Tested in vitest) */}
                               <Button
                                 size="sm"
                                 variant="default"
@@ -720,6 +1086,7 @@ export function PHCDashboardPage() {
                                   setSelectedReferral(item);
                                   setOutcomeStatus('treated');
                                 }}
+                                className="bg-[#0C5A3E] hover:bg-[#08422E] text-white font-bold"
                               >
                                 <Stethoscope className="w-3.5 h-3.5 mr-1" />
                                 <span>Record Outcome</span>

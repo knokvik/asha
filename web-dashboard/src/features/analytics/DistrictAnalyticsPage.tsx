@@ -61,38 +61,33 @@ export function DistrictAnalyticsPage() {
 
   return (
     <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-6">
-      {/* Banner */}
-      <Card className="p-6 border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center space-x-3.5">
-            <div className="p-3 rounded-xl bg-indigo-500/10 dark:bg-indigo-500/15 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400">
-              <BarChart3 className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-[#0F172A] dark:text-[#F8FAFC] flex items-center gap-2">
-                Block, District & State Analytics (Requirement 42)
-              </h1>
-              <p className="text-xs text-[#525252] dark:text-[#94A3B8]">
-                District: Varanasi Central • Real-time NHM Indicators, Outbreak Clustering & Supply Forecasting
-              </p>
+      {/* Header Row */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+            Block, District & State Analytics (Requirement 42)
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            District: Varanasi Central • Real-time NHM Indicators, Outbreak Clustering & Supply Forecasting
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center gap-2 bg-white dark:bg-[#1E1E1E] border border-rose-200 dark:border-rose-500/30 rounded-xl px-3 py-1.5 shadow-xs">
+            <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+            <div className="flex flex-col">
+              <span className="text-[10px] text-rose-700 dark:text-rose-300 font-semibold uppercase">Active Outbreak Signals</span>
+              <span className="text-xs font-bold text-slate-900 dark:text-white">{outbreakAlerts.length} Alerts Active</span>
             </div>
           </div>
-
-          <div className="flex items-center gap-3">
-            <div className="px-4 py-2 rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50/50 dark:bg-[#1E1E1E] flex items-center space-x-2">
-              <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-              <div>
-                <div className="text-[10px] text-rose-700 dark:text-rose-300 font-semibold uppercase">Active Outbreak Signals</div>
-                <div className="text-lg font-bold text-[#0F172A] dark:text-white">{outbreakAlerts.length} Alerts Active</div>
-              </div>
-            </div>
-            <div className="px-4 py-2 rounded-xl border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50/50 dark:bg-[#1E1E1E]">
-              <div className="text-[10px] text-indigo-700 dark:text-indigo-300 font-semibold uppercase">Tracked Indicators</div>
-              <div className="text-lg font-bold text-indigo-700 dark:text-indigo-400">6 Key NHM Programs</div>
+          <div className="flex items-center gap-2 bg-white dark:bg-[#1E1E1E] border border-indigo-200 dark:border-indigo-500/30 rounded-xl px-3 py-1.5 shadow-xs">
+            <div className="flex flex-col">
+              <span className="text-[10px] text-indigo-700 dark:text-indigo-300 font-semibold uppercase">Tracked Indicators</span>
+              <span className="text-xs font-bold text-indigo-700 dark:text-indigo-400">6 Key NHM Programs</span>
             </div>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* Outbreak Detection Signals Banner (Req 42.3) */}
       {outbreakAlerts.length > 0 && (

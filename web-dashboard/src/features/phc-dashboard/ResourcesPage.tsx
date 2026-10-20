@@ -8,11 +8,15 @@ export function ResourcesPage() {
   const cards = resourceCards(PCMC_WARDS as WardWeek[], week);
 
   return (
-    <div className="p-4 lg:p-8 max-w-5xl mx-auto space-y-4">
-      <h1 className="text-xl font-bold">Early-warning resources</h1>
-      <p className="text-xs text-slate-600">
-        PCMC child flags sit next to the existing Shahpur outbreak alerts. Week {week + 1} of 12.
-      </p>
+    <div className="p-4 lg:p-8 max-w-5xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+          Early-warning resources
+        </h1>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          PCMC child flags sit next to the existing Shahpur outbreak alerts. Week {week + 1} of 12.
+        </p>
+      </div>
       <label className="text-xs font-semibold block">
         Week
         <input
