@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+  <circle cx="40" cy="40" r="38" fill="#FFF1F2" />
+  <!-- Lungs Silhouette -->
+  <g transform="translate(18, 16)">
+    <!-- Trachea / windpipe -->
+    <rect x="20" y="2" width="4" height="12" rx="1" fill="#FDA4AF" />
+    <path d="M22 14 L 14 20" stroke="#FDA4AF" stroke-width="3" stroke-linecap="round" />
+    <path d="M22 14 L 30 20" stroke="#FDA4AF" stroke-width="3" stroke-linecap="round" />
+    <!-- Left lung -->
+    <path d="M12 18 C 6 18, 2 24, 2 34 C 2 44, 10 48, 18 46 C 20 40, 18 24, 12 18 Z" fill="#F43F5E" />
+    <!-- Right lung -->
+    <path d="M32 18 C 38 18, 42 24, 42 34 C 42 44, 34 48, 26 46 C 24 40, 26 24, 32 18 Z" fill="#F43F5E" />
+    <!-- Healthy sparkles / cross -->
+    <circle cx="22" cy="30" r="5" fill="#10B981" />
+    <path d="M20 30 L 24 30 M 22 28 L 22 32" stroke="#FFFFFF" stroke-width="1.5" />
+  </g>
+</svg>

@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 160" width="280" height="160">
+  <defs>
+    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#EBF7F0" />
+      <stop offset="100%" stop-color="#D6EFE1" />
+    </linearGradient>
+    <linearGradient id="hillGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A7D7BC" />
+      <stop offset="100%" stop-color="#80BE9D" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background hills and grass -->
+  <path d="M0 90 Q 60 70, 140 85 T 280 80 L 280 160 L 0 160 Z" fill="url(#hillGrad)" opacity="0.6" />
+  <path d="M0 110 Q 70 95, 160 110 T 280 100 L 280 160 L 0 160 Z" fill="#9BCDAF" opacity="0.8" />
+  <rect y="125" width="280" height="35" fill="#C4E4D3" />
+
+  <!-- Village House 1 (left) -->
+  <g transform="translate(25, 92)">
+    <!-- Roof -->
+    <polygon points="0,20 22,4 44,20" fill="#E67E48" />
+    <!-- Wall -->
+    <rect x="5" y="20" width="34" height="24" rx="2" fill="#FDF3E7" />
+    <!-- Door -->
+    <rect x="18" y="28" width="8" height="16" rx="2" fill="#9A5B32" />
+    <!-- Small tree -->
+    <circle cx="50" cy="18" r="10" fill="#489F6E" />
+    <circle cx="56" cy="14" r="7" fill="#60B785" />
+    <rect x="51" y="25" width="4" height="15" fill="#755038" />
+  </g>
+
+  <!-- Village House 2 (middle background) -->
+  <g transform="translate(85, 96)">
+    <polygon points="0,16 18,3 36,16" fill="#D36B3B" />
+    <rect x="4" y="16" width="28" height="20" rx="1.5" fill="#F5E8D8" />
+    <rect x="15" y="23" width="7" height="13" rx="1.5" fill="#7D4624" />
+    <!-- Small bush -->
+    <circle cx="-5" cy="28" r="8" fill="#58AC7B" />
+  </g>
+
+  <!-- ASHA Worker Character (right) -->
+  <g transform="translate(180, 20)">
+    <!-- Hair bun -->
+    <circle cx="48" cy="36" r="16" fill="#1C1B1F" />
+    <circle cx="60" cy="38" r="7" fill="#1C1B1F" />
+
+    <!-- Face & Neck -->
+    <ellipse cx="48" cy="40" rx="13" ry="15" fill="#E8A87C" />
+    <rect x="44" y="52" width="8" height="12" fill="#D9966A" />
+
+    <!-- Hair front -->
+    <path d="M35 34 C 42 26, 56 26, 61 36 C 58 32, 48 30, 35 34 Z" fill="#1C1B1F" />
+    <!-- Bindi -->
+    <circle cx="48" cy="37" r="1.5" fill="#C23B22" />
+
+    <!-- Features -->
+    <path d="M43 42 Q 45 44, 47 42" stroke="#683B20" stroke-width="1.2" fill="none" stroke-linecap="round" />
+    <path d="M49 42 Q 51 44, 53 42" stroke="#683B20" stroke-width="1.2" fill="none" stroke-linecap="round" />
+    <path d="M46 47 Q 48 50, 50 47" stroke="#BA4A3A" stroke-width="1.2" fill="none" stroke-linecap="round" />
+
+    <!-- Saree Blouse (Dark Coral / Orange) -->
+    <path d="M32 64 C 36 60, 60 60, 64 64 L 66 85 L 30 85 Z" fill="#D95C38" />
+
+    <!-- Saree Drape (Forest Green with Golden border) -->
+    <path d="M30 65 Q 48 68, 62 88 L 68 140 L 24 140 L 26 82 Z" fill="#2D5F47" />
+    <!-- Saree Pallu across chest -->
+    <path d="M30 65 Q 44 80, 55 110 L 40 125 Q 32 85, 30 65 Z" fill="#3D7D5E" />
+    <path d="M30 65 Q 44 80, 55 110" stroke="#F5B041" stroke-width="2.5" fill="none" />
+
+    <!-- Arms -->
+    <!-- Left arm holding folder -->
+    <path d="M30 68 Q 20 82, 26 98 L 35 96 Q 28 82, 36 72 Z" fill="#E8A87C" />
+    <!-- Right arm with blue/green bangle -->
+    <path d="M62 68 Q 72 82, 60 98 L 54 94 Q 64 80, 58 70 Z" fill="#E8A87C" />
+    <circle cx="58" cy="94" r="3" fill="#19D96B" />
+
+    <!-- Medical Tablet / Clipboard -->
+    <g transform="translate(18, 90) rotate(-10)">
+      <rect x="0" y="0" width="34" height="42" rx="4" fill="#263238" />
+      <rect x="2" y="2" width="30" height="38" rx="3" fill="#E0F2FE" />
+      <!-- Screen content -->
+      <rect x="5" y="6" width="16" height="4" rx="1" fill="#0284C7" />
+      <rect x="5" y="13" width="24" height="2" fill="#94A3B8" />
+      <rect x="5" y="18" width="20" height="2" fill="#94A3B8" />
+      <rect x="5" y="23" width="22" height="2" fill="#94A3B8" />
+      <!-- Green pulse mark on tablet -->
+      <polyline points="5,32 10,32 12,28 15,35 18,30 20,32 25,32" stroke="#16A34A" stroke-width="1.5" fill="none" stroke-linecap="round" />
+    </g>
+  </g>
+</svg>

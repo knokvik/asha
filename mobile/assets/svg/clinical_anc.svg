@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+  <circle cx="40" cy="40" r="38" fill="#F0FDF4" />
+  <!-- Pregnant silhouette -->
+  <g transform="translate(18, 12)">
+    <circle cx="16" cy="10" r="7" fill="#15803D" />
+    <path d="M14 18 C10 22, 6 30, 8 42 C10 52, 22 55, 30 52 C36 50, 36 38, 32 30 C28 22, 20 18, 14 18 Z" fill="#22C55E" />
+    <!-- Saree curve -->
+    <path d="M12 24 Q 28 28, 30 46" stroke="#15803D" stroke-width="2.5" fill="none" />
+    <path d="M10 20 Q 20 32, 22 48" stroke="#F59E0B" stroke-width="1.5" fill="none" />
+  </g>
+</svg>

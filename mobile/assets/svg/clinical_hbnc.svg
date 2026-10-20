@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+  <circle cx="40" cy="40" r="38" fill="#ECFDF5" />
+  <!-- Home based newborn care -->
+  <g transform="translate(16, 18)">
+    <!-- Cradle / Cot -->
+    <path d="M4 28 Q 24 38, 44 28 L 46 38 Q 24 48, 2 38 Z" fill="#10B981" opacity="0.4" />
+    <path d="M6 24 C 6 20, 42 20, 42 24 L 40 34 C 40 38, 8 38, 8 34 Z" fill="#D1FAE5" stroke="#059669" stroke-width="2" />
+    <!-- Sleeping Baby -->
+    <circle cx="20" cy="22" r="7" fill="#FDE68A" />
+    <path d="M18 22 Q 20 24, 22 22" stroke="#92400E" stroke-width="1.2" fill="none" />
+    <path d="M25 24 Q 35 24, 38 30" stroke="#059669" stroke-width="2" fill="none" />
+  </g>
+</svg>

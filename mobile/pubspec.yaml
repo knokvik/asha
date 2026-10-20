@@ -85,6 +85,7 @@ dependencies:
   url_launcher: ^6.3.1
 
   cupertino_icons: ^2.0.0
+  flutter_svg: ^2.3.0
 
 dependency_overrides:
   http: ^1.2.2
@@ -110,6 +111,7 @@ flutter:
   generate: true
   assets:
     - assets/branding/
+    - assets/svg/
     - assets/geo/
     - assets/lexicon/
     - assets/incentives/
@@ -117,3 +119,25 @@ flutter:
     - packages/triage/lib/data/pack/
     - packages/triage/lib/data/model/
     - packages/imci_engine/lib/data/imci_tables/
+
+  fonts:
+    - family: SF Pro Display
+      fonts:
+        - asset: assets/fonts/SF-Pro-Display-Regular.otf
+          weight: 400
+        - asset: assets/fonts/SF-Pro-Display-Medium.otf
+          weight: 500
+        - asset: assets/fonts/SF-Pro-Display-Semibold.otf
+          weight: 600
+        - asset: assets/fonts/SF-Pro-Display-Bold.otf
+          weight: 700
+    - family: SF Pro Text
+      fonts:
+        - asset: assets/fonts/SF-Pro-Display-Regular.otf
+          weight: 400
+        - asset: assets/fonts/SF-Pro-Display-Medium.otf
+          weight: 500
+        - asset: assets/fonts/SF-Pro-Display-Semibold.otf
+          weight: 600
+        - asset: assets/fonts/SF-Pro-Display-Bold.otf
+          weight: 700

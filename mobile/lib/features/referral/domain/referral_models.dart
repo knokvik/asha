@@ -11,6 +11,8 @@ enum ReferralStatus {
   arrived,
   outcomeRecorded;
 
+  String get shortCode => value;
+
   String get value {
     switch (this) {
       case ReferralStatus.created:
@@ -48,6 +50,8 @@ enum OutcomeType {
   admitted,
   discharged,
   didNotReach;
+
+  String get shortCode => value;
 
   String get value {
     switch (this) {
@@ -108,6 +112,8 @@ enum FacilityLevel {
   medicalCollege,
   fru,
   sncu;
+
+  String get shortCode => value;
 
   String get value {
     switch (this) {

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 70" width="240" height="70">
+  <g fill="none" fill-rule="evenodd">
+    <!-- Leaves motif above 'sh' -->
+    <path d="M125 18 C120 8, 108 4, 102 6 C100 14, 106 24, 116 26 C122 27, 126 23, 125 18 Z" fill="#2D5F47" />
+    <path d="M123 20 C128 10, 140 7, 146 10 C147 18, 139 27, 130 28 C125 28, 122 24, 123 20 Z" fill="#19D96B" />
+    <!-- asha wordmark -->
+    <text x="18" y="52" font-family="'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif" font-size="44" font-weight="800" fill="#1E4231" letter-spacing="-1.5">asha</text>
+  </g>
+</svg>

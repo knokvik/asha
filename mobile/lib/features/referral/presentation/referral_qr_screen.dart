@@ -39,7 +39,6 @@ class _ReferralQrScreenState extends State<ReferralQrScreen> {
       TriageFlag.red => const Color(0xFFD32F2F),
       TriageFlag.yellow => const Color(0xFFF57C00),
       TriageFlag.green => const Color(0xFF388E3C),
-      _ => const Color(0xFF757575),
     };
   }
 
@@ -281,7 +280,7 @@ class _ReferralQrScreenState extends State<ReferralQrScreen> {
                     const Divider(height: 20),
                     _buildRow('Patient Name', '${widget.note.patient.name} (${widget.note.patient.sex})'),
                     _buildRow('Age', widget.note.patient.formattedAge),
-                    _buildRow('Village', widget.note.patient.village),
+                    _buildRow('Village', widget.note.patient.village ?? ''),
                     if (widget.note.patient.abhaId != null && widget.note.patient.abhaId!.isNotEmpty)
                       _buildRow('ABHA ID', widget.note.patient.abhaId!),
                     _buildRow('Destination', widget.note.destinationFacility?.name ?? 'Nearest PHC'),

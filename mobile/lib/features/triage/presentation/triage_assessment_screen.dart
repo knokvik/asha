@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../core/triage/models/models.dart';
-import '../../../shared/widgets/asha_badge.dart';
 import '../../../shared/widgets/asha_card.dart';
 import '../domain/triage_service.dart';
 import 'language_bridge_screen.dart';

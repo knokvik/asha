@@ -37,7 +37,8 @@ class AshaColors {
 class AshaTypography {
   AshaTypography._();
 
-  static const fontFamily = 'Plus Jakarta Sans';
+  static const fontFamily = 'SF Pro Display';
+  static const fontFallback = ['SF Pro Text', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'];
 
   static const displayHero = TextStyle(
     fontSize: 28,
@@ -153,6 +154,7 @@ class AppTheme {
       colorScheme: scheme,
       scaffoldBackgroundColor: AshaColors.screenBg,
       fontFamily: AshaTypography.fontFamily,
+      fontFamilyFallback: AshaTypography.fontFallback,
       materialTapTargetSize: MaterialTapTargetSize.padded,
 
       appBarTheme: const AppBarTheme(
@@ -312,6 +314,7 @@ class AppTheme {
       colorScheme: scheme,
       scaffoldBackgroundColor: AshaColors.carbonBlack,
       fontFamily: AshaTypography.fontFamily,
+      fontFamilyFallback: AshaTypography.fontFallback,
       materialTapTargetSize: MaterialTapTargetSize.padded,
 
       appBarTheme: const AppBarTheme(

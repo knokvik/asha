@@ -1,36 +1,58 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../app/theme/app_theme.dart';
+import 'asha_bottom_dock.dart';
 
-/// Dashboard, Map, Tools, Profile. Tab switches replace the route.
+/// Master 4-item bottom navigation bar:
+/// Home, Map, Tasks, Profile matching Screen 1 and Screen 9.
 class AshaBottomNav extends StatelessWidget {
-  const AshaBottomNav({super.key, required this.index});
+  const AshaBottomNav({
+    super.key,
+    required this.index,
+    this.onTap,
+  });
 
   final int index;
+  final ValueChanged<int>? onTap;
 
-  static const routes = ['/home', '/geo-map', '/tools', '/profile'];
+  static const items = [
+    AshaDockItem(
+      icon: Icons.home_rounded,
+      label: 'Home',
+    ),
+    AshaDockItem(
+      icon: Icons.map_outlined,
+      label: 'Map',
+    ),
+    AshaDockItem(
+      icon: Icons.assignment_outlined,
+      label: 'Tasks',
+    ),
+    AshaDockItem(
+      icon: Icons.person_outline_rounded,
+      label: 'Profile',
+    ),
+  ];
+
+  static const routes = [
+    '/home',
+    '/geo-map',
+    '/due-list',
+    '/profile',
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return NavigationBar(
-      key: const Key('asha_bottom_nav'),
-      selectedIndex: index,
-      backgroundColor: AshaColors.cardSurface,
-      indicatorColor: AshaColors.primary.withValues(alpha: 0.16),
-      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-      onDestinationSelected: (next) {
-        if (next == index) return;
-        final router = GoRouter.maybeOf(context);
-        if (router == null) return;
-        router.go(routes[next]);
+    return AshaBottomDock(
+      currentIndex: index,
+      onTabSelected: (idx) {
+        if (onTap != null) {
+          onTap!(idx);
+        } else if (idx != index && idx >= 0 && idx < routes.length) {
+          context.go(routes[idx]);
+        }
       },
-      destinations: const [
-        NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Dashboard'),
-        NavigationDestination(icon: Icon(Icons.map_outlined), selectedIcon: Icon(Icons.map), label: 'Map'),
-        NavigationDestination(icon: Icon(Icons.handyman_outlined), selectedIcon: Icon(Icons.handyman), label: 'Tools'),
-        NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
-      ],
+      items: items,
     );
   }
 }

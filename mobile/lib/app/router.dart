@@ -77,6 +77,33 @@ final userRoleProvider = NotifierProvider<UserRoleNotifier, String>(
   UserRoleNotifier.new,
 );
 
+/// Helper constructing smooth SF Pro right-to-left slide page transitions.
+Page<dynamic> _buildSlidePage({
+  required GoRouterState state,
+  required Widget child,
+}) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 280),
+    reverseTransitionDuration: const Duration(milliseconds: 240),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curvedAnimation = CurvedAnimation(
+        parent: animation,
+        curve: Curves.fastOutSlowIn,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(1.0, 0.0),
+          end: Offset.zero,
+        ).animate(curvedAnimation),
+        child: child,
+      );
+    },
+  );
+}
+
 /// List of routes shared across routerProvider and appRouter
 List<RouteBase> _buildAppRoutes(Ref? ref) {
   return [
@@ -84,110 +111,153 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
     GoRoute(path: '/auth', builder: (context, state) => const PinSetupScreen()),
     GoRoute(
       path: '/home',
-      builder: (context, state) => const DashboardScreen(),
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const DashboardScreen()),
     ),
     GoRoute(
       path: '/sync',
-      builder: (context, state) => const SyncQueueScreen(),
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const SyncQueueScreen()),
     ),
-    GoRoute(path: '/tools', builder: (context, state) => const ToolsScreen()),
+    GoRoute(
+      path: '/tools',
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const ToolsScreen()),
+    ),
     GoRoute(
       path: '/profile',
-      builder: (context, state) => const ProfileScreen(),
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const ProfileScreen()),
     ),
     GoRoute(
       path: '/due-list',
-      builder: (context, state) => const DueListScreen(),
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const DueListScreen()),
     ),
     GoRoute(
       path: '/calendar',
-      builder: (context, state) => const DueListScreen(initialTab: 1),
+      pageBuilder: (context, state) => _buildSlidePage(
+        state: state,
+        child: const DueListScreen(initialTab: 1),
+      ),
     ),
     GoRoute(
       path: '/coverage',
-      builder: (context, state) => const DueListScreen(initialTab: 2),
+      pageBuilder: (context, state) => _buildSlidePage(
+        state: state,
+        child: const DueListScreen(initialTab: 2),
+      ),
     ),
     GoRoute(
       path: '/search',
-      builder: (context, state) => const BeneficiarySearchScreen(),
+      pageBuilder: (context, state) => _buildSlidePage(
+        state: state,
+        child: const BeneficiarySearchScreen(),
+      ),
     ),
     GoRoute(
       path: '/households',
-      builder: (context, state) => const HouseholdListScreen(),
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const HouseholdListScreen()),
       routes: [
         GoRoute(
           path: 'new',
-          builder: (context, state) => const HouseholdFormScreen(),
+          pageBuilder: (context, state) =>
+              _buildSlidePage(state: state, child: const HouseholdFormScreen()),
         ),
       ],
     ),
     GoRoute(
       path: '/household-profile',
-      builder: (context, state) => const HouseholdProfileScreen(),
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const HouseholdProfileScreen()),
     ),
     GoRoute(
       path: '/household/new',
-      builder: (context, state) => const HouseholdFormScreen(),
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const HouseholdFormScreen()),
     ),
     GoRoute(
       path: '/household/:id',
-      builder: (context, state) =>
-          HouseholdDetailScreen(householdId: state.pathParameters['id'] ?? ''),
+      pageBuilder: (context, state) => _buildSlidePage(
+        state: state,
+        child:
+            HouseholdDetailScreen(householdId: state.pathParameters['id'] ?? ''),
+      ),
     ),
     GoRoute(
       path: '/beneficiary/:id',
-      builder: (context, state) =>
-          BeneficiaryTimelineScreen(memberId: state.pathParameters['id'] ?? ''),
+      pageBuilder: (context, state) => _buildSlidePage(
+        state: state,
+        child: BeneficiaryTimelineScreen(
+          memberId: state.pathParameters['id'] ?? '',
+        ),
+      ),
       routes: [
         GoRoute(
           path: 'consent',
-          builder: (context, state) =>
-              ConsentScreen(memberId: state.pathParameters['id'] ?? ''),
+          pageBuilder: (context, state) => _buildSlidePage(
+            state: state,
+            child: ConsentScreen(memberId: state.pathParameters['id'] ?? ''),
+          ),
         ),
       ],
     ),
     GoRoute(
       path: '/visit/:id',
-      builder: (context, state) =>
-          BeneficiaryTimelineScreen(memberId: state.pathParameters['id'] ?? ''),
+      pageBuilder: (context, state) => _buildSlidePage(
+        state: state,
+        child: BeneficiaryTimelineScreen(
+          memberId: state.pathParameters['id'] ?? '',
+        ),
+      ),
     ),
     GoRoute(
       path: '/triage',
-      builder: (context, state) => const TriageFlowScreen(),
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const TriageFlowScreen()),
     ),
     GoRoute(
       path: '/triage/assessment',
-      builder: (context, state) => const TriageFlowScreen(),
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const TriageFlowScreen()),
     ),
     GoRoute(
       path: '/clinical-programs',
-      builder: (context, state) => const ProgramsHubScreen(),
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const ProgramsHubScreen()),
     ),
     GoRoute(
       path: '/interpreter',
-      builder: (context, state) => const InterpreterScreen(),
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const InterpreterScreen()),
     ),
     GoRoute(
       path: '/triage/questions',
-      builder: (context, state) => const SetuQuestionsScreen(),
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const SetuQuestionsScreen()),
     ),
     GoRoute(
       path: '/triage/language',
-      builder: (context, state) => const LanguageBridgeScreen(),
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const LanguageBridgeScreen()),
     ),
     GoRoute(
       path: '/referral/:id',
-      builder: (context, state) {
+      pageBuilder: (context, state) {
         final extra = state.extra;
-        if (extra is ReferralSlipScreen) return extra;
-        return ReferralSlipScreen(memberId: state.pathParameters['id']);
+        final widget = extra is ReferralSlipScreen
+            ? extra
+            : ReferralSlipScreen(memberId: state.pathParameters['id']);
+        return _buildSlidePage(state: state, child: widget);
       },
     ),
 
     // ── Clinical Programs Hub & Direct Routes ──────────────────────────────
     GoRoute(
       path: '/programs',
-      builder: (context, state) => const ProgramsHubScreen(),
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const ProgramsHubScreen()),
       routes: [
         GoRoute(
           path: 'anc-register',
@@ -380,7 +450,8 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
     // ── Government Registers & PDF Reports ─────────────────────────────────
     GoRoute(
       path: '/reports',
-      builder: (context, state) => const ReportsIncentivesScreen(),
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const ReportsIncentivesScreen()),
     ),
     GoRoute(
       path: '/reports/registers',
@@ -546,7 +617,8 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
 
     GoRoute(
       path: '/geo-map',
-      builder: (context, state) => const FieldMapScreen(),
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const FieldMapScreen()),
     ),
 
     // ── Area Coverage Analysis ─────────────────────────────────────────────

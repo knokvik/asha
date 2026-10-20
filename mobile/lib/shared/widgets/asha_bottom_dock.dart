@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
-import '../../app/theme/app_theme.dart';
 
 class AshaDockItem {
   final IconData icon;
   final String label;
-  final String route;
 
   const AshaDockItem({
     required this.icon,
     required this.label,
-    required this.route,
   });
 }
 
-/// Floating bottom navigation pill dock inspired by Zevoa's modern super-app layout.
-/// Features a dark carbon pill (`#121A15`, radius 28dp, height 64dp) with active white pill indicator.
+/// Fixed bottom navigation bar matching stitch_untitled_project:
+/// Full-width pure white bar, subtle top line, and 4 items:
+/// Home, Map, Tasks, Profile.
+/// Active item: Soft mint circle (#EAF7EE) with vibrant dark green (#15803D) icon & label.
+/// Inactive item: Soft grey (#9CA3AF) icon & label.
 class AshaBottomDock extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTabSelected;
@@ -30,64 +30,71 @@ class AshaBottomDock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      height: 64,
-      decoration: BoxDecoration(
-        color: AshaColors.carbonBlack,
-        borderRadius: AshaShapes.dockBorderRadius,
-        boxShadow: const [
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: Color(0xFFF3F4F6), width: 1.0),
+        ),
+        boxShadow: [
           BoxShadow(
-            color: Color.fromRGBO(18, 26, 21, 0.22),
-            blurRadius: 24,
-            offset: Offset(0, 8),
+            color: Color(0x06000000),
+            blurRadius: 6,
+            offset: Offset(0, -2),
           ),
         ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: List.generate(items.length, (idx) {
-          final item = items[idx];
-          final isSelected = idx == currentIndex;
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 60,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(items.length, (idx) {
+              final item = items[idx];
+              final isSelected = idx == currentIndex;
+              const activeColor = Color(0xFF15803D);
+              const inactiveColor = Color(0xFF9CA3AF);
 
-          return GestureDetector(
-            onTap: () => onTabSelected(idx),
-            behavior: HitTestBehavior.opaque,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeInOut,
-              padding: EdgeInsets.symmetric(
-                horizontal: isSelected ? 16 : 10,
-                vertical: 8,
-              ),
-              decoration: BoxDecoration(
-                color: isSelected ? Colors.white : Colors.transparent,
-                borderRadius: BorderRadius.circular(22),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    item.icon,
-                    size: 20,
-                    color: isSelected ? AshaColors.carbonBlack : Colors.white70,
-                  ),
-                  if (isSelected) ...[
-                    const SizedBox(width: 8),
-                    Text(
-                      item.label,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AshaColors.carbonBlack,
+              return Expanded(
+                child: InkWell(
+                  onTap: () => onTabSelected(idx),
+                  splashColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: isSelected ? const Color(0xFFEAF7EE) : Colors.transparent,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Icon(
+                            item.icon,
+                            size: isSelected ? 20 : 22,
+                            color: isSelected ? activeColor : inactiveColor,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          );
-        }),
+                      const SizedBox(height: 2),
+                      Text(
+                        item.label,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                          color: isSelected ? activeColor : inactiveColor,
+                          fontFamily: 'SF Pro Display',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
       ),
     );
   }

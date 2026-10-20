@@ -7,8 +7,6 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
-import 'mbtiles_tile_provider.dart';
-
 /// One state the worker can keep on the phone.
 class IndiaStateRegion {
   const IndiaStateRegion({

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+  <circle cx="40" cy="40" r="38" fill="#FEE2E2" />
+  <!-- BP Monitor & Blood Drop -->
+  <g transform="translate(18, 16)">
+    <!-- Digital Device -->
+    <rect x="2" y="4" width="28" height="38" rx="6" fill="#1E293B" />
+    <rect x="5" y="8" width="22" height="16" rx="3" fill="#E2E8F0" />
+    <!-- Pulse Line on Screen -->
+    <polyline points="7,16 11,16 13,11 16,21 18,14 20,16 25,16" stroke="#EF4444" stroke-width="1.8" fill="none" stroke-linecap="round" />
+    <!-- Buttons -->
+    <circle cx="16" cy="32" r="4" fill="#3B82F6" />
+    <!-- Blood Sugar Drop -->
+    <g transform="translate(26, 22)">
+      <path d="M8 0 C 8 0, 0 10, 0 15 A 8 8 0 0 0 16 15 C 16 10, 8 0, 8 0 Z" fill="#DC2626" />
+      <circle cx="6" cy="14" r="2" fill="#FCA5A5" />
+    </g>
+  </g>
+</svg>

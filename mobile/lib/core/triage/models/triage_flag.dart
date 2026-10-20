@@ -33,6 +33,7 @@ enum TriageFlag implements Comparable<TriageFlag> {
   }
 
   String toUpper() => label;
+  String get wireName => label.toUpperCase();
 
   static TriageFlag fromString(String? value) {
     if (value == null) return TriageFlag.green;

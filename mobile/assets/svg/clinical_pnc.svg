@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" width="80" height="80">
+  <circle cx="40" cy="40" r="38" fill="#EFF6FF" />
+  <!-- Mother cradling baby -->
+  <g transform="translate(18, 12)">
+    <!-- Mother Head -->
+    <circle cx="24" cy="10" r="7" fill="#1E40AF" />
+    <path d="M18 18 C14 24, 12 36, 14 48 C20 54, 34 52, 38 46 C42 40, 36 24, 28 18 Z" fill="#3B82F6" />
+    <!-- Baby wrapped in blanket -->
+    <g transform="translate(6, 22)">
+      <circle cx="8" cy="8" r="5" fill="#FBCFE8" />
+      <path d="M4 14 C4 11, 14 11, 16 16 C18 22, 10 26, 4 22 Z" fill="#F472B6" />
+    </g>
+    <!-- Mother arm protecting baby -->
+    <path d="M26 24 Q 10 32, 16 44" stroke="#1D4ED8" stroke-width="3" fill="none" stroke-linecap="round" />
+  </g>
+</svg>

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <radialGradient id="micGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#2D5F47" stop-opacity="0.15" />
+      <stop offset="60%" stop-color="#2D5F47" stop-opacity="0.05" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- Pulsing Wave Rings -->
+  <circle cx="100" cy="100" r="90" fill="url(#micGlow)" />
+  <circle cx="100" cy="100" r="72" fill="#E5F2EE" opacity="0.6" />
+  <circle cx="100" cy="100" r="54" fill="#2D5F47" />
+
+  <!-- Microphone Icon in Center -->
+  <g transform="translate(85, 75)" fill="#FFFFFF">
+    <rect x="10" y="4" width="10" height="22" rx="5" fill="#FFFFFF" />
+    <path d="M5 16 C5 24, 25 24, 25 16" stroke="#FFFFFF" stroke-width="2.5" fill="none" stroke-linecap="round" />
+    <line x1="15" y1="26" x2="15" y2="34" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="10" y1="34" x2="20" y2="34" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" />
+  </g>
+
+  <!-- Sound Wave Bars (Left and Right) -->
+  <g stroke="#2D5F47" stroke-width="3" stroke-linecap="round">
+    <!-- Left bars -->
+    <line x1="25" y1="100" x2="25" y2="100" stroke-width="4" />
+    <line x1="33" y1="92" x2="33" y2="108" />
+    <line x1="41" y1="84" x2="41" y2="116" />
+    <line x1="49" y1="94" x2="49" y2="106" />
+
+    <!-- Right bars -->
+    <line x1="151" y1="94" x2="151" y2="106" />
+    <line x1="159" y1="84" x2="159" y2="116" />
+    <line x1="167" y1="92" x2="167" y2="108" />
+    <line x1="175" y1="100" x2="175" y2="100" stroke-width="4" />
+  </g>
+</svg>
