@@ -21,11 +21,17 @@ void main() async {
   preloadOnnxRuntime();
   await sherpa.initBindingsAsync();
   setupSqliteForPlatform();
-  const apiBaseUrl = String.fromEnvironment('ASHA_API_BASE_URL');
+  const apiBaseUrl = String.fromEnvironment(
+    'ASHA_API_BASE_URL',
+    defaultValue: 'https://asha-setu.onrender.com',
+  );
   const pins = String.fromEnvironment('ASHA_API_SHA256_PINS');
   // Deployment supplies a HTTPS base URL and comma-separated SHA-256 pins via
   // dart-defines. Local test/debug builds omit them and do not schedule work.
-  if (apiBaseUrl.isNotEmpty) {
+  // Remote sync still requires certificate pins; the default URL lets builds
+  // target the hosted service without weakening the production transport.
+  if (apiBaseUrl.isNotEmpty &&
+      (pins.isNotEmpty || apiBaseUrl.startsWith('http://'))) {
     await SyncScheduler().initialise(
       apiBaseUrl: apiBaseUrl,
       certificatePins: pins.isEmpty ? const [] : pins.split(','),

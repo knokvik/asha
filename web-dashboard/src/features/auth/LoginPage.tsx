@@ -82,7 +82,7 @@ export function LoginPage() {
     setError(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -94,25 +94,40 @@ export function LoginPage() {
     }
 
     setIsSubmitting(true);
-    const result = loginWithCredentials(username, password, selectedRole);
-    if (result.success) {
-      navigate('/dashboard');
-    } else {
-      setError(result.error || 'Authentication failed. Please verify credentials.');
+    try {
+      const result = await loginWithCredentials(username, password, selectedRole);
+      if (result.success) {
+        navigate('/dashboard');
+      } else {
+        setError(result.error || 'Authentication failed. Please verify credentials.');
+        setIsSubmitting(false);
+        handleRefreshCaptcha();
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Server connection error during authentication.');
       setIsSubmitting(false);
       handleRefreshCaptcha();
     }
   };
 
-  const handleQuickLogin = (demo: CredentialAccount) => {
+  const handleQuickLogin = async (demo: CredentialAccount) => {
     setUsername(demo.username);
     setPassword(demo.password);
     setSelectedRole(demo.role);
     setError(null);
+    setIsSubmitting(true);
 
-    const result = loginWithCredentials(demo.username, demo.password, demo.role);
-    if (result.success) {
-      navigate('/dashboard');
+    try {
+      const result = await loginWithCredentials(demo.username, demo.password, demo.role);
+      if (result.success) {
+        navigate('/dashboard');
+      } else {
+        setError(result.error || 'Server rejected credentials.');
+        setIsSubmitting(false);
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Failed to connect to authentication server.');
+      setIsSubmitting(false);
     }
   };
 

@@ -10,7 +10,11 @@ from sqlalchemy.ext.asyncio import create_async_engine
 # Import all models so Alembic can see them
 import models.db.models  # noqa: F401
 
-from core.config import get_settings
+from core.config import (
+    get_async_database_url,
+    get_database_connect_args,
+    get_settings,
+)
 from models.db.base import Base
 
 config = context.config
@@ -23,7 +27,7 @@ target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    url = settings.DATABASE_URL
+    url = get_async_database_url(settings.DATABASE_URL)
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -41,7 +45,10 @@ def do_run_migrations(connection):
 
 
 async def run_async_migrations() -> None:
-    engine = create_async_engine(settings.DATABASE_URL)
+    engine = create_async_engine(
+        get_async_database_url(settings.DATABASE_URL),
+        connect_args=get_database_connect_args(settings),
+    )
     async with engine.begin() as conn:
         await conn.run_sync(do_run_migrations)
     await engine.dispose()

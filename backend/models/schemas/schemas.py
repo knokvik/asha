@@ -10,9 +10,11 @@ from pydantic import BaseModel, Field
 
 
 class LoginRequest(BaseModel):
-    asha_id: str = Field(..., description="ASHA worker ID")
-    pin: str = Field(..., min_length=4, max_length=8, description="4–8 digit PIN")
-    device_id: str = Field(..., description="Unique device identifier")
+    asha_id: str | None = Field(None, description="ASHA worker ID")
+    username: str | None = Field(None, description="Username for web login")
+    pin: str | None = Field(None, min_length=4, max_length=50, description="PIN or password")
+    password: str | None = Field(None, min_length=4, max_length=50, description="Password for web login")
+    device_id: str = Field(default="web-dashboard", description="Unique device identifier")
     otp: str | None = Field(None, description="OTP for account recovery")
 
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { AuthUser, UserRole } from '@/types';
+import { apiClient } from '@/shared/api/client';
 
 export interface CredentialAccount {
   username: string;
@@ -58,7 +59,7 @@ interface AuthContextType {
   role: UserRole;
   isAuthenticated: boolean;
   login: (role: UserRole, name?: string) => void;
-  loginWithCredentials: (username: string, password: string, roleOverride?: UserRole) => { success: boolean; error?: string };
+  loginWithCredentials: (username: string, password: string, roleOverride?: UserRole) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   switchRole: (newRole: UserRole) => void;
 }
@@ -117,14 +118,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return DEFAULT_USERS[role] || DEFAULT_USERS.PHC_MO;
   });
 
+  // Verify stored session with live backend on startup
   useEffect(() => {
-    if (user) {
-      localStorage.setItem('asha_role', role);
-      const updated = { ...DEFAULT_USERS[role], ...(user.name ? { name: user.name } : {}) };
-      setUser(updated);
-      localStorage.setItem('asha_user', JSON.stringify(updated));
-    }
-  }, [role]);
+    const token = localStorage.getItem('asha_auth_token');
+    if (!token) return;
+
+    apiClient
+      .get('/auth/me')
+      .then((res) => {
+        if (res.data) {
+          const freshUser: AuthUser = {
+            id: res.data.id,
+            name: res.data.name,
+            role: res.data.role as UserRole,
+            stateCode: res.data.stateCode || 'UP',
+            districtCode: res.data.districtCode,
+            blockCode: res.data.blockCode,
+            subcentreId: res.data.subcentreId,
+            phcId: res.data.phcId,
+            token,
+          };
+          setUser(freshUser);
+          setRole(freshUser.role);
+          localStorage.setItem('asha_role', freshUser.role);
+          localStorage.setItem('asha_user', JSON.stringify(freshUser));
+        }
+      })
+      .catch(() => {
+        // Stored token was rejected by server or server offline
+      });
+  }, []);
 
   const login = (selectedRole: UserRole, name?: string) => {
     const newUser = {
@@ -139,50 +162,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('asha_user', JSON.stringify(newUser));
   };
 
-  const loginWithCredentials = (username: string, password: string, roleOverride?: UserRole) => {
-    const trimmedUser = username.trim().toLowerCase();
-    const match = DEMO_CREDENTIALS.find((c) => c.username.toLowerCase() === trimmedUser);
+  const loginWithCredentials = async (
+    username: string,
+    password: string,
+    roleOverride?: UserRole
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      // 1. Authenticate with real server endpoint
+      const res = await apiClient.post('/auth/login', {
+        username: username.trim(),
+        password,
+        device_id: 'web-dashboard',
+      });
 
-    if (match) {
-      if (match.password !== password) {
-        return { success: false, error: 'Incorrect password. Please check your credentials.' };
+      const token = res.data?.access_token;
+      if (!token) {
+        return { success: false, error: 'Server did not return an access token.' };
       }
-      const targetRole = roleOverride || match.role;
-      const baseUser = DEFAULT_USERS[targetRole];
-      const newUser: AuthUser = {
-        ...baseUser,
-        name: match.name,
-        token: `jwt-${targetRole.toLowerCase()}-${Date.now()}`,
-      };
-      setRole(targetRole);
-      setUser(newUser);
-      localStorage.setItem('asha_role', targetRole);
-      localStorage.setItem('asha_auth_token', newUser.token!);
-      localStorage.setItem('asha_user', JSON.stringify(newUser));
+
+      localStorage.setItem('asha_auth_token', token);
+
+      // 2. Fetch authenticated profile from server
+      let userInfo: AuthUser;
+      try {
+        const meRes = await apiClient.get('/auth/me', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        userInfo = {
+          id: meRes.data.id,
+          name: meRes.data.name,
+          role: (meRes.data.role as UserRole) || roleOverride || 'PHC_MO',
+          stateCode: meRes.data.stateCode || 'UP',
+          districtCode: meRes.data.districtCode,
+          blockCode: meRes.data.blockCode,
+          subcentreId: meRes.data.subcentreId,
+          phcId: meRes.data.phcId,
+          token,
+        };
+      } catch {
+        userInfo = {
+          id: res.data.worker_id || 'user-1',
+          name: res.data.name || username,
+          role: (res.data.role as UserRole) || roleOverride || 'PHC_MO',
+          stateCode: 'UP',
+          token,
+        };
+      }
+
+      setRole(userInfo.role);
+      setUser(userInfo);
+      localStorage.setItem('asha_role', userInfo.role);
+      localStorage.setItem('asha_user', JSON.stringify(userInfo));
       return { success: true };
+    } catch (err: any) {
+      const errorMsg =
+        err.response?.data?.detail ||
+        err.message ||
+        'Authentication failed. Please verify your credentials.';
+      return { success: false, error: errorMsg };
     }
-
-    // Generic username verification
-    if (!username.trim()) {
-      return { success: false, error: 'Please enter a valid username.' };
-    }
-    if (!password || password.length < 4) {
-      return { success: false, error: 'Password must be at least 4 characters.' };
-    }
-
-    const targetRole = roleOverride || 'PHC_MO';
-    const baseUser = DEFAULT_USERS[targetRole];
-    const newUser: AuthUser = {
-      ...baseUser,
-      name: username.trim(),
-      token: `jwt-custom-${Date.now()}`,
-    };
-    setRole(targetRole);
-    setUser(newUser);
-    localStorage.setItem('asha_role', targetRole);
-    localStorage.setItem('asha_auth_token', newUser.token!);
-    localStorage.setItem('asha_user', JSON.stringify(newUser));
-    return { success: true };
   };
 
   const logout = () => {

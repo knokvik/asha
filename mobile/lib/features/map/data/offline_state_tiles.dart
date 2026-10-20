@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -70,7 +71,8 @@ class OfflineStateTiles {
     return OfflineStateTiles(root);
   }
 
-  Directory directoryFor(IndiaStateRegion region) => Directory('${root.path}/${region.slug}');
+  Directory directoryFor(IndiaStateRegion region) =>
+      Directory('${root.path}/${region.slug}');
 
   Future<bool> isReady(IndiaStateRegion region) async {
     final dir = directoryFor(region);
@@ -79,7 +81,10 @@ class OfflineStateTiles {
     final blocked = dir
         .listSync(recursive: true)
         .whereType<File>()
-        .where((file) => file.path.endsWith('.png') && file.lengthSync() < 12000)
+        .where(
+          (file) =>
+              file.path.endsWith('.png') && !_isPng(file.readAsBytesSync()),
+        )
         .isNotEmpty;
     if (!blocked) return true;
     await dir.delete(recursive: true);
@@ -90,19 +95,22 @@ class OfflineStateTiles {
   Future<void> loadSelection() async {
     final marker = File('${root.path}/selected.json');
     if (!marker.existsSync()) return;
-    final json = jsonDecode(await marker.readAsString()) as Map<String, Object?>;
+    final json =
+        jsonDecode(await marker.readAsString()) as Map<String, Object?>;
     selectedMapSlug.value = json['slug'] as String?;
   }
 
   Future<void> select(IndiaStateRegion? region) async {
     selectedMapSlug.value = region?.slug;
-    await File('${root.path}/selected.json').writeAsString(jsonEncode({'slug': region?.slug}));
+    await File('${root.path}/selected.json')
+        .writeAsString(jsonEncode({'slug': region?.slug}));
   }
 
   Future<StateTilePlan?> savedPlan(IndiaStateRegion region) async {
     final marker = File('${directoryFor(region).path}/done.json');
     if (!marker.existsSync()) return null;
-    final json = jsonDecode(await marker.readAsString()) as Map<String, Object?>;
+    final json =
+        jsonDecode(await marker.readAsString()) as Map<String, Object?>;
     return StateTilePlan(
       region: region,
       minZoom: json['minZoom'] as int,
@@ -118,7 +126,12 @@ class OfflineStateTiles {
       maxZoom -= 1;
       tiles = _tilesFor(region, 7, maxZoom);
     }
-    return StateTilePlan(region: region, minZoom: 7, maxZoom: maxZoom, tiles: tiles);
+    return StateTilePlan(
+      region: region,
+      minZoom: 7,
+      maxZoom: maxZoom,
+      tiles: tiles,
+    );
   }
 
   /// Downloads missing tiles. Returns how many files were written.
@@ -137,24 +150,29 @@ class OfflineStateTiles {
       for (var i = 0; i < plan.tiles.length; i += batch) {
         if (isCancelled()) break;
         final slice = plan.tiles.skip(i).take(batch);
-        await Future.wait(slice.map((tile) async {
-          final file = File('${dir.path}/${tile.z}/${tile.x}/${tile.y}.png');
-          if (file.existsSync() && file.lengthSync() >= 12000) {
-            present += 1;
-            return;
-          }
-          await file.parent.create(recursive: true);
-          final response = await client.get(
-            Uri.parse('https://tile.openstreetmap.org/${tile.z}/${tile.x}/${tile.y}.png'),
-            headers: streetTileHeaders,
-          );
-          final bytes = response.bodyBytes;
-          final png = bytes.length >= 8 && bytes[0] == 0x89 && bytes[1] == 0x50;
-          if (response.statusCode == 200 && png && bytes.length >= 12000) {
-            await file.writeAsBytes(bytes, flush: true);
-            written += 1;
-          }
-        }));
+        await Future.wait(
+          slice.map((tile) async {
+            final file = File('${dir.path}/${tile.z}/${tile.x}/${tile.y}.png');
+            if (file.existsSync() && _isPng(file.readAsBytesSync())) {
+              present += 1;
+              return;
+            }
+            await file.parent.create(recursive: true);
+            final response = await client.get(
+              Uri.parse(
+                'https://tile.openstreetmap.org/${tile.z}/${tile.x}/${tile.y}.png',
+              ),
+              headers: streetTileHeaders,
+            );
+            final bytes = response.bodyBytes;
+            final png =
+                bytes.length >= 8 && bytes[0] == 0x89 && bytes[1] == 0x50;
+            if (response.statusCode == 200 && png) {
+              await file.writeAsBytes(bytes, flush: true);
+              written += 1;
+            }
+          }),
+        );
         onProgress(math.min(i + batch, plan.tiles.length), plan.tiles.length);
       }
     } finally {
@@ -173,9 +191,25 @@ class OfflineStateTiles {
     return written + present;
   }
 
-  TileProvider providerFor(IndiaStateRegion region) => _FileTileProvider(directoryFor(region));
+  TileProvider providerFor(IndiaStateRegion region) =>
+      _FileTileProvider(directoryFor(region));
 
-  static List<TileCoordinates> _tilesFor(IndiaStateRegion region, int minZoom, int maxZoom) {
+  static bool _isPng(Uint8List bytes) =>
+      bytes.length >= 8 &&
+      bytes[0] == 0x89 &&
+      bytes[1] == 0x50 &&
+      bytes[2] == 0x4E &&
+      bytes[3] == 0x47 &&
+      bytes[4] == 0x0D &&
+      bytes[5] == 0x0A &&
+      bytes[6] == 0x1A &&
+      bytes[7] == 0x0A;
+
+  static List<TileCoordinates> _tilesFor(
+    IndiaStateRegion region,
+    int minZoom,
+    int maxZoom,
+  ) {
     final tiles = <TileCoordinates>[];
     for (var z = minZoom; z <= maxZoom; z++) {
       final x0 = _x(region.west, z);
@@ -195,7 +229,8 @@ class OfflineStateTiles {
 
   static int _y(double lat, int z) {
     final rad = lat * math.pi / 180;
-    final merc = (1 - math.log(math.tan(rad) + 1 / math.cos(rad)) / math.pi) / 2;
+    final merc =
+        (1 - math.log(math.tan(rad) + 1 / math.cos(rad)) / math.pi) / 2;
     return (merc * (1 << z)).floor();
   }
 }
@@ -207,11 +242,86 @@ class _FileTileProvider extends TileProvider {
 
   @override
   ImageProvider getImage(TileCoordinates coordinates, TileLayer options) {
-    final file = File('${directory.path}/${coordinates.z}/${coordinates.x}/${coordinates.y}.png');
-    if (file.existsSync() && file.lengthSync() >= 12000) return FileImage(file);
-    return NetworkImage(
-      'https://tile.openstreetmap.org/${coordinates.z}/${coordinates.x}/${coordinates.y}.png',
-      headers: streetTileHeaders,
+    final file = File(
+      '${directory.path}/${coordinates.z}/${coordinates.x}/${coordinates.y}.png',
     );
+    if (file.existsSync() && OfflineStateTiles._isPng(file.readAsBytesSync())) {
+      return FileImage(file);
+    }
+    // Missing coverage is intentionally neutral. Rendering must never fall
+    // back to a network tile while the worker is offline.
+    return MemoryImage(_blankTile);
   }
 }
+
+final _blankTile = Uint8List.fromList(const [
+  0x89,
+  0x50,
+  0x4E,
+  0x47,
+  0x0D,
+  0x0A,
+  0x1A,
+  0x0A,
+  0x00,
+  0x00,
+  0x00,
+  0x0D,
+  0x49,
+  0x48,
+  0x44,
+  0x52,
+  0x00,
+  0x00,
+  0x00,
+  0x01,
+  0x00,
+  0x00,
+  0x00,
+  0x01,
+  0x08,
+  0x02,
+  0x00,
+  0x00,
+  0x00,
+  0x90,
+  0x77,
+  0x53,
+  0xDE,
+  0x00,
+  0x00,
+  0x00,
+  0x0C,
+  0x49,
+  0x44,
+  0x41,
+  0x54,
+  0x78,
+  0x9C,
+  0x63,
+  0x78,
+  0xF1,
+  0xE0,
+  0x08,
+  0x00,
+  0x05,
+  0x40,
+  0x02,
+  0x8D,
+  0xF0,
+  0x15,
+  0x7C,
+  0x6B,
+  0x00,
+  0x00,
+  0x00,
+  0x00,
+  0x49,
+  0x45,
+  0x4E,
+  0x44,
+  0xAE,
+  0x42,
+  0x60,
+  0x82,
+]);

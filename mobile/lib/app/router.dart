@@ -62,6 +62,7 @@ import '../features/due_list/presentation/coverage_analysis_screen.dart';
 import '../features/due_list/domain/route_models.dart';
 import '../features/teleconsultation/presentation/teleconsultation_screen.dart';
 import '../features/map/presentation/map_pack_screen.dart';
+import '../features/map/presentation/india_map_page.dart';
 import '../shared/providers/core_providers.dart';
 
 /// Notifier holding current authenticated worker role ('asha', 'af', 'admin', etc.).
@@ -625,6 +626,11 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
       path: '/map-packs',
       pageBuilder: (context, state) =>
           _buildSlidePage(state: state, child: const MapPackScreen()),
+    ),
+    GoRoute(
+      path: '/india-map',
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const IndiaMapPage()),
     ),
 
     GoRoute(

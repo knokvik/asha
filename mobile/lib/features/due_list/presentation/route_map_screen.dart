@@ -1,15 +1,27 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:sqlite3/sqlite3.dart' as sql;
 
 import '../domain/due_list_models.dart';
 import '../domain/route_models.dart';
+import '../../map/data/mbtiles_tile_provider.dart';
 
-/// Screen displaying the computed offline visit route on an OpenStreetMap tile canvas
+/// Screen displaying the computed offline visit route on a bundled MBTiles canvas
 /// or a landmark sketch map fallback (Requirements 25.1, 25.2, 25.3).
 class RouteMapScreen extends StatefulWidget {
   final PlannedRoute route;
-  final Function(String hamlet, BarrierReason reason, String? notes, DateTime? until)? onFlagHamletBlocked;
+  final Function(
+    String hamlet,
+    BarrierReason reason,
+    String? notes,
+    DateTime? until,
+  )?
+  onFlagHamletBlocked;
 
   const RouteMapScreen({
     super.key,
@@ -21,19 +33,43 @@ class RouteMapScreen extends StatefulWidget {
   State<RouteMapScreen> createState() => _RouteMapScreenState();
 }
 
-class _RouteMapScreenState extends State<RouteMapScreen> with SingleTickerProviderStateMixin {
+class _RouteMapScreenState extends State<RouteMapScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  MbTilesTileProvider? _tileProvider;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _loadOfflineTiles();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _tileProvider?.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadOfflineTiles() async {
+    try {
+      final bytes = await rootBundle.load('assets/geo/pcmc.mbtiles');
+      final dir = await getApplicationSupportDirectory();
+      final file = File('${dir.path}/pcmc.mbtiles');
+      if (!await file.exists()) {
+        await file.writeAsBytes(bytes.buffer.asUint8List(), flush: true);
+      }
+      final database = sql.sqlite3.open(file.path, mode: sql.OpenMode.readOnly);
+      final provider = MbTilesTileProvider(database);
+      if (!mounted) {
+        provider.dispose();
+        return;
+      }
+      setState(() => _tileProvider = provider);
+    } catch (_) {
+      // The sketch tab and local blank tile fallback remain available.
+    }
   }
 
   LatLng _getInitialCenter() {
@@ -52,7 +88,6 @@ class _RouteMapScreenState extends State<RouteMapScreen> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Visit Route & Map'),
@@ -72,7 +107,7 @@ class _RouteMapScreenState extends State<RouteMapScreen> with SingleTickerProvid
       body: TabBarView(
         controller: _tabController,
         children: [
-          // ── Tab 1: FlutterMap OpenStreetMap View ────────────────────────────
+          // ── Tab 1: FlutterMap bundled offline basemap ───────────────────────
           _buildMapCanvas(context),
 
           // ── Tab 2: Offline Landmark Sketch View (Requirement 25.3) ─────────
@@ -91,12 +126,17 @@ class _RouteMapScreenState extends State<RouteMapScreen> with SingleTickerProvid
     final polylinePoints = <LatLng>[];
     if (widget.route.startLocation != null) {
       polylinePoints.add(
-        LatLng(widget.route.startLocation!.latitude, widget.route.startLocation!.longitude),
+        LatLng(
+          widget.route.startLocation!.latitude,
+          widget.route.startLocation!.longitude,
+        ),
       );
     }
     for (final wp in waypoints) {
       if (wp.coordinate != null) {
-        polylinePoints.add(LatLng(wp.coordinate!.latitude, wp.coordinate!.longitude));
+        polylinePoints.add(
+          LatLng(wp.coordinate!.latitude, wp.coordinate!.longitude),
+        );
       }
     }
 
@@ -109,8 +149,8 @@ class _RouteMapScreenState extends State<RouteMapScreen> with SingleTickerProvid
         final markerColor = wp.hasRedAlert
             ? const Color(0xFFD32F2F)
             : (wp.tasks.any((t) => t.urgencyGroup == UrgencyGroup.overdue)
-                ? const Color(0xFFE65100)
-                : const Color(0xFF1B5E20));
+                  ? const Color(0xFFE65100)
+                  : const Color(0xFF1B5E20));
 
         markers.add(
           Marker(
@@ -147,14 +187,12 @@ class _RouteMapScreenState extends State<RouteMapScreen> with SingleTickerProvid
     return Stack(
       children: [
         FlutterMap(
-          options: MapOptions(
-            initialCenter: initialCenter,
-            initialZoom: 14.0,
-          ),
+          options: MapOptions(initialCenter: initialCenter, initialZoom: 14.0),
           children: [
-            // Standard offline/cached tile layer
             TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              tileProvider:
+                  _tileProvider ??
+                  MemoryTileProvider(MbTilesTileProvider.blank),
               userAgentPackageName: 'org.mohfw.asha_platform',
             ),
             if (polylinePoints.length > 1)
@@ -194,12 +232,17 @@ class _RouteMapScreenState extends State<RouteMapScreen> with SingleTickerProvid
                 Icon(
                   widget.route.isOptInGpsUsed ? Icons.gps_fixed : Icons.gps_off,
                   size: 16,
-                  color: widget.route.isOptInGpsUsed ? Colors.green : Colors.grey,
+                  color: widget.route.isOptInGpsUsed
+                      ? Colors.green
+                      : Colors.grey,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   widget.route.isOptInGpsUsed ? 'Opt-in GPS' : 'Static Hamlets',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -231,18 +274,19 @@ class _RouteMapScreenState extends State<RouteMapScreen> with SingleTickerProvid
               children: [
                 CircleAvatar(
                   radius: 16,
-                  backgroundColor: hasRed ? const Color(0xFFD32F2F) : const Color(0xFF1B5E20),
+                  backgroundColor: hasRed
+                      ? const Color(0xFFD32F2F)
+                      : const Color(0xFF1B5E20),
                   child: Text(
                     '${index + 1}',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 if (!isLast)
-                  Container(
-                    width: 2,
-                    height: 80,
-                    color: Colors.grey.shade400,
-                  ),
+                  Container(width: 2, height: 80, color: Colors.grey.shade400),
               ],
             ),
             const SizedBox(width: 14),
@@ -260,18 +304,27 @@ class _RouteMapScreenState extends State<RouteMapScreen> with SingleTickerProvid
                         children: [
                           Text(
                             wp.hamlet,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           Text(
                             '${wp.totalVisits} visit${wp.totalVisits == 1 ? '' : 's'}',
-                            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                            ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Village: ${wp.village}',
-                        style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                        ),
                       ),
                       const SizedBox(height: 8),
 
@@ -279,7 +332,11 @@ class _RouteMapScreenState extends State<RouteMapScreen> with SingleTickerProvid
                       if (wp.landmarkNotes.isNotEmpty) ...[
                         Row(
                           children: [
-                            const Icon(Icons.flag, size: 16, color: Color(0xFFE65100)),
+                            const Icon(
+                              Icons.flag,
+                              size: 16,
+                              color: Color(0xFFE65100),
+                            ),
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
@@ -300,8 +357,13 @@ class _RouteMapScreenState extends State<RouteMapScreen> with SingleTickerProvid
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton.icon(
-                          onPressed: () => _showFlagBlockedDialog(context, wp.hamlet),
-                          icon: const Icon(Icons.report_problem, size: 16, color: Colors.red),
+                          onPressed: () =>
+                              _showFlagBlockedDialog(context, wp.hamlet),
+                          icon: const Icon(
+                            Icons.report_problem,
+                            size: 16,
+                            color: Colors.red,
+                          ),
                           label: const Text(
                             'Flag Impassable',
                             style: TextStyle(fontSize: 12, color: Colors.red),
@@ -346,7 +408,10 @@ class _RouteMapScreenState extends State<RouteMapScreen> with SingleTickerProvid
               children: [
                 Text(
                   '${dist.toStringAsFixed(1)} km  •  ~${duration.inMinutes} mins',
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 Text(
                   '$totalVisits visits in ${widget.route.totalStops} hamlets',
@@ -357,7 +422,9 @@ class _RouteMapScreenState extends State<RouteMapScreen> with SingleTickerProvid
             ElevatedButton.icon(
               onPressed: () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Starting planned visit route navigation.')),
+                  const SnackBar(
+                    content: Text('Starting planned visit route navigation.'),
+                  ),
                 );
               },
               icon: const Icon(Icons.navigation, size: 18),
@@ -373,7 +440,11 @@ class _RouteMapScreenState extends State<RouteMapScreen> with SingleTickerProvid
     );
   }
 
-  void _showWaypointDetailsModal(BuildContext context, HamletWaypoint wp, int stopNumber) {
+  void _showWaypointDetailsModal(
+    BuildContext context,
+    HamletWaypoint wp,
+    int stopNumber,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -393,16 +464,21 @@ class _RouteMapScreenState extends State<RouteMapScreen> with SingleTickerProvid
             const SizedBox(height: 4),
             Text('Village: ${wp.village}  •  ${wp.totalVisits} visits due'),
             const Divider(height: 24),
-            ...wp.tasks.map((t) => ListTile(
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(
-                    t.hasRedAlert ? Icons.warning : Icons.person,
-                    color: t.hasRedAlert ? Colors.red : Colors.green,
-                  ),
-                  title: Text(t.memberName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('${t.visitType} (${t.urgencyGroup.label})'),
-                )),
+            ...wp.tasks.map(
+              (t) => ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  t.hasRedAlert ? Icons.warning : Icons.person,
+                  color: t.hasRedAlert ? Colors.red : Colors.green,
+                ),
+                title: Text(
+                  t.memberName,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text('${t.visitType} (${t.urgencyGroup.label})'),
+              ),
+            ),
           ],
         ),
       ),
@@ -462,10 +538,17 @@ class _RouteMapScreenState extends State<RouteMapScreen> with SingleTickerProvid
                   DateTime.now().add(const Duration(days: 7)),
                 );
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('$hamlet flagged as $selectedReason. Visits rescheduled.')),
+                  SnackBar(
+                    content: Text(
+                      '$hamlet flagged as $selectedReason. Visits rescheduled.',
+                    ),
+                  ),
                 );
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
               child: const Text('Confirm Flag'),
             ),
           ],

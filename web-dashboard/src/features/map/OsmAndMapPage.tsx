@@ -311,7 +311,7 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
     const deadZoneLayer = L.layerGroup().addTo(map);
     const pcmcLayer = L.layerGroup().addTo(map);
     const dummyFacilityLayer = L.layerGroup().addTo(map);
-    void paintDummyFacilities(rows: Array<{ name?: string; kind?: string; lat?: number; lng?: number; lon?: number; phone?: string }>) {
+    function paintDummyFacilities(rows: Array<{ name?: string; kind?: string; lat?: number; lng?: number; lon?: number; phone?: string }>) {
       dummyFacilityLayer.clearLayers();
       for (const row of rows) {
         const lat = row.lat;

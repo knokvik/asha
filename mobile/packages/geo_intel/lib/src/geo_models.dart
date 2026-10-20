@@ -89,10 +89,12 @@ class DiseaseTable {
   /// week (1–12) → ward → condition → cases
   final Map<int, Map<String, Map<String, int>>> rows;
 
-  int cases(int week, String wardId, String condition) => rows[week]?[wardId]?[condition] ?? 0;
+  int cases(int week, String wardId, String condition) =>
+      rows[week]?[wardId]?[condition] ?? 0;
 
-  List<int> series(String wardId, String condition) =>
-      [for (var week = 1; week <= 12; week++) cases(week, wardId, condition)];
+  List<int> series(String wardId, String condition) => [
+    for (var week = 1; week <= 12; week++) cases(week, wardId, condition),
+  ];
 }
 
 class GeoPack {
@@ -118,6 +120,7 @@ class GeoPack {
     required String wardsGeoJson,
     required String countsCsv,
     required String facilitiesGeoJson,
+    String? indiaFacilitiesJson,
     required String householdsJson,
     required String referralsJson,
     required double sampleLatitude,
@@ -125,13 +128,46 @@ class GeoPack {
   }) {
     return GeoPack(
       wards: _wards(wardsGeoJson),
-      facilities: _facilities(facilitiesGeoJson),
+      facilities: [
+        ..._facilities(facilitiesGeoJson),
+        if (indiaFacilitiesJson != null)
+          ..._indiaFacilities(indiaFacilitiesJson),
+      ],
       households: _households(householdsJson),
       referrals: _referrals(referralsJson),
       counts: _counts(countsCsv),
       sampleFix: LatLon(sampleLatitude, sampleLongitude),
     );
   }
+}
+
+List<FacilityPoi> _indiaFacilities(String raw) {
+  final json = jsonDecode(raw) as Map<String, Object?>;
+  final rows = json['facilities'] as List<Object?>? ?? const [];
+  return [
+    for (final row in rows)
+      if (row is Map)
+        FacilityPoi(
+          id: row['id'] as String,
+          name: row['name'] as String,
+          category: switch (row['kind'] as String? ?? 'government') {
+            'subcentre' => 'sub_centre',
+            'blood_bank' => 'blood_bank',
+            'phc' => 'phc',
+            'chc' => 'chc',
+            'hospital' => 'hospital',
+            'anganwadi' => 'anganwadi',
+            'janaushadhi' => 'janaushadhi',
+            _ => 'government',
+          },
+          latitude: (row['lat'] as num).toDouble(),
+          longitude: (row['lon'] as num).toDouble(),
+          phone: row['phone'] as String? ?? '',
+          hours: 'National directory · hours not published',
+          capabilities: const [],
+          wardId: 'INDIA',
+        ),
+  ];
 }
 
 class RankedFacility {
@@ -141,12 +177,19 @@ class RankedFacility {
   final double metres;
 }
 
-List<RankedFacility> nearestFacilities(LatLon from, List<FacilityPoi> facilities, {String? capability}) {
+List<RankedFacility> nearestFacilities(
+  LatLon from,
+  List<FacilityPoi> facilities, {
+  String? capability,
+}) {
   final pool = capability == null
       ? facilities
-      : facilities.where((poi) => poi.capabilities.contains(capability)).toList();
+      : facilities
+            .where((poi) => poi.capabilities.contains(capability))
+            .toList();
   final ranked = [
-    for (final poi in pool) RankedFacility(poi, haversineMetres(from, poi.point)),
+    for (final poi in pool)
+      RankedFacility(poi, haversineMetres(from, poi.point)),
   ]..sort((a, b) => a.metres.compareTo(b.metres));
   return ranked;
 }
@@ -165,7 +208,12 @@ RoutePlan todaysRoute(LatLon from, List<HouseholdPin> households) {
   var cursor = from;
   var total = 0.0;
   while (pending.isNotEmpty) {
-    pending.sort((a, b) => haversineMetres(cursor, a.point).compareTo(haversineMetres(cursor, b.point)));
+    pending.sort(
+      (a, b) => haversineMetres(
+        cursor,
+        a.point,
+      ).compareTo(haversineMetres(cursor, b.point)),
+    );
     final next = pending.removeAt(0);
     total += haversineMetres(cursor, next.point);
     stops.add(next);
@@ -183,17 +231,32 @@ RadarLevel radarLevel(int cases, String condition) {
   return RadarLevel.raised;
 }
 
-bool outbreakActive(DiseaseTable counts, int week, String wardId, String condition) =>
-    radarLevel(counts.cases(week, wardId, condition), condition) == RadarLevel.outbreak;
+bool outbreakActive(
+  DiseaseTable counts,
+  int week,
+  String wardId,
+  String condition,
+) =>
+    radarLevel(counts.cases(week, wardId, condition), condition) ==
+    RadarLevel.outbreak;
 
 /// "Dengue module ACTIVE — 5 cases/week, 4-week trend ↑"
-String? outbreakChip(DiseaseTable counts, int week, String wardId, String condition) {
+String? outbreakChip(
+  DiseaseTable counts,
+  int week,
+  String wardId,
+  String condition,
+) {
   if (!outbreakActive(counts, week, wardId, condition)) return null;
   final label = conditionModule[condition];
   if (label == null) return null;
   final value = counts.cases(week, wardId, condition);
   final startWeek = math.max(1, week - 3);
-  final trend = counts.cases(week, wardId, condition) >= counts.cases(startWeek, wardId, condition) ? '↑' : '↓';
+  final trend =
+      counts.cases(week, wardId, condition) >=
+          counts.cases(startWeek, wardId, condition)
+      ? '↑'
+      : '↓';
   return '$label module ACTIVE — $value cases/week, 4-week trend $trend';
 }
 
@@ -203,9 +266,29 @@ double haversineMetres(LatLon a, LatLon b) {
   final lat2 = b.latitude * math.pi / 180;
   final dLat = (b.latitude - a.latitude) * math.pi / 180;
   final dLon = (b.longitude - a.longitude) * math.pi / 180;
-  final h = math.sin(dLat / 2) * math.sin(dLat / 2) +
+  final h =
+      math.sin(dLat / 2) * math.sin(dLat / 2) +
       math.cos(lat1) * math.cos(lat2) * math.sin(dLon / 2) * math.sin(dLon / 2);
   return 2 * earth * math.asin(math.min(1, math.sqrt(h)));
+}
+
+/// Initial bearing from [from] to [to], measured clockwise from true north.
+/// This is intentionally a pure calculation so it can be used offline and in
+/// tests without a location or sensor plugin.
+double bearingDegrees(LatLon from, LatLon to) {
+  final lat1 = from.latitude * math.pi / 180;
+  final lat2 = to.latitude * math.pi / 180;
+  final deltaLon = (to.longitude - from.longitude) * math.pi / 180;
+  final y = math.sin(deltaLon) * math.cos(lat2);
+  final x =
+      math.cos(lat1) * math.sin(lat2) -
+      math.sin(lat1) * math.cos(lat2) * math.cos(deltaLon);
+  return (math.atan2(y, x) * 180 / math.pi + 360) % 360;
+}
+
+String bearingLabel(double bearing) {
+  const labels = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  return labels[((bearing + 22.5) ~/ 45) % labels.length];
 }
 
 class NavigationTargets {
@@ -231,7 +314,7 @@ class NavigationTargets {
     );
   }
 
-  List<Uri> get chain => [organic, google, osmand, geo];
+  List<Uri> get chain => [google, osmand, geo];
 }
 
 /// Full-screen Organic Maps view. Commas in `ll` stay literal.
@@ -265,8 +348,13 @@ List<WardPolygon> _wards(String raw) {
       WardPolygon(
         wardId: ((feature as Map)['properties'] as Map)['ward_id'] as String,
         ring: [
-          for (final pair in (((feature['geometry'] as Map)['coordinates'] as List).first as List))
-            LatLon(((pair as List)[1] as num).toDouble(), (pair[0] as num).toDouble()),
+          for (final pair
+              in (((feature['geometry'] as Map)['coordinates'] as List).first
+                  as List))
+            LatLon(
+              ((pair as List)[1] as num).toDouble(),
+              (pair[0] as num).toDouble(),
+            ),
         ],
       ),
   ];
@@ -280,12 +368,17 @@ List<FacilityPoi> _facilities(String raw) {
         id: (feature as Map)['properties']['id'] as String,
         name: feature['properties']['name'] as String,
         category: feature['properties']['category'] as String,
-        longitude: (((feature['geometry'] as Map)['coordinates'] as List)[0] as num).toDouble(),
-        latitude: ((feature['geometry']['coordinates'] as List)[1] as num).toDouble(),
+        longitude:
+            (((feature['geometry'] as Map)['coordinates'] as List)[0] as num)
+                .toDouble(),
+        latitude: ((feature['geometry']['coordinates'] as List)[1] as num)
+            .toDouble(),
         phone: feature['properties']['phone'] as String? ?? '',
         hours: feature['properties']['hours'] as String? ?? '',
         capabilities: [
-          for (final item in (feature['properties']['capabilities'] as List? ?? [])) item as String,
+          for (final item
+              in (feature['properties']['capabilities'] as List? ?? []))
+            item as String,
         ],
         wardId: feature['properties']['ward_id'] as String? ?? '',
       ),
@@ -332,7 +425,8 @@ DiseaseTable _counts(String csv) {
     final ward = parts[1];
     final condition = parts[2];
     final cases = int.parse(parts[3]);
-    rows.putIfAbsent(week, () => {}).putIfAbsent(ward, () => {})[condition] = cases;
+    rows.putIfAbsent(week, () => {}).putIfAbsent(ward, () => {})[condition] =
+        cases;
   }
   return DiseaseTable(rows);
 }
@@ -340,7 +434,8 @@ DiseaseTable _counts(String csv) {
 LatLon wardCentroid(WardPolygon ward) {
   var lat = 0.0;
   var lon = 0.0;
-  final count = ward.ring.length > 1 &&
+  final count =
+      ward.ring.length > 1 &&
           ward.ring.first.latitude == ward.ring.last.latitude &&
           ward.ring.first.longitude == ward.ring.last.longitude
       ? ward.ring.length - 1

@@ -13,6 +13,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MBTILES = ROOT / "assets" / "geo" / "pcmc.mbtiles"
 FACILITIES = ROOT / "assets" / "geo" / "facilities.geojson"
+INDIA_FACILITIES = ROOT / "assets" / "geo" / "india_facilities.json"
+STATES = ROOT / "assets" / "geo" / "india_states.geojson"
 COUNTS = ROOT / "packages" / "triage" / "lib" / "data" / "pack" / "disease_counts.csv"
 LIMIT = 40 * 1024 * 1024
 
@@ -36,6 +38,12 @@ def main() -> None:
     facilities = json.loads(FACILITIES.read_text())["features"]
     if len(facilities) != 40:
         raise SystemExit(f"expected 40 facilities, got {len(facilities)}")
+    india_facilities = json.loads(INDIA_FACILITIES.read_text())["facilities"]
+    if len(india_facilities) < 1:
+        raise SystemExit("india facility directory is empty")
+    states = json.loads(STATES.read_text())["features"]
+    if len(states) < 30:
+        raise SystemExit(f"expected all-India state boundaries, got {len(states)}")
 
     week12 = None
     for line in COUNTS.read_text().splitlines():
@@ -46,6 +54,9 @@ def main() -> None:
 
     sources = [
         ROOT / "lib" / "features" / "map" / "presentation" / "geo_map_screen.dart",
+        ROOT / "lib" / "features" / "map" / "presentation" / "field_map_screen.dart",
+        ROOT / "lib" / "features" / "map" / "presentation" / "india_map_page.dart",
+        ROOT / "lib" / "features" / "due_list" / "presentation" / "route_map_screen.dart",
         ROOT / "lib" / "features" / "map" / "data" / "mbtiles_tile_provider.dart",
         ROOT / "lib" / "features" / "home" / "presentation" / "dashboard_screen.dart",
     ]
@@ -54,7 +65,10 @@ def main() -> None:
         if "tile.openstreetmap.org" in text or "https://" in text:
             raise SystemExit(f"{path.name} still names a tile server")
 
-    print(f"ok tiles={count} bytes={size} facilities=40 W3-dengue-week12=5 zooms={zooms[0]}-{zooms[-1]}")
+    print(
+        f"ok tiles={count} bytes={size} facilities=40+{len(india_facilities)} "
+        f"states={len(states)} W3-dengue-week12=5 zooms={zooms[0]}-{zooms[-1]}"
+    )
 
 
 if __name__ == "__main__":

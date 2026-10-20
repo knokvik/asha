@@ -14,6 +14,7 @@ void main() {
       wardsGeoJson: read('../triage/lib/data/pack/wards.geojson'),
       countsCsv: read('../triage/lib/data/pack/disease_counts.csv'),
       facilitiesGeoJson: read('../../assets/geo/facilities.geojson'),
+      indiaFacilitiesJson: read('../../assets/geo/india_facilities.json'),
       householdsJson: read('../../assets/geo/households.json'),
       referralsJson: read('../../assets/geo/referrals.json'),
       sampleLatitude: 18.64,
@@ -28,18 +29,44 @@ void main() {
   });
 
   test('nearest NS1 lab is closer than the delivery facility', () {
-    final ns1 = nearestFacilities(pack.sampleFix, pack.facilities, capability: 'ns1_dengue_test');
-    final delivery = nearestFacilities(pack.sampleFix, pack.facilities, capability: 'delivery_care');
+    final ns1 = nearestFacilities(
+      pack.sampleFix,
+      pack.facilities,
+      capability: 'ns1_dengue_test',
+    );
+    final delivery = nearestFacilities(
+      pack.sampleFix,
+      pack.facilities,
+      capability: 'delivery_care',
+    );
     expect(ns1, isNotEmpty);
     expect(delivery, isNotEmpty);
     expect(ns1.first.facility.capabilities, contains('ns1_dengue_test'));
     expect(ns1.first.metres, lessThan(ns1.last.metres));
-    expect(delivery.every((row) => row.facility.capabilities.contains('delivery_care')), isTrue);
+    expect(
+      delivery.every(
+        (row) => row.facility.capabilities.contains('delivery_care'),
+      ),
+      isTrue,
+    );
     expect(ns1.first.metres, lessThan(delivery.first.metres));
   });
 
   test('W3 dengue week 12 glows and the sparkline is 1, 2, 3, 5', () {
-    expect(pack.counts.series('W3', 'dengue_like'), [0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 5]);
+    expect(pack.counts.series('W3', 'dengue_like'), [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      2,
+      3,
+      5,
+    ]);
     expect(outbreakActive(pack.counts, 12, 'W3', 'dengue_like'), isTrue);
     expect(outbreakActive(pack.counts, 12, 'W1', 'dengue_like'), isFalse);
     expect(radarLevel(1, 'dengue_like'), RadarLevel.raised);
@@ -52,14 +79,17 @@ void main() {
 
   test("today's route is nearest first and skips a visit that is not due", () {
     final plan = todaysRoute(pack.sampleFix, pack.households);
-    expect(plan.stops.map((pin) => pin.id).toList(), ['hh-near', 'hh-mid', 'hh-far']);
+    expect(plan.stops.map((pin) => pin.id).toList(), [
+      'hh-near',
+      'hh-mid',
+      'hh-far',
+    ]);
     expect(plan.totalMetres, greaterThan(0));
   });
 
-  test('navigate chain opens Organic Maps first', () {
+  test('navigate chain falls back from Google to OsmAnd to geo', () {
     final targets = NavigationTargets.forPoint(18.64, 73.84);
     expect(targets.chain.map((uri) => uri.toString()).toList(), [
-      'om://route?dll=18.64,73.84&type=pedestrian',
       'google.navigation:q=18.64,73.84',
       'osmand.navigation://q=18.64,73.84',
       'geo:18.64,73.84',
@@ -76,34 +106,51 @@ void main() {
     );
   });
 
+  test('offline directional guidance returns bearing and cardinal label', () {
+    const from = LatLon(18.64, 73.84);
+    const east = LatLon(18.64, 73.85);
+    expect(bearingDegrees(from, east), closeTo(90, 1));
+    expect(bearingLabel(bearingDegrees(from, east)), 'E');
+    expect(haversineMetres(from, east), greaterThan(0));
+  });
+
   test('a walking route follows the street graph', () {
     final graph = RoadGraph.parse(
       '{"roads":[{"k":0,"p":[[1864000,7384000],[1864500,7384000],[1864500,7384500]]}]}',
     );
-    final path = graph.route(const LatLon(18.64, 73.84), const LatLon(18.645, 73.845));
+    final path = graph.route(
+      const LatLon(18.64, 73.84),
+      const LatLon(18.645, 73.845),
+    );
     expect(path.first.latitude, closeTo(18.64, 0.0001));
     expect(path.last.longitude, closeTo(73.845, 0.0001));
     expect(path.length, greaterThan(2));
-    expect(pathMetres(path), greaterThan(haversineMetres(path.first, path.last)));
+    expect(
+      pathMetres(path),
+      greaterThan(haversineMetres(path.first, path.last)),
+    );
   });
 
   test('the directory has one pin of every category', () {
-    expect(pack.facilities, hasLength(40));
+    expect(pack.facilities, hasLength(57));
     final categories = pack.facilities.map((poi) => poi.category).toSet();
-    expect(categories, containsAll([
-      'phc',
-      'sub_centre',
-      'chc',
-      'hospital',
-      'dispensary',
-      'lab',
-      'blood_bank',
-      'janaushadhi',
-      'anganwadi',
-      'block_office',
-      'panchayat',
-      'police',
-      'ration_shop',
-    ]));
+    expect(
+      categories,
+      containsAll([
+        'phc',
+        'sub_centre',
+        'chc',
+        'hospital',
+        'dispensary',
+        'lab',
+        'blood_bank',
+        'janaushadhi',
+        'anganwadi',
+        'block_office',
+        'panchayat',
+        'police',
+        'ration_shop',
+      ]),
+    );
   });
 }

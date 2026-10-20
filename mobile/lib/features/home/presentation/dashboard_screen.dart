@@ -1,8 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:sqlite3/sqlite3.dart' as sql;
 
 import '../../../core/l10n/language_provider.dart';
 import '../../../shared/shell/shell_copy.dart';
@@ -10,6 +15,7 @@ import '../../../shared/shell/shell_tab.dart';
 import '../../../shared/widgets/asha_bottom_nav.dart';
 import '../../../shared/widgets/asha_search_bar.dart';
 import '../../../shared/widgets/asha_svg_illustrations.dart';
+import '../../map/data/mbtiles_tile_provider.dart';
 
 /// Screen 1 & Screen 2: Master Home Dashboard & Navigation Drawer
 /// Exact replica of Screen 1 and Screen 2 from reference design.
@@ -243,23 +249,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             borderRadius: BorderRadius.circular(14),
             child: Stack(
               children: [
-                FlutterMap(
-                  options: const MapOptions(
-                    initialCenter: currentLocation,
-                    initialZoom: 14.8,
-                    interactionOptions: InteractionOptions(
-                      flags: InteractiveFlag.none,
-                    ),
-                  ),
-                  children: [
-                    TileLayer(
-                      urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.nhm.asha.asha_platform',
-                    ),
-                    MarkerLayer(markers: markers),
-                  ],
-                ),
+                _OfflineDashboardMap(markers: markers),
                 const DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -630,6 +620,74 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _OfflineDashboardMap extends StatefulWidget {
+  const _OfflineDashboardMap({required this.markers});
+
+  final List<Marker> markers;
+
+  @override
+  State<_OfflineDashboardMap> createState() => _OfflineDashboardMapState();
+}
+
+class _OfflineDashboardMapState extends State<_OfflineDashboardMap> {
+  TileProvider? _provider;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTiles();
+  }
+
+  Future<void> _loadTiles() async {
+    try {
+      final bytes = await rootBundle.load('assets/geo/pcmc.mbtiles');
+      final directory = await getTemporaryDirectory();
+      final file = File('${directory.path}/asha_dashboard_pmc.mbtiles');
+      await file.writeAsBytes(
+        bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
+        flush: true,
+      );
+      final database = sql.sqlite3.open(file.path, mode: sql.OpenMode.readOnly);
+      final provider = MbTilesTileProvider(database);
+      if (!mounted) {
+        provider.dispose();
+        return;
+      }
+      setState(() => _provider = provider);
+    } catch (_) {
+      // The neutral local tile below keeps the preview useful even if the
+      // optional bundled pack cannot be opened on a particular device.
+    }
+  }
+
+  @override
+  void dispose() {
+    _provider?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FlutterMap(
+      options: const MapOptions(
+        initialCenter: LatLng(18.6279, 73.8131),
+        initialZoom: 14.8,
+        interactionOptions: InteractionOptions(flags: InteractiveFlag.none),
+      ),
+      children: [
+        TileLayer(
+          tileProvider:
+              _provider ?? MemoryTileProvider(MbTilesTileProvider.blank),
+          minZoom: 8,
+          maxZoom: 18,
+          maxNativeZoom: 14,
+        ),
+        MarkerLayer(markers: widget.markers),
+      ],
     );
   }
 }

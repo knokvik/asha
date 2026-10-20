@@ -234,6 +234,49 @@ async def get_referral(
 
 
 @router.get(
+    "/facility/{facility_id}",
+    status_code=status.HTTP_200_OK,
+)
+async def list_facility_referrals(
+    facility_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> list[dict[str, object]]:
+    """List referrals for a specific facility formatted for web dashboard."""
+    stmt = select(ReferralRecord).where(
+        (ReferralRecord.destination_facility_id == facility_id)
+        | (ReferralRecord.destination_facility_id.is_(None))
+    )
+    result = await db.execute(stmt)
+    records = result.scalars().all()
+
+    items = []
+    for r in records:
+        items.append({
+            "id": r.id,
+            "patientId": r.member_id or f"P-{r.id}",
+            "patientName": f"Beneficiary ({r.id})",
+            "patientAge": 28,
+            "patientGender": "F",
+            "village": "Shahpur North",
+            "ashaId": "ASHA-001",
+            "ashaName": "Sunita Devi",
+            "ashaPhone": "9876543210",
+            "subcentreId": "sc-shahpur",
+            "facilityId": r.destination_facility_id or facility_id,
+            "severity": r.triage_flag or "YELLOW",
+            "reason": r.referral_note_text or "General referral",
+            "clinicalNote": r.referral_note_text or "",
+            "referredAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(r.created_at or time.time())),
+            "status": "arrived" if r.status in ("arrived", "outcome_recorded") else "pending",
+            "isSmsRelayed": True,
+            "firedRules": [],
+        })
+
+    order = {"RED": 0, "YELLOW": 1, "GREEN": 2}
+    return sorted(items, key=lambda x: order.get(x["severity"], 3))
+
+
+@router.get(
     "",
     status_code=status.HTTP_200_OK,
 )

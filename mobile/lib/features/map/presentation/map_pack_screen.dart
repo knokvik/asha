@@ -49,7 +49,7 @@ class _MapPackScreenState extends State<MapPackScreen> {
   Future<void> _useEmbedded() async {
     await _store?.select(null);
     if (!mounted) return;
-    context.go('/geo-map');
+    context.go('/india-map');
   }
 
   Future<void> _useState(IndiaStateRegion region) async {
@@ -71,8 +71,14 @@ class _MapPackScreenState extends State<MapPackScreen> {
           'It stays on the phone.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Download')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Download'),
+          ),
         ],
       ),
     );
@@ -90,7 +96,9 @@ class _MapPackScreenState extends State<MapPackScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              LinearProgressIndicator(value: plan.tiles.isEmpty ? null : done / plan.tiles.length),
+              LinearProgressIndicator(
+                value: plan.tiles.isEmpty ? null : done / plan.tiles.length,
+              ),
               const SizedBox(height: 12),
               Text('$done / ${plan.tiles.length} tiles'),
             ],
@@ -118,7 +126,9 @@ class _MapPackScreenState extends State<MapPackScreen> {
     if (cancelled || written == 0) {
       if (written == 0 && !cancelled && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('The map server did not return tiles. Try again.')),
+          const SnackBar(
+            content: Text('The map server did not return tiles. Try again.'),
+          ),
         );
       }
       return;
@@ -141,13 +151,19 @@ class _MapPackScreenState extends State<MapPackScreen> {
                   leading: const Icon(Icons.public),
                   title: const Text('Embedded whole India'),
                   subtitle: const Text('State outlines already in the app.'),
-                  trailing: Icon(selectedMapSlug.value == null ? Icons.check_circle : Icons.chevron_right),
+                  trailing: Icon(
+                    selectedMapSlug.value == null
+                        ? Icons.check_circle
+                        : Icons.chevron_right,
+                  ),
                   onTap: _useEmbedded,
                 ),
                 const Divider(height: 1),
                 const ListTile(
                   title: Text('Download one state'),
-                  subtitle: Text('Street tiles for that state, kept near 8 MB.'),
+                  subtitle: Text(
+                    'Street tiles for that state, kept near 8 MB.',
+                  ),
                 ),
                 for (final region in regions)
                   ListTile(
@@ -162,8 +178,8 @@ class _MapPackScreenState extends State<MapPackScreen> {
                       selectedMapSlug.value == region.slug
                           ? Icons.check_circle
                           : _ready.contains(region.slug)
-                              ? Icons.map
-                              : Icons.download,
+                          ? Icons.map
+                          : Icons.download,
                     ),
                     onTap: () => _useState(region),
                   ),

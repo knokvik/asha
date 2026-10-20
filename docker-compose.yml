@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: asha_platform
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: asha_secure_password_2026
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_dev_only_change_me}
     ports:
       # 5432 is commonly occupied by a host PostgreSQL installation. The
       # backend reaches this service through the Compose network on 5432;
@@ -40,12 +40,13 @@ services:
       dockerfile: Dockerfile
     container_name: asha_backend
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:asha_secure_password_2026@postgres:5432/asha_platform
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://postgres:local_dev_only_change_me@postgres:5432/asha_platform}
+      DATABASE_SSL_REQUIRE: ${DATABASE_SSL_REQUIRE:-false}
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
-      ENVIRONMENT: production
-      DEBUG: "development"
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DEBUG: ${DEBUG:-false}
     ports:
       - "8000:8000"
     depends_on:
@@ -62,7 +63,8 @@ services:
     container_name: asha_celery_worker
     command: celery -A workers.celery_app worker --loglevel=info --concurrency=4
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:asha_secure_password_2026@postgres:5432/asha_platform
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://postgres:local_dev_only_change_me@postgres:5432/asha_platform}
+      DATABASE_SSL_REQUIRE: ${DATABASE_SSL_REQUIRE:-false}
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2

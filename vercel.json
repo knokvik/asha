@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "cd web-dashboard && npm install",
+  "buildCommand": "cd web-dashboard && npm run build",
+  "outputDirectory": "web-dashboard/dist",
+  "rewrites": [
+    {
+      "source": "/api/v1/(.*)",
+      "destination": "https://asha-setu.onrender.com/api/v1/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

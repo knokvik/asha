@@ -242,18 +242,24 @@ class SyncService:
         return None
 
     async def _get_watermarks(self, worker_id: str) -> dict[str, int]:
-        """Return max rowid per synced table (used as sequence proxy on SQLite)."""
+        """Return max server_seq (or rowid on SQLite) per synced table."""
         watermarks: dict[str, int] = {}
         for table_name, model_class in _TABLE_MAP.items():
             if not hasattr(model_class, "server_seq"):
                 continue
             try:
                 result = await self._db.execute(
-                    text(f"SELECT COALESCE(MAX(rowid), 0) FROM {table_name}")  # noqa: S608
+                    text(f"SELECT COALESCE(MAX(server_seq), 0) FROM {table_name}")
                 )
                 watermarks[table_name] = result.scalar_one() or 0
-            except Exception:  # noqa: BLE001
-                watermarks[table_name] = 0
+            except Exception:
+                try:
+                    result = await self._db.execute(
+                        text(f"SELECT COALESCE(MAX(rowid), 0) FROM {table_name}")
+                    )
+                    watermarks[table_name] = result.scalar_one() or 0
+                except Exception:
+                    watermarks[table_name] = 0
         return watermarks
 
     async def get_delta(
@@ -262,10 +268,7 @@ class SyncService:
         watermarks: dict[str, int],
         block_code: str,
     ) -> tuple[list[dict[str, Any]], dict[str, int], bool]:
-        """Fetch all records modified since each table's watermark.
-
-        Returns: (records, updated_watermarks, has_more)
-        """
+        """Fetch all records modified since each table's watermark."""
         MAX_RECORDS = 500
         all_records: list[dict[str, Any]] = []
         new_watermarks: dict[str, int] = {}
@@ -276,12 +279,10 @@ class SyncService:
             last_seq = watermarks.get(table_name, 0)
             try:
                 has_block = hasattr(model_class, "block_code")
-                # Use rowid as sequence proxy for SQLite compatibility.
-                # On PostgreSQL, server_seq would be used instead.
                 sql = (
-                    f"SELECT *, rowid as _rowid FROM {table_name} WHERE rowid > :seq"  # noqa: S608
+                    f"SELECT *, COALESCE(server_seq, 0) as _seq FROM {table_name} WHERE COALESCE(server_seq, 0) > :seq"
                     + (" AND block_code = :bc" if has_block else "")
-                    + " ORDER BY rowid LIMIT :lim"
+                    + " ORDER BY _seq LIMIT :lim"
                 )
                 params: dict[str, object] = {"seq": last_seq, "lim": MAX_RECORDS}
                 if has_block:
@@ -293,10 +294,10 @@ class SyncService:
                     d["_table"] = table_name
                     all_records.append(d)
                 if rows:
-                    new_watermarks[table_name] = max(r["_rowid"] for r in rows)
+                    new_watermarks[table_name] = max(r["_seq"] for r in rows)
                 else:
                     new_watermarks[table_name] = last_seq
-            except Exception:  # noqa: BLE001
+            except Exception:
                 new_watermarks[table_name] = last_seq
 
         has_more = len(all_records) >= MAX_RECORDS

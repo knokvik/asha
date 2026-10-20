@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../shared/widgets/asha_bottom_nav.dart';
+import '../data/mbtiles_tile_provider.dart';
 import '../data/offline_state_tiles.dart';
 
 /// Full-page map. Packs are chosen in Profile, not on this screen.
@@ -41,7 +42,9 @@ class _IndiaMapPageState extends State<IndiaMapPage> {
 
   Future<void> _load() async {
     try {
-      final raw = await rootBundle.loadString('assets/geo/india_states.geojson');
+      final raw = await rootBundle.loadString(
+        'assets/geo/india_states.geojson',
+      );
       final store = await OfflineStateTiles.open();
       final shapes = _StateShape.parse(raw);
       for (final shape in shapes) {
@@ -73,21 +76,26 @@ class _IndiaMapPageState extends State<IndiaMapPage> {
     if (store == null || !mounted) return;
     final slug = selectedMapSlug.value;
     final shape = _states.cast<_StateShape?>().firstWhere(
-          (item) => item!.region.slug == slug,
-          orElse: () => null,
-        );
+      (item) => item!.region.slug == slug,
+      orElse: () => null,
+    );
     if (shape == null) {
       setState(() => _plan = null);
       return;
     }
-    final plan = await store.savedPlan(shape.region) ?? OfflineStateTiles.planFor(shape.region);
+    final plan =
+        await store.savedPlan(shape.region) ??
+        OfflineStateTiles.planFor(shape.region);
     if (!mounted) return;
     setState(() => _plan = plan);
     final region = shape.region;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _mapController.move(
-        LatLng((region.south + region.north) / 2, (region.west + region.east) / 2),
+        LatLng(
+          (region.south + region.north) / 2,
+          (region.west + region.east) / 2,
+        ),
         6.5,
       );
     });
@@ -110,9 +118,9 @@ class _IndiaMapPageState extends State<IndiaMapPage> {
     }
     final slug = selectedMapSlug.value;
     final shape = _states.cast<_StateShape?>().firstWhere(
-          (item) => item!.region.slug == slug,
-          orElse: () => null,
-        );
+      (item) => item!.region.slug == slug,
+      orElse: () => null,
+    );
     final region = shape?.region;
     final plan = _plan;
     final store = _store;
@@ -127,7 +135,9 @@ class _IndiaMapPageState extends State<IndiaMapPage> {
           minZoom: 3,
           maxZoom: 18,
           backgroundColor: const Color(0xFFD7E3F4),
-          interactionOptions: const InteractionOptions(flags: InteractiveFlag.all & ~InteractiveFlag.rotate),
+          interactionOptions: const InteractionOptions(
+            flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+          ),
           onPositionChanged: (camera, _) {
             if ((camera.zoom - _zoom).abs() < 0.08) return;
             setState(() => _zoom = camera.zoom);
@@ -144,16 +154,31 @@ class _IndiaMapPageState extends State<IndiaMapPage> {
             )
           else
             TileLayer(
-              urlTemplate: streetTileUrl,
+              tileProvider: MemoryTileProvider(MbTilesTileProvider.blank),
               userAgentPackageName: 'com.nhm.asha.asha_platform',
               minZoom: 3,
               maxZoom: 18,
             ),
+          PolygonLayer(
+            polygons: [
+              for (final state in _states)
+                Polygon(
+                  points: state.outer,
+                  color: const Color(0x1016805C),
+                  borderColor: const Color(0x6616805C),
+                  borderStrokeWidth: 1,
+                  label: state.region.name,
+                  labelStyle: const TextStyle(
+                    color: Color(0xFF1E4231),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+            ],
+          ),
           MarkerLayer(markers: _pins(region)),
           const RichAttributionWidget(
-            attributions: [
-              TextSourceAttribution('OpenStreetMap contributors'),
-            ],
+            attributions: [TextSourceAttribution('OpenStreetMap contributors')],
           ),
         ],
       ),
@@ -199,7 +224,13 @@ class _MapPin extends StatelessWidget {
             color: color,
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white, width: 2),
-            boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 3, offset: Offset(0, 1))],
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x66000000),
+                blurRadius: 3,
+                offset: Offset(0, 1),
+              ),
+            ],
           ),
           child: SizedBox(
             width: 28,

@@ -55,4 +55,33 @@ void main() {
     await tester.pump();
     expect(opened.single.toString(), 'tel:02067000019');
   });
+
+  testWidgets('offline layers expose radar ward detail and household route', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: GeoMapScreen(
+          pack: pack,
+          tiles: MemoryTileProvider(MbTilesTileProvider.blank),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('Disease radar'));
+    await tester.pump();
+    expect(find.text('Dengue-like'), findsOneWidget);
+    expect(find.byKey(const Key('ward-W3')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('ward-W3')));
+    await tester.pump();
+    expect(find.textContaining('W3 · Dengue-like'), findsOneWidget);
+    expect(find.textContaining('Dengue module ACTIVE'), findsOneWidget);
+
+    await tester.tap(find.text('Households'));
+    await tester.pump();
+    expect(find.text("Today's route"), findsOneWidget);
+    await tester.tap(find.byKey(const Key('household-hh-near')));
+    await tester.pump();
+    expect(find.text('Demo household near'), findsOneWidget);
+  });
 }
