@@ -12,7 +12,7 @@ class AshaDockItem {
   });
 }
 
-/// Floating icon-only navigation dock for Home, Map, Tasks, and Profile.
+/// Shared fixed navigation bar for Home, Map, Triage, Tasks, and Profile.
 /// The selected item uses a compact rectangular ASHA forest-green treatment.
 class AshaBottomDock extends StatelessWidget {
   final int currentIndex;
@@ -30,20 +30,17 @@ class AshaBottomDock extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
-      minimum: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+      minimum: EdgeInsets.zero,
       child: Material(
         color: Colors.white,
-        elevation: 6,
+        elevation: 4,
         shadowColor: const Color(0x22000000),
-        borderRadius: BorderRadius.circular(16),
-        clipBehavior: Clip.antiAlias,
         child: Container(
           decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFFE5E7EB)),
-            borderRadius: BorderRadius.circular(16),
+            border: const Border(top: BorderSide(color: Color(0xFFE5E7EB))),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: SizedBox(
               height: 44,
               child: Row(

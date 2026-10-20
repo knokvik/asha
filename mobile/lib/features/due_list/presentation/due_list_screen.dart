@@ -42,11 +42,30 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
   Widget build(BuildContext context) {
     final lang = ref.watch(languageProvider).languageCode;
     final body = _body(context, lang);
-    if (widget.embedded) return body;
+    if (widget.embedded) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF9FAFB),
+        floatingActionButton: _buildCreateTaskFab(),
+        body: body,
+      );
+    }
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       bottomNavigationBar: const AshaBottomNav(index: 2),
+      floatingActionButton: _buildCreateTaskFab(),
       body: SafeArea(child: body),
+    );
+  }
+
+  Widget _buildCreateTaskFab() {
+    return FloatingActionButton.extended(
+      key: const Key('create_task_button'),
+      heroTag: widget.embedded ? 'embedded-create-task' : 'create-task',
+      onPressed: _showCreateTaskSheet,
+      backgroundColor: const Color(0xFF166534),
+      foregroundColor: Colors.white,
+      icon: const Icon(Icons.add_task_rounded),
+      label: const Text('Create task'),
     );
   }
 
@@ -88,61 +107,16 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
                   ),
                 ),
 
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    InkWell(
-                      key: const Key('create_task_button'),
-                      onTap: _showCreateTaskSheet,
-                      borderRadius: BorderRadius.circular(20),
-                      child: const Padding(
-                        padding: EdgeInsets.all(6),
-                        child: Icon(
-                          Icons.add_task_rounded,
-                          size: 21,
-                          color: Color(0xFF166534),
-                        ),
-                      ),
+                InkWell(
+                  onTap: () => _chooseDate(context),
+                  borderRadius: BorderRadius.circular(20),
+                  child: const Padding(
+                    padding: EdgeInsets.all(6),
+                    child: Icon(
+                      Icons.calendar_today_outlined,
+                      size: 20,
+                      color: Color(0xFF111827),
                     ),
-                    InkWell(
-                      onTap: () => _chooseDate(context),
-                      borderRadius: BorderRadius.circular(20),
-                      child: const Padding(
-                        padding: EdgeInsets.all(6),
-                        child: Icon(
-                          Icons.calendar_today_outlined,
-                          size: 20,
-                          color: Color(0xFF111827),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-        if (widget.embedded)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 2),
-            child: Row(
-              children: [
-                const Text(
-                  'Tasks',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF111827),
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  key: const Key('create_task_button'),
-                  tooltip: 'Create task',
-                  onPressed: _showCreateTaskSheet,
-                  icon: const Icon(
-                    Icons.add_task_rounded,
-                    color: Color(0xFF166534),
                   ),
                 ),
               ],
