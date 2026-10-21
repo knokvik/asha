@@ -24,6 +24,8 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
   late final TextEditingController _controller;
   String _query = '';
   String? _category;
+  String? _selectedQuickDisease;
+  String? _selectedQuickDiseaseLabel;
 
   static const _categories = <(String?, String, IconData)>[
     (null, 'All', Icons.grid_view_rounded),
@@ -53,8 +55,8 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
     final peopleAsync = _category == 'person'
         ? ref.watch(beneficiarySearchResultsProvider(_query))
         : (_query.isEmpty || _category != null)
-            ? const AsyncValue.data(<BeneficiarySearchResult>[])
-            : ref.watch(beneficiarySearchResultsProvider(_query));
+        ? const AsyncValue.data(<BeneficiarySearchResult>[])
+        : ref.watch(beneficiarySearchResultsProvider(_query));
 
     return Scaffold(
       backgroundColor: AshaColors.screenBg,
@@ -176,7 +178,9 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
             labelStyle: TextStyle(
               fontSize: 12,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              color: selected ? AshaColors.primaryDark : AshaColors.textSecondary,
+              color: selected
+                  ? AshaColors.primaryDark
+                  : AshaColors.textSecondary,
             ),
             selectedColor: AshaColors.primaryLight,
             checkmarkColor: AshaColors.primaryDark,
@@ -195,21 +199,24 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
     final sections = index.searchSections(_query);
     final people =
         peopleAsync.asData?.value ?? const <BeneficiarySearchResult>[];
-    final hasPeople = (_category == null || _category == 'person') &&
-        people.isNotEmpty;
+    final hasPeople =
+        (_category == null || _category == 'person') && people.isNotEmpty;
     final isLoadingPeople =
         (_category == null || _category == 'person') && peopleAsync.isLoading;
 
     // Filter by category if selected
     final showDiseases =
-        (_category == null || _category == 'disease') && sections.diseases.isNotEmpty;
+        (_category == null || _category == 'disease') &&
+        sections.diseases.isNotEmpty;
     final showMedicines =
-        (_category == null || _category == 'medicine') && sections.medicines.isNotEmpty;
+        (_category == null || _category == 'medicine') &&
+        sections.medicines.isNotEmpty;
     final showGuides =
-        (_category == null || _category == 'guide') && sections.guides.isNotEmpty;
+        (_category == null || _category == 'guide') &&
+        sections.guides.isNotEmpty;
     final showDangerSigns =
         (_category == null || _category == 'danger_sign') &&
-            sections.dangerSigns.isNotEmpty;
+        sections.dangerSigns.isNotEmpty;
 
     if (!showDiseases &&
         !showMedicines &&
@@ -224,6 +231,10 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
       children: [
         const _SafetyBanner(),
+        if (_selectedQuickDisease != null) ...[
+          _diseaseTaskBar(),
+          const SizedBox(height: 8),
+        ],
 
         // 1. SECTION 1: Diseases & Clinical Conditions (Clinical Dictionary)
         if (showDiseases) ...[
@@ -633,34 +644,7 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
-        // Quick symptom / topic chips
-        const Text(
-          'Quick Disease & Symptom Lookups',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-            color: AshaColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            _quickChip('fever', 'Fever (बुखार)', Icons.thermostat_rounded),
-            _quickChip('diarrhoea', 'Diarrhoea (दस्त)', Icons.water_drop_rounded),
-            _quickChip('pneumonia', 'Pneumonia (निमोनिया)', Icons.air_rounded),
-            _quickChip('malaria', 'Malaria (मलेरिया)', Icons.pest_control_rounded),
-            _quickChip('dengue', 'Dengue (डेंगू)', Icons.warning_amber_rounded),
-            _quickChip('malnutrition', 'SAM Malnutrition', Icons.speed_rounded),
-            _quickChip('pregnancy', 'High-Risk Pregnancy', Icons.pregnant_woman_rounded),
-            _quickChip('newborn', 'Newborn Sepsis', Icons.child_care_rounded),
-            _quickChip('tuberculosis', 'TB (क्षय रोग)', Icons.medical_services_rounded),
-            _quickChip('hypertension', 'High BP (रक्तचाप)', Icons.favorite_rounded),
-            _quickChip('diabetes', 'Diabetes (मधुमेह)', Icons.bloodtype_rounded),
-            _quickChip('anaemia', 'Anaemia (खून की कमी)', Icons.monitor_heart_rounded),
-          ],
-        ),
+        _quickLookupPanel(),
         const SizedBox(height: 20),
 
         // Clinical Disease Dictionary Header
@@ -714,8 +698,148 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
       side: const BorderSide(color: Color(0xFFE5E7EB)),
       onPressed: () {
         _controller.text = query;
-        setState(() => _query = query);
+        setState(() {
+          _query = query;
+          _selectedQuickDisease = query;
+          _selectedQuickDiseaseLabel = label;
+          _category = null;
+        });
       },
+    );
+  }
+
+  Widget _quickLookupPanel() {
+    return Card(
+      key: const Key('quick_disease_lookup_panel'),
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: Color(0xFFE5E7EB)),
+      ),
+      child: ExpansionTile(
+        initiallyExpanded: false,
+        onExpansionChanged: (_) {},
+        tilePadding: const EdgeInsets.symmetric(horizontal: 14),
+        childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+        leading: const Icon(
+          Icons.health_and_safety_outlined,
+          color: AshaColors.primary,
+        ),
+        title: const Text(
+          'Quick Disease & Symptom Lookups',
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+        ),
+        subtitle: const Text('Tap to choose a disease and see its tasks'),
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _quickChip('fever', 'Fever (बुखार)', Icons.thermostat_rounded),
+              _quickChip(
+                'diarrhoea',
+                'Diarrhoea (दस्त)',
+                Icons.water_drop_rounded,
+              ),
+              _quickChip(
+                'pneumonia',
+                'Pneumonia (निमोनिया)',
+                Icons.air_rounded,
+              ),
+              _quickChip(
+                'malaria',
+                'Malaria (मलेरिया)',
+                Icons.pest_control_rounded,
+              ),
+              _quickChip(
+                'dengue',
+                'Dengue (डेंगू)',
+                Icons.warning_amber_rounded,
+              ),
+              _quickChip(
+                'malnutrition',
+                'SAM Malnutrition',
+                Icons.speed_rounded,
+              ),
+              _quickChip(
+                'pregnancy',
+                'High-Risk Pregnancy',
+                Icons.pregnant_woman_rounded,
+              ),
+              _quickChip('newborn', 'Newborn Sepsis', Icons.child_care_rounded),
+              _quickChip(
+                'tuberculosis',
+                'TB (क्षय रोग)',
+                Icons.medical_services_rounded,
+              ),
+              _quickChip(
+                'hypertension',
+                'High BP (रक्तचाप)',
+                Icons.favorite_rounded,
+              ),
+              _quickChip(
+                'diabetes',
+                'Diabetes (मधुमेह)',
+                Icons.bloodtype_rounded,
+              ),
+              _quickChip(
+                'anaemia',
+                'Anaemia (खून की कमी)',
+                Icons.monitor_heart_rounded,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _diseaseTaskBar() {
+    final label = _selectedQuickDiseaseLabel ?? _selectedQuickDisease!;
+    return Container(
+      key: const Key('quick_disease_task_bar'),
+      padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+      decoration: BoxDecoration(
+        color: AshaColors.primaryLight,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AshaColors.primary.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$label tasks',
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              color: AshaColors.primaryDark,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              TextButton.icon(
+                onPressed: () => context.push('/triage'),
+                icon: const Icon(Icons.fact_check_outlined, size: 17),
+                label: const Text('Start triage'),
+              ),
+              TextButton.icon(
+                onPressed: () => setState(() => _category = 'medicine'),
+                icon: const Icon(Icons.medication_outlined, size: 17),
+                label: const Text('Medicines'),
+              ),
+              TextButton.icon(
+                onPressed: () => setState(() => _category = 'danger_sign'),
+                icon: const Icon(Icons.warning_amber_rounded, size: 17),
+                label: const Text('Danger signs'),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -779,7 +903,11 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
                 key: const Key('offline_assistant_search_field'),
                 controller: _controller,
                 autofocus: _query.isEmpty,
-                onChanged: (value) => setState(() => _query = value.trim()),
+                onChanged: (value) => setState(() {
+                  _query = value.trim();
+                  _selectedQuickDisease = null;
+                  _selectedQuickDiseaseLabel = null;
+                }),
                 textInputAction: TextInputAction.search,
                 style: const TextStyle(
                   fontSize: 15,
@@ -815,7 +943,11 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
                 ),
                 onPressed: () {
                   _controller.clear();
-                  setState(() => _query = '');
+                  setState(() {
+                    _query = '';
+                    _selectedQuickDisease = null;
+                    _selectedQuickDiseaseLabel = null;
+                  });
                 },
               )
             else
@@ -1071,7 +1203,9 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: const Color(0xFFDCFCE7)),
+                                border: Border.all(
+                                  color: const Color(0xFFDCFCE7),
+                                ),
                               ),
                               child: Text(
                                 med.dosage,
@@ -1099,7 +1233,9 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFFEF2F2),
                                   borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: const Color(0xFFFECACA)),
+                                  border: Border.all(
+                                    color: const Color(0xFFFECACA),
+                                  ),
                                 ),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1148,10 +1284,7 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              '🚨 ',
-                              style: TextStyle(fontSize: 12),
-                            ),
+                            const Text('🚨 ', style: TextStyle(fontSize: 12)),
                             Expanded(
                               child: Text(
                                 sign,
@@ -1298,7 +1431,9 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
-                    color: isAlert ? const Color(0xFF991B1B) : AshaColors.textPrimary,
+                    color: isAlert
+                        ? const Color(0xFF991B1B)
+                        : AshaColors.textPrimary,
                   ),
                 ),
               ),
@@ -1384,10 +1519,7 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
               const SizedBox(height: 8),
               const Text(
                 'Offline ASHA reference protocol. Always verify danger signs and triage risk.',
-                style: TextStyle(
-                  color: AshaColors.textSecondary,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: AshaColors.textSecondary, fontSize: 12),
               ),
             ],
           ),

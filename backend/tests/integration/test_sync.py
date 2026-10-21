@@ -185,6 +185,47 @@ class TestSyncPush:
         )
         assert forbidden.status_code == 403
 
+    async def test_hotspots_require_two_workers_and_return_aggregate_context(
+        self, async_client, db_session
+    ):
+        """Cross-worker reports become an area signal without exposing patients."""
+        for index, worker_id in enumerate(
+            ("worker-sync-1", "worker-sync-2", "worker-sync-1")
+        ):
+            payload = _push_payload(worker_id=worker_id)
+            payload["records"][0] = {
+                "table": "triage_tickets",
+                "record_id": f"CASE-HOTSPOT-{index}",
+                "operation": "insert",
+                "priority": 2,
+                "payload": {
+                    "name": "Should not be returned",
+                    "location": "Ward W3",
+                    "ward_id": "W3",
+                    "modules_json": json.dumps(["dengue"]),
+                    "created_at": int(time.time() * 1000),
+                },
+                "event_log": [],
+                "device_timestamp": int(time.time() * 1000),
+                "client_watermark": 0,
+            }
+            pushed = await async_client.post(
+                "/api/v1/sync/push", json=payload, headers=_auth_header(worker_id)
+            )
+            assert pushed.status_code == 200
+
+        response = await async_client.get("/api/v1/sync/hotspots", headers=_auth_header())
+        assert response.status_code == 200
+        data = response.json()
+        active = next(item for item in data["hotspots"] if item["ward_id"] == "W3")
+        assert active["module_id"] == "dengue"
+        assert active["worker_count"] == 2
+        assert active["active"] is True
+        assert data["notifications"]
+        assert data["notifications"][0]["ward_id"] == "W3"
+        assert data["counts"][0]["condition"] == "dengue_like"
+        assert "Should not be returned" not in json.dumps(data)
+
 
 @pytest.mark.asyncio
 class TestSyncPull:

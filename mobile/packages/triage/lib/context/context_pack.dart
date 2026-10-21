@@ -54,7 +54,12 @@ class ChoiceOption {
 }
 
 class NumericBounds {
-  const NumericBounds({required this.unit, required this.min, required this.max, this.decimals = 0});
+  const NumericBounds({
+    required this.unit,
+    required this.min,
+    required this.max,
+    this.decimals = 0,
+  });
 
   final String unit;
   final num min;
@@ -91,7 +96,11 @@ class BankQuestion {
 }
 
 class PackFacility {
-  const PackFacility({required this.id, required this.name, required this.wardId});
+  const PackFacility({
+    required this.id,
+    required this.name,
+    required this.wardId,
+  });
 
   final String id;
   final String name;
@@ -131,7 +140,10 @@ class ContextPack {
   /// IMCI core is not in this list. These are outbreak modules only.
   List<String> activeModuleIds(String wardId, {int? month}) {
     final when = month ?? asOfMonth;
-    final latest = counts.fold<int>(0, (best, row) => row.weekIndex > best ? row.weekIndex : best);
+    final latest = counts.fold<int>(
+      0,
+      (best, row) => row.weekIndex > best ? row.weekIndex : best,
+    );
     final active = <String>[];
     for (final module in modules) {
       if (!module.seasonalMonths.contains(when)) continue;
@@ -139,7 +151,10 @@ class ContextPack {
       var peak = 0;
       var seen = false;
       for (final row in counts) {
-        if (row.wardId != wardId || row.condition != module.condition || row.weekIndex < start) continue;
+        if (row.wardId != wardId ||
+            row.condition != module.condition ||
+            row.weekIndex < start)
+          continue;
         seen = true;
         if (row.cases > peak) peak = row.cases;
       }
@@ -149,11 +164,16 @@ class ContextPack {
   }
 
   int casesOverWeeks(String wardId, String condition, int weeks) {
-    final latest = counts.fold<int>(0, (best, row) => row.weekIndex > best ? row.weekIndex : best);
+    final latest = counts.fold<int>(
+      0,
+      (best, row) => row.weekIndex > best ? row.weekIndex : best,
+    );
     final start = latest - weeks + 1;
     var total = 0;
     for (final row in counts) {
-      if (row.wardId == wardId && row.condition == condition && row.weekIndex >= start) {
+      if (row.wardId == wardId &&
+          row.condition == condition &&
+          row.weekIndex >= start) {
         total += row.cases;
       }
     }
@@ -187,7 +207,31 @@ class ContextPack {
     return null;
   }
 
-  ContextPack withCounts(List<DiseaseCount> counts, {required int version, String? generatedAt}) {
+  /// Centroid used only for aggregate hotspot display, never as a patient
+  /// location.
+  LatLon? centerForWard(String wardId) {
+    for (final ward in wards) {
+      if (ward.wardId != wardId || ward.ring.isEmpty) continue;
+      final latitude = ward.ring.fold<double>(
+            0,
+            (sum, point) => sum + point.latitude,
+          ) /
+          ward.ring.length;
+      final longitude = ward.ring.fold<double>(
+            0,
+            (sum, point) => sum + point.longitude,
+          ) /
+          ward.ring.length;
+      return LatLon(latitude, longitude);
+    }
+    return null;
+  }
+
+  ContextPack withCounts(
+    List<DiseaseCount> counts, {
+    required int version,
+    String? generatedAt,
+  }) {
     return ContextPack(
       districtId: districtId,
       version: version,
@@ -197,6 +241,77 @@ class ContextPack {
       wards: wards,
       counts: counts,
       modules: modules,
+      priors: priors,
+      questions: questions,
+      facilities: facilities,
+      sampleFix: sampleFix,
+    );
+  }
+
+  /// Overlays privacy-preserving cross-worker hotspot counts downloaded from
+  /// the server. The base pack remains usable when the overlay is stale or
+  /// unavailable, so triage never depends on connectivity.
+  ContextPack withHotspotContext(Map<String, dynamic> context) {
+    final rawCounts = context['counts'];
+    final rawModules = context['modules'];
+    if (rawCounts is! List || rawModules is! List) return this;
+
+    final overlayCounts = <DiseaseCount>[];
+    for (final raw in rawCounts) {
+      if (raw is! Map) continue;
+      final week = (raw['week_index'] as num?)?.toInt();
+      final cases = (raw['cases'] as num?)?.toInt();
+      final ward = raw['ward_id']?.toString();
+      final condition = raw['condition']?.toString();
+      if (week == null || cases == null || ward == null || condition == null)
+        continue;
+      overlayCounts.add(
+        DiseaseCount(
+          weekIndex: week,
+          wardId: ward,
+          condition: condition,
+          cases: cases,
+        ),
+      );
+    }
+
+    final overlayModules = <OutbreakModule>[];
+    for (final raw in rawModules) {
+      if (raw is! Map) continue;
+      final id = raw['id']?.toString();
+      final condition = raw['condition']?.toString();
+      if (id == null || condition == null) continue;
+      overlayModules.add(
+        OutbreakModule(
+          id: id,
+          condition: condition,
+          minCasesPerWeek: (raw['min_cases_per_week'] as num?)?.toInt() ?? 1,
+          lookbackWeeks: (raw['lookback_weeks'] as num?)?.toInt() ?? 4,
+          seasonalMonths: [
+            for (final month in (raw['seasonal_months'] as List? ?? const []))
+              if (month is num) month.toInt(),
+          ],
+        ),
+      );
+    }
+
+    final mergedModules = [
+      ...modules.where(
+        (base) => overlayModules.every((overlay) => overlay.id != base.id),
+      ),
+      ...overlayModules,
+    ];
+    final asOfMonth =
+        (context['as_of_month'] as num?)?.toInt() ?? this.asOfMonth;
+    return ContextPack(
+      districtId: districtId,
+      version: version,
+      generatedAt: (context['generated_at']?.toString()) ?? generatedAt,
+      languages: languages,
+      asOfMonth: asOfMonth,
+      wards: wards,
+      counts: [...counts, ...overlayCounts],
+      modules: mergedModules,
       priors: priors,
       questions: questions,
       facilities: facilities,
@@ -271,20 +386,27 @@ List<WardPolygon> _wards(String geoJson) {
   final wards = <WardPolygon>[];
   for (final feature in features) {
     if (feature is! Map) continue;
-    final properties = (feature['properties'] as Map?)?.cast<String, Object?>() ?? const {};
-    final geometry = (feature['geometry'] as Map?)?.cast<String, Object?>() ?? const {};
+    final properties =
+        (feature['properties'] as Map?)?.cast<String, Object?>() ?? const {};
+    final geometry =
+        (feature['geometry'] as Map?)?.cast<String, Object?>() ?? const {};
     final coordinates = geometry['coordinates'];
     if (coordinates is! List || coordinates.isEmpty) continue;
     final ring = coordinates.first;
     if (ring is! List) continue;
-    wards.add(WardPolygon(
-      wardId: properties['ward_id'].toString(),
-      ring: [
-        for (final point in ring)
-          if (point is List && point.length >= 2)
-            LatLon((point[1] as num).toDouble(), (point[0] as num).toDouble()),
-      ],
-    ));
+    wards.add(
+      WardPolygon(
+        wardId: properties['ward_id'].toString(),
+        ring: [
+          for (final point in ring)
+            if (point is List && point.length >= 2)
+              LatLon(
+                (point[1] as num).toDouble(),
+                (point[0] as num).toDouble(),
+              ),
+        ],
+      ),
+    );
   }
   return wards;
 }
@@ -292,18 +414,24 @@ List<WardPolygon> _wards(String geoJson) {
 List<DiseaseCount> parseDiseaseCsv(String csv) => _csv(csv);
 
 List<DiseaseCount> _csv(String csv) {
-  final lines = csv.split('\n').map((line) => line.trim()).where((line) => line.isNotEmpty).toList();
+  final lines = csv
+      .split('\n')
+      .map((line) => line.trim())
+      .where((line) => line.isNotEmpty)
+      .toList();
   if (lines.length < 2) return const [];
   final rows = <DiseaseCount>[];
   for (final line in lines.skip(1)) {
     final cells = line.split(',');
     if (cells.length < 4) continue;
-    rows.add(DiseaseCount(
-      weekIndex: int.parse(cells[0]),
-      wardId: cells[1],
-      condition: cells[2],
-      cases: int.parse(cells[3]),
-    ));
+    rows.add(
+      DiseaseCount(
+        weekIndex: int.parse(cells[0]),
+        wardId: cells[1],
+        condition: cells[2],
+        cases: int.parse(cells[3]),
+      ),
+    );
   }
   return rows;
 }
@@ -318,10 +446,15 @@ List<OutbreakModule> _modules(String raw) {
         OutbreakModule(
           id: item['id'].toString(),
           condition: item['condition'].toString(),
-          minCasesPerWeek: ((item['activation'] as Map)['min_cases_per_week'] as num).toInt(),
-          lookbackWeeks: ((item['activation'] as Map)['lookback_weeks'] as num).toInt(),
+          minCasesPerWeek:
+              ((item['activation'] as Map)['min_cases_per_week'] as num)
+                  .toInt(),
+          lookbackWeeks: ((item['activation'] as Map)['lookback_weeks'] as num)
+              .toInt(),
           seasonalMonths: [
-            for (final month in (item['activation'] as Map)['seasonal_months'] as List) (month as num).toInt(),
+            for (final month
+                in (item['activation'] as Map)['seasonal_months'] as List)
+              (month as num).toInt(),
           ],
         ),
   ];
@@ -336,9 +469,11 @@ List<DistrictPrior> _priors(String raw) {
       if (item is Map)
         DistrictPrior(
           districtId: item['district_id'].toString(),
-          anaemiaPct: (item['anaemia_children_6_59_months_pct'] as num).toDouble(),
+          anaemiaPct: (item['anaemia_children_6_59_months_pct'] as num)
+              .toDouble(),
           stuntingPct: (item['stunting_under_5_pct'] as num).toDouble(),
-          immunizationPct: (item['full_immunization_12_23_months_pct'] as num).toDouble(),
+          immunizationPct: (item['full_immunization_12_23_months_pct'] as num)
+              .toDouble(),
         ),
   ];
 }
@@ -385,7 +520,11 @@ BankQuestion _question(Map<String, Object?> json) {
     options: [
       if (optionsRaw is List)
         for (final option in optionsRaw)
-          if (option is Map) ChoiceOption(value: option['value'].toString(), label: option['label'].toString()),
+          if (option is Map)
+            ChoiceOption(
+              value: option['value'].toString(),
+              label: option['label'].toString(),
+            ),
     ],
   );
 }

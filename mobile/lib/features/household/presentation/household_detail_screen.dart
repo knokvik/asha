@@ -210,6 +210,9 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
 
       await householdDao.updateMemberCount(widget.householdId, _members.length + 1);
       _loadHouseholdData();
+      if (mounted) {
+        await context.push('/beneficiary/$memberId/consent');
+      }
     }
   }
 

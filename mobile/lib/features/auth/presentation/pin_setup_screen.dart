@@ -12,6 +12,7 @@ import '../../../../core/l10n/language_selector_dialog.dart';
 import '../../../../core/security/auth_service.dart';
 import '../../../../core/security/session_service.dart';
 import '../../../../shared/providers/core_providers.dart';
+import '../../../../shared/widgets/asha_svg_illustrations.dart';
 
 /// Screen presenting PIN setup or PIN unlock flow.
 ///
@@ -178,7 +179,8 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
           if (_captchaController.text.trim().toUpperCase() != _captchaCode) {
             setState(() {
               _isSubmitting = false;
-              _errorMessage = 'Verification code is incorrect. Please try again.';
+              _errorMessage =
+                  'Verification code is incorrect. Please try again.';
             });
             _refreshCaptcha();
             return;
@@ -192,7 +194,8 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
           if (!serverLogin.isSuccess) {
             setState(() {
               _isSubmitting = false;
-              _errorMessage = serverLogin.error ??
+              _errorMessage =
+                  serverLogin.error ??
                   'Invalid credentials. Please verify your ASHA ID and PIN.';
             });
             _refreshCaptcha();
@@ -328,8 +331,6 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n?.pinSetupTitle ?? 'ASHA Digital Platform'),
-        centerTitle: true,
         actions: [
           IconButton(
             key: const Key('language_selector_button'),
@@ -351,81 +352,34 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (!_isPinConfigured) ...[
-                    TextField(
-                      key: const Key('asha_id_field'),
-                      controller: _ashaIdController,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'ASHA ID (for online sync)',
-                        hintText: 'Leave blank for offline-only setup',
-                        prefixIcon: Icon(Icons.badge_outlined),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            key: const Key('captcha_input_field'),
-                            controller: _captchaController,
-                            textCapitalization: TextCapitalization.characters,
-                            decoration: const InputDecoration(
-                              labelText: 'Verification code',
-                              hintText: 'Enter the code shown below',
-                              prefixIcon: Icon(Icons.verified_user_outlined),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Column(
-                          children: [
-                            Container(
-                              key: const Key('captcha_code'),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 13,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.green.shade50,
-                                border: Border.all(
-                                  color: Colors.green.shade200,
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                _captchaCode,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 2,
-                                ),
-                              ),
-                            ),
-                            TextButton.icon(
-                              onPressed: _refreshCaptcha,
-                              icon: const Icon(Icons.refresh, size: 16),
-                              label: const Text('Refresh'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  const Icon(
-                    Icons.health_and_safety,
-                    size: 72,
-                    color: Colors.green,
-                  ),
-                  const SizedBox(height: 20),
+                  const Center(child: AshaLogo(height: 64)),
+                  const SizedBox(height: 12),
                   Text(
-                    _isPinConfigured
-                        ? (l10n?.welcomeBack ?? 'Welcome Back')
-                        : (l10n?.securitySetup ?? 'Security Setup'),
+                    l10n?.pinSetupTitle ?? 'ASHA Digital Platform',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.bold),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: Colors.green.shade800,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.shield_outlined,
+                        size: 24,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _isPinConfigured
+                            ? (l10n?.welcomeBack ?? 'Welcome Back')
+                            : (l10n?.securitySetup ?? 'Security Setup'),
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -436,7 +390,68 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                     style: Theme.of(context).textTheme.bodyMedium
                         ?.copyWith(color: Colors.grey.shade600),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 28),
+                  if (!_isPinConfigured) ...[
+                    TextField(
+                      key: const Key('asha_id_field'),
+                      controller: _ashaIdController,
+                      textInputAction: TextInputAction.next,
+                      onChanged: (_) => setState(() {}),
+                      decoration: const InputDecoration(
+                        labelText: 'ASHA ID (for online sync)',
+                        hintText: 'Leave blank for offline-only setup',
+                        prefixIcon: Icon(Icons.badge_outlined),
+                      ),
+                    ),
+                    if (_ashaIdController.text.trim().isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              key: const Key('captcha_input_field'),
+                              controller: _captchaController,
+                              textCapitalization: TextCapitalization.characters,
+                              decoration: const InputDecoration(
+                                labelText: 'Online verification code',
+                                hintText: 'Required only for server sync setup',
+                                prefixIcon: Icon(Icons.verified_user_outlined),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            key: const Key('captcha_code'),
+                            padding: const EdgeInsets.only(left: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade50,
+                              border: Border.all(color: Colors.green.shade200),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _captchaCode,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 2,
+                                  ),
+                                ),
+                                IconButton(
+                                  key: const Key('captcha_refresh_button'),
+                                  onPressed: _refreshCaptcha,
+                                  tooltip: 'Refresh verification code',
+                                  icon: const Icon(Icons.refresh, size: 19),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
                   TextField(
                     key: const Key('pin_input_field'),
                     controller: _pinController,
@@ -505,7 +520,7 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(18),
                       ),
                     ),
                     child: Text(

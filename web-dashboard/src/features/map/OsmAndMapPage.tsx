@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -24,7 +25,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PCMC_FACILITIES, PCMC_WARDS } from '@/shared/api/mockData';
-import { getMapFacilities, getMapSources, type MapFacility, type MapSource } from '@/shared/api/mapApi';
+import { getDiseaseHotspots, getMapFacilities, getMapSources, type MapFacility, type MapSource } from '@/shared/api/mapApi';
 import { PcmcHeatPanel, type HeatView } from '@/features/map/PcmcHeatPanel';
 import { outbreakWards, weekPoint, type WardWeek } from '@/features/clinical-desk/logic';
 
@@ -263,6 +264,11 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const layerGroupsRef = useRef<{ [key: string]: L.LayerGroup }>({});
+  const { data: liveHotspotContext } = useQuery({
+    queryKey: ['disease-hotspots'],
+    queryFn: getDiseaseHotspots,
+    refetchInterval: 60_000,
+  });
 
   // Map state - default to OpenStreetMap Standard for instant reliable rendering
   const [mapStyle, setMapStyle] = useState<'osmand_topo' | 'osm_standard' | 'dark_tactical'>('osm_standard');
@@ -454,7 +460,29 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
           .addTo(group);
       }
     }
-  }, [mode, heatView]);
+    for (const hotspot of liveHotspotContext?.hotspots ?? []) {
+      if (!hotspot.active) continue;
+      const ward = wards.find((item) => item.wardId === hotspot.ward_id);
+      const bounds = ward
+        ? (ward as WardWeek & { bounds: [[number, number], [number, number]] }).bounds
+        : null;
+      const center: [number, number] | null = hotspot.latitude != null && hotspot.longitude != null
+        ? [hotspot.latitude, hotspot.longitude]
+        : bounds
+          ? [(bounds[0][0] + bounds[1][0]) / 2, (bounds[0][1] + bounds[1][1]) / 2]
+          : null;
+      if (!center) continue;
+      L.circle(center, {
+        radius: Math.min(2400, 700 + hotspot.cases * 120),
+        color: '#7c3aed',
+        weight: 3,
+        fillColor: '#a78bfa',
+        fillOpacity: 0.24,
+      })
+        .bindTooltip(`${hotspot.condition}: ${hotspot.cases} reports from ${hotspot.worker_count} ASHA workers`)
+        .addTo(group);
+    }
+  }, [mode, heatView, liveHotspotContext]);
 
   // Handle Tile Layer Switching (OsmAnd Topo vs OSM Standard vs Dark Tactical)
   useEffect(() => {

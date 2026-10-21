@@ -248,6 +248,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
 
   Map<String, dynamic> _ticketPayload(List<Map<String, dynamic>> attachments) =>
       {
+        ..._wardCoordinates(),
         'name': _name.text.trim(),
         'age_months': _ageMonths,
         'age_days': int.tryParse(_ageDays.text.trim()),
@@ -258,7 +259,9 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         'additional_details': _details.text.trim(),
         'sex': _sex,
         'reported_context_json': jsonEncode(_reportedContext.toList()),
-        'adaptive_from_disease_radar': _adaptiveFromRadar,
+        'adaptive_from_disease_radar':
+            _adaptiveFromRadar ||
+            (_session?.loop.pack.activeModuleIds(_wardId).isNotEmpty ?? false),
         'radar_modules_json': jsonEncode(
           _session?.loop.pack.activeModuleIds(_wardId) ?? const <String>[],
         ),
@@ -281,6 +284,11 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         }),
         'attachments_json': jsonEncode(attachments),
       };
+
+  Map<String, dynamic> _wardCoordinates() {
+    final center = _session?.loop.pack.centerForWard(_flow?.wardId ?? _wardId);
+    return {'latitude': center?.latitude, 'longitude': center?.longitude};
+  }
 
   Future<bool> _queueTriageTicket() async {
     final caseCode = _caseCode;
@@ -398,9 +406,10 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
       setState(() => _error = 'Exact age in days cannot be negative.');
       return;
     }
-    final radarModules = _adaptiveFromRadar
-        ? session.loop.pack.activeModuleIds(_wardId)
-        : const <String>[];
+    // Cached block-level signals from other ASHA workers are applied
+    // automatically; the button remains available as an explicit reminder of
+    // why the adaptive modules were added to this assessment.
+    final radarModules = session.loop.pack.activeModuleIds(_wardId);
     final contextModules = <String>{..._chosen, ...radarModules};
     if (_extendedClinicalContext) contextModules.add('adult_vitals');
     final flow = session.loop.openAssessment(
@@ -692,6 +701,17 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
               : 'Offline. The common questions still run. Mark any illness you have already heard about nearby.',
           style: const TextStyle(height: 1.35),
         ),
+        if (packModules.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Shared area signals are active: ${packModules.join(', ')}. Related questions will be added automatically.',
+            style: const TextStyle(
+              height: 1.35,
+              color: AshaColors.textSecondary,
+              fontSize: 12,
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         TextField(
           controller: _name,
@@ -723,52 +743,35 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
             DropdownMenuItem(value: 'months', child: Text('Months')),
             DropdownMenuItem(value: 'years', child: Text('Years')),
           ],
-          onChanged: (value) => setState(() => _ageUnit = value ?? 'months'),
-        ),
-        const SizedBox(height: 12),
-        DropdownButtonFormField<AgeBandCode>(
-          key: const Key('triage_age_band_dropdown'),
-          initialValue: _ageBand,
-          decoration: const InputDecoration(
-            labelText: 'Patient group / protocol',
-            helperText:
-                'This selects the adaptive questions and safety checks.',
-            border: OutlineInputBorder(),
-          ),
-          items: const [
-            DropdownMenuItem(
-              value: AgeBandCode.infant02m,
-              child: Text('Young infant (0–2 months)'),
-            ),
-            DropdownMenuItem(
-              value: AgeBandCode.child2m5y,
-              child: Text('Child (2 months–5 years)'),
-            ),
-            DropdownMenuItem(
-              value: AgeBandCode.adolescent,
-              child: Text('Adolescent (5–19 years)'),
-            ),
-            DropdownMenuItem(
-              value: AgeBandCode.adult,
-              child: Text('Adult / older adult'),
-            ),
-            DropdownMenuItem(
-              value: AgeBandCode.pregnant,
-              child: Text('Pregnant / ANC'),
-            ),
-          ],
           onChanged: (value) {
             if (value == null) return;
-            setState(() {
-              _ageBand = value;
-              if (value == AgeBandCode.infant02m ||
-                  value == AgeBandCode.child2m5y) {
-                _ageUnit = 'months';
-              } else {
-                _ageUnit = 'years';
-              }
-            });
+            setState(() => _ageUnit = value);
+            _syncAgeBandFromInput(_age.text);
           },
+        ),
+        const SizedBox(height: 8),
+        Container(
+          key: const Key('triage_auto_patient_group'),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: AshaColors.primaryLight,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: AshaColors.primary.withValues(alpha: 0.25),
+            ),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.auto_awesome_outlined, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Patient group selected from age: $_patientGroupLabel',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
         ),
         if (_extendedClinicalContext) ...[
           const SizedBox(height: 16),
@@ -868,13 +871,12 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         const SizedBox(height: 12),
         OutlinedButton.icon(
           key: const Key('triage_adaptive_radar_button'),
-          onPressed: () =>
-              setState(() => _adaptiveFromRadar = !_adaptiveFromRadar),
-          icon: Icon(_adaptiveFromRadar ? Icons.radar : Icons.radar_outlined),
+          onPressed: () => setState(() => _adaptiveFromRadar = true),
+          icon: const Icon(Icons.radar_outlined),
           label: Text(
             _adaptiveFromRadar
                 ? 'Disease-radar adaptive triage enabled'
-                : 'Use disease radar for adaptive triage',
+                : 'Area disease radar is applied automatically',
           ),
         ),
         if (_adaptiveFromRadar && packModules.isNotEmpty)
@@ -1327,7 +1329,10 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   }
 
   bool get _extendedClinicalContext =>
-      _ageBand != AgeBandCode.child2m5y || (_ageMonthsValue() ?? 0) >= 60;
+      _ageBand == AgeBandCode.adolescent ||
+      _ageBand == AgeBandCode.adult ||
+      _ageBand == AgeBandCode.pregnant ||
+      (_ageMonthsValue() ?? 0) >= 60;
 
   int? _ageMonthsValue() {
     final value = int.tryParse(_age.text.trim());
@@ -1367,18 +1372,25 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   }
 
   void _syncAgeBandFromInput(String raw) {
-    if (_ageUnit != 'months') return;
-    final months = int.tryParse(raw.trim());
-    if (months == null) return;
-    final next = months < 2
-        ? AgeBandCode.infant02m
-        : months < 60
-        ? AgeBandCode.child2m5y
-        : AgeBandCode.adult;
-    if (next != _ageBand &&
-        (_ageBand == AgeBandCode.child2m5y || months >= 60)) {
+    final value = int.tryParse(raw.trim());
+    if (value == null || value < 0) return;
+    final next = _ageBandForInput(value);
+    if (next != _ageBand) {
       setState(() => _ageBand = next);
     }
+  }
+
+  AgeBandCode _ageBandForInput(int value) {
+    if (_ageUnit == 'months') {
+      if (value <= 2) return AgeBandCode.infant02m;
+      if (value <= 60) return AgeBandCode.child2m5y;
+      if (value < 228) return AgeBandCode.adolescent;
+      return AgeBandCode.adult;
+    }
+    if (value == 0) return AgeBandCode.infant02m;
+    if (value <= 5) return AgeBandCode.child2m5y;
+    if (value < 19) return AgeBandCode.adolescent;
+    return AgeBandCode.adult;
   }
 
   Widget _answerControls(BankQuestion question) {

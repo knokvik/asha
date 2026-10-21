@@ -295,10 +295,7 @@ class SyncWorker {
 
     final watermarksJson = await _storage.read(key: 'sync_watermarks') ?? '{}';
     final uri = Uri.parse('$apiBaseUrl/api/v1/sync/pull').replace(
-      queryParameters: {
-        'worker_id': workerId,
-        'watermarks': watermarksJson,
-      },
+      queryParameters: {'worker_id': workerId, 'watermarks': watermarksJson},
     );
 
     final headers = {
@@ -324,8 +321,33 @@ class SyncWorker {
         }
         await _applyIncomingRecords(records);
       }
+      await _pullHotspotContext(accessToken);
     } catch (_) {
       // Pull failure must not disrupt overall sync execution
+    }
+  }
+
+  /// Pulls only block-level, cross-worker disease aggregates. The raw server
+  /// response is cached in secure storage so the next offline triage session
+  /// can activate the same area modules without network access.
+  Future<void> _pullHotspotContext(String accessToken) async {
+    final uri = Uri.parse('$apiBaseUrl/api/v1/sync/hotspots');
+    final response = await http
+        .get(uri, headers: {'Authorization': 'Bearer $accessToken'})
+        .timeout(const Duration(seconds: 15));
+    if (response.statusCode != 200 || response.body.isEmpty) return;
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic>) return;
+    await _storage.write(
+      key: 'triage_hotspot_context_json',
+      value: jsonEncode(decoded),
+    );
+    final notifications = decoded['notifications'];
+    if (notifications is List) {
+      await _storage.write(
+        key: 'area_notifications_json',
+        value: jsonEncode(notifications),
+      );
     }
   }
 
@@ -336,104 +358,123 @@ class SyncWorker {
       final table = raw['_table']?.toString() ?? '';
       try {
         if (table == 'visit_schedules') {
-          await _db.into(_db.visitSchedules).insertOnConflictUpdate(
-            VisitSchedulesCompanion.insert(
-              id: raw['id']?.toString() ?? '',
-              memberId: raw['member_id']?.toString() ?? '',
-              programCode: raw['program_code']?.toString() ?? 'ad_hoc',
-              visitType: raw['visit_type']?.toString() ?? 'Visit',
-              dueDate: (raw['due_date'] as num?)?.toInt() ?? now,
-              status: Value(raw['status']?.toString() ?? 'pending'),
-              createdAt: (raw['created_at'] as num?)?.toInt() ?? now,
-            ),
-          );
+          await _db
+              .into(_db.visitSchedules)
+              .insertOnConflictUpdate(
+                VisitSchedulesCompanion.insert(
+                  id: raw['id']?.toString() ?? '',
+                  memberId: raw['member_id']?.toString() ?? '',
+                  programCode: raw['program_code']?.toString() ?? 'ad_hoc',
+                  visitType: raw['visit_type']?.toString() ?? 'Visit',
+                  dueDate: (raw['due_date'] as num?)?.toInt() ?? now,
+                  status: Value(raw['status']?.toString() ?? 'pending'),
+                  createdAt: (raw['created_at'] as num?)?.toInt() ?? now,
+                ),
+              );
         } else if (table == 'households') {
-          await _db.into(_db.households).insertOnConflictUpdate(
-            HouseholdsCompanion.insert(
-              id: raw['id']?.toString() ?? '',
-              village: raw['village']?.toString() ?? 'Shahpur',
-              hamlet: Value(raw['hamlet']?.toString()),
-              headName: raw['head_name']?.toString() ?? 'Head of Household',
-              memberCount: Value((raw['member_count'] as num?)?.toInt() ?? 1),
-              createdAt: (raw['created_at'] as num?)?.toInt() ?? now,
-              updatedAt: (raw['updated_at'] as num?)?.toInt() ?? now,
-              createdBy: raw['created_by']?.toString() ?? 'worker',
-            ),
-          );
+          await _db
+              .into(_db.households)
+              .insertOnConflictUpdate(
+                HouseholdsCompanion.insert(
+                  id: raw['id']?.toString() ?? '',
+                  village: raw['village']?.toString() ?? 'Shahpur',
+                  hamlet: Value(raw['hamlet']?.toString()),
+                  headName: raw['head_name']?.toString() ?? 'Head of Household',
+                  memberCount: Value(
+                    (raw['member_count'] as num?)?.toInt() ?? 1,
+                  ),
+                  createdAt: (raw['created_at'] as num?)?.toInt() ?? now,
+                  updatedAt: (raw['updated_at'] as num?)?.toInt() ?? now,
+                  createdBy: raw['created_by']?.toString() ?? 'worker',
+                ),
+              );
         } else if (table == 'members') {
-          await _db.into(_db.members).insertOnConflictUpdate(
-            MembersCompanion.insert(
-              id: raw['id']?.toString() ?? '',
-              householdId: raw['household_id']?.toString() ?? '',
-              name: raw['name']?.toString() ?? 'Beneficiary',
-              sex: raw['sex']?.toString() ?? 'F',
-              phone: Value(raw['phone']?.toString()),
-              createdAt: (raw['created_at'] as num?)?.toInt() ?? now,
-              updatedAt: (raw['updated_at'] as num?)?.toInt() ?? now,
-              createdBy: raw['created_by']?.toString() ?? 'worker',
-            ),
-          );
+          await _db
+              .into(_db.members)
+              .insertOnConflictUpdate(
+                MembersCompanion.insert(
+                  id: raw['id']?.toString() ?? '',
+                  householdId: raw['household_id']?.toString() ?? '',
+                  name: raw['name']?.toString() ?? 'Beneficiary',
+                  sex: raw['sex']?.toString() ?? 'F',
+                  phone: Value(raw['phone']?.toString()),
+                  createdAt: (raw['created_at'] as num?)?.toInt() ?? now,
+                  updatedAt: (raw['updated_at'] as num?)?.toInt() ?? now,
+                  createdBy: raw['created_by']?.toString() ?? 'worker',
+                ),
+              );
         } else if (table == 'users') {
-          await _db.into(_db.users).insertOnConflictUpdate(
-            UsersCompanion.insert(
-              id: raw['id']?.toString() ?? '',
-              ashaId: raw['asha_id']?.toString() ?? '',
-              name: raw['name']?.toString() ?? '',
-              role: raw['role']?.toString() ?? 'ASHA',
-              areaVillage: Value(raw['area_village']?.toString()),
-              areaSubcentre: Value(raw['area_subcentre']?.toString()),
-              areaPhc: Value(raw['area_phc']?.toString()),
-              areaBlock: Value(raw['area_block']?.toString()),
-              areaDistrict: Value(raw['area_district']?.toString()),
-              areaState: Value(raw['area_state']?.toString()),
-              createdAt: (raw['created_at'] as num?)?.toInt() ?? now,
-              updatedAt: (raw['updated_at'] as num?)?.toInt() ?? now,
-            ),
-          );
+          await _db
+              .into(_db.users)
+              .insertOnConflictUpdate(
+                UsersCompanion.insert(
+                  id: raw['id']?.toString() ?? '',
+                  ashaId: raw['asha_id']?.toString() ?? '',
+                  name: raw['name']?.toString() ?? '',
+                  role: raw['role']?.toString() ?? 'ASHA',
+                  areaVillage: Value(raw['area_village']?.toString()),
+                  areaSubcentre: Value(raw['area_subcentre']?.toString()),
+                  areaPhc: Value(raw['area_phc']?.toString()),
+                  areaBlock: Value(raw['area_block']?.toString()),
+                  areaDistrict: Value(raw['area_district']?.toString()),
+                  areaState: Value(raw['area_state']?.toString()),
+                  createdAt: (raw['created_at'] as num?)?.toInt() ?? now,
+                  updatedAt: (raw['updated_at'] as num?)?.toInt() ?? now,
+                ),
+              );
         } else if (table == 'facility_directory') {
-          await _db.into(_db.facilityDirectory).insertOnConflictUpdate(
-            FacilityDirectoryCompanion.insert(
-              id: raw['id']?.toString() ?? '',
-              name: raw['name']?.toString() ?? '',
-              facilityLevel: raw['facility_level']?.toString() ?? 'PHC',
-              district: Value(raw['district']?.toString()),
-              block: Value(raw['block']?.toString()),
-              village: Value(raw['village']?.toString()),
-              latitude: Value((raw['latitude'] as num?)?.toDouble()),
-              longitude: Value((raw['longitude'] as num?)?.toDouble()),
-              contactPhone: Value(raw['contact_phone']?.toString()),
-              servicesJson: Value(raw['services_json']?.toString() ?? '[]'),
-              isActive: Value(raw['is_active'] as bool? ?? true),
-              lastUpdatedAt: (raw['last_updated_at'] as num?)?.toInt() ?? now,
-            ),
-          );
+          await _db
+              .into(_db.facilityDirectory)
+              .insertOnConflictUpdate(
+                FacilityDirectoryCompanion.insert(
+                  id: raw['id']?.toString() ?? '',
+                  name: raw['name']?.toString() ?? '',
+                  facilityLevel: raw['facility_level']?.toString() ?? 'PHC',
+                  district: Value(raw['district']?.toString()),
+                  block: Value(raw['block']?.toString()),
+                  village: Value(raw['village']?.toString()),
+                  latitude: Value((raw['latitude'] as num?)?.toDouble()),
+                  longitude: Value((raw['longitude'] as num?)?.toDouble()),
+                  contactPhone: Value(raw['contact_phone']?.toString()),
+                  servicesJson: Value(raw['services_json']?.toString() ?? '[]'),
+                  isActive: Value(raw['is_active'] as bool? ?? true),
+                  lastUpdatedAt:
+                      (raw['last_updated_at'] as num?)?.toInt() ?? now,
+                ),
+              );
         } else if (table == 'clinical_encounters') {
-          await _db.into(_db.clinicalEncounters).insertOnConflictUpdate(
-            ClinicalEncountersCompanion.insert(
-              id: raw['id']?.toString() ?? '',
-              memberId: raw['member_id']?.toString() ?? '',
-              encounterType: raw['encounter_type']?.toString() ?? 'general',
-              programCode: raw['program_code']?.toString() ?? 'general',
-              encounterDate: (raw['encounter_date'] as num?)?.toInt() ?? now,
-              ashaId: raw['asha_id']?.toString() ?? '',
-              status: Value(raw['status']?.toString() ?? 'completed'),
-              visitNotes: Value(raw['visit_notes']?.toString()),
-              createdAt: (raw['created_at'] as num?)?.toInt() ?? now,
-              updatedAt: (raw['updated_at'] as num?)?.toInt() ?? now,
-              syncStatus: const Value('synced'),
-            ),
-          );
+          await _db
+              .into(_db.clinicalEncounters)
+              .insertOnConflictUpdate(
+                ClinicalEncountersCompanion.insert(
+                  id: raw['id']?.toString() ?? '',
+                  memberId: raw['member_id']?.toString() ?? '',
+                  encounterType: raw['encounter_type']?.toString() ?? 'general',
+                  programCode: raw['program_code']?.toString() ?? 'general',
+                  encounterDate:
+                      (raw['encounter_date'] as num?)?.toInt() ?? now,
+                  ashaId: raw['asha_id']?.toString() ?? '',
+                  status: Value(raw['status']?.toString() ?? 'completed'),
+                  visitNotes: Value(raw['visit_notes']?.toString()),
+                  createdAt: (raw['created_at'] as num?)?.toInt() ?? now,
+                  updatedAt: (raw['updated_at'] as num?)?.toInt() ?? now,
+                  syncStatus: const Value('synced'),
+                ),
+              );
         } else if (table == 'triage_results') {
-          await _db.into(_db.triageResults).insertOnConflictUpdate(
-            TriageResultsCompanion.insert(
-              id: raw['id']?.toString() ?? '',
-              encounterId: raw['encounter_id']?.toString() ?? '',
-              flag: raw['flag']?.toString() ?? 'GREEN',
-              ruleVersionId: raw['rule_version_id']?.toString() ?? 'v1.0-mohfw',
-              findingsJson: raw['findings_json']?.toString() ?? '[]',
-              evaluatedAt: (raw['evaluated_at'] as num?)?.toInt() ?? now,
-            ),
-          );
+          await _db
+              .into(_db.triageResults)
+              .insertOnConflictUpdate(
+                TriageResultsCompanion.insert(
+                  id: raw['id']?.toString() ?? '',
+                  encounterId: raw['encounter_id']?.toString() ?? '',
+                  flag: raw['flag']?.toString() ?? 'GREEN',
+                  ruleVersionId:
+                      raw['rule_version_id']?.toString() ?? 'v1.0-mohfw',
+                  findingsJson: raw['findings_json']?.toString() ?? '[]',
+                  evaluatedAt: (raw['evaluated_at'] as num?)?.toInt() ?? now,
+                ),
+              );
         }
       } catch (_) {}
     }

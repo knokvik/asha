@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/l10n/app_localizations.dart';
 import '../domain/duplicate_detector.dart';
@@ -197,6 +198,7 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
       );
 
       // 2. Add family members offline with UUID v4
+      String? firstMemberId;
       for (final member in _members) {
         final memberName = member.nameController.text.trim();
         if (memberName.isEmpty) continue;
@@ -212,7 +214,7 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
           }
         }
 
-        await repo.addMember(
+        final createdMember = await repo.addMember(
           householdId: household.id,
           name: memberName,
           sex: member.sex,
@@ -228,6 +230,7 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
           socialCategory: _selectedSocialCategory,
           isBpl: _isBpl,
         );
+        firstMemberId ??= createdMember.id;
       }
 
       // Refresh household list cache
@@ -235,6 +238,10 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
       ref.invalidate(householdsGroupedByHamletProvider);
 
       if (mounted) {
+        if (firstMemberId != null) {
+          await context.push('/beneficiary/$firstMemberId/consent');
+          if (!mounted) return;
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Row(

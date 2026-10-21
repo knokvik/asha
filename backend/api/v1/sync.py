@@ -11,6 +11,8 @@ from __future__ import annotations
 import base64
 import gzip
 import json
+import time
+from collections import defaultdict
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from fastapi.responses import Response
@@ -21,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.multi_tenant import TenantContext, set_tenant_context
 from core.security import decode_token
 from db.session import get_db
-from models.db.models import AuditLog, TriageTicket
+from models.db.models import AreaNotification, AuditLog, TriageTicket
 from models.schemas.schemas import SyncPullResponse, SyncPushRequest, SyncPushResponse
 from services.sync_service import SyncService
 
@@ -158,6 +160,194 @@ async def sync_activity(
             }
             for row in rows
         ]
+    }
+
+
+@router.get("/hotspots")
+async def sync_hotspots(
+    lookback_days: int = Query(default=28, ge=7, le=90),
+    tenant: TenantContext = Depends(_get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Return privacy-preserving cross-worker disease signals for one block.
+
+    This endpoint deliberately returns only ward/module aggregates. It never
+    exposes patient names, ticket IDs, or free-text clinical notes. A signal
+    becomes an adaptive hotspot only after reports from at least two distinct
+    workers in the same assigned block.
+    """
+    if not tenant.block_code:
+        return {
+            "generated_at": int(time.time() * 1000),
+            "counts": [],
+            "modules": [],
+            "hotspots": [],
+            "notifications": [],
+        }
+
+    since = int(time.time() * 1000) - lookback_days * 24 * 60 * 60 * 1000
+    result = await db.execute(
+        select(TriageTicket).where(
+            TriageTicket.block_code == tenant.block_code,
+            TriageTicket.created_at >= since,
+            TriageTicket.ward_id.isnot(None),
+        )
+    )
+    tickets = result.scalars().all()
+
+    module_meta = {
+        "dengue": ("dengue_like", 3),
+        "measles": ("measles_like", 2),
+        "diarrhoea_cluster": ("acute_diarrhoea", 8),
+        "aes": ("aes", 1),
+    }
+    grouped: dict[tuple[str, str], dict[str, object]] = defaultdict(
+        lambda: {"cases": 0, "workers": set(), "latest": 0}
+    )
+    for ticket in tickets:
+        ward_id = ticket.ward_id
+        if not ward_id:
+            continue
+        try:
+            modules = json.loads(ticket.modules_json or "[]")
+        except json.JSONDecodeError:
+            modules = []
+        if not isinstance(modules, list):
+            continue
+        for module_id in modules:
+            module = module_meta.get(str(module_id))
+            if module is None:
+                continue
+            condition, _ = module
+            bucket = grouped[(ward_id, str(module_id))]
+            bucket["cases"] = int(bucket["cases"]) + 1
+            workers = bucket["workers"]
+            if isinstance(workers, set) and ticket.worker_id:
+                workers.add(ticket.worker_id)
+            bucket["latest"] = max(int(bucket["latest"]), int(ticket.created_at or 0))
+
+    now = int(time.time() * 1000)
+    week_index = now // (7 * 24 * 60 * 60 * 1000)
+    month = time.gmtime(now / 1000).tm_mon
+    counts: list[dict[str, object]] = []
+    modules: list[dict[str, object]] = []
+    hotspots: list[dict[str, object]] = []
+    notifications: list[dict[str, object]] = []
+    seen_modules: set[str] = set()
+    for (ward_id, module_id), bucket in grouped.items():
+        condition, threshold = module_meta[module_id]
+        workers = bucket["workers"]
+        worker_count = len(workers) if isinstance(workers, set) else 0
+        cases = int(bucket["cases"])
+        active = worker_count >= 2 and cases >= threshold
+        hotspots.append(
+            {
+                "ward_id": ward_id,
+                "module_id": module_id,
+                "condition": condition,
+                "cases": cases,
+                "worker_count": worker_count,
+                "active": active,
+                "last_reported_at": int(bucket["latest"]),
+                "latitude": _mean_coordinate(tickets, ward_id, "latitude"),
+                "longitude": _mean_coordinate(tickets, ward_id, "longitude"),
+            }
+        )
+        if not active:
+            continue
+        counts.append(
+            {
+                "week_index": week_index,
+                "ward_id": ward_id,
+                "condition": condition,
+                "cases": cases,
+            }
+        )
+        if module_id not in seen_modules:
+            seen_modules.add(module_id)
+            modules.append(
+                {
+                    "id": module_id,
+                    "condition": condition,
+                    "min_cases_per_week": threshold,
+                    "lookback_weeks": 4,
+                    "seasonal_months": list(range(1, 13)),
+                }
+            )
+
+        if active:
+            notification = await _ensure_area_notification(
+                db,
+                block_code=tenant.block_code,
+                ward_id=ward_id,
+                module_id=module_id,
+                condition=condition,
+                cases=cases,
+                worker_count=worker_count,
+                created_at=now,
+            )
+            notifications.append(notification)
+
+    return {
+        "generated_at": now,
+        "as_of_month": month,
+        "lookback_days": lookback_days,
+        "block_code": tenant.block_code,
+        "counts": counts,
+        "modules": modules,
+        "hotspots": hotspots,
+        "notifications": notifications,
+    }
+
+
+def _mean_coordinate(tickets: list[TriageTicket], ward_id: str, field: str) -> float | None:
+    values = [getattr(ticket, field) for ticket in tickets if ticket.ward_id == ward_id]
+    numeric = [float(value) for value in values if value is not None]
+    return round(sum(numeric) / len(numeric), 6) if numeric else None
+
+
+async def _ensure_area_notification(
+    db: AsyncSession,
+    *,
+    block_code: str,
+    ward_id: str,
+    module_id: str,
+    condition: str,
+    cases: int,
+    worker_count: int,
+    created_at: int,
+) -> dict[str, object]:
+    dedupe_key = f"{block_code}:{ward_id}:{module_id}:{created_at // (7 * 24 * 60 * 60 * 1000)}"
+    existing = await db.scalar(
+        select(AreaNotification).where(AreaNotification.dedupe_key == dedupe_key)
+    )
+    if existing is None:
+        existing = AreaNotification(
+            id=f"area-{dedupe_key}",
+            block_code=block_code,
+            ward_id=ward_id,
+            module_id=module_id,
+            title=f"Shared area signal: {condition.replace('_', ' ').title()}",
+            body=(
+                f"{cases} reports from {worker_count} ASHA workers were detected in {ward_id}. "
+                "Related triage questions will be added automatically."
+            ),
+            severity="urgent" if module_id in {"aes", "measles"} else "standard",
+            created_at=created_at,
+            expires_at=created_at + 28 * 24 * 60 * 60 * 1000,
+            dedupe_key=dedupe_key,
+        )
+        db.add(existing)
+        await db.flush()
+    return {
+        "id": existing.id,
+        "ward_id": existing.ward_id,
+        "module_id": existing.module_id,
+        "title": existing.title,
+        "body": existing.body,
+        "severity": existing.severity,
+        "created_at": existing.created_at,
+        "expires_at": existing.expires_at,
     }
 
 

@@ -235,6 +235,7 @@ class SyncService:
                 app_version=app_version,
                 device_timestamp=entry.device_timestamp,
                 server_timestamp=int(time.time() * 1000),
+                chain_hash=getattr(entry, "chain_hash", None),
             )
             self._db.add(audit)
 

@@ -2,10 +2,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:drift/drift.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
 import 'package:workmanager/workmanager.dart';
 
 import '../database/app_database.dart';
+import '../database/audit_chain_service.dart';
 
 /// Priority levels for the sync queue.
 ///
@@ -37,6 +39,7 @@ enum SyncPriority {
 class SyncEngine {
   final AppDatabase _db;
   static const _uuid = Uuid();
+  static const _storage = FlutterSecureStorage();
 
   SyncEngine(this._db);
 
@@ -59,6 +62,46 @@ class SyncEngine {
     SyncPriority priority = SyncPriority.metadata,
   }) async {
     final now = DateTime.now().millisecondsSinceEpoch;
+    final workerId = await _storage.read(key: 'worker_id') ?? 'offline-worker';
+    final deviceId = await _storage.read(key: 'device_id') ?? 'offline-device';
+    final effectiveEventLog = <Map<String, dynamic>>[];
+    if (eventLog.isEmpty) {
+      effectiveEventLog.add({
+        'field': '__record__',
+        'old_value': null,
+        'new_value': jsonEncode(payload),
+        'changed_by': workerId,
+        'device_id': deviceId,
+        'device_timestamp': now,
+      });
+    } else {
+      effectiveEventLog.addAll(
+        eventLog.map(
+          (entry) => {
+            ...entry,
+            'changed_by': entry['changed_by'] ?? workerId,
+            'device_id': entry['device_id'] ?? deviceId,
+            'device_timestamp': entry['device_timestamp'] ?? now,
+          },
+        ),
+      );
+    }
+    final audit = AuditChainService(_db);
+    for (final entry in effectiveEventLog) {
+      final auditEntry = await audit.appendEntry(
+        id: _uuid.v4(),
+        tableName: table,
+        recordId: recordId,
+        fieldName: entry['field']?.toString(),
+        oldValue: entry['old_value']?.toString(),
+        newValue: entry['new_value']?.toString(),
+        changedBy: entry['changed_by'].toString(),
+        deviceId: entry['device_id'].toString(),
+        appVersion: 'offline-client',
+        deviceTimestamp: entry['device_timestamp'] as int,
+      );
+      entry['chain_hash'] = auditEntry.chainHash;
+    }
     await _db
         .into(_db.syncQueue)
         .insertOnConflictUpdate(
@@ -69,7 +112,7 @@ class SyncEngine {
             priority: Value(priority.value),
             operation: operation,
             payloadJson: jsonEncode(payload),
-            eventLogJson: Value(jsonEncode(eventLog)),
+            eventLogJson: Value(jsonEncode(effectiveEventLog)),
             syncStatus: const Value('pending'),
             createdAt: now,
           ),

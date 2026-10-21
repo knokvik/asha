@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:drift/drift.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
@@ -19,6 +22,7 @@ class TriageHistoryScreen extends ConsumerStatefulWidget {
 class _TriageHistoryScreenState extends ConsumerState<TriageHistoryScreen> {
   List<dynamic> _visits = const [];
   List<dynamic> _results = const [];
+  List<Map<String, dynamic>> _areaNotifications = const [];
   Object? _error;
 
   @override
@@ -49,10 +53,22 @@ class _TriageHistoryScreenState extends ConsumerState<TriageHistoryScreen> {
                 ..orderBy([(row) => OrderingTerm.desc(row.evaluatedAt)])
                 ..limit(30))
               .get();
+      final notificationJson = await const FlutterSecureStorage().read(
+        key: 'area_notifications_json',
+      );
+      final decodedNotifications = notificationJson == null
+          ? const <dynamic>[]
+          : jsonDecode(notificationJson);
       if (!mounted) return;
       setState(() {
         _visits = visits;
         _results = results;
+        _areaNotifications = decodedNotifications is List
+            ? decodedNotifications
+                .whereType<Map>()
+                .map((item) => Map<String, dynamic>.from(item))
+                .toList()
+            : const [];
       });
     } catch (error) {
       if (mounted) setState(() => _error = error);
@@ -145,6 +161,22 @@ class _TriageHistoryScreenState extends ConsumerState<TriageHistoryScreen> {
                     onTap: () => _showVisitMessage(visit),
                   ),
                 ),
+            if (_areaNotifications.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              Text('Shared area alerts', style: AshaTypography.sectionTitle),
+              const SizedBox(height: 8),
+              for (final notification in _areaNotifications)
+                Card(
+                  color: Colors.amber.shade50,
+                  child: ListTile(
+                    leading: const Icon(Icons.radar_outlined),
+                    title: Text(
+                      notification['title']?.toString() ?? 'Area signal',
+                    ),
+                    subtitle: Text(notification['body']?.toString() ?? ''),
+                  ),
+                ),
+            ],
             const SizedBox(height: 20),
             Text('Triage history', style: AshaTypography.sectionTitle),
             const SizedBox(height: 8),

@@ -247,6 +247,8 @@ class TriageTicket(Base):
     location: Mapped[str | None] = mapped_column(String(255))
     additional_details: Mapped[str | None] = mapped_column(Text)
     ward_id: Mapped[str | None] = mapped_column(String(32))
+    latitude: Mapped[float | None] = mapped_column(Float)
+    longitude: Mapped[float | None] = mapped_column(Float)
     flag: Mapped[str | None] = mapped_column(String(16))
     sms: Mapped[str | None] = mapped_column(Text)
     modules_json: Mapped[str] = mapped_column(Text, default="[]")
@@ -261,6 +263,24 @@ class TriageTicket(Base):
     server_received_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     block_code: Mapped[str | None] = mapped_column(String(10))
     server_seq: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+
+class AreaNotification(Base):
+    """Durable privacy-preserving recommendation for workers in one block."""
+
+    __tablename__ = "area_notifications"
+    __table_args__ = (Index("idx_area_notifications_recipient", "block_code", "created_at"),)
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    block_code: Mapped[str] = mapped_column(String(32), nullable=False)
+    ward_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    module_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    severity: Mapped[str] = mapped_column(String(16), default="standard")
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    expires_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    dedupe_key: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
 
 
 class ReferralRecord(Base):

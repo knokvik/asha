@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:triage/triage.dart';
 
 /// Loads the cached pack and the chart tables. Nothing here touches the network.
@@ -29,7 +30,7 @@ class AdaptiveSession {
 
   static Future<AdaptiveSession> load() async {
     Future<String> read(String path) => rootBundle.loadString(path);
-    final pack = ContextPack.parse(
+    var pack = ContextPack.parse(
       manifestJson: await read('$_pack/manifest.json'),
       wardsGeoJson: await read('$_pack/wards.geojson'),
       diseaseCsv: await read('$_pack/disease_counts.csv'),
@@ -37,6 +38,20 @@ class AdaptiveSession {
       priorsJson: await read('$_pack/priors.json'),
       questionBankJson: await read('$_pack/question_bank.json'),
     );
+    try {
+      const storage = FlutterSecureStorage();
+      final hotspotJson = await storage.read(
+        key: 'triage_hotspot_context_json',
+      );
+      if (hotspotJson != null && hotspotJson.isNotEmpty) {
+        final decoded = jsonDecode(hotspotJson);
+        if (decoded is Map<String, dynamic>) {
+          pack = pack.withHotspotContext(decoded);
+        }
+      }
+    } catch (_) {
+      // A missing/stale overlay must never block offline triage.
+    }
     final tables = <String, Map<String, Object?>>{};
     for (final name in _tableNames) {
       final decoded = jsonDecode(await read('$_tables/$name.json'));

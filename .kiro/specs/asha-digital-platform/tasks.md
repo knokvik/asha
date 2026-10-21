@@ -228,6 +228,7 @@ Language choices from the design document:
   - [x] 5.7 Implement consent workflow
     - Create `lib/features/household/domain/consent_service.dart`: present plain-language audio consent screen; on grant, write `ConsentRecord` with `signature_hash = SHA256(memberId + consentVersion + timestamp + ashaId)`; emergency-only mode if declined (minimum legal fields only); propagate withdrawal to sync queue immediately
     - Implement guardian consent branch for minors and incapacitated persons
+    - Hardening: new beneficiary creation now opens consent immediately; every sync enqueue also appends a local hash-chained audit event and carries its chain hash to the server audit log.
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
   - [x] 5.8 Implement ABHA offline capture and hand-over workflow
@@ -301,7 +302,9 @@ Language choices from the design document:
   - [-] 6.8 Extend field triage context and follow-up history
     - Add patient context fields, symptom chips, disease-radar adaptive-module selection, and keep infant, child, adolescent, adult/older-adult, and pregnancy intake on one adaptive triage flow. Legacy adult/questions deep links redirect to the unified flow; older-adult vitals and danger signs are seeded into the adaptive assessment.
     - Keep compressed image/audio evidence visible at the final ticket step and display synced PHC follow-up schedules and triage history in-app. Create the encrypted outbox packet only after the worker explicitly selects “Send ticket with attachments”; show ticket IDs, evidence previews, and audio playback in the app’s sync history and authenticated web sync feed.
-    - Remaining: connect a dedicated server recommendation/notification record when the backend contract is finalized; current follow-ups use synced `visit_schedules`.
+    - Progress: authenticated block-level hotspot aggregation now combines reports from multiple ASHA workers; mobile sync caches the privacy-preserving context for offline adaptive triage, and the web map panel reads the live aggregate feed.
+    - Progress: hotspot recommendations are persisted as `area_notifications`, pulled with the hotspot context, shown in mobile Updates & triage history, and rendered as live map circles with ward-centroid fallback.
+    - Remaining: run migration `20261021_05` in the deployed environment and connect an external push provider if background FCM delivery is required; offline/in-app delivery is implemented.
     - _Requirements: 8.1, 8.2, 24.1, 26.1, 31.1_
 
   - [-] 6.9 Harden triage model audit and future retraining

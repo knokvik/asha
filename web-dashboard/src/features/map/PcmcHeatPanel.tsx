@@ -8,6 +8,7 @@ import {
   weekPoint,
   type WardWeek,
 } from '@/features/clinical-desk/logic';
+import { getDiseaseHotspots, type DiseaseHotspot } from '@/shared/api/mapApi';
 
 export interface HeatView {
   week: number;
@@ -25,6 +26,12 @@ export function PcmcHeatPanel({ onView }: { onView?: (view: HeatView) => void })
   const [showStunting, setShowStunting] = useState(false);
   const [showFacilities, setShowFacilities] = useState(true);
   const wards = PCMC_WARDS as WardWeek[];
+
+  const { data: liveContext } = useQuery({
+    queryKey: ['disease-hotspots'],
+    queryFn: getDiseaseHotspots,
+    refetchInterval: 60_000,
+  });
 
   const { data: confirmed = {} } = useQuery({
     queryKey: ['heatmap', 'confirmed'],
@@ -65,6 +72,7 @@ export function PcmcHeatPanel({ onView }: { onView?: (view: HeatView) => void })
         <label><input type="checkbox" checked={showStunting} onChange={(event) => setShowStunting(event.target.checked)} /> NFHS-5 stunting</label>
         <label><input type="checkbox" checked={showFacilities} onChange={(event) => setShowFacilities(event.target.checked)} /> Facilities</label>
       </div>
+      <LiveHotspotSummary hotspots={liveContext?.hotspots ?? []} />
       <div className="grid grid-cols-4 gap-2 max-w-xl">
         {wards.map((item) => {
           const value = weekPoint(item, week);
@@ -110,5 +118,32 @@ export function PcmcHeatPanel({ onView }: { onView?: (view: HeatView) => void })
         </p>
       </div>
     </section>
+  );
+}
+
+function LiveHotspotSummary({ hotspots }: { hotspots: DiseaseHotspot[] }) {
+  const active = hotspots.filter((hotspot) => hotspot.active);
+  return (
+    <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 dark:border-amber-900/70 dark:bg-amber-950/20" data-testid="live-hotspot-summary">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <div className="text-xs font-bold text-amber-900 dark:text-amber-200">Live cross-worker disease signals</div>
+          <div className="text-[11px] text-amber-800/80 dark:text-amber-300/80">Aggregated from authenticated ASHA sync packets; no patient details shown.</div>
+        </div>
+        <span className="rounded-full bg-amber-200 px-2 py-1 text-[10px] font-bold text-amber-900 dark:bg-amber-900/60 dark:text-amber-100">{active.length} active</span>
+      </div>
+      {active.length === 0 ? (
+        <p className="mt-2 text-[11px] text-slate-600 dark:text-slate-400">No multi-worker hotspot has crossed the activation threshold in the current block.</p>
+      ) : (
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          {active.map((hotspot) => (
+            <div key={`${hotspot.ward_id}-${hotspot.module_id}`} className="rounded-lg border border-amber-200 bg-white/80 px-2.5 py-2 text-[11px] dark:border-amber-900/60 dark:bg-slate-900/50">
+              <div className="font-bold text-slate-900 dark:text-white">{hotspot.ward_id} · {hotspot.module_id}</div>
+              <div className="text-slate-600 dark:text-slate-400">{hotspot.cases} reports from {hotspot.worker_count} ASHA workers</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

@@ -10,6 +10,7 @@ import 'package:geo_intel/geo_intel.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:sqlite3/sqlite3.dart' as sql;
 import 'package:triage/triage.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -261,12 +262,15 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   static const _showMyFlags = true;
   var _routeMode = false;
   var _showLiveLocation = false;
+  var _isLocating = false;
   var _satelliteView = false;
   static const _householdScope = _HouseholdScope.due;
   var _facilityCategory = 'all';
   LatLon? _pointingTarget;
+  LatLng? _liveLocation;
   late final List<LatLng> _dayRoute;
   static const _secureStorage = FlutterSecureStorage();
+  static const _locationChannel = MethodChannel('asha_platform/location');
 
   LatLon get _fix => widget.pack.sampleFix;
 
@@ -308,12 +312,75 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
     );
   }
 
-  void _locateMeLive() {
-    setState(() => _showLiveLocation = true);
-    _mapController.move(
-      LatLng(_fix.latitude, _fix.longitude),
-      math.max(_mapController.camera.zoom, 14.5),
-    );
+  Future<void> _locateMeLive() async {
+    if (_isLocating) return;
+    setState(() => _isLocating = true);
+
+    try {
+      var permission = await Permission.locationWhenInUse.status;
+      if (permission.isDenied || permission.isRestricted) {
+        permission = await Permission.locationWhenInUse.request();
+      }
+      if (!permission.isGranted) {
+        _locationUnavailable(
+          permission.isPermanentlyDenied
+              ? 'Location permission is off. Enable it in phone settings to use live location.'
+              : 'Location permission is required to show your current location.',
+        );
+        return;
+      }
+
+      final raw = await _locationChannel.invokeMethod<Map<dynamic, dynamic>>(
+        'getCurrentLocation',
+      );
+      final latitude = (raw?['latitude'] as num?)?.toDouble();
+      final longitude = (raw?['longitude'] as num?)?.toDouble();
+      if (latitude == null ||
+          longitude == null ||
+          latitude < -90 ||
+          latitude > 90 ||
+          longitude < -180 ||
+          longitude > 180) {
+        _locationUnavailable(
+          'GPS is not on or no current location is available. Turn on location and try again.',
+        );
+        return;
+      }
+
+      final location = LatLng(latitude, longitude);
+      if (!mounted) return;
+      setState(() {
+        _liveLocation = location;
+        _showLiveLocation = true;
+        _isLocating = false;
+      });
+      _mapController.move(location, math.max(_mapController.camera.zoom, 14.5));
+    } on PlatformException catch (error) {
+      _locationUnavailable(
+        error.code == 'PERMISSION_DENIED'
+            ? 'Location permission is required to show your current location.'
+            : 'GPS is not on or no current location is available. Turn on location and try again.',
+      );
+    } on MissingPluginException {
+      _locationUnavailable(
+        'Live location is not available on this device build. Please use a current Android build.',
+      );
+    } catch (_) {
+      _locationUnavailable(
+        'GPS is not on or no current location is available. Try again in an open area.',
+      );
+    }
+  }
+
+  void _locationUnavailable(String message) {
+    if (!mounted) return;
+    setState(() {
+      _isLocating = false;
+      _showLiveLocation = false;
+      _liveLocation = null;
+    });
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -401,7 +468,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                 if (_layer != _MapLayer.radar &&
                     widget.stateOutlines.isNotEmpty)
                   PolygonLayer(polygons: _statePolygons()),
-                if ((_showLiveLocation || _routeMode) && _dayRoute.length > 1)
+                if (_routeMode && _dayRoute.length > 1)
                   PolylineLayer(
                     polylines: [
                       Polyline(
@@ -497,7 +564,9 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                       : 'Locate ourselves live',
                   icon: _showLiveLocation
                       ? Icons.my_location_rounded
-                      : Icons.location_searching_rounded,
+                      : (_isLocating
+                            ? Icons.gps_fixed_rounded
+                            : Icons.location_searching_rounded),
                   color: _showLiveLocation
                       ? const Color(0xFF2563EB)
                       : const Color(0xFF475569),
@@ -713,11 +782,11 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
 
   List<Marker> _markers() {
     final markers = <Marker>[];
-    if (_showLiveLocation) {
+    if (_showLiveLocation && _liveLocation != null) {
       markers.add(
         Marker(
           key: const Key('asha_live_location'),
-          point: LatLng(_fix.latitude, _fix.longitude),
+          point: _liveLocation!,
           width: 76,
           height: 58,
           alignment: Alignment.center,
@@ -916,7 +985,8 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   }
 
   List<CircleMarker> _liveLocationCircles() {
-    final point = LatLng(_fix.latitude, _fix.longitude);
+    final point = _liveLocation;
+    if (point == null) return const [];
     return [
       CircleMarker(
         point: point,

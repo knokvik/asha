@@ -49,6 +49,7 @@ class EventLogEntry(BaseModel):
     changed_by: str
     device_id: str
     device_timestamp: int
+    chain_hash: str | None = None
 
 
 class SyncRecord(BaseModel):
