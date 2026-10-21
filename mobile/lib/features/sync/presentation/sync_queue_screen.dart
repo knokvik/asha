@@ -5,6 +5,7 @@ import 'package:archive/archive.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/sync/sync_coordinator.dart';
@@ -58,6 +59,15 @@ class SyncQueueScreen extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
             _SyncSummaryCard(snapshot: snapshot),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.people_alt_outlined),
+                title: const Text('Peer area sync'),
+                subtitle: const Text('Exchange aggregate disease signals with another ASHA when you meet offline.'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/peer-sync'),
+              ),
+            ),
             if (snapshot.state == SyncConnectionState.syncing)
               const Padding(
                 padding: EdgeInsets.only(top: 10),

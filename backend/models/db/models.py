@@ -283,6 +283,25 @@ class AreaNotification(Base):
     dedupe_key: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
 
 
+class AsrFeedback(Base):
+    """Field feedback used to improve regional-language recognition safely."""
+
+    __tablename__ = "asr_feedback"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    worker_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    block_code: Mapped[str | None] = mapped_column(String(32))
+    raw_transcript: Mapped[str | None] = mapped_column(Text)
+    raw_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    canonical_value: Mapped[str] = mapped_column(Text, nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    accepted: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    language: Mapped[str] = mapped_column(String(16), nullable=False)
+    field_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    created_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    raw_retention_opt_in: Mapped[bool] = mapped_column(Boolean, nullable=False)
+
+
 class ReferralRecord(Base):
     __tablename__ = "referral_records"
 

@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
@@ -25,6 +28,8 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   final _searchController = TextEditingController();
+  int _sharedSignalCount = 0;
+  String _sharedSignalSource = 'No shared area signals yet';
 
   String get _lang => ref.watch(languageProvider).languageCode;
 
@@ -32,6 +37,37 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSharedSignals();
+  }
+
+  Future<void> _loadSharedSignals() async {
+    try {
+      const storage = FlutterSecureStorage();
+      final raw = await storage.read(key: 'triage_hotspot_context_json');
+      final history = await storage.read(key: 'peer_sync_history_json');
+      if (!mounted) return;
+      final context = raw == null ? null : jsonDecode(raw);
+      final hotspots = context is Map && context['hotspots'] is List
+          ? (context['hotspots'] as List).where((item) => item is Map && item['active'] == true).length
+          : 0;
+      final historyItems = history == null ? const <dynamic>[] : jsonDecode(history);
+      final latestSource = historyItems is List && historyItems.isNotEmpty
+          ? 'Peer signal from ${historyItems.first['source_worker_id'] ?? 'nearby ASHA'}'
+          : hotspots > 0
+              ? 'Latest server-synced area context'
+              : 'No shared area signals yet';
+      setState(() {
+        _sharedSignalCount = hotspots;
+        _sharedSignalSource = latestSource;
+      });
+    } catch (_) {
+      // The dashboard remains usable if secure storage has no context yet.
+    }
   }
 
   @override
@@ -85,6 +121,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           // 2. Compact field map preview replaces the profile block.
           _buildMapPreview(context),
           const SizedBox(height: 16),
+          _buildSharedSignalCard(context),
+          const SizedBox(height: 16),
 
           // 3. 4 Metric Blocks: 12 Today | 3 Overdue | 8 Completed | 2 Follow-ups
           _buildMetricStrip(context),
@@ -107,6 +145,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           _buildRevenueReportsActions(context),
           const SizedBox(height: 24),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSharedSignalCard(BuildContext context) {
+    return Card(
+      color: const Color(0xFFF1F8F4),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: ListTile(
+        leading: const CircleAvatar(
+          backgroundColor: Color(0xFFD7EFE0),
+          child: Icon(Icons.radar_rounded, color: Color(0xFF1E4231)),
+        ),
+        title: Text(
+          _sharedSignalCount == 0
+              ? 'Shared area signals'
+              : '$_sharedSignalCount active area signal${_sharedSignalCount == 1 ? '' : 's'}',
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+        subtitle: Text('$_sharedSignalSource. Questions and disease radar update offline.'),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: () async {
+          await context.push('/peer-sync');
+          _loadSharedSignals();
+        },
       ),
     );
   }

@@ -10,6 +10,7 @@ import 'package:workmanager/workmanager.dart';
 import '../database/app_database.dart';
 import '../security/key_manager.dart';
 import '../security/session_service.dart';
+import '../voice/asr_feedback_store.dart';
 import 'sync_engine.dart';
 import 'certificate_pinning.dart';
 
@@ -304,6 +305,7 @@ class SyncWorker {
     };
 
     try {
+      await _pushAsrFeedback(accessToken);
       final response = await http
           .get(uri, headers: headers)
           .timeout(const Duration(seconds: 15));
@@ -347,6 +349,28 @@ class SyncWorker {
       await _storage.write(
         key: 'area_notifications_json',
         value: jsonEncode(notifications),
+      );
+    }
+  }
+
+  Future<void> _pushAsrFeedback(String accessToken) async {
+    final records = await AsrFeedbackStore.pending();
+    if (records.isEmpty) return;
+    final response = await http
+        .post(
+          Uri.parse('$apiBaseUrl/api/v1/sync/asr-feedback'),
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({'records': records}),
+        )
+        .timeout(const Duration(seconds: 15));
+    if (response.statusCode != 200) return;
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map && decoded['accepted_ids'] is List) {
+      await AsrFeedbackStore.removeIds(
+        (decoded['accepted_ids'] as List).map((item) => item.toString()),
       );
     }
   }

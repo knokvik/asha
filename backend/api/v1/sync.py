@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.multi_tenant import TenantContext, set_tenant_context
 from core.security import decode_token
 from db.session import get_db
-from models.db.models import AreaNotification, AuditLog, TriageTicket
+from models.db.models import AreaNotification, AsrFeedback, AuditLog, TriageTicket
 from models.schemas.schemas import SyncPullResponse, SyncPushRequest, SyncPushResponse
 from services.sync_service import SyncService
 
@@ -161,6 +161,43 @@ async def sync_activity(
             for row in rows
         ]
     }
+
+
+@router.post("/asr-feedback")
+async def sync_asr_feedback(
+    request: Request,
+    tenant: TenantContext = Depends(_get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Persist low-confidence ASR corrections without accepting raw audio."""
+    body = await request.json()
+    records = body.get("records", []) if isinstance(body, dict) else []
+    accepted_ids: list[str] = []
+    for raw in records[:100]:
+        if not isinstance(raw, dict) or not raw.get("id"):
+            continue
+        if await db.get(AsrFeedback, str(raw["id"])) is not None:
+            accepted_ids.append(str(raw["id"]))
+            continue
+        db.add(
+            AsrFeedback(
+                id=str(raw["id"]),
+                worker_id=tenant.worker_id,
+                block_code=tenant.block_code,
+                raw_transcript=raw.get("raw_transcript"),
+                raw_hash=str(raw.get("raw_hash", "")),
+                canonical_value=str(raw.get("canonical_value", "")),
+                confidence=float(raw.get("confidence", 0)),
+                accepted=bool(raw.get("accepted", False)),
+                language=str(raw.get("language", "en")),
+                field_type=str(raw.get("field_type", "freeText")),
+                created_at=int(raw.get("created_at", int(time.time() * 1000))),
+                raw_retention_opt_in=bool(raw.get("raw_retention_opt_in", False)),
+            )
+        )
+        accepted_ids.append(str(raw["id"]))
+    await db.flush()
+    return {"accepted_ids": accepted_ids}
 
 
 @router.get("/hotspots")

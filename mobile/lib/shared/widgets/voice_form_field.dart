@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/voice/confidence_confirmation_dialog.dart';
+import '../../core/voice/asr_feedback_store.dart';
 import '../../core/voice/lexicon_service.dart';
 import '../../core/voice/too_noisy_dialog.dart';
 import '../../core/voice/vosk_service.dart';
@@ -150,9 +151,25 @@ class _VoiceFormFieldState extends State<VoiceFormField> {
       );
 
       if (confirmed != true) {
+        await AsrFeedbackStore.record(
+          rawTranscript: rawTranscript,
+          canonicalValue: canonicalValue,
+          confidence: confidence,
+          accepted: false,
+          language: widget.language,
+          fieldType: widget.fieldType.name,
+        );
         // Rejected by user
         return;
       }
+      await AsrFeedbackStore.record(
+        rawTranscript: rawTranscript,
+        canonicalValue: canonicalValue,
+        confidence: confidence,
+        accepted: true,
+        language: widget.language,
+        fieldType: widget.fieldType.name,
+      );
     }
 
     // 4. Update Controller and notify

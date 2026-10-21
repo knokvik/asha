@@ -227,6 +227,34 @@ class TestSyncPush:
         assert "Should not be returned" not in json.dumps(data)
 
 
+    async def test_asr_feedback_is_persisted_without_raw_transcript_by_default(
+        self, async_client, db_session
+    ):
+        feedback_id = str(uuid.uuid4())
+        response = await async_client.post(
+            "/api/v1/sync/asr-feedback",
+            headers=_auth_header(),
+            json={
+                "records": [
+                    {
+                        "id": feedback_id,
+                        "raw_transcript": None,
+                        "raw_hash": "a" * 64,
+                        "canonical_value": "fever",
+                        "confidence": 0.42,
+                        "accepted": False,
+                        "language": "hi",
+                        "field_type": "freeText",
+                        "created_at": int(time.time() * 1000),
+                        "raw_retention_opt_in": False,
+                    }
+                ]
+            },
+        )
+        assert response.status_code == 200
+        assert response.json()["accepted_ids"] == [feedback_id]
+
+
 @pytest.mark.asyncio
 class TestSyncPull:
     async def test_pull_without_watermarks_returns_records(self, async_client, db_session):

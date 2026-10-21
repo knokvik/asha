@@ -54,6 +54,8 @@ dependencies:
 
   # BLE
   flutter_reactive_ble: ^5.3.0
+  # Android Nearby Connections for towerless ASHA-to-ASHA exchange.
+  nearby_connections: ^4.3.0
 
   # Notifications
   flutter_local_notifications: ^22.3.2

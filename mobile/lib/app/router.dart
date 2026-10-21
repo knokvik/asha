@@ -10,6 +10,7 @@ import '../features/settings/presentation/settings_screen.dart';
 // Registry & Households
 import '../features/household/presentation/beneficiary_timeline_screen.dart';
 import '../features/household/presentation/consent_screen.dart';
+import '../features/sync/presentation/peer_sync_screen.dart';
 import '../features/household/presentation/household_form_screen.dart';
 import '../features/household/presentation/household_list_screen.dart';
 import '../features/household/presentation/household_detail_screen.dart';
@@ -222,6 +223,13 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
         child: BeneficiaryTimelineScreen(
           memberId: state.pathParameters['id'] ?? '',
         ),
+      ),
+    ),
+    GoRoute(
+      path: '/peer-sync',
+      pageBuilder: (context, state) => _buildSlidePage(
+        state: state,
+        child: const PeerSyncScreen(),
       ),
     ),
     GoRoute(

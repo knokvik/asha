@@ -133,6 +133,7 @@ Language choices from the design document:
     - Test: two concurrent offline edits to same field → push both → verify both values retained in `conflict_review` with provenance
     - Test: push same batch twice (retry simulation) → verify DB state identical after second push
     - _Requirements: 31.2, 32.2, 32.3_
+    - Progress: added privacy-preserving peer area-context exchange for towerless worker-to-worker sync; imported signals reuse the offline triage/map context cache with packet integrity validation. Android Nearby Connections now provides advertise/discover/connect/send/receive, with QR/paste fallback and a dashboard signal summary.
 
   - [x]* 2.11 Write property test for sync idempotence (Property 6) and priority ordering (Property 7)
     - **Property 6: Sync Idempotence**
@@ -158,6 +159,7 @@ Language choices from the design document:
     - Implement grammar constraints for closed-vocabulary fields (yes/no, enumerations, numeric input) via Vosk FST grammar
     - Implement ambient noise detection via microphone RMS; surface `TooNoisyDialog` offering tap entry
     - _Requirements: 6.1, 6.2, 6.5, 6.7_
+    - Progress: low-confidence confirmations/rejections now produce opt-in raw-transcript or hash-only ASR feedback packets for later model evaluation.
 
   - [x] 4.3 Implement Lexicon service and confidence-threshold confirmation
     - Create `lib/core/voice/lexicon_service.dart`: load Lexicon JSON from assets, expose `lookup(spokenTerm, language) → canonicalConcept`
