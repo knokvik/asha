@@ -142,30 +142,39 @@ class GeoPack {
 }
 
 List<FacilityPoi> _indiaFacilities(String raw) {
-  final json = jsonDecode(raw) as Map<String, Object?>;
-  final rows = json['facilities'] as List<Object?>? ?? const [];
+  final Object? json = jsonDecode(raw);
+  final List<dynamic> rows;
+  if (json is List) {
+    rows = json;
+  } else if (json is Map && json['facilities'] is List) {
+    rows = json['facilities'] as List<dynamic>;
+  } else {
+    rows = const [];
+  }
   return [
     for (final row in rows)
       if (row is Map)
         FacilityPoi(
-          id: row['id'] as String,
-          name: row['name'] as String,
-          category: switch (row['kind'] as String? ?? 'government') {
-            'subcentre' => 'sub_centre',
+          id: (row['id'] ?? 'fac-${row['lat']}-${row['lon']}').toString(),
+          name: (row['name'] ?? row['n'] ?? 'Health Centre').toString(),
+          category: switch (
+              (row['kind'] ?? row['t'] ?? 'government').toString().toLowerCase()) {
+            'subcentre' || 'sub_centre' => 'sub_centre',
             'blood_bank' => 'blood_bank',
             'phc' => 'phc',
             'chc' => 'chc',
-            'hospital' => 'hospital',
+            'hospital' || 'dh' || 'dis_h' => 'hospital',
             'anganwadi' => 'anganwadi',
             'janaushadhi' => 'janaushadhi',
             _ => 'government',
           },
-          latitude: (row['lat'] as num).toDouble(),
-          longitude: (row['lon'] as num).toDouble(),
-          phone: row['phone'] as String? ?? '',
+          latitude: ((row['lat'] ?? row['latitude']) as num).toDouble(),
+          longitude:
+              ((row['lon'] ?? row['lng'] ?? row['longitude']) as num).toDouble(),
+          phone: (row['phone'] ?? '').toString(),
           hours: 'National directory · hours not published',
           capabilities: const [],
-          wardId: 'INDIA',
+          wardId: (row['district'] ?? row['d'] ?? 'INDIA').toString(),
         ),
   ];
 }

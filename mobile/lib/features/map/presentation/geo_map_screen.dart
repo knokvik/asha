@@ -243,7 +243,12 @@ class GeoMapScreen extends StatefulWidget {
 }
 
 class _GeoMapScreenState extends State<GeoMapScreen> {
-  double get _mapSheetReserved => _layer == _MapLayer.facilities ? 76.0 : 180.0;
+  double get _mapSheetReserved {
+    if (_layer == _MapLayer.facilities) return 74.0;
+    if (_layer == _MapLayer.households) return 112.0;
+    return 180.0;
+  }
+
   final _mapController = MapController();
   FacilityPoi? _selected;
   HouseholdPin? _selectedHousehold;
@@ -375,8 +380,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
               children: [
                 if (_satelliteView)
                   TileLayer(
-                    urlTemplate:
-                        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                    urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
                     userAgentPackageName: 'org.mohfw.asha_platform',
                     minZoom: 3,
                     maxZoom: 19,
@@ -450,7 +454,9 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                 else if (_satelliteView)
                   const RichAttributionWidget(
                     attributions: [
-                      TextSourceAttribution('Esri, Maxar, Earthstar Geographics'),
+                      TextSourceAttribution(
+                        'Esri, Maxar, Earthstar Geographics',
+                      ),
                     ],
                   ),
               ],
@@ -519,7 +525,9 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
             ),
           ),
 
-          if (_pointingTarget != null)
+          if (_pointingTarget != null &&
+              selected == null &&
+              _selectedHousehold == null)
             Positioned(
               left: 12,
               right: 12,
@@ -638,8 +646,9 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                     iconSize: 20,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    onPressed:
-                        _week <= 1 ? null : () => setState(() => _week--),
+                    onPressed: _week <= 1
+                        ? null
+                        : () => setState(() => _week--),
                     icon: Icon(
                       Icons.chevron_left_rounded,
                       color: _satelliteView ? Colors.white70 : Colors.black87,
@@ -662,8 +671,9 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                     iconSize: 20,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    onPressed:
-                        _week >= 12 ? null : () => setState(() => _week++),
+                    onPressed: _week >= 12
+                        ? null
+                        : () => setState(() => _week++),
                     icon: Icon(
                       Icons.chevron_right_rounded,
                       color: _satelliteView ? Colors.white70 : Colors.black87,
@@ -750,41 +760,73 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                 _facilityCategory == 'all' || poi.category == _facilityCategory,
           )
           .toList();
-      if (facilities.length > 40 && _zoomLevel < 7) {
-        return [...markers, ..._facilityClusterMarkers(facilities)];
+
+      if (facilities.length > 50 && _zoomLevel < 7) {
+        return [
+          ...markers,
+          ..._stateHubMarkers(),
+          ..._topHospitalMarkers(facilities),
+        ];
       }
-      for (final poi in facilities) {
+
+      final List<FacilityPoi> visiblePool;
+      if (facilities.length > 60) {
+        final bounds = _mapController.camera.visibleBounds;
+        final south = bounds.south - 0.2;
+        final north = bounds.north + 0.2;
+        final west = bounds.west - 0.2;
+        final east = bounds.east + 0.2;
+
+        visiblePool = facilities.where((poi) {
+          return poi.latitude >= south &&
+              poi.latitude <= north &&
+              poi.longitude >= west &&
+              poi.longitude <= east;
+        }).toList();
+
+        if (_selected != null &&
+            !visiblePool.any((p) => p.id == _selected!.id)) {
+          visiblePool.add(_selected!);
+        }
+
+        visiblePool.sort((a, b) {
+          int rank(String cat) => switch (cat) {
+            'hospital' => 3,
+            'blood_bank' => 2,
+            'chc' => 1,
+            _ => 0,
+          };
+          return rank(a.category).compareTo(rank(b.category));
+        });
+      } else {
+        visiblePool = facilities;
+      }
+
+      for (final poi in visiblePool) {
         final chosen = _selected?.id == poi.id;
-        final showLabel = _zoomLevel >= 8 || chosen || facilities.length <= 40;
+        final showLabel =
+            _zoomLevel >= 12 || chosen || visiblePool.length <= 40;
         markers.add(
           Marker(
             key: Key('poi-${poi.id}'),
             point: LatLng(poi.latitude, poi.longitude),
-            width: 132,
-            height: 46,
+            width: chosen ? 136 : 116,
+            height: chosen ? 68 : 52,
             alignment: Alignment.topCenter,
-            child: GestureDetector(
+            child: _ModernPinMarker(
+              poi: poi,
+              category: poi.category,
+              chosen: chosen,
+              showLabel: showLabel,
               onTap: () {
                 _ateMarkerTap = true;
                 setState(() {
                   _selected = poi;
                   _selectedHousehold = null;
                   _selectedWard = null;
+                  _pointingTarget = null;
                 });
               },
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (showLabel) _NameChip(poi.name),
-                  Icon(
-                    _facilityIcon(poi.category),
-                    color: chosen
-                        ? const Color(0xFFE11D48)
-                        : _facilityColor(poi.category),
-                    size: 26,
-                  ),
-                ],
-              ),
             ),
           ),
         );
@@ -947,37 +989,49 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
     ];
   }
 
-  List<Marker> _facilityClusterMarkers(List<FacilityPoi> facilities) {
-    final clusters = <String, List<FacilityPoi>>{};
-    for (final facility in facilities) {
-      final key =
-          '${(facility.latitude * 2).floor()}:${(facility.longitude * 2).floor()}';
-      clusters.putIfAbsent(key, () => []).add(facility);
-    }
+  List<Marker> _stateHubMarkers() {
     return [
-      for (final group in clusters.values)
+      for (final hub in _stateHubs)
         Marker(
-          key: Key('facility-cluster-${group.first.id}'),
-          point: LatLng(
-            group.map((item) => item.latitude).reduce((a, b) => a + b) /
-                group.length,
-            group.map((item) => item.longitude).reduce((a, b) => a + b) /
-                group.length,
+          key: Key('hub-${hub.name}'),
+          point: LatLng(hub.lat, hub.lng),
+          width: 130,
+          height: 32,
+          alignment: Alignment.center,
+          child: _StateHubMarker(
+            hub: hub,
+            onTap: () => _mapController.move(LatLng(hub.lat, hub.lng), 8.5),
           ),
-          width: 50,
-          height: 50,
-          child: _ClusterMarker(
-            count: group.length,
-            color: const Color(0xFF1E4231),
-            onTap: () => _mapController.move(
-              LatLng(
-                group.map((item) => item.latitude).reduce((a, b) => a + b) /
-                    group.length,
-                group.map((item) => item.longitude).reduce((a, b) => a + b) /
-                    group.length,
-              ),
-              math.min(_zoomLevel + 2, 12),
-            ),
+        ),
+    ];
+  }
+
+  List<Marker> _topHospitalMarkers(List<FacilityPoi> facilities) {
+    final dhs = facilities
+        .where((f) => f.category == 'hospital' || f.category == 'blood_bank')
+        .take(30);
+    return [
+      for (final poi in dhs)
+        Marker(
+          key: Key('poi-${poi.id}'),
+          point: LatLng(poi.latitude, poi.longitude),
+          width: 100,
+          height: 44,
+          alignment: Alignment.topCenter,
+          child: _ModernPinMarker(
+            poi: poi,
+            category: poi.category,
+            chosen: _selected?.id == poi.id,
+            showLabel: false,
+            onTap: () {
+              _ateMarkerTap = true;
+              setState(() {
+                _selected = poi;
+                _selectedHousehold = null;
+                _selectedWard = null;
+                _pointingTarget = null;
+              });
+            },
           ),
         ),
     ];
@@ -1088,83 +1142,225 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
 
   Widget _selectionCard(FacilityPoi? selected, List<LatLon>? selectedWalk) {
     if (selected != null) {
+      final metres = pathMetres(selectedWalk ?? [selected.point]).round();
+      final hasPhone = selected.phone.isNotEmpty;
+      final categoryColor = _facilityColor(selected.category);
+
       return Material(
-        color: Colors.white,
-        elevation: 4,
+        color: _satelliteView
+            ? const Color(0xFF1E293B).withValues(alpha: 0.96)
+            : Colors.white,
+        elevation: 6,
+        shadowColor: Colors.black38,
         borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Header: Icon badge + Name + Category/Distance + Close button
               Row(
                 children: [
-                  Icon(
-                    _facilityIcon(selected.category),
-                    color: const Color(0xFF1E4231),
+                  Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: categoryColor.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Icon(
+                        _facilityIcon(selected.category),
+                        color: categoryColor,
+                        size: 16,
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      selected.name,
-                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          selected.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: _satelliteView
+                                ? Colors.white
+                                : const Color(0xFF111827),
+                          ),
+                        ),
+                        Text(
+                          '${_categoryLabel(selected.category)}${selected.wardId.isNotEmpty && selected.wardId != "INDIA" ? " · ${selected.wardId}" : ""} · ${metres}m away',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: _satelliteView
+                                ? Colors.grey.shade400
+                                : const Color(0xFF6B7280),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   IconButton(
-                    onPressed: () => setState(() => _selected = null),
-                    icon: const Icon(Icons.close),
+                    visualDensity: VisualDensity.compact,
+                    iconSize: 18,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: () => setState(() {
+                      _selected = null;
+                      _pointingTarget = null;
+                    }),
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: _satelliteView
+                          ? Colors.grey.shade400
+                          : Colors.grey.shade600,
+                    ),
                   ),
                 ],
               ),
-              Text('${_categoryLabel(selected.category)} · ${selected.hours}'),
-              if (selected.capabilities.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    for (final item in selected.capabilities)
-                      Chip(
-                        label: Text(item, style: const TextStyle(fontSize: 11)),
-                      ),
-                  ],
-                ),
-              ],
               const SizedBox(height: 8),
+              // Action buttons: Call, Navigate, Point me in a sleek compact horizontal row
               Row(
                 children: [
+                  // Call button
                   Expanded(
-                    child: OutlinedButton.icon(
-                      key: Key('call-${selected.id}'),
-                      onPressed: selected.phone.isEmpty
-                          ? null
-                          : () => widget.openUri(
-                              Uri.parse('tel:${selected.phone}'),
-                            ),
-                      icon: const Icon(Icons.call_outlined),
-                      label: const Text('Call'),
+                    child: SizedBox(
+                      height: 34,
+                      child: OutlinedButton.icon(
+                        key: Key('call-${selected.id}'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          visualDensity: VisualDensity.compact,
+                          side: BorderSide(
+                            color: hasPhone
+                                ? const Color(0xFF16A34A)
+                                : Colors.grey.shade400,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: hasPhone
+                            ? () => widget.openUri(
+                                Uri.parse('tel:${selected.phone}'),
+                              )
+                            : null,
+                        icon: Icon(
+                          Icons.call_rounded,
+                          size: 14,
+                          color: hasPhone
+                              ? const Color(0xFF16A34A)
+                              : Colors.grey,
+                        ),
+                        label: Text(
+                          'Call',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: hasPhone
+                                ? (_satelliteView
+                                      ? Colors.white
+                                      : const Color(0xFF1E4231))
+                                : Colors.grey,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
+                  // Navigate button
                   Expanded(
-                    child: FilledButton.icon(
-                      key: Key('navigate-${selected.id}'),
-                      onPressed: () =>
-                          _navigate(selected.latitude, selected.longitude),
-                      icon: const Icon(Icons.navigation_outlined),
-                      label: Text(
-                        '${pathMetres(selectedWalk ?? [selected.point]).round()} m',
+                    child: SizedBox(
+                      height: 34,
+                      child: FilledButton.icon(
+                        key: Key('navigate-${selected.id}'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF2563EB),
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          visualDensity: VisualDensity.compact,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: () =>
+                            _navigate(selected.latitude, selected.longitude),
+                        icon: const Icon(Icons.navigation_rounded, size: 14),
+                        label: Text(
+                          '${metres}m',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  // Point me button
+                  Expanded(
+                    child: SizedBox(
+                      height: 34,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: _pointingTarget != null
+                              ? const Color(0xFFEA580C).withValues(alpha: 0.12)
+                              : null,
+                          side: BorderSide(
+                            color: _pointingTarget != null
+                                ? const Color(0xFFEA580C)
+                                : const Color(0xFF64748B),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          visualDensity: VisualDensity.compact,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: () => setState(() {
+                          if (_pointingTarget != null) {
+                            _pointingTarget = null;
+                          } else {
+                            _pointingTarget = selected.point;
+                          }
+                        }),
+                        icon: Icon(
+                          Icons.explore_rounded,
+                          size: 14,
+                          color: _pointingTarget != null
+                              ? const Color(0xFFEA580C)
+                              : const Color(0xFF64748B),
+                        ),
+                        label: Text(
+                          'Point me',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: _pointingTarget != null
+                                ? const Color(0xFFEA580C)
+                                : (_satelliteView
+                                      ? Colors.white
+                                      : const Color(0xFF334155)),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
-              OutlinedButton.icon(
-                onPressed: () =>
-                    setState(() => _pointingTarget = selected.point),
-                icon: const Icon(Icons.explore_outlined),
-                label: const Text('Point me · directional guidance'),
-              ),
+              // If Point Me is active, show the directional compass inline
+              if (_pointingTarget != null) ...[
+                const SizedBox(height: 8),
+                _inlineCompassGuidance(selected.point),
+              ],
             ],
           ),
         ),
@@ -1235,43 +1431,170 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   }
 
   Widget _householdCard(HouseholdPin household) {
+    final metres = haversineMetres(_fix, household.point).round();
     return Material(
-      color: Colors.white,
-      elevation: 4,
+      color: _satelliteView
+          ? const Color(0xFF1E293B).withValues(alpha: 0.96)
+          : Colors.white,
+      elevation: 6,
+      shadowColor: Colors.black38,
       borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: _householdColor(household).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.home_rounded,
+                      color: _householdColor(household),
+                      size: 16,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    household.name,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        household.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: _satelliteView
+                              ? Colors.white
+                              : const Color(0xFF111827),
+                        ),
+                      ),
+                      Text(
+                        '${household.ageYears}y · ${household.dues.isNotEmpty ? household.dues.join(" · ") : "Up to date"} · ${metres}m away',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: _satelliteView
+                              ? Colors.grey.shade400
+                              : const Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 IconButton(
-                  onPressed: () => setState(() => _selectedHousehold = null),
-                  icon: const Icon(Icons.close),
+                  visualDensity: VisualDensity.compact,
+                  iconSize: 18,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => setState(() {
+                    _selectedHousehold = null;
+                    _pointingTarget = null;
+                  }),
+                  icon: Icon(
+                    Icons.close_rounded,
+                    color: _satelliteView
+                        ? Colors.grey.shade400
+                        : Colors.grey.shade600,
+                  ),
                 ),
               ],
             ),
-            Text('${household.ageYears} years · ${household.dues.join(', ')}'),
             const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: () =>
-                  setState(() => _pointingTarget = household.point),
-              icon: const Icon(Icons.explore_outlined),
-              label: const Text('Point me · directional guidance'),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 34,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF2563EB),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        visualDensity: VisualDensity.compact,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: () =>
+                          _navigate(household.latitude, household.longitude),
+                      icon: const Icon(Icons.navigation_rounded, size: 14),
+                      label: Text(
+                        '${metres}m',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: SizedBox(
+                    height: 34,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: _pointingTarget != null
+                            ? const Color(0xFFEA580C).withValues(alpha: 0.12)
+                            : null,
+                        side: BorderSide(
+                          color: _pointingTarget != null
+                              ? const Color(0xFFEA580C)
+                              : const Color(0xFF64748B),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        visualDensity: VisualDensity.compact,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: () => setState(() {
+                        if (_pointingTarget != null) {
+                          _pointingTarget = null;
+                        } else {
+                          _pointingTarget = household.point;
+                        }
+                      }),
+                      icon: Icon(
+                        Icons.explore_rounded,
+                        size: 14,
+                        color: _pointingTarget != null
+                            ? const Color(0xFFEA580C)
+                            : const Color(0xFF64748B),
+                      ),
+                      label: Text(
+                        'Point me',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: _pointingTarget != null
+                              ? const Color(0xFFEA580C)
+                              : (_satelliteView
+                                    ? Colors.white
+                                    : const Color(0xFF334155)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            FilledButton.icon(
-              onPressed: () =>
-                  _navigate(household.latitude, household.longitude),
-              icon: const Icon(Icons.navigation_outlined),
-              label: const Text('Navigate'),
-            ),
+            if (_pointingTarget != null) ...[
+              const SizedBox(height: 8),
+              _inlineCompassGuidance(household.point),
+            ],
           ],
         ),
       ),
@@ -1291,38 +1614,99 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
     }
   }
 
+  Widget _inlineCompassGuidance(LatLon target) {
+    final bearing = bearingDegrees(_fix, target);
+    final metres = haversineMetres(_fix, target);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEA580C).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: const Color(0xFFEA580C).withValues(alpha: 0.35),
+        ),
+      ),
+      child: Row(
+        children: [
+          Transform.rotate(
+            angle: bearing * math.pi / 180,
+            child: const Icon(
+              Icons.navigation_rounded,
+              color: Color(0xFFEA580C),
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Heading ${bearingLabel(bearing)} (${bearing.round()}°) · ${metres.round()}m direct',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: _satelliteView ? Colors.white : const Color(0xFF9A3412),
+              ),
+            ),
+          ),
+          InkWell(
+            onTap: () => setState(() => _pointingTarget = null),
+            child: Icon(
+              Icons.close_rounded,
+              size: 16,
+              color: _satelliteView ? Colors.white70 : const Color(0xFF9A3412),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _directionCard(LatLon target) {
     final bearing = bearingDegrees(_fix, target);
     final metres = haversineMetres(_fix, target);
     return Material(
-      color: Colors.white,
-      elevation: 4,
-      borderRadius: BorderRadius.circular(16),
+      color: _satelliteView
+          ? const Color(0xFF1E293B).withValues(alpha: 0.96)
+          : Colors.white,
+      elevation: 6,
+      shadowColor: Colors.black38,
+      borderRadius: BorderRadius.circular(14),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           children: [
             Transform.rotate(
               angle: bearing * math.pi / 180,
               child: const Icon(
                 Icons.navigation_rounded,
-                color: Color(0xFF2563EB),
-                size: 34,
+                color: Color(0xFFEA580C),
+                size: 22,
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Point ${bearingLabel(bearing)} · ${metres.round()} m\nDirectional guidance — roads may differ.',
-                style: const TextStyle(
+                'Heading ${bearingLabel(bearing)} (${bearing.round()}°) · ${metres.round()}m direct',
+                style: TextStyle(
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  height: 1.35,
+                  color: _satelliteView
+                      ? Colors.white
+                      : const Color(0xFF111827),
                 ),
               ),
             ),
             IconButton(
+              visualDensity: VisualDensity.compact,
+              iconSize: 18,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
               onPressed: () => setState(() => _pointingTarget = null),
-              icon: const Icon(Icons.close),
+              icon: Icon(
+                Icons.close_rounded,
+                color: _satelliteView
+                    ? Colors.grey.shade400
+                    : Colors.grey.shade600,
+              ),
             ),
           ],
         ),
@@ -1330,28 +1714,28 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
     );
   }
 
-  IconData _facilityIcon(String category) => switch (category) {
+  IconData _facilityIcon(String category) => switch (category.toLowerCase()) {
     'phc' => Icons.local_hospital_rounded,
     'chc' => Icons.apartment_rounded,
     'blood_bank' => Icons.bloodtype_rounded,
-    'hospital' => Icons.local_hospital_outlined,
-    'sub_centre' => Icons.health_and_safety_outlined,
-    'lab' => Icons.science_outlined,
-    'janaushadhi' || 'dispensary' => Icons.medication_outlined,
-    'anganwadi' => Icons.groups_outlined,
+    'hospital' || 'dh' => Icons.domain_rounded,
+    'sub_centre' || 'subcentre' => Icons.health_and_safety_rounded,
+    'lab' => Icons.science_rounded,
+    'janaushadhi' || 'dispensary' => Icons.medication_rounded,
+    'anganwadi' => Icons.child_care_rounded,
     'police' => Icons.local_police_outlined,
     'ration_shop' => Icons.shopping_basket_outlined,
-    _ => Icons.account_balance_outlined,
+    _ => Icons.local_hospital_rounded,
   };
 
-  Color _facilityColor(String category) => switch (category) {
-    'phc' => const Color(0xFF16A34A),
+  Color _facilityColor(String category) => switch (category.toLowerCase()) {
+    'phc' => const Color(0xFF10B981),
     'chc' => const Color(0xFF2563EB),
     'blood_bank' => const Color(0xFFDC2626),
-    'hospital' => const Color(0xFF7C3AED),
-    'lab' => const Color(0xFF0D9488),
+    'hospital' || 'dh' => const Color(0xFFF59E0B),
+    'lab' => const Color(0xFF0284C7),
     'anganwadi' => const Color(0xFFEA580C),
-    'sub_centre' => const Color(0xFF059669),
+    'sub_centre' || 'subcentre' => const Color(0xFF0D9488),
     _ => const Color(0xFF1E4231),
   };
 
@@ -1396,7 +1780,6 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
 enum _MapLayer { facilities, radar, households }
 
 enum _HouseholdScope { due }
-
 
 class _OutbreakMarker extends StatelessWidget {
   const _OutbreakMarker({required this.color});
@@ -1636,9 +2019,8 @@ class _LocationStatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusText = isLive ? 'Live GPS' : 'Catchment · $wardId';
     final layerText = switch (layer) {
-      _MapLayer.facilities => activeCategory == 'all'
-          ? 'Facilities'
-          : activeCategory.toUpperCase(),
+      _MapLayer.facilities =>
+        activeCategory == 'all' ? 'Facilities' : activeCategory.toUpperCase(),
       _MapLayer.radar => 'Disease radar',
       _MapLayer.households => 'Households',
     };
@@ -1777,7 +2159,8 @@ class _BottomMapFilterBar extends StatelessWidget {
               label: 'Blood Bank',
               icon: Icons.bloodtype_rounded,
               activeColor: const Color(0xFFDC2626),
-              selected: layer == _MapLayer.facilities && category == 'blood_bank',
+              selected:
+                  layer == _MapLayer.facilities && category == 'blood_bank',
               onTap: () => onSelectFilter(_MapLayer.facilities, 'blood_bank'),
             ),
             const SizedBox(width: 4),
@@ -1856,3 +2239,315 @@ class _FilterPill extends StatelessWidget {
     );
   }
 }
+
+class _ModernPinMarker extends StatelessWidget {
+  const _ModernPinMarker({
+    required this.poi,
+    required this.category,
+    required this.chosen,
+    required this.showLabel,
+    required this.onTap,
+  });
+
+  final FacilityPoi poi;
+  final String category;
+  final bool chosen;
+  final bool showLabel;
+  final VoidCallback onTap;
+
+  Color _pinColor(String cat, bool isChosen) {
+    if (isChosen) return const Color(0xFFE11D48); // Rose highlight when chosen
+    return switch (cat.toLowerCase()) {
+      'phc' => const Color(0xFF10B981), // Emerald Green
+      'chc' => const Color(0xFF2563EB), // Royal Blue
+      'hospital' || 'dh' => const Color(0xFFF59E0B), // Golden Amber
+      'blood_bank' => const Color(0xFFDC2626), // Crimson Red
+      'sub_centre' || 'subcentre' => const Color(0xFF0D9488),
+      'anganwadi' => const Color(0xFFEA580C),
+      'lab' => const Color(0xFF0284C7),
+      _ => const Color(0xFF1E4231),
+    };
+  }
+
+  Color _pinBorderColor(String cat, bool isChosen) {
+    if (isChosen) return const Color(0xFF9F1239);
+    return switch (cat.toLowerCase()) {
+      'phc' => const Color(0xFF064E3B),
+      'chc' => const Color(0xFF1E3A8A),
+      'hospital' || 'dh' => const Color(0xFF92400E),
+      'blood_bank' => const Color(0xFF7F1D1D),
+      'sub_centre' || 'subcentre' => const Color(0xFF134E4A),
+      'anganwadi' => const Color(0xFF7C2D12),
+      'lab' => const Color(0xFF075985),
+      _ => const Color(0xFF0F291E),
+    };
+  }
+
+  IconData _pinIcon(String cat) {
+    return switch (cat.toLowerCase()) {
+      'phc' => Icons.local_hospital_rounded,
+      'chc' => Icons.apartment_rounded,
+      'hospital' || 'dh' => Icons.domain_rounded,
+      'blood_bank' => Icons.bloodtype_rounded,
+      'sub_centre' || 'subcentre' => Icons.health_and_safety_rounded,
+      'anganwadi' => Icons.child_care_rounded,
+      'lab' => Icons.science_rounded,
+      _ => Icons.local_hospital_rounded,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _pinColor(category, chosen);
+    final borderColor = _pinBorderColor(category, chosen);
+    final icon = _pinIcon(category);
+
+    final pinWidth = chosen ? 28.0 : 22.0;
+    final pinHeight = chosen ? 35.0 : 28.0;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (showLabel) ...[_NameChip(poi.name), const SizedBox(height: 2)],
+          Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              if (chosen)
+                Positioned(
+                  top: -3,
+                  child: Container(
+                    width: pinWidth + 12,
+                    height: pinWidth + 12,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: color.withValues(alpha: 0.3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withValues(alpha: 0.6),
+                          blurRadius: 8,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              CustomPaint(
+                size: Size(pinWidth, pinHeight),
+                painter: _PinPainter(
+                  fillColor: color,
+                  borderColor: borderColor,
+                  strokeWidth: chosen ? 2.0 : 1.4,
+                ),
+                child: SizedBox(
+                  width: pinWidth,
+                  height: pinHeight,
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: chosen ? 9 : 7),
+                    child: Center(
+                      child: Container(
+                        width: chosen ? 15 : 12,
+                        height: chosen ? 15 : 12,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Icon(
+                            icon,
+                            size: chosen ? 10 : 8,
+                            color: color,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PinPainter extends CustomPainter {
+  const _PinPainter({
+    required this.fillColor,
+    required this.borderColor,
+    this.strokeWidth = 1.4,
+  });
+
+  final Color fillColor;
+  final Color borderColor;
+  final double strokeWidth;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final radius = w / 2;
+
+    final path = Path()
+      ..moveTo(radius, h)
+      ..cubicTo(radius * 0.45, h * 0.65, 0, radius * 1.25, 0, radius)
+      ..arcToPoint(
+        Offset(w, radius),
+        radius: Radius.circular(radius),
+        clockwise: true,
+      )
+      ..cubicTo(w, radius * 1.25, radius + radius * 0.55, h * 0.65, radius, h)
+      ..close();
+
+    canvas.drawShadow(path, Colors.black45, 3.0, false);
+
+    final fillPaint = Paint()
+      ..color = fillColor
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(path, fillPaint);
+
+    final borderPaint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth;
+    canvas.drawPath(path, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _PinPainter oldDelegate) =>
+      oldDelegate.fillColor != fillColor ||
+      oldDelegate.borderColor != borderColor ||
+      oldDelegate.strokeWidth != strokeWidth;
+}
+
+class _StateHubMarker extends StatelessWidget {
+  const _StateHubMarker({required this.hub, required this.onTap});
+
+  final _StateHub hub;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final countLabel = hub.count >= 1000
+        ? '${(hub.count / 1000).toStringAsFixed(1)}k'
+        : '${hub.count}';
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: const Color(0xFF10B981).withValues(alpha: 0.7),
+            width: 1.2,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 6,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 7,
+              height: 7,
+              decoration: const BoxDecoration(
+                color: Color(0xFF10B981),
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                hub.name,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1F2937),
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD1FAE5),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                countLabel,
+                style: const TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF065F46),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StateHub {
+  const _StateHub({
+    required this.name,
+    required this.lat,
+    required this.lng,
+    required this.count,
+  });
+
+  final String name;
+  final double lat;
+  final double lng;
+  final int count;
+}
+
+const _stateHubs = <_StateHub>[
+  _StateHub(name: 'Uttar Pradesh', lat: 26.8467, lng: 80.9462, count: 3866),
+  _StateHub(name: 'Maharashtra', lat: 19.2408, lng: 76.6078, count: 3074),
+  _StateHub(name: 'Rajasthan', lat: 26.9124, lng: 75.7873, count: 3012),
+  _StateHub(name: 'Karnataka', lat: 15.0106, lng: 76.3443, count: 2713),
+  _StateHub(name: 'Tamil Nadu', lat: 10.8158, lng: 78.2891, count: 2269),
+  _StateHub(name: 'Gujarat', lat: 22.4046, lng: 71.4801, count: 1938),
+  _StateHub(name: 'Bihar', lat: 25.0961, lng: 85.3131, count: 1900),
+  _StateHub(name: 'Odisha', lat: 20.1743, lng: 84.4321, count: 1717),
+  _StateHub(name: 'Madhya Pradesh', lat: 23.4733, lng: 77.9479, count: 1657),
+  _StateHub(name: 'Andhra Pradesh', lat: 15.8897, lng: 80.7370, count: 1616),
+  _StateHub(name: 'West Bengal', lat: 24.3489, lng: 87.8532, count: 1267),
+  _StateHub(name: 'Kerala', lat: 10.5237, lng: 76.0518, count: 1198),
+  _StateHub(name: 'Chhattisgarh', lat: 21.2787, lng: 81.8661, count: 982),
+  _StateHub(name: 'Telangana', lat: 17.8468, lng: 79.3731, count: 918),
+  _StateHub(name: 'Assam', lat: 26.1435, lng: 92.8162, count: 881),
+  _StateHub(name: 'Jammu & Kashmir', lat: 33.7782, lng: 76.5762, count: 804),
+  _StateHub(name: 'Punjab', lat: 31.0264, lng: 75.4296, count: 692),
+  _StateHub(name: 'Haryana', lat: 29.0588, lng: 76.0856, count: 645),
+  _StateHub(name: 'Delhi', lat: 28.6139, lng: 77.2090, count: 593),
+  _StateHub(name: 'Himachal Pradesh', lat: 31.7808, lng: 77.1431, count: 571),
+  _StateHub(name: 'Jharkhand', lat: 23.6716, lng: 85.6692, count: 557),
+  _StateHub(name: 'Uttarakhand', lat: 30.0668, lng: 79.0193, count: 307),
+  _StateHub(name: 'Meghalaya', lat: 25.5496, lng: 91.2307, count: 177),
+  _StateHub(name: 'Arunachal Pradesh', lat: 28.2180, lng: 94.7278, count: 172),
+  _StateHub(name: 'Nagaland', lat: 25.8881, lng: 94.2660, count: 156),
+  _StateHub(name: 'Tripura', lat: 23.6053, lng: 91.7957, count: 124),
+  _StateHub(name: 'Manipur', lat: 24.8054, lng: 93.7839, count: 113),
+  _StateHub(name: 'Mizoram', lat: 23.3712, lng: 92.8399, count: 80),
+  _StateHub(name: 'Puducherry', lat: 11.9416, lng: 79.8083, count: 48),
+  _StateHub(name: 'Chandigarh', lat: 30.7362, lng: 76.7788, count: 45),
+  _StateHub(name: 'Goa', lat: 15.3527, lng: 73.9630, count: 37),
+  _StateHub(name: 'A & N Islands', lat: 10.1460, lng: 93.1600, count: 31),
+  _StateHub(name: 'Sikkim', lat: 27.4108, lng: 88.4485, count: 31),
+];

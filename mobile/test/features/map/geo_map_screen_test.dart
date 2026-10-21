@@ -51,12 +51,18 @@ void main() {
     await tester.pump();
     expect(find.text('Diagnostic lab W3'), findsWidgets);
     expect(find.byType(TextField), findsNothing);
+    expect(find.text('Point me'), findsOneWidget);
+    await tester.tap(find.text('Point me'));
+    await tester.pump();
+    expect(find.textContaining('direct'), findsOneWidget);
     await tester.tap(find.byKey(const Key('call-POI-19')));
     await tester.pump();
     expect(opened.single.toString(), 'tel:02067000019');
   });
 
-  testWidgets('offline layers expose radar ward detail and household route', (tester) async {
+  testWidgets('offline layers expose radar ward detail and household route', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: GeoMapScreen(
