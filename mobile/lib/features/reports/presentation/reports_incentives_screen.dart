@@ -8,7 +8,8 @@ class ReportsIncentivesScreen extends StatefulWidget {
   const ReportsIncentivesScreen({super.key});
 
   @override
-  State<ReportsIncentivesScreen> createState() => _ReportsIncentivesScreenState();
+  State<ReportsIncentivesScreen> createState() =>
+      _ReportsIncentivesScreenState();
 }
 
 class _ReportsIncentivesScreenState extends State<ReportsIncentivesScreen> {
@@ -23,7 +24,11 @@ class _ReportsIncentivesScreenState extends State<ReportsIncentivesScreen> {
         elevation: 0,
         centerTitle: false,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: AshaColors.textPrimary),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 20,
+            color: AshaColors.textPrimary,
+          ),
           onPressed: () {
             if (context.canPop()) {
               context.pop();
@@ -58,7 +63,10 @@ class _ReportsIncentivesScreenState extends State<ReportsIncentivesScreen> {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
@@ -75,7 +83,11 @@ class _ReportsIncentivesScreenState extends State<ReportsIncentivesScreen> {
                         ),
                       ),
                       SizedBox(width: 4),
-                      Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AshaColors.textMuted),
+                      Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 16,
+                        color: AshaColors.textMuted,
+                      ),
                     ],
                   ),
                 ),
@@ -146,7 +158,9 @@ class _ReportsIncentivesScreenState extends State<ReportsIncentivesScreen> {
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Reports verified. 12 encounters queued for background sync.'),
+                    content: Text(
+                      'Reports verified. 12 encounters queued for background sync.',
+                    ),
                   ),
                 );
               },

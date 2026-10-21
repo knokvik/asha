@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../core/bhasha/model_store.dart';
+import '../../../app/theme/app_theme.dart';
 import '../../../core/voice/model_manager.dart';
 import '../../../core/voice/vosk_service.dart';
 import '../../../core/l10n/language_selector_dialog.dart';
@@ -23,10 +24,11 @@ class SettingsScreen extends ConsumerWidget {
       ..sort((a, b) => a.modelKey.compareTo(b.modelKey));
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
         title: const Text('Settings'),
-        backgroundColor: Colors.transparent,
+        backgroundColor: AshaColors.cardSurface,
+        foregroundColor: AshaColors.textPrimary,
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),

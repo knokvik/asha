@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/l10n/language_provider.dart';
+import '../../../app/theme/app_theme.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/user_profile_provider.dart';
 import '../../../shared/shell/shell_copy.dart';
@@ -26,7 +27,7 @@ class ProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       key: scaffoldKey,
-      backgroundColor: Colors.white,
+      backgroundColor: AshaColors.screenBg,
       drawer: const AshaNavigationDrawer(),
       bottomNavigationBar: const AshaBottomNav(index: 3),
       body: SafeArea(child: body),
@@ -47,7 +48,8 @@ class ProfileScreen extends ConsumerWidget {
     final initials = profile?.initials ?? 'AS';
     final name = profile?.name ?? 'ASHA Worker';
     final ashaId = profile?.ashaId ?? '';
-    final roleFacility = profile?.facilityDisplay ?? 'ASHA Worker • Primary Health Centre';
+    final roleFacility =
+        profile?.facilityDisplay ?? 'ASHA Worker • Primary Health Centre';
     final totalVisits = profile?.totalVisits ?? 0;
     final completedVisits = profile?.completedVisits ?? 0;
     final pendingVisits = profile?.pendingVisits ?? 0;
@@ -108,8 +110,8 @@ class ProfileScreen extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
+                    color: AshaColors.cardSurface,
+                    borderRadius: AshaShapes.cardRadius,
                     border: Border.all(
                       color: const Color(0xFFE5E7EB),
                       width: 1.0,
@@ -160,7 +162,9 @@ class ProfileScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              ashaId.isNotEmpty ? '$ashaId • $roleFacility' : roleFacility,
+                              ashaId.isNotEmpty
+                                  ? '$ashaId • $roleFacility'
+                                  : roleFacility,
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: Color(0xFF6B7280),

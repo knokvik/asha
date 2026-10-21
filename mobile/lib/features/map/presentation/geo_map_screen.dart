@@ -268,6 +268,8 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   var _facilityCategory = 'all';
   LatLon? _pointingTarget;
   LatLng? _liveLocation;
+  double _liveAccuracy = 10.0;
+  String _liveProvider = 'gps';
   List<LatLng> _dayRoute = const [];
   static const _secureStorage = FlutterSecureStorage();
   static const _locationChannel = MethodChannel('asha_platform/location');
@@ -343,6 +345,8 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
       );
       final latitude = (raw?['latitude'] as num?)?.toDouble();
       final longitude = (raw?['longitude'] as num?)?.toDouble();
+      final accuracy = (raw?['accuracy'] as num?)?.toDouble() ?? 10.0;
+      final provider = (raw?['provider'] as String?) ?? 'gps';
       if (latitude == null ||
           longitude == null ||
           latitude < -90 ||
@@ -359,11 +363,13 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
       if (!mounted) return;
       setState(() {
         _liveLocation = location;
+        _liveAccuracy = accuracy;
+        _liveProvider = provider;
         _showLiveLocation = true;
         _isLocating = false;
         _rebuildDayRoute();
       });
-      _mapController.move(location, math.max(_mapController.camera.zoom, 14.5));
+      _mapController.move(location, math.max(_mapController.camera.zoom, 17.0));
     } on PlatformException catch (error) {
       _locationUnavailable(
         error.code == 'PERMISSION_DENIED'
@@ -548,6 +554,8 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
               activeCategory: _facilityCategory,
               layer: _layer,
               onTap: _locateMeLive,
+              liveCoordinates: _liveLocation,
+              liveAccuracy: _liveAccuracy,
             ),
           ),
 
@@ -798,10 +806,10 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
         Marker(
           key: const Key('asha_live_location'),
           point: _liveLocation!,
-          width: 76,
-          height: 58,
+          width: 80,
+          height: 80,
           alignment: Alignment.center,
-          child: const _LiveLocationMarker(),
+          child: _LiveLocationMarker(accuracy: _liveAccuracy),
         ),
       );
     }
@@ -998,22 +1006,15 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   List<CircleMarker> _liveLocationCircles() {
     final point = _liveLocation;
     if (point == null) return const [];
+    final radius = math.max(_liveAccuracy, 6.0);
     return [
       CircleMarker(
         point: point,
-        radius: 650,
+        radius: radius,
         useRadiusInMeter: true,
-        color: const Color(0x142563EB),
-        borderColor: const Color(0x552563EB),
+        color: const Color(0x1F2563EB),
+        borderColor: const Color(0x662563EB),
         borderStrokeWidth: 1.5,
-      ),
-      CircleMarker(
-        point: point,
-        radius: 90,
-        useRadiusInMeter: true,
-        color: const Color(0x223B82F6),
-        borderColor: const Color(0x993B82F6),
-        borderStrokeWidth: 2,
       ),
     ];
   }
