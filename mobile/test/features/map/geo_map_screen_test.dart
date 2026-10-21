@@ -77,6 +77,7 @@ void main() {
     expect(find.textContaining('W3 · Dengue-like'), findsOneWidget);
     expect(find.textContaining('Dengue module ACTIVE'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('Households'));
     await tester.tap(find.text('Households'));
     await tester.pump();
     expect(find.text("Today's route"), findsOneWidget);

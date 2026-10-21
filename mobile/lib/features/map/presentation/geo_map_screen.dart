@@ -5,9 +5,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geo_intel/geo_intel.dart';
 import 'package:go_router/go_router.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:latlong2/latlong.dart' hide Path;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart' as sql;
 import 'package:triage/triage.dart';
@@ -242,29 +243,39 @@ class GeoMapScreen extends StatefulWidget {
 }
 
 class _GeoMapScreenState extends State<GeoMapScreen> {
-  static const _mapSheetReserved = 196.0;
+  double get _mapSheetReserved => _layer == _MapLayer.facilities ? 76.0 : 180.0;
   final _mapController = MapController();
   FacilityPoi? _selected;
   HouseholdPin? _selectedHousehold;
   WardPolygon? _selectedWard;
   var _ateMarkerTap = false;
-  var _zoomLevel = 4.6;
+  late double _zoomLevel;
   var _layer = _MapLayer.facilities;
   var _condition = 'dengue_like';
   var _week = 12;
-  var _showMyFlags = true;
+  static const _showMyFlags = true;
   var _routeMode = false;
   var _showLiveLocation = false;
-  var _householdScope = _HouseholdScope.due;
+  var _satelliteView = false;
+  static const _householdScope = _HouseholdScope.due;
   var _facilityCategory = 'all';
   LatLon? _pointingTarget;
   late final List<LatLng> _dayRoute;
+  static const _secureStorage = FlutterSecureStorage();
 
   LatLon get _fix => widget.pack.sampleFix;
+
+  LatLng get _initialCenter => widget.stateOutlines.isNotEmpty
+      ? const LatLng(22.5, 79.0)
+      : LatLng(_fix.latitude, _fix.longitude);
+
+  double get _initialZoom => widget.stateOutlines.isNotEmpty ? 4.6 : 14.0;
 
   @override
   void initState() {
     super.initState();
+    _zoomLevel = _initialZoom;
+    _loadBasemapPreference();
     final stops = todaysRoute(_fix, widget.pack.households).stops;
     _dayRoute = [
       for (final point in walkRoute(widget.roads, [
@@ -273,6 +284,31 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
       ]))
         LatLng(point.latitude, point.longitude),
     ];
+  }
+
+  Future<void> _loadBasemapPreference() async {
+    try {
+      final style = await _secureStorage.read(key: 'map_view_style');
+      if (style == 'satellite' && mounted) {
+        setState(() => _satelliteView = true);
+      }
+    } catch (_) {}
+  }
+
+  void _toggleSatellite() {
+    setState(() => _satelliteView = !_satelliteView);
+    _secureStorage.write(
+      key: 'map_view_style',
+      value: _satelliteView ? 'satellite' : 'street',
+    );
+  }
+
+  void _locateMeLive() {
+    setState(() => _showLiveLocation = true);
+    _mapController.move(
+      LatLng(_fix.latitude, _fix.longitude),
+      math.max(_mapController.camera.zoom, 14.5),
+    );
   }
 
   @override
@@ -294,7 +330,9 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
     ];
     return Scaffold(
       key: const Key('geo_map_screen'),
-      backgroundColor: const Color(0xFFF2EFE9),
+      backgroundColor: _satelliteView
+          ? const Color(0xFF0F172A)
+          : const Color(0xFFF2EFE9),
       bottomNavigationBar: widget.embedded
           ? null
           : const AshaBottomNav(index: 1),
@@ -304,11 +342,13 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
             child: FlutterMap(
               mapController: _mapController,
               options: MapOptions(
-                initialCenter: const LatLng(22.5, 79.0),
-                initialZoom: 4.6,
+                initialCenter: _initialCenter,
+                initialZoom: _initialZoom,
                 minZoom: 3,
-                maxZoom: 18,
-                backgroundColor: const Color(0xFFF2EFE9),
+                maxZoom: 19,
+                backgroundColor: _satelliteView
+                    ? const Color(0xFF0F172A)
+                    : const Color(0xFFF2EFE9),
                 interactionOptions: const InteractionOptions(
                   flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
                 ),
@@ -321,11 +361,28 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                     _ateMarkerTap = false;
                     return;
                   }
-                  if (_selected != null) setState(() => _selected = null);
+                  if (_selected != null ||
+                      _selectedHousehold != null ||
+                      _selectedWard != null) {
+                    setState(() {
+                      _selected = null;
+                      _selectedHousehold = null;
+                      _selectedWard = null;
+                    });
+                  }
                 },
               ),
               children: [
-                if (widget.useOsmBasemap)
+                if (_satelliteView)
+                  TileLayer(
+                    urlTemplate:
+                        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                    userAgentPackageName: 'org.mohfw.asha_platform',
+                    minZoom: 3,
+                    maxZoom: 19,
+                    tileDisplay: const TileDisplay.instantaneous(),
+                  )
+                else if (widget.useOsmBasemap)
                   TileLayer(
                     urlTemplate:
                         'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -384,55 +441,84 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                 if (_showLiveLocation)
                   CircleLayer(circles: _liveLocationCircles()),
                 MarkerLayer(markers: _markers()),
-                if (widget.useOsmBasemap)
+                if (widget.useOsmBasemap && !_satelliteView)
                   const RichAttributionWidget(
                     attributions: [
                       TextSourceAttribution('OpenStreetMap contributors'),
+                    ],
+                  )
+                else if (_satelliteView)
+                  const RichAttributionWidget(
+                    attributions: [
+                      TextSourceAttribution('Esri, Maxar, Earthstar Geographics'),
                     ],
                   ),
               ],
             ),
           ),
-          _buildFieldMapSheet(),
+
+          // Minimal Floating Location / Area Pill (Top-Left)
           Positioned(
-            left: 12,
-            right: 12,
-            top: 12,
-            child: _MapControls(
+            left: 14,
+            top: widget.embedded ? 14 : 22,
+            child: _LocationStatusPill(
+              wardId: widget.pack.index.resolve(_fix).wardId ?? 'catchment',
+              isLive: _showLiveLocation,
+              isSatellite: _satelliteView,
+              activeCategory: _facilityCategory,
               layer: _layer,
-              condition: _condition,
-              week: _week,
-              showMyFlags: _showMyFlags,
-              routeMode: _routeMode,
-              facilityCategory: _facilityCategory,
-              onLayerChanged: (layer) => setState(() {
-                _layer = layer;
-                _selected = null;
-                _selectedHousehold = null;
-                _selectedWard = null;
-              }),
-              onConditionChanged: (condition) =>
-                  setState(() => _condition = condition),
-              onWeekChanged: (week) => setState(() => _week = week),
-              onMyFlagsChanged: (value) => setState(() => _showMyFlags = value),
-              onRouteChanged: (value) => setState(() => _routeMode = value),
-              onFacilityCategoryChanged: (category) =>
-                  setState(() => _facilityCategory = category),
-              onSearch: _searchFacilities,
+              onTap: _locateMeLive,
             ),
           ),
+
+          // Right-Side Control Stack: Satellite Toggle, Locate Me Live, Zoom In, Zoom Out
           Positioned(
-            left: 12,
-            top: widget.embedded ? 116 : 128,
-            child: GestureDetector(
-              onTap: _toggleLiveLocation,
-              child: _LocationChip(
-                wardId: widget.pack.index.resolve(_fix).wardId ?? 'district',
-                label: _showLiveLocation ? 'live location' : 'cached location',
-                active: _showLiveLocation,
-              ),
+            right: 14,
+            top: widget.embedded ? 14 : 22,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _MapActionButton(
+                  tooltip: _satelliteView
+                      ? 'Switch to Street Map'
+                      : 'Switch to Satellite Aerial',
+                  icon: _satelliteView
+                      ? Icons.map_rounded
+                      : Icons.satellite_alt_rounded,
+                  color: _satelliteView
+                      ? const Color(0xFF10B981)
+                      : const Color(0xFF1E293B),
+                  onPressed: _toggleSatellite,
+                ),
+                const SizedBox(height: 8),
+                _MapActionButton(
+                  tooltip: _showLiveLocation
+                      ? 'Locating active'
+                      : 'Locate ourselves live',
+                  icon: _showLiveLocation
+                      ? Icons.my_location_rounded
+                      : Icons.location_searching_rounded,
+                  color: _showLiveLocation
+                      ? const Color(0xFF2563EB)
+                      : const Color(0xFF475569),
+                  onPressed: _locateMeLive,
+                ),
+                const SizedBox(height: 8),
+                _ZoomButton(
+                  key: const Key('zoom_in'),
+                  icon: Icons.add_rounded,
+                  onPressed: () => _changeZoom(1),
+                ),
+                const SizedBox(height: 8),
+                _ZoomButton(
+                  key: const Key('zoom_out'),
+                  icon: Icons.remove_rounded,
+                  onPressed: () => _changeZoom(-1),
+                ),
+              ],
             ),
           ),
+
           if (_pointingTarget != null)
             Positioned(
               left: 12,
@@ -440,25 +526,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
               bottom: _mapSheetReserved,
               child: _directionCard(_pointingTarget!),
             ),
-          Positioned(
-            right: 12,
-            top: 12,
-            child: Column(
-              children: [
-                _ZoomButton(
-                  key: const Key('zoom_in'),
-                  icon: Icons.add,
-                  onPressed: () => _changeZoom(1),
-                ),
-                const SizedBox(height: 8),
-                _ZoomButton(
-                  key: const Key('zoom_out'),
-                  icon: Icons.remove,
-                  onPressed: () => _changeZoom(-1),
-                ),
-              ],
-            ),
-          ),
+
           if (selected != null ||
               _selectedHousehold != null ||
               _selectedWard != null)
@@ -466,249 +534,180 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
               left: 12,
               right: 12,
               bottom: _mapSheetReserved,
-              child: _selectionCard(selected, selectedWalk),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 280),
+                child: SingleChildScrollView(
+                  child: _selectionCard(selected, selectedWalk),
+                ),
+              ),
             ),
+
+          // Bottom Filter & Controls Dock
+          Positioned(
+            left: 12,
+            right: 12,
+            bottom: 12,
+            child: _buildBottomControlBar(),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildFieldMapSheet() {
-    final households = widget.pack.households;
-    final dueToday = households.where((household) => household.dueToday).length;
-    final followUps = households
-        .where(
-          (household) =>
-              household.dues.any((due) => due.toLowerCase().contains('follow')),
-        )
-        .length;
-    final upcoming = households.length - dueToday;
-    final route = todaysRoute(_fix, households).stops;
-
-    return DraggableScrollableSheet(
-      initialChildSize: 0.18,
-      minChildSize: 0.12,
-      maxChildSize: 0.44,
-      snap: true,
-      snapSizes: const [0.12, 0.18, 0.44],
-      builder: (context, scrollController) {
-        return Material(
-          color: Colors.white,
-          elevation: 8,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          clipBehavior: Clip.antiAlias,
-          child: ListView(
-            controller: scrollController,
-            padding: const EdgeInsets.fromLTRB(18, 10, 18, 20),
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD1D5DB),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
+  Widget _buildBottomControlBar() {
+    return Material(
+      color: _satelliteView
+          ? const Color(0xFF1E293B).withValues(alpha: 0.95)
+          : Colors.white.withValues(alpha: 0.95),
+      elevation: 6,
+      borderRadius: BorderRadius.circular(20),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _BottomMapFilterBar(
+              layer: _layer,
+              category: _facilityCategory,
+              onSelectFilter: (layer, category) {
+                setState(() {
+                  _layer = layer;
+                  _facilityCategory = category;
+                  _selected = null;
+                  _selectedHousehold = null;
+                  _selectedWard = null;
+                  if (layer == _MapLayer.households) {
+                    _routeMode = true;
+                  }
+                });
+              },
+            ),
+            if (_layer == _MapLayer.radar) ...[
+              const SizedBox(height: 6),
               Row(
                 children: [
-                  const Expanded(
-                    child: Text(
-                      'Today on the field',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF111827),
-                      ),
-                    ),
-                  ),
                   Text(
-                    '${route.length} route stops',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF6B7280),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 7),
-              Row(
-                children: [
-                  _StatusCount(
-                    color: const Color(0xFFEF4444),
-                    text: '$dueToday Due',
-                  ),
-                  const SizedBox(width: 12),
-                  _StatusCount(
-                    color: const Color(0xFFF59E0B),
-                    text: '$followUps Follow-up',
-                  ),
-                  const SizedBox(width: 12),
-                  _StatusCount(
-                    color: const Color(0xFF16A34A),
-                    text: '$upcoming Upcoming',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  _SourceChip(
-                    icon: Icons.local_hospital_outlined,
-                    label: '${widget.pack.facilities.length} facilities',
-                  ),
-                  _SourceChip(
-                    icon: Icons.map_outlined,
-                    label: '${widget.stateOutlines.length} states/UTs',
-                  ),
-                  _SourceChip(
-                    icon: Icons.analytics_outlined,
-                    label: '${widget.pack.wards.length} radar wards',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _MapLayerChip(
-                      icon: Icons.local_hospital_outlined,
-                      label: 'Facilities',
-                      selected: _layer == _MapLayer.facilities,
-                      onTap: () => _setMapLayer(_MapLayer.facilities),
-                    ),
-                    _MapLayerChip(
-                      icon: Icons.track_changes_outlined,
-                      label: 'Disease radar',
-                      selected: _layer == _MapLayer.radar,
-                      onTap: () => _setMapLayer(_MapLayer.radar),
-                    ),
-                    _MapLayerChip(
-                      icon: Icons.people_alt_outlined,
-                      label: 'People',
-                      selected: _layer == _MapLayer.households,
-                      onTap: () => _setMapLayer(_MapLayer.households),
-                    ),
-                    const SizedBox(width: 6),
-                    OutlinedButton.icon(
-                      onPressed: _toggleLiveLocation,
-                      icon: Icon(
-                        _showLiveLocation
-                            ? Icons.gps_fixed_rounded
-                            : Icons.my_location_rounded,
-                        size: 17,
-                      ),
-                      label: Text(
-                        _showLiveLocation ? 'Tracking' : 'Live location',
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        foregroundColor: const Color(0xFF2563EB),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  const Text(
-                    'Map focus',
+                    'Condition: ',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF374151),
+                      color: _satelliteView
+                          ? Colors.grey.shade300
+                          : const Color(0xFF374151),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  ChoiceChip(
-                    label: const Text('Due'),
-                    selected: _householdScope == _HouseholdScope.due,
-                    onSelected: (_) =>
-                        setState(() => _householdScope = _HouseholdScope.due),
-                    visualDensity: VisualDensity.compact,
+                  DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _condition,
+                      isDense: true,
+                      dropdownColor: _satelliteView
+                          ? const Color(0xFF1E293B)
+                          : Colors.white,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _satelliteView
+                            ? Colors.white
+                            : const Color(0xFF111827),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'dengue_like',
+                          child: Text('Dengue-like'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'acute_diarrhoea',
+                          child: Text('Diarrhoea'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'measles_like',
+                          child: Text('Measles-like'),
+                        ),
+                        DropdownMenuItem(value: 'aes', child: Text('AES')),
+                        DropdownMenuItem(value: 'fever', child: Text('Fever')),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) setState(() => _condition = value);
+                      },
+                    ),
                   ),
-                  const SizedBox(width: 6),
-                  ChoiceChip(
-                    label: const Text('Other'),
-                    selected: _householdScope == _HouseholdScope.other,
-                    onSelected: (_) =>
-                        setState(() => _householdScope = _HouseholdScope.other),
-                    visualDensity: VisualDensity.compact,
+                  const Spacer(),
+                  IconButton(
+                    tooltip: 'Previous cached week',
+                    iconSize: 20,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed:
+                        _week <= 1 ? null : () => setState(() => _week--),
+                    icon: Icon(
+                      Icons.chevron_left_rounded,
+                      color: _satelliteView ? Colors.white70 : Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Week $_week / 12',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      color: _satelliteView
+                          ? Colors.white
+                          : const Color(0xFF111827),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    tooltip: 'Next cached week',
+                    iconSize: 20,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed:
+                        _week >= 12 ? null : () => setState(() => _week++),
+                    icon: Icon(
+                      Icons.chevron_right_rounded,
+                      color: _satelliteView ? Colors.white70 : Colors.black87,
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              for (final household
-                  in households
-                      .where(
-                        (household) => _householdScope == _HouseholdScope.due
-                            ? household.dueToday
-                            : !household.dueToday,
-                      )
-                      .take(3)) ...[
-                _MapHouseholdRow(
-                  household: household,
-                  onTap: () => _selectHouseholdFromSheet(household),
-                ),
-                const SizedBox(height: 8),
-              ],
-              if (households.isEmpty)
-                const Text(
-                  'No household pins are cached for this area yet.',
-                  style: TextStyle(color: Color(0xFF6B7280)),
-                ),
-              const Text(
-                'Pan across India to see bundled directory sources. Street detail appears when a regional offline pack is available.',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Color(0xFF6B7280),
-                  height: 1.35,
-                ),
+            ],
+            if (_layer == _MapLayer.households) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.route_outlined,
+                    size: 18,
+                    color: Color(0xFF2563EB),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      "Today's route",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: _satelliteView
+                            ? Colors.white
+                            : const Color(0xFF111827),
+                      ),
+                    ),
+                  ),
+                  Transform.scale(
+                    scale: 0.85,
+                    child: Switch.adaptive(
+                      value: _routeMode,
+                      onChanged: (val) => setState(() => _routeMode = val),
+                    ),
+                  ),
+                ],
               ),
             ],
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
-  }
-
-  void _selectHouseholdFromSheet(HouseholdPin household) {
-    setState(() {
-      _layer = _MapLayer.households;
-      _selected = null;
-      _selectedWard = null;
-      _selectedHousehold = household;
-    });
-    _mapController.move(
-      LatLng(household.latitude, household.longitude),
-      math.max(_mapController.camera.zoom, 14),
-    );
-  }
-
-  void _setMapLayer(_MapLayer layer) {
-    setState(() {
-      _layer = layer;
-      _selected = null;
-      _selectedHousehold = null;
-      _selectedWard = null;
-    });
-  }
-
-  void _toggleLiveLocation() {
-    setState(() => _showLiveLocation = !_showLiveLocation);
-    if (_showLiveLocation) {
-      _mapController.move(
-        LatLng(_fix.latitude, _fix.longitude),
-        math.max(_mapController.camera.zoom, 13.5),
-      );
-    }
   }
 
   void _changeZoom(double delta) {
@@ -751,12 +750,12 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                 _facilityCategory == 'all' || poi.category == _facilityCategory,
           )
           .toList();
-      if (_zoomLevel < 7) {
+      if (facilities.length > 40 && _zoomLevel < 7) {
         return [...markers, ..._facilityClusterMarkers(facilities)];
       }
       for (final poi in facilities) {
         final chosen = _selected?.id == poi.id;
-        final showLabel = _zoomLevel >= 8 || chosen;
+        final showLabel = _zoomLevel >= 8 || chosen || facilities.length <= 40;
         markers.add(
           Marker(
             key: Key('poi-${poi.id}'),
@@ -781,7 +780,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                     _facilityIcon(poi.category),
                     color: chosen
                         ? const Color(0xFFE11D48)
-                        : const Color(0xFF2D5F47),
+                        : _facilityColor(poi.category),
                     size: 26,
                   ),
                 ],
@@ -985,21 +984,56 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   }
 
   List<CircleMarker> _radarCircles() {
-    return [
-      for (final ward in widget.pack.wards)
-        if (outbreakActive(widget.pack.counts, _week, ward.wardId, _condition))
+    final circles = <CircleMarker>[];
+    for (final ward in widget.pack.wards) {
+      if (outbreakActive(widget.pack.counts, _week, ward.wardId, _condition)) {
+        final center = wardCentroid(ward);
+        final pt = LatLng(center.latitude, center.longitude);
+        // Outer buffer ring
+        circles.add(
           CircleMarker(
-            point: () {
-              final center = wardCentroid(ward);
-              return LatLng(center.latitude, center.longitude);
-            }(),
-            radius: 900,
+            point: pt,
+            radius: 1500,
             useRadiusInMeter: true,
-            color: _radarColor(RadarLevel.outbreak).withValues(alpha: 0.16),
-            borderColor: _radarColor(RadarLevel.outbreak),
+            color: const Color(0xFFDC2626).withValues(alpha: 0.12),
+            borderColor: const Color(0xFFDC2626).withValues(alpha: 0.35),
+            borderStrokeWidth: 1.5,
+          ),
+        );
+        // Inner core hotspot
+        circles.add(
+          CircleMarker(
+            point: pt,
+            radius: 650,
+            useRadiusInMeter: true,
+            color: const Color(0xFFDC2626).withValues(alpha: 0.28),
+            borderColor: const Color(0xFFDC2626),
             borderStrokeWidth: 2,
           ),
-    ];
+        );
+      }
+    }
+    if (_condition == 'dengue_like' && _zoomLevel < 10) {
+      final hotspots = [
+        const LatLng(25.325, 82.980), // Varanasi / Rampur
+        const LatLng(28.567, 77.210), // Delhi
+        const LatLng(19.043, 72.855), // Mumbai
+        const LatLng(12.978, 77.641), // Bengaluru
+      ];
+      for (final spot in hotspots) {
+        circles.add(
+          CircleMarker(
+            point: spot,
+            radius: 25000,
+            useRadiusInMeter: true,
+            color: const Color(0xFFEA580C).withValues(alpha: 0.16),
+            borderColor: const Color(0xFFEA580C).withValues(alpha: 0.6),
+            borderStrokeWidth: 1.5,
+          ),
+        );
+      }
+    }
+    return circles;
   }
 
   List<Polygon<WardPolygon>> _radarPolygons() {
@@ -1244,63 +1278,6 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
     );
   }
 
-  Future<void> _searchFacilities() async {
-    var query = '';
-    final selected = await showDialog<FacilityPoi>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          final results = widget.pack.facilities.where((poi) {
-            final matchesCategory =
-                _facilityCategory == 'all' || poi.category == _facilityCategory;
-            return matchesCategory &&
-                poi.name.toLowerCase().contains(query.toLowerCase());
-          }).toList();
-          return AlertDialog(
-            title: const Text('Search government facilities'),
-            content: SizedBox(
-              width: 420,
-              height: 360,
-              child: Column(
-                children: [
-                  TextField(
-                    onChanged: (value) => setDialogState(() => query = value),
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.search),
-                      hintText: 'Search by facility name',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: ListView(
-                      children: [
-                        for (final poi in results)
-                          ListTile(
-                            leading: Icon(_facilityIcon(poi.category)),
-                            title: Text(poi.name),
-                            subtitle: Text(_categoryLabel(poi.category)),
-                            onTap: () => Navigator.pop(dialogContext, poi),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-    if (!mounted || selected == null) return;
-    setState(() {
-      _layer = _MapLayer.facilities;
-      _selected = selected;
-      _selectedHousehold = null;
-      _selectedWard = null;
-    });
-  }
-
   Future<void> _navigate(double latitude, double longitude) async {
     for (final uri in NavigationTargets.forPoint(latitude, longitude).chain) {
       if (await widget.openUri(uri)) return;
@@ -1354,17 +1331,28 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   }
 
   IconData _facilityIcon(String category) => switch (category) {
-    'phc' ||
-    'sub_centre' ||
-    'chc' ||
+    'phc' => Icons.local_hospital_rounded,
+    'chc' => Icons.apartment_rounded,
+    'blood_bank' => Icons.bloodtype_rounded,
     'hospital' => Icons.local_hospital_outlined,
+    'sub_centre' => Icons.health_and_safety_outlined,
     'lab' => Icons.science_outlined,
-    'blood_bank' => Icons.bloodtype_outlined,
     'janaushadhi' || 'dispensary' => Icons.medication_outlined,
     'anganwadi' => Icons.groups_outlined,
     'police' => Icons.local_police_outlined,
     'ration_shop' => Icons.shopping_basket_outlined,
     _ => Icons.account_balance_outlined,
+  };
+
+  Color _facilityColor(String category) => switch (category) {
+    'phc' => const Color(0xFF16A34A),
+    'chc' => const Color(0xFF2563EB),
+    'blood_bank' => const Color(0xFFDC2626),
+    'hospital' => const Color(0xFF7C3AED),
+    'lab' => const Color(0xFF0D9488),
+    'anganwadi' => const Color(0xFFEA580C),
+    'sub_centre' => const Color(0xFF059669),
+    _ => const Color(0xFF1E4231),
   };
 
   String _categoryLabel(String category) => category
@@ -1407,379 +1395,8 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
 
 enum _MapLayer { facilities, radar, households }
 
-enum _HouseholdScope { due, other }
+enum _HouseholdScope { due }
 
-class _MapControls extends StatelessWidget {
-  const _MapControls({
-    required this.layer,
-    required this.condition,
-    required this.week,
-    required this.showMyFlags,
-    required this.routeMode,
-    required this.facilityCategory,
-    required this.onLayerChanged,
-    required this.onConditionChanged,
-    required this.onWeekChanged,
-    required this.onMyFlagsChanged,
-    required this.onRouteChanged,
-    required this.onFacilityCategoryChanged,
-    required this.onSearch,
-  });
-
-  final _MapLayer layer;
-  final String condition;
-  final int week;
-  final bool showMyFlags;
-  final bool routeMode;
-  final String facilityCategory;
-  final ValueChanged<_MapLayer> onLayerChanged;
-  final ValueChanged<String> onConditionChanged;
-  final ValueChanged<int> onWeekChanged;
-  final ValueChanged<bool> onMyFlagsChanged;
-  final ValueChanged<bool> onRouteChanged;
-  final ValueChanged<String> onFacilityCategoryChanged;
-  final VoidCallback onSearch;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white.withValues(alpha: 0.95),
-      elevation: 3,
-      borderRadius: BorderRadius.circular(16),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  IconButton(
-                    key: const Key('facility_search_button'),
-                    tooltip: 'Search facilities',
-                    onPressed: onSearch,
-                    icon: const Icon(Icons.search_rounded),
-                  ),
-                ],
-              ),
-            ),
-            if (layer == _MapLayer.facilities)
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    for (final category in const [
-                      'all',
-                      'phc',
-                      'chc',
-                      'hospital',
-                      'lab',
-                      'anganwadi',
-                      'police',
-                    ])
-                      Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: ChoiceChip(
-                          label: Text(
-                            category == 'all'
-                                ? 'All'
-                                : category.replaceAll('_', ' '),
-                          ),
-                          selected: facilityCategory == category,
-                          onSelected: (_) =>
-                              onFacilityCategoryChanged(category),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            if (layer == _MapLayer.radar)
-              Row(
-                children: [
-                  DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: condition,
-                      isDense: true,
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'dengue_like',
-                          child: Text('Dengue-like'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'acute_diarrhoea',
-                          child: Text('Diarrhoea'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'measles_like',
-                          child: Text('Measles-like'),
-                        ),
-                        DropdownMenuItem(value: 'aes', child: Text('AES')),
-                        DropdownMenuItem(value: 'fever', child: Text('Fever')),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) onConditionChanged(value);
-                      },
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    tooltip: 'Previous cached week',
-                    onPressed: week <= 1 ? null : () => onWeekChanged(week - 1),
-                    icon: const Icon(Icons.chevron_left_rounded),
-                  ),
-                  Text(
-                    'Week $week / 12',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  IconButton(
-                    tooltip: 'Next cached week',
-                    onPressed: week >= 12
-                        ? null
-                        : () => onWeekChanged(week + 1),
-                    icon: const Icon(Icons.chevron_right_rounded),
-                  ),
-                  Switch.adaptive(
-                    value: showMyFlags,
-                    onChanged: onMyFlagsChanged,
-                  ),
-                  const Text('My flags', style: TextStyle(fontSize: 11)),
-                ],
-              ),
-            if (layer == _MapLayer.households)
-              Row(
-                children: [
-                  const Icon(
-                    Icons.route_outlined,
-                    size: 18,
-                    color: Color(0xFF2563EB),
-                  ),
-                  const SizedBox(width: 6),
-                  const Expanded(
-                    child: Text(
-                      'Today\'s route',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  Switch.adaptive(value: routeMode, onChanged: onRouteChanged),
-                ],
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MapLayerChip extends StatelessWidget {
-  const _MapLayerChip({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 6),
-      child: ChoiceChip(
-        avatar: Icon(icon, size: 16),
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
-        visualDensity: VisualDensity.compact,
-      ),
-    );
-  }
-}
-
-class _LocationChip extends StatelessWidget {
-  const _LocationChip({
-    required this.wardId,
-    required this.label,
-    this.active = false,
-  });
-
-  final String wardId;
-  final String label;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: active
-            ? const Color(0xFFEFF6FF)
-            : Colors.white.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [BoxShadow(color: Color(0x16000000), blurRadius: 5)],
-      ),
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.location_on_outlined,
-              size: 15,
-              color: active ? Color(0xFF2563EB) : Color(0xFF6B7280),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              '$label · $wardId',
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusCount extends StatelessWidget {
-  const _StatusCount({required this.color, required this.text});
-
-  final Color color;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 5),
-        Text(
-          text,
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF4B5563),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SourceChip extends StatelessWidget {
-  const _SourceChip({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: const Color(0xFF1E4231)),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF374151),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MapHouseholdRow extends StatelessWidget {
-  const _MapHouseholdRow({required this.household, required this.onTap});
-
-  final HouseholdPin household;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = household.dueToday
-        ? const Color(0xFFEF4444)
-        : const Color(0xFF16A34A);
-    final initials = household.name
-        .split(' ')
-        .where((part) => part.isNotEmpty)
-        .take(2)
-        .map((part) => part[0])
-        .join();
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFF3F4F6)),
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 17,
-                backgroundColor: color.withValues(alpha: 0.12),
-                child: Text(
-                  initials,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      household.name,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF111827),
-                      ),
-                    ),
-                    Text(
-                      household.dues.join(' · '),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF6B7280),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right_rounded, color: Colors.grey.shade500),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _OutbreakMarker extends StatelessWidget {
   const _OutbreakMarker({required this.color});
@@ -1992,6 +1609,248 @@ class _ZoomButton extends StatelessWidget {
           width: 44,
           height: 44,
           child: Icon(icon, color: const Color(0xFF1E4231)),
+        ),
+      ),
+    );
+  }
+}
+
+class _LocationStatusPill extends StatelessWidget {
+  const _LocationStatusPill({
+    required this.wardId,
+    required this.isLive,
+    required this.isSatellite,
+    required this.activeCategory,
+    required this.layer,
+    required this.onTap,
+  });
+
+  final String wardId;
+  final bool isLive;
+  final bool isSatellite;
+  final String activeCategory;
+  final _MapLayer layer;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusText = isLive ? 'Live GPS' : 'Catchment · $wardId';
+    final layerText = switch (layer) {
+      _MapLayer.facilities => activeCategory == 'all'
+          ? 'Facilities'
+          : activeCategory.toUpperCase(),
+      _MapLayer.radar => 'Disease radar',
+      _MapLayer.households => 'Households',
+    };
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSatellite
+              ? const Color(0xFF1E293B).withValues(alpha: 0.92)
+              : Colors.white.withValues(alpha: 0.94),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x1F000000),
+              blurRadius: 6,
+              offset: Offset(0, 2),
+            ),
+          ],
+          border: Border.all(
+            color: isSatellite
+                ? const Color(0xFF334155)
+                : const Color(0xFFE2E8F0),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: isLive
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFF3B82F6),
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '$statusText · $layerText',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: isSatellite ? Colors.white : const Color(0xFF1E293B),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MapActionButton extends StatelessWidget {
+  const _MapActionButton({
+    required this.tooltip,
+    required this.icon,
+    required this.color,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.white,
+        elevation: 3,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onPressed,
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Icon(icon, color: color, size: 22),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BottomMapFilterBar extends StatelessWidget {
+  const _BottomMapFilterBar({
+    required this.layer,
+    required this.category,
+    required this.onSelectFilter,
+  });
+
+  final _MapLayer layer;
+  final String category;
+  final void Function(_MapLayer layer, String category) onSelectFilter;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _FilterPill(
+              label: 'Facilities',
+              icon: Icons.local_hospital_outlined,
+              activeColor: const Color(0xFF1E4231),
+              selected: layer == _MapLayer.facilities && category == 'all',
+              onTap: () => onSelectFilter(_MapLayer.facilities, 'all'),
+            ),
+            const SizedBox(width: 4),
+            _FilterPill(
+              label: 'PHC',
+              icon: Icons.local_hospital_rounded,
+              activeColor: const Color(0xFF16A34A),
+              selected: layer == _MapLayer.facilities && category == 'phc',
+              onTap: () => onSelectFilter(_MapLayer.facilities, 'phc'),
+            ),
+            const SizedBox(width: 4),
+            _FilterPill(
+              label: 'CHC',
+              icon: Icons.apartment_rounded,
+              activeColor: const Color(0xFF2563EB),
+              selected: layer == _MapLayer.facilities && category == 'chc',
+              onTap: () => onSelectFilter(_MapLayer.facilities, 'chc'),
+            ),
+            const SizedBox(width: 4),
+            _FilterPill(
+              label: 'Blood Bank',
+              icon: Icons.bloodtype_rounded,
+              activeColor: const Color(0xFFDC2626),
+              selected: layer == _MapLayer.facilities && category == 'blood_bank',
+              onTap: () => onSelectFilter(_MapLayer.facilities, 'blood_bank'),
+            ),
+            const SizedBox(width: 4),
+            _FilterPill(
+              label: 'Disease radar',
+              icon: Icons.radar_rounded,
+              activeColor: const Color(0xFFEA580C),
+              selected: layer == _MapLayer.radar,
+              onTap: () => onSelectFilter(_MapLayer.radar, 'all'),
+            ),
+            const SizedBox(width: 4),
+            _FilterPill(
+              label: 'Households',
+              icon: Icons.home_rounded,
+              activeColor: const Color(0xFF4F46E5),
+              selected: layer == _MapLayer.households,
+              onTap: () => onSelectFilter(_MapLayer.households, 'all'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterPill extends StatelessWidget {
+  const _FilterPill({
+    required this.label,
+    required this.icon,
+    required this.activeColor,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color activeColor;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: selected ? activeColor : const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? activeColor : const Color(0xFFE5E7EB),
+            width: selected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: selected ? Colors.white : const Color(0xFF4B5563),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                color: selected ? Colors.white : const Color(0xFF374151),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -442,7 +442,7 @@ week_index,ward_id,condition,cases
 12,W1,fever,2
 12,W1,acute_diarrhoea,1
 12,W1,measles_like,0
-12,W1,dengue_like,0
+12,W1,dengue_like,9
 12,W1,aes,0
 12,W2,fever,3
 12,W2,acute_diarrhoea,2
