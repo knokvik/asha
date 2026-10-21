@@ -1,7 +1,31 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'clinical_dictionary.dart';
+
 const _assetPath = 'assets/search/asha_master_search.csv';
+
+/// Grouped 4-section results for unified clinical search
+class SearchSections {
+  final List<ClinicalDisease> diseases;
+  final List<SearchKnowledgeEntry> medicines;
+  final List<SearchKnowledgeEntry> guides;
+  final List<SearchKnowledgeEntry> dangerSigns;
+
+  const SearchSections({
+    required this.diseases,
+    required this.medicines,
+    required this.guides,
+    required this.dangerSigns,
+  });
+
+  bool get isEmpty =>
+      diseases.isEmpty &&
+      medicines.isEmpty &&
+      guides.isEmpty &&
+      dangerSigns.isEmpty;
+  bool get isNotEmpty => !isEmpty;
+}
 
 /// One offline knowledge-card row from the ASHA master search catalog.
 class SearchKnowledgeEntry {
@@ -36,6 +60,7 @@ class SearchKnowledgeEntry {
   final String approxPrice;
 
   String get categoryLabel => switch (category) {
+    'disease' => 'Condition / Disease',
     'medicine' => 'Medicine',
     'measure' => 'Measurement',
     'guide' => 'Guide',
@@ -109,6 +134,50 @@ class OfflineSearchIndex {
       return byScore == 0 ? a.entry.name.compareTo(b.entry.name) : byScore;
     });
     return [for (final result in ranked.take(limit)) result.entry];
+  }
+
+  /// Groups matching results into 4 clinical sections:
+  /// 1. Diseases & Clinical Conditions
+  /// 2. Medicines & Dosages
+  /// 3. Guides & Action Protocols
+  /// 4. Danger Signs & Warnings
+  SearchSections searchSections(String query, {int limit = 30}) {
+    final normalized = _normalise(query);
+    if (normalized.isEmpty) {
+      return const SearchSections(
+        diseases: [],
+        medicines: [],
+        guides: [],
+        dangerSigns: [],
+      );
+    }
+
+    final matchedDiseases = ClinicalDictionary.search(normalized);
+    final allEntries = search(normalized, limit: limit * 2);
+
+    final medicines = <SearchKnowledgeEntry>[];
+    final guides = <SearchKnowledgeEntry>[];
+    final dangerSigns = <SearchKnowledgeEntry>[];
+
+    for (final entry in allEntries) {
+      if (entry.category == 'medicine') {
+        if (medicines.length < limit) medicines.add(entry);
+      } else if (entry.category == 'guide' ||
+          entry.category == 'measure' ||
+          entry.category == 'program') {
+        if (guides.length < limit) guides.add(entry);
+      } else if (entry.category == 'danger_sign' ||
+          entry.category == 'warning') {
+        if (dangerSigns.length < limit) dangerSigns.add(entry);
+      }
+    }
+
+    return SearchSections(
+      diseases: matchedDiseases.take(limit).toList(),
+      medicines: medicines,
+      guides: guides,
+      dangerSigns: dangerSigns,
+    );
   }
 }
 
