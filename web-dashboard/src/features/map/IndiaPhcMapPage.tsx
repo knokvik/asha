@@ -19,7 +19,8 @@ import {
   Activity,
   LocateFixed,
   RefreshCw,
-  Share2,
+  SlidersHorizontal,
+  ChevronRight,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -55,7 +56,7 @@ interface MetaData {
   districtsByState: Record<string, DistrictMeta[]>;
 }
 
-type TileStyle = 'positron' | 'dark_matter' | 'osm_standard' | 'satellite';
+type TileStyle = 'osm_standard' | 'esri_topo' | 'esri_gray' | 'esri_dark' | 'satellite';
 
 const INDIA_CENTER: [number, number] = [22.3511, 78.6677];
 const INDIA_DEFAULT_ZOOM = 5;
@@ -70,35 +71,98 @@ const REGIONS: { name: string; center: [number, number]; zoom: number }[] = [
   { name: 'Central', center: [23.2, 79.5], zoom: 6 },
 ];
 
+/**
+ * 100% Free Tile Layers with ZERO API key required and NO watermarks.
+ */
 function getTileLayer(style: TileStyle): L.TileLayer {
   switch (style) {
-    case 'positron':
-      return L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        subdomains: 'abcd',
-        attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap',
-      });
-    case 'dark_matter':
-      return L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        subdomains: 'abcd',
-        attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap',
-      });
+    case 'esri_topo':
+      return L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+        {
+          maxZoom: 18,
+          attribution: '&copy; <a href="https://www.esri.com/">Esri</a>, DeLorme, NAVTEQ',
+        }
+      );
+    case 'esri_gray':
+      return L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+        {
+          maxZoom: 16,
+          attribution: '&copy; <a href="https://www.esri.com/">Esri</a>, HERE, Garmin',
+        }
+      );
+    case 'esri_dark':
+      return L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+        {
+          maxZoom: 16,
+          attribution: '&copy; <a href="https://www.esri.com/">Esri</a>, HERE, Garmin',
+        }
+      );
     case 'satellite':
       return L.tileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         {
           maxZoom: 18,
-          attribution: '&copy; Esri, Maxar, Earthstar Geographics',
+          attribution: '&copy; <a href="https://www.esri.com/">Esri</a>, Maxar, Earthstar Geographics',
         }
       );
     case 'osm_standard':
     default:
       return L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        attribution: '&copy; OpenStreetMap contributors',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       });
   }
+}
+
+/**
+ * Modern SVG Pin Pointer for detailed local view (Zoom >= 10)
+ */
+function createModernPinIcon(type: 'PHC' | 'CHC' | 'DH', isSelected = false) {
+  const color = type === 'PHC' ? '#10B981' : type === 'CHC' ? '#2563EB' : '#F59E0B';
+  const strokeColor = type === 'PHC' ? '#064E3B' : type === 'CHC' ? '#1E3A8A' : '#92400E';
+  const label = type === 'PHC' ? 'P' : type === 'CHC' ? 'C' : 'H';
+  const size = isSelected ? 34 : 26;
+  const height = Math.round(size * 1.25);
+
+  return L.divIcon({
+    className: 'modern-pin-container',
+    html: `
+      <div style="position:relative; width:${size}px; height:${height}px; display:flex; flex-direction:column; align-items:center; cursor:pointer;">
+        ${isSelected ? `<span class="animate-ping" style="position:absolute; top:2px; width:${size}px; height:${size}px; border-radius:50%; background:${color}; opacity:0.65;"></span>` : ''}
+        <svg width="${size}" height="${height}" viewBox="0 0 32 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 3px 6px rgba(0,0,0,0.35));">
+          <path d="M16 0C7.163 0 0 7.163 0 16c0 10.5 16 24 16 24s16-13.5 16-24c0-8.837-7.163-16-16-16z" fill="${color}"/>
+          <path d="M16 1C7.716 1 1 7.716 1 16c0 9.8 14.5 22.3 15 22.7.5-.4 15-12.9 15-22.7 0-8.284-6.716-15-15-15z" stroke="${strokeColor}" stroke-width="1.5"/>
+          <circle cx="16" cy="15" r="8" fill="white"/>
+          <text x="16" y="19" font-family="system-ui, -apple-system, sans-serif" font-size="10" font-weight="900" fill="${color}" text-anchor="middle">${label}</text>
+        </svg>
+      </div>
+    `,
+    iconSize: [size, height],
+    iconAnchor: [size / 2, height],
+    popupAnchor: [0, -height],
+  });
+}
+
+/**
+ * State Hub aggregate badge icon for zoomed-out overview
+ */
+function createStateHubIcon(stateName: string, count: number) {
+  const shortCount = count >= 1000 ? `${(count / 1000).toFixed(1)}k` : `${count}`;
+  return L.divIcon({
+    className: 'state-hub-badge',
+    html: `
+      <div class="group cursor-pointer flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/95 dark:bg-slate-900/95 border border-emerald-500/50 shadow-md hover:scale-110 hover:shadow-xl transition-all duration-150 backdrop-blur-xs">
+        <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="text-[11px] font-bold text-slate-800 dark:text-slate-100 whitespace-nowrap">${stateName}</span>
+        <span class="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">${shortCount}</span>
+      </div>
+    `,
+    iconSize: [120, 24],
+    iconAnchor: [60, 12],
+  });
 }
 
 export function IndiaPhcMapPage() {
@@ -107,6 +171,8 @@ export function IndiaPhcMapPage() {
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const canvasRendererRef = useRef<L.Canvas | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
+  const pinMarkersLayerRef = useRef<L.LayerGroup | null>(null);
+  const stateHubsLayerRef = useRef<L.LayerGroup | null>(null);
   const selectedPinMarkerRef = useRef<L.Marker | null>(null);
 
   // Data states
@@ -116,12 +182,14 @@ export function IndiaPhcMapPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Filters
+  // Filters — default to 'ALL' so yellow (DH) and blue (CHC) are visible immediately!
   const [selectedState, setSelectedState] = useState<string>('ALL');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('ALL');
-  const [facilityType, setFacilityType] = useState<'ALL' | 'PHC' | 'CHC' | 'DH'>('PHC');
+  const [facilityType, setFacilityType] = useState<'ALL' | 'PHC' | 'CHC' | 'DH'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-  const [mapStyle, setMapStyle] = useState<TileStyle>('positron');
+  const [mapStyle, setMapStyle] = useState<TileStyle>('osm_standard');
+  const [currentZoom, setCurrentZoom] = useState<number>(INDIA_DEFAULT_ZOOM);
+  const [adaptiveLod, setAdaptiveLod] = useState<boolean>(true);
 
   // Selected Facility
   const [selectedFacility, setSelectedFacility] = useState<PhcRecord | null>(null);
@@ -184,7 +252,20 @@ export function IndiaPhcMapPage() {
     const layerGroup = L.layerGroup().addTo(map);
     markersLayerRef.current = layerGroup;
 
+    const pinGroup = L.layerGroup().addTo(map);
+    pinMarkersLayerRef.current = pinGroup;
+
+    const hubGroup = L.layerGroup().addTo(map);
+    stateHubsLayerRef.current = hubGroup;
+
+    // Listen to zoom events for progressive Level of Detail (LOD)
+    const onZoom = () => {
+      setCurrentZoom(map.getZoom());
+    };
+    map.on('zoomend', onZoom);
+
     return () => {
+      map.off('zoomend', onZoom);
       map.remove();
       mapInstanceRef.current = null;
     };
@@ -202,13 +283,13 @@ export function IndiaPhcMapPage() {
     tileLayerRef.current = newTile;
   }, [mapStyle]);
 
-  // 4. Filter Facilities
+  // 4. Filter Facilities and Order (DH on top, CHC middle, PHC base)
   const filteredFacilities = useMemo(() => {
     if (!facilities.length) return [];
 
     const query = searchQuery.trim().toLowerCase();
 
-    return facilities.filter((f) => {
+    const result = facilities.filter((f) => {
       // Type filter
       if (facilityType !== 'ALL' && f.t !== facilityType) return false;
 
@@ -229,6 +310,12 @@ export function IndiaPhcMapPage() {
 
       return true;
     });
+
+    // IMPORTANT: Sort so PHC (green) renders first, CHC (blue) renders second,
+    // and DH (yellow/amber) renders ON TOP!
+    // This ensures yellow hospitals and blue CHCs are never obscured by the 29k green dots.
+    const typeOrder = { PHC: 0, CHC: 1, DH: 2 };
+    return result.sort((a, b) => typeOrder[a.t] - typeOrder[b.t]);
   }, [facilities, selectedState, selectedDistrict, facilityType, searchQuery]);
 
   // 5. Select & Focus a Facility
@@ -249,74 +336,120 @@ export function IndiaPhcMapPage() {
       selectedPinMarkerRef.current = null;
     }
 
-    // Modern HTML Pulsing Pin Icon
-    const pulseIcon = L.divIcon({
-      className: 'modern-pulse-pin',
-      html: `
-        <div class="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2">
-          <span class="animate-ping absolute inline-flex h-10 w-10 rounded-full ${
-            fac.t === 'PHC' ? 'bg-emerald-400' : fac.t === 'CHC' ? 'bg-blue-400' : 'bg-amber-400'
-          } opacity-75"></span>
-          <span class="relative inline-flex rounded-full h-6 w-6 ${
-            fac.t === 'PHC' ? 'bg-emerald-600' : fac.t === 'CHC' ? 'bg-blue-600' : 'bg-amber-600'
-          } border-2 border-white shadow-xl items-center justify-center">
-            <span class="h-2 w-2 rounded-full bg-white"></span>
-          </span>
-        </div>
-      `,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
-    });
-
-    const marker = L.marker([fac.lat, fac.lng], { icon: pulseIcon }).addTo(map);
+    const marker = L.marker([fac.lat, fac.lng], {
+      icon: createModernPinIcon(fac.t, true),
+      zIndexOffset: 1000,
+    }).addTo(map);
     selectedPinMarkerRef.current = marker;
   }, []);
 
-  // 6. Draw Markers onto Canvas Layer
+  // 6. Draw State Hubs when Zoomed Out (Zoom 4–6)
+  useEffect(() => {
+    const hubGroup = stateHubsLayerRef.current;
+    const map = mapInstanceRef.current;
+    if (!hubGroup || !map) return;
+
+    hubGroup.clearLayers();
+
+    // Only show state hub labels when zoomed out (zoom <= 6) and viewing All India
+    if (adaptiveLod && currentZoom <= 6 && selectedState === 'ALL' && !searchQuery) {
+      Object.entries(stateBounds).forEach(([stName, info]) => {
+        if (!info.center || info.count < 10) return;
+
+        const marker = L.marker(info.center, {
+          icon: createStateHubIcon(stName, info.count),
+          zIndexOffset: 500,
+        });
+
+        marker.on('click', () => {
+          setSelectedState(stName);
+          map.flyToBounds(info.bounds, { padding: [40, 40], duration: 1.2 });
+        });
+
+        hubGroup.addLayer(marker);
+      });
+    }
+  }, [currentZoom, stateBounds, adaptiveLod, selectedState, searchQuery]);
+
+  // 7. Render Markers with Dynamic Zoom-Level LOD
   useEffect(() => {
     const map = mapInstanceRef.current;
-    const layerGroup = markersLayerRef.current;
+    const canvasLayer = markersLayerRef.current;
+    const pinLayer = pinMarkersLayerRef.current;
     const renderer = canvasRendererRef.current;
-    if (!map || !layerGroup || !renderer) return;
+    if (!map || !canvasLayer || !pinLayer || !renderer) return;
 
-    layerGroup.clearLayers();
+    canvasLayer.clearLayers();
+    pinLayer.clearLayers();
+
+    const isZoomedInClose = currentZoom >= 10;
+    const isOverview = currentZoom <= 6;
+
+    // Radius scaling according to zoom
+    const getRadius = (type: 'PHC' | 'CHC' | 'DH') => {
+      if (type === 'DH') {
+        return isOverview ? 6.5 : isZoomedInClose ? 9 : 7.5;
+      } else if (type === 'CHC') {
+        return isOverview ? 4.5 : isZoomedInClose ? 7.5 : 6;
+      } else {
+        return isOverview ? 2.5 : isZoomedInClose ? 6 : 4;
+      }
+    };
 
     // Color definitions
     const colorMap = {
-      PHC: { fill: '#10B981', stroke: '#047857' }, // Emerald
-      CHC: { fill: '#3B82F6', stroke: '#1D4ED8' }, // Blue
-      DH: { fill: '#F59E0B', stroke: '#B45309' }, // Amber
+      PHC: { fill: '#10B981', stroke: '#064E3B', opacity: isOverview ? 0.6 : 0.85 }, // Green
+      CHC: { fill: '#2563EB', stroke: '#1E3A8A', opacity: 0.95 }, // Blue
+      DH: { fill: '#F59E0B', stroke: '#92400E', opacity: 1.0 }, // Vibrant Golden Yellow
     };
 
+    // When zoomed in very close (zoom >= 10) and filtering to state/district:
+    // Render modern SVG Teardrop Pin Pointers!
+    if (isZoomedInClose && filteredFacilities.length <= 800) {
+      filteredFacilities.forEach((f) => {
+        const pin = L.marker([f.lat, f.lng], {
+          icon: createModernPinIcon(f.t, false),
+          zIndexOffset: f.t === 'DH' ? 300 : f.t === 'CHC' ? 200 : 100,
+        });
+
+        pin.bindTooltip(
+          `<div class="text-xs font-semibold"><b>${f.n}</b><br/><span class="text-gray-500">${f.d}, ${f.s}</span></div>`,
+          { direction: 'top', offset: [0, -28], opacity: 0.95 }
+        );
+
+        pin.on('click', () => handleSelectFacility(f));
+        pinLayer.addLayer(pin);
+      });
+      return;
+    }
+
+    // Canvas rendering for high-performance smooth rendering
     filteredFacilities.forEach((f) => {
       const colors = colorMap[f.t] || colorMap.PHC;
+      const radius = getRadius(f.t);
 
       const circle = L.circleMarker([f.lat, f.lng], {
         renderer,
-        radius: 5,
+        radius,
         fillColor: colors.fill,
         color: colors.stroke,
-        weight: 1.5,
+        weight: f.t === 'DH' ? 2.0 : f.t === 'CHC' ? 1.5 : 1.0,
         opacity: 0.9,
-        fillOpacity: 0.75,
+        fillOpacity: colors.opacity,
       });
 
-      // Simple tooltip on hover
+      // Hover tooltip
       circle.bindTooltip(
-        `<div class="text-xs font-semibold"><b>${f.n}</b><br/><span class="text-gray-500">${f.d}, ${f.s}</span></div>`,
-        { direction: 'top', offset: [0, -4], opacity: 0.95 }
+        `<div class="text-xs font-semibold"><b>${f.n}</b> (${f.t})<br/><span class="text-gray-500">${f.d}, ${f.s}</span></div>`,
+        { direction: 'top', offset: [0, -radius], opacity: 0.95 }
       );
 
-      // On click
-      circle.on('click', () => {
-        handleSelectFacility(f);
-      });
-
-      layerGroup.addLayer(circle);
+      circle.on('click', () => handleSelectFacility(f));
+      canvasLayer.addLayer(circle);
     });
-  }, [filteredFacilities, handleSelectFacility]);
+  }, [filteredFacilities, currentZoom, handleSelectFacility]);
 
-  // 7. Pan/Zoom when State or District changes
+  // 8. Pan/Zoom when State or District changes
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -329,14 +462,13 @@ export function IndiaPhcMapPage() {
     }
   }, [selectedState, stateBounds, searchQuery]);
 
-  // Copy coordinates helper
+  // Helper actions
   const handleCopyCoords = (lat: number, lng: number) => {
     navigator.clipboard.writeText(`${lat}, ${lng}`);
     setCopiedCoords(true);
     setTimeout(() => setCopiedCoords(false), 2000);
   };
 
-  // Set as Active PHC helper
   const handleSetActivePhc = (fac: PhcRecord) => {
     localStorage.setItem('selected_active_phc_name', fac.n);
     localStorage.setItem('selected_active_phc_state', fac.s);
@@ -348,6 +480,15 @@ export function IndiaPhcMapPage() {
     if (!meta || selectedState === 'ALL') return [];
     return meta.districtsByState[selectedState] || [];
   }, [meta, selectedState]);
+
+  // Counts of each type currently shown
+  const typeCounts = useMemo(() => {
+    const counts = { PHC: 0, CHC: 0, DH: 0 };
+    filteredFacilities.forEach((f) => {
+      counts[f.t] = (counts[f.t] || 0) + 1;
+    });
+    return counts;
+  }, [filteredFacilities]);
 
   return (
     <div className="relative flex flex-col h-[calc(100vh-4rem)] w-full overflow-hidden bg-slate-50 dark:bg-slate-950 font-sans">
@@ -361,30 +502,61 @@ export function IndiaPhcMapPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-base font-bold text-slate-900 dark:text-white">
-                  National Primary Health Centre (PHC) Geo-Portal
+                  All-India Health Centres & PHC Geo-Portal
                 </h1>
                 <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border-emerald-200 text-[11px] font-semibold">
                   MOHFW Geocoded
                 </Badge>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Live interactive spatial map of 29,564 PHCs and health facilities across all 37 Indian States & UTs
+                Interactive spatial map of 35,868 national facilities across 37 States & UTs • Zoom in for modern pointer pins
               </p>
             </div>
           </div>
 
-          {/* Quick Metrics Badges */}
-          <div className="flex items-center gap-2 text-xs">
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-semibold">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>PHCs: 29,564</span>
-            </div>
-            <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-semibold">
-              <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-              <span>CHCs: 5,371</span>
-            </div>
+          {/* Quick Metrics Badges with Visual Colors */}
+          <div className="flex items-center gap-2 text-xs flex-wrap">
+            <button
+              onClick={() => setFacilityType('PHC')}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border font-semibold transition-all cursor-pointer ${
+                facilityType === 'PHC'
+                  ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
+                  : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
+              }`}
+              title="Filter to Primary Health Centres"
+            >
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 border border-white shadow-xs"></span>
+              <span>PHCs: {typeCounts.PHC.toLocaleString('en-IN')}</span>
+            </button>
+
+            <button
+              onClick={() => setFacilityType('CHC')}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border font-semibold transition-all cursor-pointer ${
+                facilityType === 'CHC'
+                  ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
+                  : 'bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-100'
+              }`}
+              title="Filter to Community Health Centres"
+            >
+              <span className="h-2.5 w-2.5 rounded-full bg-blue-500 border border-white shadow-xs"></span>
+              <span>CHCs: {typeCounts.CHC.toLocaleString('en-IN')}</span>
+            </button>
+
+            <button
+              onClick={() => setFacilityType('DH')}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border font-semibold transition-all cursor-pointer ${
+                facilityType === 'DH'
+                  ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
+                  : 'bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-800 hover:bg-amber-100'
+              }`}
+              title="Filter to District Hospitals"
+            >
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-500 border border-white shadow-xs"></span>
+              <span>Hospitals: {typeCounts.DH.toLocaleString('en-IN')}</span>
+            </button>
+
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold border border-slate-200 dark:border-slate-700">
-              <span>Showing:</span>
+              <span>Total Shown:</span>
               <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">
                 {filteredFacilities.length.toLocaleString('en-IN')}
               </span>
@@ -448,28 +620,8 @@ export function IndiaPhcMapPage() {
           {/* Facility Type Filter Pills */}
           <div className="flex items-center rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
             <button
-              onClick={() => setFacilityType('PHC')}
-              className={`px-3 py-1.5 rounded-md transition-all ${
-                facilityType === 'PHC'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              PHC Only (29.5k)
-            </button>
-            <button
-              onClick={() => setFacilityType('CHC')}
-              className={`px-3 py-1.5 rounded-md transition-all ${
-                facilityType === 'CHC'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-              }`}
-            >
-              CHC (5.3k)
-            </button>
-            <button
               onClick={() => setFacilityType('ALL')}
-              className={`px-3 py-1.5 rounded-md transition-all ${
+              className={`px-3 py-1.5 rounded-md transition-all cursor-pointer ${
                 facilityType === 'ALL'
                   ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
@@ -477,11 +629,41 @@ export function IndiaPhcMapPage() {
             >
               All Types
             </button>
+            <button
+              onClick={() => setFacilityType('PHC')}
+              className={`px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                facilityType === 'PHC'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              🟢 PHC Only
+            </button>
+            <button
+              onClick={() => setFacilityType('CHC')}
+              className={`px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                facilityType === 'CHC'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              🔵 CHC Only
+            </button>
+            <button
+              onClick={() => setFacilityType('DH')}
+              className={`px-3 py-1.5 rounded-md transition-all cursor-pointer ${
+                facilityType === 'DH'
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              🟡 DH Only
+            </button>
           </div>
 
           {/* Quick Region Presets */}
           <div className="hidden lg:flex items-center gap-1 text-xs">
-            <span className="text-slate-400 text-[11px] font-medium mr-1">Jump to:</span>
+            <span className="text-slate-400 text-[11px] font-medium mr-1">Region:</span>
             {REGIONS.map((r) => (
               <button
                 key={r.name}
@@ -491,24 +673,25 @@ export function IndiaPhcMapPage() {
                   setSearchQuery('');
                   mapInstanceRef.current?.flyTo(r.center, r.zoom, { duration: 1.0 });
                 }}
-                className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium transition-colors"
+                className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium transition-colors cursor-pointer"
               >
                 {r.name}
               </button>
             ))}
           </div>
 
-          {/* Map Layer Switcher */}
+          {/* Map Layer Switcher — 100% Free layers, No API Key needed */}
           <div className="ml-auto flex items-center gap-1.5">
             <select
               value={mapStyle}
               onChange={(e) => setMapStyle(e.target.value as TileStyle)}
-              className="h-9 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-2 font-medium outline-none"
+              className="h-9 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-2 font-medium outline-none cursor-pointer"
             >
-              <option value="positron">🗺️ Clean Light (Carto)</option>
-              <option value="dark_matter">🌙 Dark Matter</option>
-              <option value="osm_standard">🌍 Street (OSM)</option>
-              <option value="satellite">🛰️ Satellite (Esri)</option>
+              <option value="osm_standard">🌍 OpenStreetMap (Free)</option>
+              <option value="esri_topo">🏔️ Esri Topo Terrain</option>
+              <option value="esri_gray">⚪ Esri Clean Gray</option>
+              <option value="esri_dark">🌙 Esri Dark Night</option>
+              <option value="satellite">🛰️ Satellite Aerial</option>
             </select>
           </div>
         </div>
@@ -522,8 +705,8 @@ export function IndiaPhcMapPage() {
             <div className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-white dark:bg-slate-900 shadow-xl border border-slate-200 dark:border-slate-800">
               <RefreshCw className="h-8 w-8 text-emerald-600 animate-spin" />
               <div className="text-center">
-                <h3 className="font-bold text-slate-900 dark:text-white">Mapping 29,564 Health Facilities</h3>
-                <p className="text-xs text-slate-500 mt-1">Plotting geocoded coordinates over India basemap…</p>
+                <h3 className="font-bold text-slate-900 dark:text-white">Loading National Health Facilities</h3>
+                <p className="text-xs text-slate-500 mt-1">Plotting 35,868 geocoded health centres across India…</p>
               </div>
             </div>
           </div>
@@ -540,25 +723,72 @@ export function IndiaPhcMapPage() {
         {/* Leaflet Map Div */}
         <div ref={mapContainerRef} className="w-full h-full z-0" />
 
-        {/* ── Map Legend (Floating Bottom Left) ──────────────────────────── */}
-        <div className="absolute bottom-5 left-5 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur rounded-xl p-3 shadow-lg border border-slate-200 dark:border-slate-800 text-xs">
-          <div className="font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-1.5">
-            <Layers className="h-3.5 w-3.5 text-emerald-600" />
-            <span>Map Pointer Legend</span>
+        {/* ── Zoom Level Indicator & LOD Helper (Floating Top Left) ─────── */}
+        <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
+          <div className="px-3 py-1.5 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-slate-200 dark:border-slate-800 shadow-md text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+            <span>
+              {currentZoom <= 6
+                ? 'Overview Zoom (Showing state hubs & high-priority centres)'
+                : currentZoom <= 9
+                ? 'Regional Zoom (Showing all district facilities)'
+                : 'Local Zoom (Showing modern pin pointers)'}
+            </span>
           </div>
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-emerald-500 border border-emerald-700 shadow-xs"></span>
-              <span className="text-slate-700 dark:text-slate-300 font-medium">Primary Health Centre (PHC)</span>
+
+          <button
+            onClick={() => setAdaptiveLod(!adaptiveLod)}
+            className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-md cursor-pointer ${
+              adaptiveLod
+                ? 'bg-emerald-600 text-white border-emerald-700'
+                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+            }`}
+            title="Toggle between clean adaptive zooming and raw point rendering"
+          >
+            {adaptiveLod ? 'Clean LOD Active' : 'Raw Points'}
+          </button>
+        </div>
+
+        {/* ── Map Pointer Legend (Floating Bottom Left) ─────────────────── */}
+        <div className="absolute bottom-5 left-5 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur rounded-2xl p-3.5 shadow-xl border border-slate-200 dark:border-slate-800 text-xs">
+          <div className="font-bold text-slate-900 dark:text-white mb-2.5 flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <Layers className="h-3.5 w-3.5 text-emerald-600" />
+              <span>Facility Pointers</span>
+            </span>
+            <span className="text-[10px] text-slate-400 font-normal">Layered by priority</span>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="h-3.5 w-3.5 rounded-full bg-amber-500 border-2 border-amber-800 shadow-xs"></span>
+                <span className="text-slate-800 dark:text-slate-200 font-semibold">District Hospital (DH)</span>
+              </div>
+              <Badge variant="outline" className="text-[10px] bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-300">
+                933 Top
+              </Badge>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-blue-500 border border-blue-700 shadow-xs"></span>
-              <span className="text-slate-700 dark:text-slate-300 font-medium">Community Health Centre (CHC)</span>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-full bg-blue-500 border border-blue-800 shadow-xs"></span>
+                <span className="text-slate-800 dark:text-slate-200 font-semibold">Community Health Centre (CHC)</span>
+              </div>
+              <Badge variant="outline" className="text-[10px] bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border-blue-300">
+                5,371 Mid
+              </Badge>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-amber-500 border border-amber-700 shadow-xs"></span>
-              <span className="text-slate-700 dark:text-slate-300 font-medium">District Hospital (DH)</span>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 border border-emerald-800 shadow-xs"></span>
+                <span className="text-slate-800 dark:text-slate-200 font-semibold">Primary Health Centre (PHC)</span>
+              </div>
+              <Badge variant="outline" className="text-[10px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-300">
+                29,564 Base
+              </Badge>
             </div>
+          </div>
+          <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400">
+            Zoom in to zoom 10+ to reveal teardrop pin markers.
           </div>
         </div>
 
@@ -576,7 +806,7 @@ export function IndiaPhcMapPage() {
                       : 'bg-amber-600 text-white'
                   }`}
                 >
-                  {selectedFacility.t}
+                  {selectedFacility.t === 'PHC' ? 'Primary Health Centre' : selectedFacility.t === 'CHC' ? 'Community Health Centre' : 'District Hospital'}
                 </Badge>
                 <Badge variant="outline" className="text-[10px] text-slate-500 dark:text-slate-400">
                   {selectedFacility.loc}
@@ -584,7 +814,7 @@ export function IndiaPhcMapPage() {
               </div>
               <button
                 onClick={() => setSelectedFacility(null)}
-                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 rounded-md"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 rounded-md cursor-pointer"
               >
                 ✕
               </button>
@@ -619,7 +849,7 @@ export function IndiaPhcMapPage() {
                   <span>{selectedFacility.lat.toFixed(4)}, {selectedFacility.lng.toFixed(4)}</span>
                   <button
                     onClick={() => handleCopyCoords(selectedFacility.lat, selectedFacility.lng)}
-                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500"
+                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500 cursor-pointer"
                     title="Copy Lat, Lng"
                   >
                     {copiedCoords ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
