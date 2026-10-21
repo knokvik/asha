@@ -53,14 +53,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       if (!mounted) return;
       final context = raw == null ? null : jsonDecode(raw);
       final hotspots = context is Map && context['hotspots'] is List
-          ? (context['hotspots'] as List).where((item) => item is Map && item['active'] == true).length
+          ? (context['hotspots'] as List)
+                .where((item) => item is Map && item['active'] == true)
+                .length
           : 0;
-      final historyItems = history == null ? const <dynamic>[] : jsonDecode(history);
+      final historyItems = history == null
+          ? const <dynamic>[]
+          : jsonDecode(history);
       final latestSource = historyItems is List && historyItems.isNotEmpty
           ? 'Peer signal from ${historyItems.first['source_worker_id'] ?? 'nearby ASHA'}'
           : hotspots > 0
-              ? 'Latest server-synced area context'
-              : 'No shared area signals yet';
+          ? 'Latest server-synced area context'
+          : 'No shared area signals yet';
       setState(() {
         _sharedSignalCount = hotspots;
         _sharedSignalSource = latestSource;
@@ -68,6 +72,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     } catch (_) {
       // The dashboard remains usable if secure storage has no context yet.
     }
+  }
+
+  Future<void> _refreshDashboard() async {
+    // Keep refresh lightweight and offline-safe: reload local shared context
+    // immediately. The sync worker continues pulling server deltas separately.
+    await _loadSharedSignals();
   }
 
   @override
@@ -89,62 +99,69 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _body(BuildContext context) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!widget.embedded) ...[
-            _buildTopBar(context),
+    return RefreshIndicator(
+      onRefresh: _refreshDashboard,
+      color: const Color(0xFF1E4231),
+      backgroundColor: Colors.white,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (!widget.embedded) ...[
+              _buildTopBar(context),
+              const SizedBox(height: 16),
+            ],
+
+            if (!widget.embedded) ...[
+              AshaSearchBar(
+                key: const Key('home_search_bar'),
+                controller: _searchController,
+                hintText: 'Search people, medicines, guides...',
+                onTap: () => context.push('/search'),
+                onChanged: (_) => setState(() {}),
+                onSubmitted: (query) {
+                  final value = query.trim();
+                  final suffix = value.isEmpty
+                      ? ''
+                      : '?q=${Uri.encodeQueryComponent(value)}';
+                  context.push('/search$suffix');
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // 2. Compact field map preview replaces the profile block.
+            _buildMapPreview(context),
             const SizedBox(height: 16),
-          ],
-
-          if (!widget.embedded) ...[
-            AshaSearchBar(
-              key: const Key('home_search_bar'),
-              controller: _searchController,
-              hintText: 'Search people, medicines, guides...',
-              onTap: () => context.push('/search'),
-              onChanged: (_) => setState(() {}),
-              onSubmitted: (query) {
-                final value = query.trim();
-                final suffix = value.isEmpty
-                    ? ''
-                    : '?q=${Uri.encodeQueryComponent(value)}';
-                context.push('/search$suffix');
-              },
-            ),
+            _buildSharedSignalCard(context),
             const SizedBox(height: 16),
-          ],
 
-          // 2. Compact field map preview replaces the profile block.
-          _buildMapPreview(context),
-          const SizedBox(height: 16),
-          _buildSharedSignalCard(context),
-          const SizedBox(height: 16),
+            // 3. 4 Metric Blocks: 12 Today | 3 Overdue | 8 Completed | 2 Follow-ups
+            _buildMetricStrip(context),
+            const SizedBox(height: 16),
 
-          // 3. 4 Metric Blocks: 12 Today | 3 Overdue | 8 Completed | 2 Follow-ups
-          _buildMetricStrip(context),
-          const SizedBox(height: 16),
-
-          // 4. Quick actions Section: first four actions
-          Text(
-            shellText(_lang, 'quick'),
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF111827),
-              fontFamily: 'SF Pro Display',
+            // 4. Quick actions Section: first four actions
+            Text(
+              shellText(_lang, 'quick'),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF111827),
+                fontFamily: 'SF Pro Display',
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          _buildQuickActionsGrid(context),
-          const SizedBox(height: 10),
-          // Actions 5 and 6: Revenue and Reports
-          _buildRevenueReportsActions(context),
-          const SizedBox(height: 24),
-        ],
+            const SizedBox(height: 12),
+            _buildQuickActionsGrid(context),
+            const SizedBox(height: 10),
+            // Actions 5 and 6: Revenue and Reports
+            _buildRevenueReportsActions(context),
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }
@@ -164,7 +181,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               : '$_sharedSignalCount active area signal${_sharedSignalCount == 1 ? '' : 's'}',
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
-        subtitle: Text('$_sharedSignalSource. Questions and disease radar update offline.'),
+        subtitle: Text(
+          '$_sharedSignalSource. Questions and disease radar update offline.',
+        ),
         trailing: const Icon(Icons.chevron_right_rounded),
         onTap: () async {
           await context.push('/peer-sync');
@@ -795,13 +814,17 @@ class AshaNavigationDrawer extends ConsumerWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          isConnected ? Icons.cloud_done_rounded : Icons.lock_rounded,
+                          isConnected
+                              ? Icons.cloud_done_rounded
+                              : Icons.lock_rounded,
                           size: 13,
                           color: const Color(0xFF22C55E),
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          isConnected ? 'Server Online • Sync Active' : shellText(lang, 'encrypted'),
+                          isConnected
+                              ? 'Server Online • Sync Active'
+                              : shellText(lang, 'encrypted'),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 11,
@@ -966,7 +989,9 @@ class AshaNavigationDrawer extends ConsumerWidget {
                                 ),
                                 onPressed: () {
                                   Navigator.pop(dialogCtx);
-                                  ref.read(userProfileProvider.notifier).logout(context);
+                                  ref
+                                      .read(userProfileProvider.notifier)
+                                      .logout(context);
                                 },
                                 child: const Text('Sign Out'),
                               ),

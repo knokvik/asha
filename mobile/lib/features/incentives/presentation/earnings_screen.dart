@@ -102,7 +102,8 @@ class _EarningsScreenState extends State<EarningsScreen> {
 
     final earned = _totals.totalEarned.toStringAsFixed(0);
     final paid = _totals.paidAmount.toStringAsFixed(0);
-    final pending = (_totals.totalPipeline - _totals.paidAmount).toStringAsFixed(0);
+    final pending = (_totals.totalPipeline - _totals.paidAmount)
+        .toStringAsFixed(0);
 
     final String speechText;
     if (_selectedLanguage == 'hi') {
@@ -134,7 +135,9 @@ class _EarningsScreenState extends State<EarningsScreen> {
         widget.workerId,
         _selectedPeriod,
       );
-      final pdfBytes = await PdfGenerator.generateEarningsStatementPdf(statement);
+      final pdfBytes = await PdfGenerator.generateEarningsStatementPdf(
+        statement,
+      );
 
       if (mounted) {
         setState(() => _isLoading = false);
@@ -158,14 +161,21 @@ class _EarningsScreenState extends State<EarningsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Earnings & Incentives'),
+        backgroundColor: AshaColors.cardSurface,
         actions: [
           // Privacy Shield Toggle (Req 55.6)
           IconButton(
             key: const Key('earnings_privacy_toggle'),
-            icon: Icon(_isPrivacyShieldEnabled ? Icons.visibility_off : Icons.visibility),
-            tooltip: _isPrivacyShieldEnabled ? 'Reveal Amounts' : 'Shield Privacy',
+            icon: Icon(
+              _isPrivacyShieldEnabled ? Icons.visibility_off : Icons.visibility,
+            ),
+            tooltip: _isPrivacyShieldEnabled
+                ? 'Reveal Amounts'
+                : 'Shield Privacy',
             onPressed: () {
-              setState(() => _isPrivacyShieldEnabled = !_isPrivacyShieldEnabled);
+              setState(
+                () => _isPrivacyShieldEnabled = !_isPrivacyShieldEnabled,
+              );
             },
           ),
           // Audio Summary Button (Req 55.6)
@@ -200,7 +210,8 @@ class _EarningsScreenState extends State<EarningsScreen> {
                   const SizedBox(height: 16),
 
                   // Earnings Projection Banner (Req 55.4)
-                  if (_projection != null && _projection!.projectedAdditionalAmount > 0) ...[
+                  if (_projection != null &&
+                      _projection!.projectedAdditionalAmount > 0) ...[
                     _buildProjectionCard(_projection!),
                     const SizedBox(height: 16),
                   ],
@@ -234,14 +245,16 @@ class _EarningsScreenState extends State<EarningsScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade300),
+              color: AshaColors.cardSurface,
+              borderRadius: AshaShapes.chipBorderRadius,
+              border: Border.all(color: AshaColors.borderSubtle),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 key: const Key('period_selector_dropdown'),
-                value: _availablePeriods.contains(_selectedPeriod) ? _selectedPeriod : null,
+                value: _availablePeriods.contains(_selectedPeriod)
+                    ? _selectedPeriod
+                    : null,
                 isExpanded: true,
                 hint: const Text('Select Month'),
                 items: _availablePeriods
@@ -250,7 +263,10 @@ class _EarningsScreenState extends State<EarningsScreen> {
                         value: p,
                         child: Text(
                           'Period: $p',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     )
@@ -273,9 +289,9 @@ class _EarningsScreenState extends State<EarningsScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade300),
+              color: AshaColors.cardSurface,
+              borderRadius: AshaShapes.chipBorderRadius,
+              border: Border.all(color: AshaColors.borderSubtle),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
@@ -283,9 +299,18 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 value: _selectedLanguage,
                 isExpanded: true,
                 items: const [
-                  DropdownMenuItem(value: 'en', child: Text('English', style: TextStyle(fontSize: 12))),
-                  DropdownMenuItem(value: 'hi', child: Text('हिन्दी', style: TextStyle(fontSize: 12))),
-                  DropdownMenuItem(value: 'mr', child: Text('मराठी', style: TextStyle(fontSize: 12))),
+                  DropdownMenuItem(
+                    value: 'en',
+                    child: Text('English', style: TextStyle(fontSize: 12)),
+                  ),
+                  DropdownMenuItem(
+                    value: 'hi',
+                    child: Text('हिन्दी', style: TextStyle(fontSize: 12)),
+                  ),
+                  DropdownMenuItem(
+                    value: 'mr',
+                    child: Text('मराठी', style: TextStyle(fontSize: 12)),
+                  ),
                 ],
                 onChanged: (newLang) {
                   if (newLang != null) {
@@ -330,7 +355,10 @@ class _EarningsScreenState extends State<EarningsScreen> {
               ),
               if (_isPrivacyShieldEnabled)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white24,
                     borderRadius: BorderRadius.circular(12),
@@ -339,7 +367,10 @@ class _EarningsScreenState extends State<EarningsScreen> {
                     children: [
                       Icon(Icons.lock, size: 12, color: Colors.white),
                       SizedBox(width: 4),
-                      Text('Shielded', style: TextStyle(color: Colors.white, fontSize: 11)),
+                      Text(
+                        'Shielded',
+                        style: TextStyle(color: Colors.white, fontSize: 11),
+                      ),
                     ],
                   ),
                 ),
@@ -361,9 +392,21 @@ class _EarningsScreenState extends State<EarningsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildHeroSubStat('Directly Paid (DBT)', _totals.paidAmount, Colors.greenAccent.shade100),
-              _buildHeroSubStat('Approved (Pending Transfer)', _totals.approvedAmount, Colors.lightBlueAccent.shade100),
-              _buildHeroSubStat('Under Review', _totals.claimedAmount, Colors.amberAccent.shade100),
+              _buildHeroSubStat(
+                'Directly Paid (DBT)',
+                _totals.paidAmount,
+                Colors.greenAccent.shade100,
+              ),
+              _buildHeroSubStat(
+                'Approved (Pending Transfer)',
+                _totals.approvedAmount,
+                Colors.lightBlueAccent.shade100,
+              ),
+              _buildHeroSubStat(
+                'Under Review',
+                _totals.claimedAmount,
+                Colors.amberAccent.shade100,
+              ),
             ],
           ),
         ],
@@ -375,11 +418,18 @@ class _EarningsScreenState extends State<EarningsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 10)),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white60, fontSize: 10),
+        ),
         const SizedBox(height: 2),
         Text(
           _formatAmount(amount),
-          style: TextStyle(color: valColor, fontSize: 13, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: valColor,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ],
     );
@@ -416,16 +466,25 @@ class _EarningsScreenState extends State<EarningsScreen> {
             style: TextStyle(fontSize: 12, color: Colors.brown.shade800),
           ),
           const SizedBox(height: 8),
-          ...proj.pendingTasks.take(2).map(
+          ...proj.pendingTasks
+              .take(2)
+              .map(
                 (task) => Padding(
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Row(
                     children: [
-                      Icon(Icons.arrow_right, size: 16, color: Colors.amber.shade900),
+                      Icon(
+                        Icons.arrow_right,
+                        size: 16,
+                        color: Colors.amber.shade900,
+                      ),
                       Expanded(
                         child: Text(
                           '${task.activityName}: ${task.remainingDescription}',
-                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500),
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                       Text(
@@ -458,19 +517,61 @@ class _EarningsScreenState extends State<EarningsScreen> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            _buildStatusChip('paid', 'Paid', _totals.paidAmount, _totals.paidCount, Colors.green),
-            _buildStatusChip('approved', 'Approved', _totals.approvedAmount, _totals.approvedCount, Colors.blue),
-            _buildStatusChip('verified', 'Verified', _totals.verifiedAmount, _totals.verifiedCount, Colors.purple),
-            _buildStatusChip('claimed', 'Claimed', _totals.claimedAmount, _totals.claimedCount, Colors.orange),
-            _buildStatusChip('eligible', 'Eligible', _totals.eligibleAmount, _totals.eligibleCount, Colors.teal),
-            _buildStatusChip('rejected', 'Rejected', _totals.rejectedAmount, _totals.rejectedCount, Colors.red),
+            _buildStatusChip(
+              'paid',
+              'Paid',
+              _totals.paidAmount,
+              _totals.paidCount,
+              Colors.green,
+            ),
+            _buildStatusChip(
+              'approved',
+              'Approved',
+              _totals.approvedAmount,
+              _totals.approvedCount,
+              Colors.blue,
+            ),
+            _buildStatusChip(
+              'verified',
+              'Verified',
+              _totals.verifiedAmount,
+              _totals.verifiedCount,
+              Colors.purple,
+            ),
+            _buildStatusChip(
+              'claimed',
+              'Claimed',
+              _totals.claimedAmount,
+              _totals.claimedCount,
+              Colors.orange,
+            ),
+            _buildStatusChip(
+              'eligible',
+              'Eligible',
+              _totals.eligibleAmount,
+              _totals.eligibleCount,
+              Colors.teal,
+            ),
+            _buildStatusChip(
+              'rejected',
+              'Rejected',
+              _totals.rejectedAmount,
+              _totals.rejectedCount,
+              Colors.red,
+            ),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildStatusChip(String statusKey, String label, double amount, int count, MaterialColor color) {
+  Widget _buildStatusChip(
+    String statusKey,
+    String label,
+    double amount,
+    int count,
+    MaterialColor color,
+  ) {
     final isSelected = _selectedStatusFilter == statusKey;
 
     return InkWell(
@@ -485,7 +586,10 @@ class _EarningsScreenState extends State<EarningsScreen> {
         decoration: BoxDecoration(
           color: isSelected ? color.shade700 : color.shade50,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: isSelected ? color.shade800 : color.shade200, width: 1.2),
+          border: Border.all(
+            color: isSelected ? color.shade800 : color.shade200,
+            width: 1.2,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -544,7 +648,11 @@ class _EarningsScreenState extends State<EarningsScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.account_balance, color: Colors.blue.shade800, size: 20),
+              Icon(
+                Icons.account_balance,
+                color: Colors.blue.shade800,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Text(
                 'Bank Disbursement & Reconciliation (Requirement 55.3)',
@@ -566,7 +674,9 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
-                  color: rec.hasDiscrepancy ? Colors.red.shade300 : Colors.blue.shade100,
+                  color: rec.hasDiscrepancy
+                      ? Colors.red.shade300
+                      : Colors.blue.shade100,
                 ),
               ),
               child: Row(
@@ -577,10 +687,19 @@ class _EarningsScreenState extends State<EarningsScreen> {
                     children: [
                       Text(
                         'Ref: ${rec.bankReference}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11.5,
+                        ),
                       ),
                       const SizedBox(height: 2),
-                      Text('Paid on: $dateStr', style: const TextStyle(fontSize: 10.5, color: Colors.grey)),
+                      Text(
+                        'Paid on: $dateStr',
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          color: Colors.grey,
+                        ),
+                      ),
                     ],
                   ),
                   Column(
@@ -596,9 +715,14 @@ class _EarningsScreenState extends State<EarningsScreen> {
                       ),
                       const SizedBox(height: 2),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 1,
+                        ),
                         decoration: BoxDecoration(
-                          color: rec.hasDiscrepancy ? Colors.red.shade50 : Colors.green.shade50,
+                          color: rec.hasDiscrepancy
+                              ? Colors.red.shade50
+                              : Colors.green.shade50,
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -606,7 +730,9 @@ class _EarningsScreenState extends State<EarningsScreen> {
                           style: TextStyle(
                             fontSize: 9.5,
                             fontWeight: FontWeight.bold,
-                            color: rec.hasDiscrepancy ? Colors.red.shade800 : Colors.green.shade800,
+                            color: rec.hasDiscrepancy
+                                ? Colors.red.shade800
+                                : Colors.green.shade800,
                           ),
                         ),
                       ),
@@ -624,7 +750,9 @@ class _EarningsScreenState extends State<EarningsScreen> {
   Widget _buildLineItemsSection() {
     final filteredItems = _selectedStatusFilter == null
         ? _lineItems
-        : _lineItems.where((i) => i.status.toLowerCase() == _selectedStatusFilter).toList();
+        : _lineItems
+              .where((i) => i.status.toLowerCase() == _selectedStatusFilter)
+              .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -648,7 +776,10 @@ class _EarningsScreenState extends State<EarningsScreen> {
           Container(
             padding: const EdgeInsets.all(24),
             alignment: Alignment.center,
-            child: const Text('No deliveries found for selected status filter.', style: TextStyle(color: Colors.grey)),
+            child: const Text(
+              'No deliveries found for selected status filter.',
+              style: TextStyle(color: Colors.grey),
+            ),
           )
         else
           ...filteredItems.map(_buildLineItemCard),
@@ -673,7 +804,10 @@ class _EarningsScreenState extends State<EarningsScreen> {
             Expanded(
               child: Text(
                 item.activityName,
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
               ),
             ),
             Text(
@@ -690,9 +824,15 @@ class _EarningsScreenState extends State<EarningsScreen> {
           padding: const EdgeInsets.only(top: 4),
           child: Row(
             children: [
-              Text(dateStr, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              Text(
+                dateStr,
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
+              ),
               const SizedBox(width: 8),
-              Text('• ${item.memberCodedId}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              Text(
+                '• ${item.memberCodedId}',
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
+              ),
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -727,7 +867,11 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 if (item.responsiblePerson != null)
                   _buildDetailRow('Assigned Person', item.responsiblePerson!),
                 if (item.delayOrRejectionReason != null)
-                  _buildDetailRow('Reason / Feedback', item.delayOrRejectionReason!, isAlert: true),
+                  _buildDetailRow(
+                    'Reason / Feedback',
+                    item.delayOrRejectionReason!,
+                    isAlert: true,
+                  ),
                 if (item.evidenceRecordId != null)
                   _buildDetailRow('Evidence Link', item.evidenceRecordId!),
               ],
@@ -748,7 +892,11 @@ class _EarningsScreenState extends State<EarningsScreen> {
             width: 140,
             child: Text(
               '$label: ',
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey),
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey,
+              ),
             ),
           ),
           Expanded(

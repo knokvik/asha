@@ -15,11 +15,15 @@ class ProgramsHubScreen extends StatelessWidget {
       backgroundColor: AshaColors.screenBg,
       bottomNavigationBar: const AshaBottomNav(index: 2),
       appBar: AppBar(
-        backgroundColor: AshaColors.cardSurface,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        centerTitle: false,
+        centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: AshaColors.textPrimary),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 20,
+            color: AshaColors.textPrimary,
+          ),
           onPressed: () {
             if (context.canPop()) {
               context.pop();
@@ -134,7 +138,10 @@ class _ClinicalCard extends StatelessWidget {
                     width: 58,
                     height: 58,
                     alignment: Alignment.center,
-                    child: AshaClinicalProgramIllustrationWidget(type: type, size: 54),
+                    child: AshaClinicalProgramIllustrationWidget(
+                      type: type,
+                      size: 54,
+                    ),
                   ),
                   const Spacer(),
                   const Icon(

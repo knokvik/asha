@@ -268,7 +268,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   var _facilityCategory = 'all';
   LatLon? _pointingTarget;
   LatLng? _liveLocation;
-  late final List<LatLng> _dayRoute;
+  List<LatLng> _dayRoute = const [];
   static const _secureStorage = FlutterSecureStorage();
   static const _locationChannel = MethodChannel('asha_platform/location');
 
@@ -285,10 +285,18 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
     super.initState();
     _zoomLevel = _initialZoom;
     _loadBasemapPreference();
-    final stops = todaysRoute(_fix, widget.pack.households).stops;
+    _rebuildDayRoute();
+  }
+
+  LatLon get _effectiveFix => _liveLocation == null
+      ? _fix
+      : LatLon(_liveLocation!.latitude, _liveLocation!.longitude);
+
+  void _rebuildDayRoute() {
+    final stops = todaysRoute(_effectiveFix, widget.pack.households).stops;
     _dayRoute = [
       for (final point in walkRoute(widget.roads, [
-        _fix,
+        _effectiveFix,
         for (final stop in stops) stop.point,
       ]))
         LatLng(point.latitude, point.longitude),
@@ -353,6 +361,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
         _liveLocation = location;
         _showLiveLocation = true;
         _isLocating = false;
+        _rebuildDayRoute();
       });
       _mapController.move(location, math.max(_mapController.camera.zoom, 14.5));
     } on PlatformException catch (error) {
@@ -394,7 +403,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
     final selected = _selected;
     final selectedWalk = selected == null
         ? null
-        : walkRoute(widget.roads, [_fix, selected.point]);
+        : walkRoute(widget.roads, [_effectiveFix, selected.point]);
     final selectedPath = [
       if (selectedWalk != null)
         for (final point in selectedWalk)
@@ -531,7 +540,9 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
             left: 14,
             top: widget.embedded ? 14 : 22,
             child: _LocationStatusPill(
-              wardId: widget.pack.index.resolve(_fix).wardId ?? 'catchment',
+              wardId:
+                  widget.pack.index.resolve(_effectiveFix).wardId ??
+                  'catchment',
               isLive: _showLiveLocation,
               isSatellite: _satelliteView,
               activeCategory: _facilityCategory,
@@ -886,7 +897,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
       }
     }
     if (_layer == _MapLayer.households) {
-      final route = todaysRoute(_fix, widget.pack.households).stops;
+      final route = todaysRoute(_effectiveFix, widget.pack.households).stops;
       final scoped = widget.pack.households.where(
         (household) => _householdScope == _HouseholdScope.due
             ? household.dueToday
@@ -1477,7 +1488,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   }
 
   Widget _householdCard(HouseholdPin household) {
-    final metres = haversineMetres(_fix, household.point).round();
+    final metres = haversineMetres(_effectiveFix, household.point).round();
     return Material(
       color: _satelliteView
           ? const Color(0xFF1E293B).withValues(alpha: 0.96)
@@ -1661,8 +1672,8 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   }
 
   Widget _inlineCompassGuidance(LatLon target) {
-    final bearing = bearingDegrees(_fix, target);
-    final metres = haversineMetres(_fix, target);
+    final bearing = bearingDegrees(_effectiveFix, target);
+    final metres = haversineMetres(_effectiveFix, target);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -1707,8 +1718,8 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   }
 
   Widget _directionCard(LatLon target) {
-    final bearing = bearingDegrees(_fix, target);
-    final metres = haversineMetres(_fix, target);
+    final bearing = bearingDegrees(_effectiveFix, target);
+    final metres = haversineMetres(_effectiveFix, target);
     return Material(
       color: _satelliteView
           ? const Color(0xFF1E293B).withValues(alpha: 0.96)

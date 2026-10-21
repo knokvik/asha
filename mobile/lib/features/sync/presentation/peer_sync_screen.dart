@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../core/sync/nearby_peer_transport.dart';
@@ -30,6 +31,7 @@ class _PeerSyncScreenState extends State<PeerSyncScreen> {
     void status(String message) {
       if (mounted) setState(() => _message = message);
     }
+
     if (advertise) {
       await _nearby.startAdvertising(onStatus: status);
     } else {
@@ -54,7 +56,9 @@ class _PeerSyncScreenState extends State<PeerSyncScreen> {
   }
 
   Future<void> _importPacket() async {
-    final result = await _service.importContextPacket(_packetController.text.trim());
+    final result = await _service.importContextPacket(
+      _packetController.text.trim(),
+    );
     if (!mounted) return;
     setState(() {
       _message = result.imported
@@ -62,6 +66,16 @@ class _PeerSyncScreenState extends State<PeerSyncScreen> {
           : result.error;
     });
     if (result.imported) _packetController.clear();
+  }
+
+  Future<void> _scanPacket() async {
+    final raw = await showDialog<String>(
+      context: context,
+      builder: (_) => const _PeerQrScannerDialog(),
+    );
+    if (!mounted || raw == null || raw.trim().isEmpty) return;
+    _packetController.text = raw.trim();
+    await _importPacket();
   }
 
   @override
@@ -75,11 +89,16 @@ class _PeerSyncScreenState extends State<PeerSyncScreen> {
             child: ListTile(
               leading: Icon(Icons.people_alt_outlined),
               title: Text('Share area context without a tower'),
-              subtitle: Text('Only aggregate disease signals are exchanged. Patient records never leave this phone through peer sync.'),
+              subtitle: Text(
+                'Only aggregate disease signals are exchanged. Patient records never leave this phone through peer sync.',
+              ),
             ),
           ),
           const SizedBox(height: 12),
-          const Text('Direct nearby exchange', style: TextStyle(fontWeight: FontWeight.w800)),
+          const Text(
+            'Direct nearby exchange',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -98,7 +117,9 @@ class _PeerSyncScreenState extends State<PeerSyncScreen> {
               OutlinedButton.icon(
                 onPressed: () async {
                   await _nearby.stop();
-                  if (mounted) setState(() => _message = 'Nearby exchange stopped.');
+                  if (mounted) {
+                    setState(() => _message = 'Nearby exchange stopped.');
+                  }
                 },
                 icon: const Icon(Icons.stop_circle_outlined),
                 label: const Text('Stop'),
@@ -148,31 +169,143 @@ class _PeerSyncScreenState extends State<PeerSyncScreen> {
           if (_packet != null) ...[
             const SizedBox(height: 12),
             Center(child: QrImageView(data: _packet!, size: 260)),
-            SelectableText(_packet!, maxLines: 3),
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text(
+                'This QR shares only aggregated area signals. It does not contain patient records.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+            ),
           ],
           const SizedBox(height: 20),
-          const Text('Receive from another ASHA', style: TextStyle(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _packetController,
-            minLines: 3,
-            maxLines: 6,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              hintText: 'Paste the peer packet text here',
-            ),
+          const Text(
+            'Receive from another ASHA',
+            style: TextStyle(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: _importPacket,
-            icon: const Icon(Icons.download_done_outlined),
-            label: const Text('Import shared signals'),
+          FilledButton.icon(
+            onPressed: _scanPacket,
+            icon: const Icon(Icons.qr_code_scanner_rounded),
+            label: const Text('Scan ASHA QR'),
+          ),
+          const SizedBox(height: 8),
+          ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            title: const Text(
+              'Advanced fallback',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            subtitle: const Text(
+              'Use only if the camera or Nearby exchange is unavailable.',
+            ),
+            children: [
+              TextField(
+                controller: _packetController,
+                minLines: 3,
+                maxLines: 6,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'Paste the private peer packet token here',
+                ),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: _importPacket,
+                  icon: const Icon(Icons.download_done_outlined),
+                  label: const Text('Import pasted token'),
+                ),
+              ),
+            ],
           ),
           if (_message != null) ...[
             const SizedBox(height: 12),
-            Text(_message!, style: TextStyle(color: _message!.contains('updated') ? Colors.green.shade800 : Colors.black87)),
+            Text(
+              _message!,
+              style: TextStyle(
+                color: _message!.contains('updated')
+                    ? Colors.green.shade800
+                    : Colors.black87,
+              ),
+            ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _PeerQrScannerDialog extends StatefulWidget {
+  const _PeerQrScannerDialog();
+
+  @override
+  State<_PeerQrScannerDialog> createState() => _PeerQrScannerDialogState();
+}
+
+class _PeerQrScannerDialogState extends State<_PeerQrScannerDialog> {
+  var _handled = false;
+  late final MobileScannerController _scanner = MobileScannerController(
+    formats: const [BarcodeFormat.qrCode],
+  );
+
+  @override
+  void dispose() {
+    _scanner.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.all(20),
+      child: SizedBox(
+        width: 360,
+        height: 470,
+        child: Column(
+          children: [
+            ListTile(
+              title: const Text('Scan ASHA area-sync QR'),
+              subtitle: const Text(
+                'Point the camera at the other worker’s QR.',
+              ),
+              trailing: IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: MobileScanner(
+                  controller: _scanner,
+                  onDetect: (capture) {
+                    if (_handled) return;
+                    final value = capture.barcodes
+                        .map((barcode) => barcode.rawValue)
+                        .whereType<String>()
+                        .firstWhere(
+                          (value) => value.trim().isNotEmpty,
+                          orElse: () => '',
+                        );
+                    if (value.isEmpty) return;
+                    _handled = true;
+                    Navigator.of(context).pop(value);
+                  },
+                ),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: Text(
+                'Only aggregate area signals are imported. Patient records are not shared by peer sync.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

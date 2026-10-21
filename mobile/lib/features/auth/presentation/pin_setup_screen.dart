@@ -38,6 +38,7 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
   final _confirmPinController = TextEditingController();
   final _captchaController = TextEditingController();
   bool _isPinConfigured = false;
+  bool _statusChecked = false;
   bool _biometricAvailable = false;
   bool _isSubmitting = false;
   String? _errorMessage;
@@ -81,6 +82,7 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
       if (mounted) {
         setState(() {
           _isPinConfigured = configured;
+          _statusChecked = true;
         });
         if (configured) {
           final biometricAvailable = await auth.isBiometricAvailable;
@@ -91,6 +93,7 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
       }
     } catch (_) {
       // Default to false in testing or uninitialized environments
+      if (mounted) setState(() => _statusChecked = true);
     }
   }
 
@@ -283,6 +286,91 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
     }
   }
 
+  void _appendPinDigit(String digit) {
+    if (_isSubmitting || _pinController.text.length >= 8) return;
+    setState(() {
+      _errorMessage = null;
+      _pinController.text += digit;
+    });
+  }
+
+  void _removePinDigit() {
+    if (_isSubmitting || _pinController.text.isEmpty) return;
+    setState(() {
+      _errorMessage = null;
+      _pinController.text = _pinController.text.substring(
+        0,
+        _pinController.text.length - 1,
+      );
+    });
+  }
+
+  Widget _buildUnlockPad() {
+    const digits = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(8, (index) {
+            final filled = index < _pinController.text.length;
+            return Container(
+              width: 12,
+              height: 12,
+              margin: const EdgeInsets.symmetric(horizontal: 5),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: filled
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.transparent,
+                border: Border.all(
+                  color: filled
+                      ? Theme.of(context).colorScheme.primary
+                      : Colors.grey.shade400,
+                ),
+              ),
+            );
+          }),
+        ),
+        const SizedBox(height: 20),
+        GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: 3,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 1.45,
+          children: [
+            for (final digit in digits)
+              _pinKey(digit, () => _appendPinDigit(digit)),
+            const SizedBox.shrink(),
+            _pinKey('0', () => _appendPinDigit('0')),
+            _pinKey('⌫', _removePinDigit),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _pinKey(String label, VoidCallback onPressed) {
+    return OutlinedButton(
+      onPressed: _isSubmitting ? null : onPressed,
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(0, 52),
+        padding: EdgeInsets.zero,
+        side: BorderSide(color: Colors.grey.shade300),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: label == '⌫' ? 20 : 22,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
   Future<void> _refreshServerSession() async {
     final result = await SessionService(
       apiBaseUrl: defaultAshaApiBaseUrl,
@@ -328,6 +416,10 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+
+    if (!_statusChecked) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -452,21 +544,27 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                       ),
                     ],
                   ],
-                  TextField(
-                    key: const Key('pin_input_field'),
-                    controller: _pinController,
-                    keyboardType: TextInputType.number,
-                    obscureText: true,
-                    maxLength: 8,
-                    decoration: InputDecoration(
-                      labelText: _isPinConfigured
-                          ? (l10n?.securityPin ?? 'Security PIN')
-                          : (l10n?.createPin ?? 'Create PIN (4–8 digits)'),
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      border: const OutlineInputBorder(),
-                      counterText: '',
+                  if (_isPinConfigured) ...[
+                    const SizedBox(height: 4),
+                    const Icon(Icons.lock_outline, size: 28),
+                    const SizedBox(height: 10),
+                    _buildUnlockPad(),
+                  ] else ...[
+                    const SizedBox(height: 18),
+                    TextField(
+                      key: const Key('pin_input_field'),
+                      controller: _pinController,
+                      keyboardType: TextInputType.number,
+                      obscureText: true,
+                      maxLength: 8,
+                      decoration: InputDecoration(
+                        labelText: l10n?.createPin ?? 'Create PIN (4–8 digits)',
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        border: const OutlineInputBorder(),
+                        counterText: '',
+                      ),
                     ),
-                  ),
+                  ],
                   if (!_isPinConfigured) ...[
                     const SizedBox(height: 16),
                     TextField(
@@ -514,6 +612,15 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                     ),
                   ],
                   const SizedBox(height: 28),
+                  if (_isPinConfigured && _biometricAvailable) ...[
+                    OutlinedButton.icon(
+                      key: const Key('biometric_unlock_button'),
+                      onPressed: _isSubmitting ? null : _handleBiometric,
+                      icon: const Icon(Icons.fingerprint_rounded),
+                      label: const Text('Unlock with fingerprint / face'),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   ElevatedButton(
                     key: const Key('submit_pin_button'),
                     onPressed: _isSubmitting ? null : _handleSubmit,
@@ -536,15 +643,6 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                       ),
                     ),
                   ),
-                  if (_isPinConfigured && _biometricAvailable) ...[
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      key: const Key('biometric_unlock_button'),
-                      onPressed: _isSubmitting ? null : _handleBiometric,
-                      icon: const Icon(Icons.fingerprint_rounded),
-                      label: const Text('Unlock with fingerprint / face'),
-                    ),
-                  ],
                   if (_isPinConfigured) ...[
                     const SizedBox(height: 10),
                     TextButton.icon(
