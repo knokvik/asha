@@ -68,7 +68,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             AshaSearchBar(
               key: const Key('home_search_bar'),
               controller: _searchController,
-              hintText: 'Search households, beneficiaries, ABHA...',
+              hintText: 'Search people, medicines, guides...',
               onTap: () => context.push('/search'),
               onChanged: (_) => setState(() {}),
               onSubmitted: (query) {
@@ -76,7 +76,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 final suffix = value.isEmpty
                     ? ''
                     : '?q=${Uri.encodeQueryComponent(value)}';
-                context.push('/households$suffix');
+                context.push('/search$suffix');
               },
             ),
             const SizedBox(height: 16),

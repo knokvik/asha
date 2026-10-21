@@ -17,8 +17,7 @@ class SearchAssistantScreen extends ConsumerStatefulWidget {
       _SearchAssistantScreenState();
 }
 
-class _SearchAssistantScreenState
-    extends ConsumerState<SearchAssistantScreen> {
+class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
   late final TextEditingController _controller;
   String _query = '';
   String? _category;
@@ -53,8 +52,8 @@ class _SearchAssistantScreenState
     final peopleAsync = _category == 'person'
         ? ref.watch(beneficiarySearchResultsProvider(_query))
         : (_query.isEmpty || _category != null)
-            ? const AsyncValue.data(<BeneficiarySearchResult>[])
-            : ref.watch(beneficiarySearchResultsProvider(_query));
+        ? const AsyncValue.data(<BeneficiarySearchResult>[])
+        : ref.watch(beneficiarySearchResultsProvider(_query));
 
     return Scaffold(
       backgroundColor: AshaColors.screenBg,
@@ -92,14 +91,10 @@ class _SearchAssistantScreenState
             child: _query.isEmpty
                 ? _emptyState()
                 : indexAsync.when(
-                    loading: () => const Center(
-                      child: CircularProgressIndicator(),
-                    ),
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
                     error: (error, _) => _errorState(error),
-                    data: (index) => _results(
-                      index,
-                      peopleAsync,
-                    ),
+                    data: (index) => _results(index, peopleAsync),
                   ),
           ),
         ],
@@ -134,7 +129,11 @@ class _SearchAssistantScreenState
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
       children: [
-        const Icon(Icons.manage_search_rounded, size: 68, color: AshaColors.primary),
+        const Icon(
+          Icons.manage_search_rounded,
+          size: 68,
+          color: AshaColors.primary,
+        ),
         const SizedBox(height: 12),
         const Text(
           'Offline ASHA search assistant',
@@ -184,7 +183,9 @@ class _SearchAssistantScreenState
         ? const <SearchKnowledgeEntry>[]
         : index.search(_query, category: _category);
     final showPeople = _category == null || _category == 'person';
-    final hasPeople = peopleAsync.valueOrNull?.isNotEmpty ?? false;
+    final people =
+        peopleAsync.asData?.value ?? const <BeneficiarySearchResult>[];
+    final hasPeople = people.isNotEmpty;
     final isLoadingPeople = peopleAsync.isLoading;
 
     if (knowledge.isEmpty && !hasPeople && !isLoadingPeople) {
@@ -203,7 +204,7 @@ class _SearchAssistantScreenState
               child: LinearProgressIndicator(),
             )
           else
-            for (final person in peopleAsync.valueOrNull!) _personCard(person),
+            for (final person in people) _personCard(person),
         ],
         if (knowledge.isNotEmpty) ...[
           _sectionTitle('Offline knowledge cards', Icons.auto_awesome_outlined),
@@ -234,7 +235,10 @@ class _SearchAssistantScreenState
           backgroundColor: AshaColors.primaryLight,
           child: Icon(Icons.person_outline, color: AshaColors.primary),
         ),
-        title: Text(member.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+        title: Text(
+          member.name,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
         subtitle: Text('${result.village} • Head: ${result.headName}'),
         trailing: const Icon(Icons.chevron_right_rounded),
         onTap: () => context.push('/beneficiary/${member.id}'),
@@ -260,23 +264,35 @@ class _SearchAssistantScreenState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(entry.name, style: const TextStyle(fontWeight: FontWeight.w800)),
+                    Text(
+                      entry.name,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       entry.purpose,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: AshaColors.textSecondary, height: 1.3),
+                      style: const TextStyle(
+                        color: AshaColors.textSecondary,
+                        height: 1.3,
+                      ),
                     ),
                     const SizedBox(height: 7),
                     Text(
                       '${entry.categoryLabel} • Tap for details',
-                      style: const TextStyle(fontSize: 12, color: AshaColors.primaryDark),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AshaColors.primaryDark,
+                      ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: AshaColors.textMuted),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AshaColors.textMuted,
+              ),
             ],
           ),
         ),
@@ -311,7 +327,11 @@ class _SearchAssistantScreenState
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.search_off_rounded, size: 58, color: AshaColors.textMuted),
+            const Icon(
+              Icons.search_off_rounded,
+              size: 58,
+              color: AshaColors.textMuted,
+            ),
             const SizedBox(height: 12),
             Text(
               'No offline results for “$_query”',
@@ -373,26 +393,40 @@ class _SearchAssistantScreenState
                   Expanded(
                     child: Text(
                       entry.name,
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                   _categoryIcon(entry.category),
                 ],
               ),
               const SizedBox(height: 8),
-              Text(entry.categoryLabel, style: const TextStyle(color: AshaColors.primaryDark, fontWeight: FontWeight.w700)),
+              Text(
+                entry.categoryLabel,
+                style: const TextStyle(
+                  color: AshaColors.primaryDark,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               const SizedBox(height: 18),
               _detailSection('Purpose', entry.purpose),
               _detailSection('Dose / protocol', entry.doseOrProtocol),
               _detailSection('How to use', entry.howToUse),
               _detailSection('When to refer', entry.whenToRefer),
               _detailSection('Danger signs', entry.dangerSigns),
-              if (entry.approxPrice.isNotEmpty) _detailSection('Approx. price / supply', entry.approxPrice),
+              if (entry.approxPrice.isNotEmpty)
+                _detailSection('Approx. price / supply', entry.approxPrice),
               _detailSection('Source', entry.sourceRef),
               const SizedBox(height: 8),
               const Text(
                 'Use this as an offline reference card. It does not replace clinical classification, local protocol, or PHC referral.',
-                style: TextStyle(color: AshaColors.textSecondary, height: 1.35, fontSize: 12),
+                style: TextStyle(
+                  color: AshaColors.textSecondary,
+                  height: 1.35,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
@@ -402,7 +436,9 @@ class _SearchAssistantScreenState
   }
 
   Widget _detailSection(String title, String value) {
-    if (value.trim().isEmpty || value.trim() == '-') return const SizedBox.shrink();
+    if (value.trim().isEmpty || value.trim() == '-') {
+      return const SizedBox.shrink();
+    }
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
@@ -410,7 +446,13 @@ class _SearchAssistantScreenState
         children: [
           Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
-          Text(value, style: const TextStyle(height: 1.4, color: AshaColors.textSecondary)),
+          Text(
+            value,
+            style: const TextStyle(
+              height: 1.4,
+              color: AshaColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );
@@ -437,7 +479,11 @@ class _SafetyBanner extends StatelessWidget {
           Expanded(
             child: Text(
               'Reference cards are offline support. Run triage before treatment and refer immediately for danger signs.',
-              style: TextStyle(fontSize: 12, height: 1.35, color: Color(0xFF6B4A00)),
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.35,
+                color: Color(0xFF6B4A00),
+              ),
             ),
           ),
         ],

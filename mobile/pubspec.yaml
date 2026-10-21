@@ -117,6 +117,7 @@ flutter:
     - assets/geo/
     - assets/lexicon/
     - assets/incentives/
+    - assets/search/
     - assets/triage/
     - packages/triage/lib/data/pack/
     - packages/triage/lib/data/model/

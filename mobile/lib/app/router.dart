@@ -8,13 +8,13 @@ import '../features/home/presentation/tools_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
 
 // Registry & Households
-import '../features/household/presentation/beneficiary_search_screen.dart';
 import '../features/household/presentation/beneficiary_timeline_screen.dart';
 import '../features/household/presentation/consent_screen.dart';
 import '../features/household/presentation/household_form_screen.dart';
 import '../features/household/presentation/household_list_screen.dart';
 import '../features/household/presentation/household_detail_screen.dart';
 import '../features/household/presentation/household_profile_screen.dart';
+import '../features/search/presentation/search_assistant_screen.dart';
 import '../features/triage/presentation/triage_flow_screen.dart';
 import '../features/triage/presentation/triage_history_screen.dart';
 import '../features/reports/presentation/reports_incentives_screen.dart';
@@ -155,8 +155,12 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
     ),
     GoRoute(
       path: '/search',
-      pageBuilder: (context, state) =>
-          _buildSlidePage(state: state, child: const BeneficiarySearchScreen()),
+      pageBuilder: (context, state) => _buildSlidePage(
+        state: state,
+        child: SearchAssistantScreen(
+          initialQuery: state.uri.queryParameters['q'],
+        ),
+      ),
     ),
     GoRoute(
       path: '/households',

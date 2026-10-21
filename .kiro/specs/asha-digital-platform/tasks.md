@@ -470,7 +470,7 @@ Language choices from the design document:
 
   - [x] 12.3 Implement VHSND session planning and health education library
     - VHSND: session beneficiary list per service (immunization/ANC/CBAC/FP) + mobilisation checklist + session summary form; attendance + services recording → update individual beneficiary timelines; VHSNC meeting log
-    - Offline health education library: audio clips/illustrated messages/video content in SQLite-backed asset index, searchable by health topic; campaign checklists for pulse polio/MDA/IFA week/TB
+    - Offline health education library: audio clips/illustrated messages/video content in SQLite-backed asset index, searchable by health topic; campaign checklists for pulse polio/MDA/IFA week/TB. The home search assistant also bundles the ASHA master catalog for medicines, measurements, guides, danger signs, programmes, and safety warnings, with beneficiary lookup in the same offline search surface.
     - _Requirements: 27.1, 27.2, 27.3, 27.4, 27.5, 27.6_
 
   - [x] 12.4 Implement BLE device integration

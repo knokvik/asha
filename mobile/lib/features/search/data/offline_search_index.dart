@@ -36,37 +36,42 @@ class SearchKnowledgeEntry {
   final String approxPrice;
 
   String get categoryLabel => switch (category) {
-        'medicine' => 'Medicine',
-        'measure' => 'Measurement',
-        'guide' => 'Guide',
-        'danger_sign' => 'Danger sign',
-        'program' => 'Programme',
-        'warning' => 'Safety warning',
-        _ => category,
-      };
+    'medicine' => 'Medicine',
+    'measure' => 'Measurement',
+    'guide' => 'Guide',
+    'danger_sign' => 'Danger sign',
+    'program' => 'Programme',
+    'warning' => 'Safety warning',
+    _ => category,
+  };
 
   String get searchableText => [
-        keywordEn,
-        keywordHi,
-        keywordMr,
-        name,
-        purpose,
-        doseOrProtocol,
-        howToUse,
-        whenToRefer,
-        dangerSigns,
-        sourceRef,
-      ].join(' ');
+    keywordEn,
+    keywordHi,
+    keywordMr,
+    name,
+    purpose,
+    doseOrProtocol,
+    howToUse,
+    whenToRefer,
+    dangerSigns,
+    sourceRef,
+  ].join(' ');
 }
 
 class OfflineSearchIndex {
   OfflineSearchIndex(this.entries);
 
+  /// Testable parser entry point for a downloaded or bundled catalog.
+  factory OfflineSearchIndex.fromCsv(String csv) {
+    return OfflineSearchIndex(_parseCsv(csv));
+  }
+
   final List<SearchKnowledgeEntry> entries;
 
   static Future<OfflineSearchIndex> load() async {
     final csv = await rootBundle.loadString(_assetPath);
-    return OfflineSearchIndex(_parseCsv(csv));
+    return OfflineSearchIndex.fromCsv(csv);
   }
 
   List<SearchKnowledgeEntry> search(
@@ -182,7 +187,5 @@ List<SearchKnowledgeEntry> _parseCsv(String input) {
   ];
 }
 
-String _normalise(String value) => value
-    .replaceFirst('\ufeff', '')
-    .toLowerCase()
-    .trim();
+String _normalise(String value) =>
+    value.replaceFirst('\ufeff', '').toLowerCase().trim();

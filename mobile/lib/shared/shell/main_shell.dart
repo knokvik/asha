@@ -381,7 +381,7 @@ class _ShellSearchBarState extends State<_ShellSearchBar> {
     return AshaSearchBar(
       key: const Key('home_search_bar'),
       controller: _controller,
-      hintText: 'Search households, beneficiaries, ABHA...',
+      hintText: 'Search people, medicines, guides...',
       onTap: () => context.push('/search'),
       onChanged: (_) => setState(() {}),
       onSubmitted: (query) {
@@ -389,7 +389,7 @@ class _ShellSearchBarState extends State<_ShellSearchBar> {
         final suffix = value.isEmpty
             ? ''
             : '?q=${Uri.encodeQueryComponent(value)}';
-        context.push('/households$suffix');
+        context.push('/search$suffix');
       },
     );
   }
