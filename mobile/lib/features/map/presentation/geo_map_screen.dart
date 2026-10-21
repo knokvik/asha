@@ -556,6 +556,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
               onTap: _locateMeLive,
               liveCoordinates: _liveLocation,
               liveAccuracy: _liveAccuracy,
+              liveProvider: _liveProvider,
             ),
           ),
 
@@ -1889,35 +1890,66 @@ class _OutbreakMarker extends StatelessWidget {
 }
 
 class _LiveLocationMarker extends StatelessWidget {
-  const _LiveLocationMarker();
+  const _LiveLocationMarker({this.accuracy});
+
+  final double? accuracy;
 
   @override
   Widget build(BuildContext context) {
     return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.85, end: 1.12),
+      tween: Tween(begin: 0.92, end: 1.08),
       duration: const Duration(milliseconds: 1200),
       curve: Curves.easeInOut,
       onEnd: () {},
-      builder: (context, scale, child) => Transform.scale(
-        scale: scale,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const _NameChip('You · live'),
-            Container(
-              width: 18,
-              height: 18,
-              decoration: BoxDecoration(
-                color: const Color(0xFF2563EB),
+      builder: (context, scale, child) => Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          // Name chip floating directly above the centered pin
+          Positioned(
+            bottom: 30,
+            child: const _NameChip('You · live'),
+          ),
+          // Pulsing halo
+          Transform.scale(
+            scale: scale,
+            child: Container(
+              width: 28,
+              height: 28,
+              decoration: const BoxDecoration(
+                color: Color(0x332563EB),
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 3),
-                boxShadow: const [
-                  BoxShadow(color: Color(0x663B82F6), blurRadius: 10),
-                ],
               ),
             ),
-          ],
-        ),
+          ),
+          // Pinpoint blue GPS dot centered EXACTLY at point
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: const Color(0xFF2563EB),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 3.5),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x551D4ED8),
+                  blurRadius: 8,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: Center(
+              child: Container(
+                width: 5,
+                height: 5,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -2078,6 +2110,9 @@ class _LocationStatusPill extends StatelessWidget {
     required this.activeCategory,
     required this.layer,
     required this.onTap,
+    this.liveCoordinates,
+    this.liveAccuracy,
+    this.liveProvider,
   });
 
   final String wardId;
@@ -2086,10 +2121,16 @@ class _LocationStatusPill extends StatelessWidget {
   final String activeCategory;
   final _MapLayer layer;
   final VoidCallback onTap;
+  final LatLng? liveCoordinates;
+  final double? liveAccuracy;
+  final String? liveProvider;
 
   @override
   Widget build(BuildContext context) {
-    final statusText = isLive ? 'Live GPS' : 'Catchment · $wardId';
+    final tag = (liveProvider ?? 'gps').toUpperCase();
+    final statusText = isLive && liveCoordinates != null
+        ? '$tag · ${liveCoordinates!.latitude.toStringAsFixed(5)}, ${liveCoordinates!.longitude.toStringAsFixed(5)} (±${(liveAccuracy ?? 10).toStringAsFixed(0)}m)'
+        : (isLive ? 'Live GPS' : 'Catchment · $wardId');
     final layerText = switch (layer) {
       _MapLayer.facilities =>
         activeCategory == 'all' ? 'Facilities' : activeCategory.toUpperCase(),
