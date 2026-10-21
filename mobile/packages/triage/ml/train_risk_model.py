@@ -23,6 +23,7 @@ RULES = ROOT.parent / "imci_engine" / "lib" / "data" / "imci_tables"
 PRIORS = json.loads((ROOT / "lib" / "data" / "pack" / "priors.json").read_text())["districts"]
 MODEL_DIR = ROOT / "lib" / "data" / "model"
 REPORT = ROOT / "ml" / "REPORT.md"
+MODEL_VERSION = "imci-risk-v1"
 
 MODULE_ORDER = [
     "danger_signs",
@@ -449,6 +450,7 @@ def main():
 
     chosen_iso = lgb_iso if winner == "lightgbm" else lr_iso
     payload = {
+        "model_version": MODEL_VERSION,
         "kind": winner,
         "red_threshold": 0.65,
         "feature_names": FEATURES,
@@ -489,7 +491,7 @@ Features are the assessment fields, missingness indicators for respiratory rate,
 | Logistic regression, isotonic on p_red | {lr_metrics['brier']} | {lr_metrics['brier_red']} | {lr_metrics['auc_red']} | {lr_metrics['red_sensitivity']} |
 | LightGBM, isotonic on p_red | {lgb_metrics['brier']} | {lgb_metrics['brier_red']} | {lgb_metrics['auc_red']} | {lgb_metrics['red_sensitivity']} |
 
-Selected model: **{winner}** (lower holdout Brier). Escalation threshold stays 0.65, as set for the hybrid policy. A probability sitting on 0.65 does not escalate.
+Selected model: **{winner}** (lower holdout Brier), version **{MODEL_VERSION}**. Escalation threshold stays 0.65, as set for the hybrid policy. A probability sitting on 0.65 does not escalate.
 
 On-device artifact: `lib/data/model/model.json`, {size} bytes. The linear layer is stored as int8 coefficients with scale {scale:.6f}. LightGBM trees are stored only when that model wins. A Python walk of those trees matches `predict_proba` within {gap:.2e} on 30 holdout rows.
 
@@ -498,6 +500,15 @@ Latency: about {elapsed_ms:.3f} ms per LightGBM `predict_proba` on this machine 
 This environment has no TensorFlow install, so there is no separate `.tflite` binary. The int8 coefficient table is the fully connected layer that file would contain, and `RiskModel` executes it. `tflite_flutter` can replace that call later without changing `feature_names`.
 
 The model is not allowed to lower a RED or raise a GREEN. Those rules are in `HybridTriage`, not in the weights.
+
+## Outcome-feedback and retraining gate
+
+Clinical outcomes are stored by the PHC desk as `outcome_label_for_ml`. The
+backend `workers/triage_retraining.py` export stub pairs only confirmed outcomes
+with de-identified triage features and records source engine/model versions. It
+produces a review manifest for a candidate model version; it does not train or
+deploy automatically. Clinical approval and an updated calibration report remain
+mandatory before a new model is released.
 """
     REPORT.write_text(report)
     print("wrote", model_path, size, "bytes")

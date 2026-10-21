@@ -11,6 +11,7 @@ Requirements: 31.1, 31.2, 32.2, 32.3
 """
 from __future__ import annotations
 
+import base64
 import gzip
 import json
 import time
@@ -119,6 +120,64 @@ class TestSyncPush:
         payload = _push_payload()
         resp = await async_client.post("/api/v1/sync/push", json=payload)
         assert resp.status_code == 422
+
+    async def test_triage_evidence_is_listed_and_served_to_authenticated_dashboard(
+        self, async_client, db_session
+    ):
+        record_id = "CASE-EVIDENCE-1"
+        attachment = {
+            "type": "image",
+            "mime_type": "image/jpeg",
+            "encoding": "gzip+base64",
+            "original_bytes": 11,
+            "compressed_bytes": 31,
+            "data_base64": base64.b64encode(gzip.compress(b"photo-bytes")).decode(),
+        }
+        payload = _push_payload(record_id=record_id)
+        payload["records"][0] = {
+            "table": "triage_tickets",
+            "record_id": record_id,
+            "operation": "insert",
+            "priority": 1,
+            "payload": {
+                "name": "Asha Test Patient",
+                "location": "Rampur",
+                "flag": "RED",
+                "ward_id": "W3",
+                "attachments_json": json.dumps([attachment]),
+            },
+            "event_log": [],
+            "device_timestamp": int(time.time() * 1000),
+            "client_watermark": 0,
+        }
+        pushed = await async_client.post(
+            "/api/v1/sync/push", json=payload, headers=_auth_header()
+        )
+        assert pushed.status_code == 200
+
+        activity = await async_client.get(
+            "/api/v1/sync/activity", headers=_auth_header()
+        )
+        assert activity.status_code == 200
+        packet = next(item for item in activity.json()["packets"] if item["record_id"] == record_id)
+        assert packet["ticket"]["patient_name"] == "Asha Test Patient"
+        assert packet["ticket"]["attachments"] == [
+            {
+                "index": 0,
+                "type": "image",
+                "mime_type": "image/jpeg",
+                "original_bytes": 11,
+                "url": f"/sync/triage-tickets/{record_id}/attachments/0",
+            }
+        ]
+
+        evidence = await async_client.get(
+            f"/api/v1/sync/triage-tickets/{record_id}/attachments/0",
+            headers=_auth_header(),
+        )
+        assert evidence.status_code == 200
+        assert evidence.headers["content-type"].startswith("image/jpeg")
+        assert evidence.content == b"photo-bytes"
 
 
 @pytest.mark.asyncio

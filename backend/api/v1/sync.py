@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import gzip
 import json
+import base64
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from fastapi.responses import Response
@@ -20,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.multi_tenant import TenantContext, set_tenant_context
 from core.security import decode_token
 from db.session import get_db
-from models.db.models import AuditLog
+from models.db.models import AuditLog, TriageTicket
 from models.schemas.schemas import SyncPullResponse, SyncPushRequest, SyncPushResponse
 from services.sync_service import SyncService
 
@@ -132,6 +133,13 @@ async def sync_activity(
         select(AuditLog).order_by(desc(AuditLog.server_timestamp)).limit(limit)
     )
     rows = result.scalars().all()
+    ticket_ids = [row.record_id for row in rows if row.table_name == "triage_tickets"]
+    tickets: dict[str, TriageTicket] = {}
+    if ticket_ids:
+        ticket_rows = await db.execute(
+            select(TriageTicket).where(TriageTicket.id.in_(ticket_ids))
+        )
+        tickets = {ticket.id: ticket for ticket in ticket_rows.scalars()}
     return {
         "packets": [
             {
@@ -145,7 +153,78 @@ async def sync_activity(
                 "device_timestamp": row.device_timestamp,
                 "operation": row.new_value if row.field_name == "__packet__" else "update",
                 "status": "synced",
+                **_ticket_activity(tickets.get(row.record_id)),
             }
             for row in rows
         ]
     }
+
+
+@router.get("/triage-tickets/{ticket_id}/attachments/{attachment_index}")
+async def triage_attachment(
+    ticket_id: str,
+    attachment_index: int,
+    _: TenantContext = Depends(_get_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Return one authenticated evidence file without exposing it in activity JSON."""
+    ticket = await db.get(TriageTicket, ticket_id)
+    if ticket is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ticket not found")
+    attachments = _ticket_attachments(ticket)
+    if attachment_index < 0 or attachment_index >= len(attachments):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="attachment not found")
+    attachment = attachments[attachment_index]
+    try:
+        if attachment.get("encoding") != "gzip+base64":
+            raise ValueError("unsupported evidence encoding")
+        content = gzip.decompress(base64.b64decode(str(attachment["data_base64"])))
+    except (KeyError, TypeError, ValueError, OSError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="attachment could not be decoded",
+        ) from exc
+    media_type = str(attachment.get("mime_type") or "application/octet-stream")
+    extension = "jpg" if media_type == "image/jpeg" else "m4a"
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": f'inline; filename="{ticket_id}-{attachment_index}.{extension}"',
+        },
+    )
+
+
+def _ticket_activity(ticket: TriageTicket | None) -> dict:
+    if ticket is None:
+        return {}
+    attachments = _ticket_attachments(ticket)
+    return {
+        "ticket": {
+            "id": ticket.id,
+            "patient_name": ticket.name,
+            "location": ticket.location,
+            "flag": ticket.flag,
+            "ward_id": ticket.ward_id,
+            "details": ticket.additional_details,
+            "attachments": [
+                {
+                    "index": index,
+                    "type": attachment.get("type", "file"),
+                    "mime_type": attachment.get("mime_type", "application/octet-stream"),
+                    "original_bytes": attachment.get("original_bytes"),
+                    "url": f"/sync/triage-tickets/{ticket.id}/attachments/{index}",
+                }
+                for index, attachment in enumerate(attachments)
+            ],
+        }
+    }
+
+
+def _ticket_attachments(ticket: TriageTicket) -> list[dict]:
+    try:
+        attachments = json.loads(ticket.attachments_json or "[]")
+    except json.JSONDecodeError:
+        return []
+    return [item for item in attachments if isinstance(item, dict)] if isinstance(attachments, list) else []

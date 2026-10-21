@@ -1,6 +1,14 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { apiClient } from '@/shared/api/client';
 
+export interface TriageEvidence {
+  index: number;
+  type: 'image' | 'audio' | 'file';
+  mimeType: string;
+  originalBytes?: number;
+  url: string;
+}
+
 export interface FrontlineSyncActivity {
   id: string;
   workerName: string;
@@ -17,6 +25,8 @@ export interface FrontlineSyncActivity {
   severity?: 'RED' | 'YELLOW' | 'GREEN';
   patientName?: string;
   abhaId?: string;
+  ticketId?: string;
+  attachments?: TriageEvidence[];
 }
 
 export interface SyncToastItem {
@@ -59,18 +69,40 @@ function mapPacket(packet: any): FrontlineSyncActivity {
     : table.includes('member') || table.includes('household')
       ? 'Child (IMNCI)'
       : 'Immunization';
+  const ticket = packet.ticket;
+  const attachments: TriageEvidence[] = Array.isArray(ticket?.attachments)
+    ? ticket.attachments.map((attachment: any) => ({
+        index: Number(attachment.index),
+        type: attachment.type === 'image' || attachment.type === 'audio' ? attachment.type : 'file',
+        mimeType: String(attachment.mime_type || 'application/octet-stream'),
+        originalBytes: typeof attachment.original_bytes === 'number' ? attachment.original_bytes : undefined,
+        url: String(attachment.url),
+      }))
+    : [];
   return {
     id: String(packet.id),
     workerName: String(packet.worker_id || 'Field worker'),
     workerPhone: '',
-    village: String(packet.device_id || 'Field device'),
+    village: String(ticket?.location || packet.device_id || 'Field device'),
     category,
-    details: `${String(packet.operation || 'update').toUpperCase()} ${table} · ${packet.record_id}`,
-    clinicalPayload: 'Packet metadata available in the source record.',
+    details: ticket
+      ? `TRIAGE ${String(ticket.flag || 'SUBMITTED')} · ${String(ticket.id || packet.record_id)}`
+      : `${String(packet.operation || 'update').toUpperCase()} ${table} · ${packet.record_id}`,
+    clinicalPayload: ticket?.details
+      ? String(ticket.details)
+      : ticket
+        ? `Ward ${String(ticket.ward_id || 'not recorded')} · ticket received from the field.`
+        : 'Packet metadata available in the source record.',
     syncTime: relativeTime(timestamp),
     timestamp,
     channel: 'ABDM Online Gateway',
     status: 'Verified & Synced',
+    severity: ticket?.flag === 'RED' || ticket?.flag === 'YELLOW' || ticket?.flag === 'GREEN'
+      ? ticket.flag
+      : undefined,
+    patientName: ticket?.patient_name ? String(ticket.patient_name) : undefined,
+    ticketId: ticket?.id ? String(ticket.id) : undefined,
+    attachments,
   };
 }
 

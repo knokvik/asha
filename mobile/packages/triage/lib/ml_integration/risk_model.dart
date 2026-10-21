@@ -10,10 +10,13 @@ import '../engine/hybrid.dart';
 /// No native plugin and no network. The Flutter `tflite_flutter` hook in the
 /// app can replace [score] with the same feature order.
 class RiskModel {
+  static const fallbackModelVersion = 'imci-risk-v1';
+
   RiskModel({
     required this.kind,
     required this.featureNames,
     required this.redThreshold,
+    this.modelVersion = fallbackModelVersion,
     this.coefficients = const [],
     this.intercepts = const [],
     this.weightScale = 1,
@@ -25,6 +28,7 @@ class RiskModel {
   final String kind;
   final List<String> featureNames;
   final double redThreshold;
+  final String modelVersion;
   final List<List<int>> coefficients;
   final List<double> intercepts;
   final double weightScale;
@@ -42,13 +46,21 @@ class RiskModel {
     final logits = kind == 'lightgbm' ? _trees(features) : _linear(features);
     var probs = _softmax(logits);
     if (isotonicX.length >= 2 && isotonicY.length == isotonicX.length) {
-      final calibratedRed = _isotonicOf(isotonicX, isotonicY, probs[2]).clamp(0.0, 1.0);
+      final calibratedRed = _isotonicOf(
+        isotonicX,
+        isotonicY,
+        probs[2],
+      ).clamp(0.0, 1.0);
       final rest = probs[0] + probs[1];
       final remain = 1 - calibratedRed;
       if (rest <= 0) {
         probs = [remain / 2, remain / 2, calibratedRed];
       } else {
-        probs = [probs[0] / rest * remain, probs[1] / rest * remain, calibratedRed];
+        probs = [
+          probs[0] / rest * remain,
+          probs[1] / rest * remain,
+          calibratedRed,
+        ];
       }
     }
     final elapsed = (DateTime.now().microsecondsSinceEpoch - started) / 1000.0;
@@ -57,17 +69,28 @@ class RiskModel {
       pYellow: probs[1],
       pRed: probs[2],
       latencyMs: elapsed < 0 ? 0 : elapsed,
+      modelVersion: modelVersion,
     );
   }
 
   List<double> vector(AssessmentInput input, DistrictPrior? prior) {
     final fields = input.toFields();
-    return [
-      for (final name in featureNames) _feature(name, fields, prior),
-    ];
+    return [for (final name in featureNames) _feature(name, fields, prior)];
   }
 
   static RiskModel? fromJson(String raw) {
+    try {
+      return _fromJson(raw);
+    } on FormatException {
+      return null;
+    } on TypeError {
+      return null;
+    } on ArgumentError {
+      return null;
+    }
+  }
+
+  static RiskModel? _fromJson(String raw) {
     final root = jsonDecode(raw);
     if (root is! Map) return null;
     final kind = root['kind'];
@@ -79,7 +102,8 @@ class RiskModel {
     final coefficients = <List<int>>[];
     if (coefRaw is List) {
       for (final row in coefRaw) {
-        if (row is List) coefficients.add([for (final value in row) (value as num).toInt()]);
+        if (row is List)
+          coefficients.add([for (final value in row) (value as num).toInt()]);
       }
     }
     final interceptRaw = root['intercepts'];
@@ -88,8 +112,11 @@ class RiskModel {
       kind: kind,
       featureNames: [for (final name in names) name.toString()],
       redThreshold: threshold is num ? threshold.toDouble() : 0.65,
+      modelVersion: root['model_version']?.toString() ?? fallbackModelVersion,
       coefficients: coefficients,
-      intercepts: interceptRaw is List ? [for (final value in interceptRaw) (value as num).toDouble()] : const [],
+      intercepts: interceptRaw is List
+          ? [for (final value in interceptRaw) (value as num).toDouble()]
+          : const [],
       weightScale: (root['weight_scale'] as num?)?.toDouble() ?? 1,
       isotonicX: _numList(isotonic is Map ? isotonic['x'] : null),
       isotonicY: _numList(isotonic is Map ? isotonic['y'] : null),
@@ -101,20 +128,24 @@ class RiskModel {
     if (coefficients.isEmpty) return const [0, 0, 0];
     return [
       for (var klass = 0; klass < coefficients.length; klass++)
-        intercepts[klass] +
-            _dot(coefficients[klass], features) * weightScale,
+        intercepts[klass] + _dot(coefficients[klass], features) * weightScale,
     ];
   }
 
   List<double> _trees(List<double> features) {
     if (classTrees.isEmpty) return const [0, 0, 0];
     return [
-      for (final trees in classTrees) trees.fold<double>(0, (sum, tree) => sum + tree.eval(features)),
+      for (final trees in classTrees)
+        trees.fold<double>(0, (sum, tree) => sum + tree.eval(features)),
     ];
   }
 }
 
-double _feature(String name, Map<String, Object?> fields, DistrictPrior? prior) {
+double _feature(
+  String name,
+  Map<String, Object?> fields,
+  DistrictPrior? prior,
+) {
   switch (name) {
     case 'prior_anaemia_pct':
       return prior?.anaemiaPct ?? 0;
@@ -140,7 +171,9 @@ double _feature(String name, Map<String, Object?> fields, DistrictPrior? prior) 
 
 double _dot(List<int> weights, List<double> features) {
   var sum = 0.0;
-  final count = weights.length < features.length ? weights.length : features.length;
+  final count = weights.length < features.length
+      ? weights.length
+      : features.length;
   for (var i = 0; i < count; i++) {
     sum += weights[i] * features[i];
   }
@@ -172,13 +205,21 @@ double _isotonicOf(List<double> xs, List<double> ys, double value) {
 
 List<double> _numList(Object? raw) {
   if (raw is! List) return const [];
-  return [for (final value in raw) if (value is num) value.toDouble()];
+  return [
+    for (final value in raw)
+      if (value is num) value.toDouble(),
+  ];
 }
 
 class _TreeNode {
-  _TreeNode.leaf(this.leaf) : feature = null, threshold = null, left = null, right = null;
+  _TreeNode.leaf(this.leaf)
+    : feature = null,
+      threshold = null,
+      left = null,
+      right = null;
 
-  _TreeNode.split(this.feature, this.threshold, this.left, this.right) : leaf = null;
+  _TreeNode.split(this.feature, this.threshold, this.left, this.right)
+    : leaf = null;
 
   final int? feature;
   final double? threshold;

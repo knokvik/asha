@@ -6,7 +6,8 @@ import {
   submitSupervisionChecklist,
   sendAshaRecognition,
 } from '@/shared/api/supervisionApi';
-import { useSync } from '@/shared/context/SyncContext';
+import { useSync, type TriageEvidence } from '@/shared/context/SyncContext';
+import { apiClient } from '@/shared/api/client';
 import { AshaPerformanceCard, SupervisionChecklist } from '@/types';
 import {
   Users,
@@ -564,6 +565,10 @@ export function AFSupervisionPage() {
                           {act.clinicalPayload}
                         </div>
 
+                        {act.attachments && act.attachments.length > 0 && (
+                          <TriageEvidencePanel attachments={act.attachments} />
+                        )}
+
                         {/* Row 4: Vitals Summary Pills */}
                         {act.vitalsSummary && (
                           <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
@@ -843,6 +848,61 @@ export function AFSupervisionPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function TriageEvidencePanel({ attachments }: { attachments: TriageEvidence[] }) {
+  const [urls, setUrls] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    let active = true;
+    const createdUrls: string[] = [];
+    void Promise.all(
+      attachments.map(async (attachment) => {
+        const response = await apiClient.get(attachment.url, { responseType: 'blob' });
+        const url = URL.createObjectURL(response.data);
+        createdUrls.push(url);
+        return [attachment.index, url] as const;
+      })
+    ).then((items) => {
+      if (active) setUrls(Object.fromEntries(items));
+    }).catch(() => {
+      // Keep the ticket readable when a particular evidence file is unavailable.
+    });
+    return () => {
+      active = false;
+      createdUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [attachments]);
+
+  return (
+    <div className="rounded-lg border border-slate-200 dark:border-[#26262A] bg-white dark:bg-[#1B1B1F] p-2.5">
+      <div className="mb-2 text-[11px] font-bold text-slate-700 dark:text-slate-200">Triage evidence</div>
+      <div className="flex flex-wrap gap-3">
+        {attachments.map((attachment) => {
+          const url = urls[attachment.index];
+          const label = `${attachment.type === 'image' ? 'Photo' : 'Voice note'}${attachment.originalBytes ? ` · ${attachment.originalBytes} bytes` : ''}`;
+          if (attachment.type === 'image') {
+            return (
+              <div key={attachment.index} className="w-40 text-[10px] text-slate-500">
+                {url ? (
+                  <img src={url} alt="Triage evidence" className="h-28 w-40 rounded-md object-cover border border-slate-200" />
+                ) : (
+                  <div className="h-28 w-40 rounded-md bg-slate-100 animate-pulse" />
+                )}
+                <div className="mt-1">{label}</div>
+              </div>
+            );
+          }
+          return (
+            <div key={attachment.index} className="min-w-52 text-[10px] text-slate-500">
+              <div className="mb-1 font-medium text-slate-700 dark:text-slate-200">{label}</div>
+              {url ? <audio controls className="h-8 w-52" src={url} /> : <div>Loading audio…</div>}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

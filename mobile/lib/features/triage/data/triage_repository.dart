@@ -22,7 +22,9 @@ class TriageRepository {
 
   /// Saves a newly computed [TriageResult] to the database.
   Future<void> saveTriageResult(TriageResult result, {String? memberId}) async {
-    final findingsJson = jsonEncode(result.findings.map((f) => f.toJson()).toList());
+    final findingsJson = jsonEncode(
+      result.findings.map((f) => f.toJson()).toList(),
+    );
     final missingJson = jsonEncode(result.missingFields);
     final mlJson = result.mlContribution != null
         ? jsonEncode(result.mlContribution!.toJson())
@@ -32,18 +34,24 @@ class TriageRepository {
     final encounterId = result.encounterId ?? 'enc_${result.id}';
 
     // Ensure parent encounter exists in DB to satisfy foreign key constraint
-    final encounter = await (_db.select(_db.clinicalEncounters)
-          ..where((t) => t.id.equals(encounterId)))
-        .getSingleOrNull();
+    final encounter = await (_db.select(
+      _db.clinicalEncounters,
+    )..where((t) => t.id.equals(encounterId))).getSingleOrNull();
 
     if (encounter == null) {
       final actualMemberId = memberId ?? 'unregistered_member';
-      final member = await (_db.select(_db.members)..where((t) => t.id.equals(actualMemberId))).getSingleOrNull();
+      final member = await (_db.select(
+        _db.members,
+      )..where((t) => t.id.equals(actualMemberId))).getSingleOrNull();
       if (member == null) {
         const hhId = 'hh_triage_default';
-        final hh = await (_db.select(_db.households)..where((t) => t.id.equals(hhId))).getSingleOrNull();
+        final hh = await (_db.select(
+          _db.households,
+        )..where((t) => t.id.equals(hhId))).getSingleOrNull();
         if (hh == null) {
-          await _db.into(_db.households).insert(
+          await _db
+              .into(_db.households)
+              .insert(
                 db_schema.HouseholdsCompanion.insert(
                   id: hhId,
                   village: 'Community',
@@ -55,7 +63,9 @@ class TriageRepository {
                 mode: InsertMode.insertOrIgnore,
               );
         }
-        await _db.into(_db.members).insert(
+        await _db
+            .into(_db.members)
+            .insert(
               db_schema.MembersCompanion.insert(
                 id: actualMemberId,
                 householdId: hhId,
@@ -69,7 +79,9 @@ class TriageRepository {
             );
       }
 
-      await _db.into(_db.clinicalEncounters).insert(
+      await _db
+          .into(_db.clinicalEncounters)
+          .insert(
             db_schema.ClinicalEncountersCompanion.insert(
               id: encounterId,
               memberId: actualMemberId,
@@ -84,7 +96,9 @@ class TriageRepository {
           );
     }
 
-    await _db.into(_db.triageResults).insert(
+    await _db
+        .into(_db.triageResults)
+        .insert(
           db_schema.TriageResultsCompanion.insert(
             id: result.id,
             encounterId: encounterId,
@@ -116,6 +130,10 @@ class TriageRepository {
           'member_id': memberId,
           'flag': result.flag.label,
           'rule_version_id': result.ruleVersionId,
+          'engine_version': 'dart-rule-engine/${result.ruleVersionId}',
+          'model_version': result.mlContribution == null
+              ? 'rules-only'
+              : 'ml-advisory',
           'findings_json': findingsJson,
           'missing_fields_json': missingJson,
           'escalated_for_missing_data': result.escalatedForMissingData,
@@ -136,8 +154,9 @@ class TriageRepository {
   }) async {
     final overriddenAtMs = override.overriddenAt.millisecondsSinceEpoch;
 
-    await (_db.update(_db.triageResults)..where((t) => t.id.equals(triageResultId)))
-        .write(
+    await (_db.update(
+      _db.triageResults,
+    )..where((t) => t.id.equals(triageResultId))).write(
       db_schema.TriageResultsCompanion(
         overrideFlag: Value(override.overrideFlag.label),
         overrideReason: Value(override.reason),
@@ -169,25 +188,31 @@ class TriageRepository {
 
   /// Retrieves a triage result record by ID.
   Future<TriageResult?> getTriageResult(String id) async {
-    final row = await (_db.select(_db.triageResults)..where((t) => t.id.equals(id))).getSingleOrNull();
+    final row = await (_db.select(
+      _db.triageResults,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
     if (row == null) return null;
     return _mapRowToTriageResult(row);
   }
 
   /// Retrieves the triage result for an encounter.
   Future<TriageResult?> getTriageResultByEncounter(String encounterId) async {
-    final row = await (_db.select(_db.triageResults)..where((t) => t.encounterId.equals(encounterId))).getSingleOrNull();
+    final row = await (_db.select(
+      _db.triageResults,
+    )..where((t) => t.encounterId.equals(encounterId))).getSingleOrNull();
     if (row == null) return null;
     return _mapRowToTriageResult(row);
   }
 
   TriageResult _mapRowToTriageResult(db_schema.TriageResult row) {
-    final findingsList = (jsonDecode(row.findingsJson) as List<dynamic>?)
+    final findingsList =
+        (jsonDecode(row.findingsJson) as List<dynamic>?)
             ?.map((e) => TriageFinding.fromJson(e as Map<String, dynamic>))
             .toList() ??
         const [];
 
-    final missingList = (jsonDecode(row.missingFieldsJson) as List<dynamic>?)
+    final missingList =
+        (jsonDecode(row.missingFieldsJson) as List<dynamic>?)
             ?.map((e) => e.toString())
             .toList() ??
         const [];

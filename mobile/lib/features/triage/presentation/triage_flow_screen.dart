@@ -63,11 +63,18 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   XFile? _triageImage;
   String? _triageAudioPath;
   bool _recordingAttachment = false;
+  bool _sendingPacket = false;
+  bool _ticketQueued = false;
   String? _attachmentMessage;
   List<Map<String, dynamic>> _queuedAttachments = const [];
   String _sex = 'Unknown';
   bool _adaptiveFromRadar = false;
   final _reportedContext = <String>{};
+
+  String get _engineVersion =>
+      'imci-engine/pack-${_session?.loop.pack.version ?? 'unknown'}';
+
+  String get _modelVersion => _session?.model?.modelVersion ?? 'rules-only';
 
   static const _illnesses = <(String, String)>[
     ('dengue', 'Dengue-like'),
@@ -117,7 +124,6 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         _triageImage = image;
         _attachmentMessage = 'Image added and ready to compress.';
       });
-      await _saveAttachmentsToQueue();
     } catch (error) {
       if (mounted) {
         setState(() => _attachmentMessage = 'Could not capture image: $error');
@@ -136,7 +142,6 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
             ? 'No voice note was captured.'
             : 'Voice note added and ready to compress.';
       });
-      await _saveAttachmentsToQueue();
       return;
     }
 
@@ -224,12 +229,8 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
     return attachments;
   }
 
-  Future<void> _saveAttachmentsToQueue() async {
-    final caseCode = _caseCode;
-    if (caseCode == null) return;
-    try {
-      final attachments = await _compressedTriageAttachments();
-      final basePayload = {
+  Map<String, dynamic> _ticketPayload(List<Map<String, dynamic>> attachments) =>
+      {
         'name': _name.text.trim(),
         'age_months': _ageMonths,
         'location': _location.text.trim(),
@@ -240,6 +241,8 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         'radar_modules_json': jsonEncode(
           _session?.loop.pack.activeModuleIds(_wardId) ?? const <String>[],
         ),
+        'engine_version': _engineVersion,
+        'model_version': _modelVersion,
         'ward_id': _flow?.wardId,
         'flag': _decision?.flag.wireName,
         'sms': _note?.toSms(),
@@ -247,12 +250,22 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         'worker_modules_json': jsonEncode(_chosen.toList()),
         'attachments_json': jsonEncode(attachments),
       };
+
+  Future<bool> _queueTriageTicket() async {
+    final caseCode = _caseCode;
+    if (caseCode == null || _decision == null) return false;
+    try {
+      final attachments = await _compressedTriageAttachments();
       await ref
           .read(syncEngineProvider)
-          .updatePendingPayload(
+          .enqueue(
             table: 'triage_tickets',
             recordId: caseCode,
-            payload: basePayload,
+            operation: 'insert',
+            payload: _ticketPayload(attachments),
+            priority: _decision!.flag == TriageFlag.red
+                ? SyncPriority.critical
+                : SyncPriority.clinical,
           );
       _queuedAttachments = attachments;
       if (_triageImage != null) {
@@ -268,12 +281,14 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
               : '${attachments.length} attachment(s) compressed and queued.',
         );
       }
+      return true;
     } catch (error) {
       if (mounted) {
         setState(
           () => _attachmentMessage = 'Attachment could not be prepared: $error',
         );
       }
+      return false;
     }
   }
 
@@ -288,15 +303,23 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   }
 
   Future<void> _sendTriagePacket() async {
+    if (_sendingPacket || _ticketQueued) return;
+    setState(() => _sendingPacket = true);
     if (_recordingAttachment) {
       await _toggleTriageAudio();
     }
-    await _saveAttachmentsToQueue();
+    final queued = await _queueTriageTicket();
+    if (!queued || !mounted) {
+      if (mounted) setState(() => _sendingPacket = false);
+      return;
+    }
     await ref.read(syncCoordinatorProvider)?.syncNow();
     if (!mounted) return;
-    setState(
-      () => _queueNote = 'Triage ticket and compressed attachments are queued for server sync.',
-    );
+    setState(() {
+      _sendingPacket = false;
+      _ticketQueued = true;
+      _queueNote = 'Ticket sent to the secure sync queue. It will upload when the server connection is available.';
+    });
   }
 
   Future<void> _boot() async {
@@ -508,41 +531,8 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
       suggestedFacilityId: facility?.id,
     );
     session.loop.enqueue(input, decision, note);
-    var queueNote =
-        'Ticket is ready. Add an image or voice note, then send it when the network is available.';
-    try {
-      await ref
-          .read(syncEngineProvider)
-          .enqueue(
-            table: 'triage_tickets',
-            recordId: code,
-            operation: 'insert',
-            payload: {
-              'name': _name.text.trim(),
-              'age_months': age,
-              'location': location,
-              'additional_details': _details.text.trim(),
-              'sex': _sex,
-              'reported_context_json': jsonEncode(_reportedContext.toList()),
-              'adaptive_from_disease_radar': _adaptiveFromRadar,
-              'radar_modules_json': jsonEncode(
-                session.loop.pack.activeModuleIds(_wardId),
-              ),
-              'ward_id': flow.wardId,
-              'flag': decision.flag.wireName,
-              'sms': note.toSms(),
-              'modules_json': jsonEncode(flow.activeModules),
-              'worker_modules_json': jsonEncode(_chosen.toList()),
-              'attachments_json': '[]',
-            },
-            priority: decision.flag == TriageFlag.red
-                ? SyncPriority.critical
-                : SyncPriority.metadata,
-          );
-    } catch (error) {
-      queueNote =
-          'QR is ready, but the phone queue could not be prepared: $error';
-    }
+    const queueNote =
+        'Ticket is only on this phone. Add any evidence, then choose Send ticket with attachments.';
     final answers = <(String, String)>[];
     for (final question in flow.questions) {
       if (!flow.answeredIds.contains(question.id)) continue;
@@ -1454,9 +1444,19 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         const SizedBox(height: 18),
         FilledButton.icon(
           key: const Key('triage_send_packet_button'),
-          onPressed: _sendTriagePacket,
-          icon: const Icon(Icons.cloud_upload_outlined),
-          label: const Text('Send ticket and attachments'),
+          onPressed: _sendingPacket || _ticketQueued ? null : _sendTriagePacket,
+          icon: Icon(
+            _ticketQueued
+                ? Icons.check_circle_outline_rounded
+                : Icons.cloud_upload_outlined,
+          ),
+          label: Text(
+            _ticketQueued
+                ? 'Ticket added to sync queue'
+                : _sendingPacket
+                ? 'Preparing secure packet…'
+                : 'Send ticket with attachments',
+          ),
         ),
         const SizedBox(height: 12),
         _TicketSection(

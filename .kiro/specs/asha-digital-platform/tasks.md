@@ -300,9 +300,16 @@ Language choices from the design document:
 
   - [-] 6.8 Extend field triage context and follow-up history
     - Add patient context fields, symptom chips, disease-radar adaptive-module selection, and an explicit adult/older-adult assessment entry.
-    - Keep compressed image/audio evidence visible at the final ticket step and display synced PHC follow-up schedules and triage history in-app.
+    - Keep compressed image/audio evidence visible at the final ticket step and display synced PHC follow-up schedules and triage history in-app. Create the encrypted outbox packet only after the worker explicitly selects “Send ticket with attachments”; show ticket IDs, evidence previews, and audio playback in the app’s sync history and authenticated web sync feed.
     - Remaining: connect a dedicated server recommendation/notification record when the backend contract is finalized; current follow-ups use synced `visit_schedules`.
     - _Requirements: 8.1, 8.2, 24.1, 26.1, 31.1_
+
+  - [-] 6.9 Harden triage model audit and future retraining
+    - Verify IMCI boundary worked examples, including RR 50/40 at ages 2/12/59 months.
+    - Require safe rules-only behavior when model parsing/loading fails and record engine/model versions with each triage ticket.
+    - Maintain calibration metrics in `packages/triage/ml/REPORT.md` and export clinician-confirmed, de-identified outcomes for a manually approved future model release.
+    - Remaining: run an externally validated, clinician-labelled calibration study before making clinical-performance claims.
+    - _Requirements: 8.1, 8.8, 8.9, 47.1_
 
 - [x] 7. Checkpoint — verify triage engine correctness
   - Run the full triage property test suite (Properties 3, 4, 5). Launch the app, register a test household, open a triage form, submit clinical inputs, and verify a RED/YELLOW/GREEN result appears in < 1 s with an audio readout. Ensure all tests pass, ask the user if questions arise.

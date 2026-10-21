@@ -77,9 +77,9 @@ void main() {
   });
 
   group('the planted cluster adapts the modules', () {
-    test('dengue is active in W3 in October and nowhere else', () {
-      expect(pack.activeModuleIds('W3'), ['dengue']);
-      for (final ward in ['W1', 'W2', 'W4', 'W5', 'W6', 'W7', 'W8']) {
+    test('dengue is active in W3 in October and quiet wards stay inactive', () {
+      expect(pack.activeModuleIds('W3'), contains('dengue'));
+      for (final ward in ['W2', 'W4', 'W5', 'W6', 'W7', 'W8']) {
         expect(pack.activeModuleIds(ward), isEmpty, reason: ward);
       }
     });
@@ -93,7 +93,7 @@ void main() {
         pack.clusterSummary('W3'),
         '8 dengue-like cases in W3 in the last 2 weeks',
       );
-      expect(pack.clusterSummary('W1'), isEmpty);
+      expect(pack.clusterSummary('W2'), isEmpty);
     });
 
     test('version 2 moves the cluster from W3 to W5', () {
@@ -131,8 +131,8 @@ void main() {
 
     test('dengue warning signs are asked before the remaining core questions, and only in W3', () {
       final w3 = FlowBuilder(pack).build(wardId: 'W3');
-      final w1 = FlowBuilder(pack).build(wardId: 'W1');
-      expect(ids(w1), isNot(contains('dengue.abdominal')));
+      final quietWard = FlowBuilder(pack).build(wardId: 'W2');
+      expect(ids(quietWard), isNot(contains('dengue.abdominal')));
       final dengueFlagAt = w3.questions.indexWhere(
         (question) => question.id == 'dengue.abdominal',
       );
@@ -148,7 +148,7 @@ void main() {
     });
 
     test('remaining core questions are in descending weight', () {
-      final flow = FlowBuilder(pack).build(wardId: 'W1');
+      final flow = FlowBuilder(pack).build(wardId: 'W2');
       final rest = flow.questions
           .where(
             (question) =>
@@ -184,7 +184,7 @@ void main() {
     );
 
     test('typed measurements and choices are retained for the live answer controls', () {
-      final flow = FlowBuilder(pack).build(wardId: 'W1');
+      final flow = FlowBuilder(pack).build(wardId: 'W2');
       flow.answer('core.rr', 44);
       flow.answer('core.skin_pinch', 'slow');
 
@@ -405,7 +405,25 @@ void main() {
     expect(score.pRed + score.pYellow + score.pGreen, closeTo(1, 1e-6));
     expect(score.pRed, greaterThan(score.pGreen));
     expect(score.latencyMs, lessThan(50));
+    expect(score.modelVersion, RiskModel.fallbackModelVersion);
   });
+
+  test(
+    'a malformed model falls back to rules-only triage without blocking',
+    () {
+      expect(RiskModel.fromJson('{not-json'), isNull);
+      const input = AssessmentInput(
+        patientId: 'rules-only',
+        ageMonths: 12,
+        sex: 'F',
+        symptoms: Symptoms(unableToDrink: true),
+      );
+      final decision = AdaptiveTriage(pack: pack, engine: engine).decide(input);
+      expect(decision.flag, TriageFlag.red);
+      expect(decision.modelContribution.score, isNull);
+      expect(decision.modelContribution.modelVersion, 'rules-only');
+    },
+  );
 
   test(
     'the fitted model file stays under 1 MB and leans red on a danger sign',

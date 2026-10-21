@@ -22,3 +22,12 @@ Latency: about 0.004 ms per LightGBM `predict_proba` on this machine for one row
 This environment has no TensorFlow install, so there is no separate `.tflite` binary. The int8 coefficient table is the fully connected layer that file would contain, and `RiskModel` executes it. `tflite_flutter` can replace that call later without changing `feature_names`.
 
 The model is not allowed to lower a RED or raise a GREEN. Those rules are in `HybridTriage`, not in the weights.
+
+## Outcome-feedback and retraining gate
+
+Clinical outcomes are stored by the PHC desk as `outcome_label_for_ml`. The
+backend `workers/triage_retraining.py` export stub pairs only confirmed outcomes
+with de-identified triage features and records source engine/model versions. It
+produces a review manifest for a candidate model version; it does not train or
+deploy automatically. Clinical approval and an updated calibration report remain
+mandatory before a new model is released.

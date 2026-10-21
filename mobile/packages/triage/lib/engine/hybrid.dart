@@ -6,12 +6,14 @@ class ModelScore {
     required this.pYellow,
     required this.pGreen,
     required this.latencyMs,
+    this.modelVersion = 'unknown',
   });
 
   final double pRed;
   final double pYellow;
   final double pGreen;
   final double latencyMs;
+  final String modelVersion;
 
   String get likelyFlag {
     if (pRed >= pYellow && pRed >= pGreen) return 'RED';
@@ -25,11 +27,13 @@ class ModelContribution {
     required this.score,
     required this.escalated,
     required this.note,
+    this.modelVersion = 'rules-only',
   });
 
   final ModelScore? score;
   final bool escalated;
   final String note;
+  final String modelVersion;
 }
 
 /// The flag the phone shows. The engine flag is never lowered.
@@ -49,10 +53,10 @@ class HybridDecision {
   final String outbreakContext;
 
   TriageResult get engineView => TriageResult(
-        flag: flag,
-        firedRules: firedRules,
-        followUpDays: followUpDays,
-      );
+    flag: flag,
+    firedRules: firedRules,
+    followUpDays: followUpDays,
+  );
 }
 
 class HybridTriage {
@@ -80,7 +84,8 @@ class HybridTriage {
       );
     }
 
-    final would = 'Model would have said ${score.likelyFlag} '
+    final would =
+        'Model would have said ${score.likelyFlag} '
         '(p_red ${score.pRed.toStringAsFixed(2)}, '
         'p_yellow ${score.pYellow.toStringAsFixed(2)}, '
         'p_green ${score.pGreen.toStringAsFixed(2)}).';
@@ -95,6 +100,7 @@ class HybridTriage {
           score: score,
           escalated: false,
           note: 'Engine RED kept. $would',
+          modelVersion: score.modelVersion,
         ),
       );
     }
@@ -109,12 +115,15 @@ class HybridTriage {
           score: score,
           escalated: false,
           note: 'Engine GREEN kept. $would',
+          modelVersion: score.modelVersion,
         ),
       );
     }
 
     if (score.pRed > redThreshold) {
-      final cluster = outbreakContext.isEmpty ? 'no outbreak module active' : outbreakContext;
+      final cluster = outbreakContext.isEmpty
+          ? 'no outbreak module active'
+          : outbreakContext;
       return HybridDecision(
         flag: TriageFlag.red,
         firedRules: engine.firedRules,
@@ -124,6 +133,7 @@ class HybridTriage {
           score: score,
           escalated: true,
           note: 'escalated: high risk + $cluster',
+          modelVersion: score.modelVersion,
         ),
       );
     }
@@ -137,6 +147,7 @@ class HybridTriage {
         score: score,
         escalated: false,
         note: 'Engine YELLOW kept. $would',
+        modelVersion: score.modelVersion,
       ),
     );
   }
