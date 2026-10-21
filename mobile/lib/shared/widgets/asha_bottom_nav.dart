@@ -35,7 +35,12 @@ class AshaBottomNav extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final code = ref.watch(languageProvider).languageCode;
+    String code = 'en';
+    try {
+      code = ref.watch(languageProvider).languageCode;
+    } catch (_) {
+      // Standalone widget test without ProviderScope
+    }
     final labels = _dockLabels[code] ?? _dockLabels['en']!;
     final items = [
       for (var i = 0; i < AshaBottomNav.items.length; i++)

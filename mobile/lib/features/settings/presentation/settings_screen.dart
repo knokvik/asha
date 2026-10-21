@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../core/bhasha/model_store.dart';
@@ -65,6 +66,9 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 22),
+          _sectionTitle('Map & Navigation'),
+          const _MapStyleSection(),
+          const SizedBox(height: 22),
           _sectionTitle('Voice interpreter packs'),
           const Text(
             'Install an offline speech pack so interpreter and voice forms keep working without internet.',
@@ -108,6 +112,125 @@ class SettingsScreen extends ConsumerWidget {
           fontSize: 16,
           fontWeight: FontWeight.w800,
           color: Color(0xFF111815),
+        ),
+      ),
+    );
+  }
+}
+
+class _MapStyleSection extends StatefulWidget {
+  const _MapStyleSection();
+
+  @override
+  State<_MapStyleSection> createState() => _MapStyleSectionState();
+}
+
+class _MapStyleSectionState extends State<_MapStyleSection> {
+  static const _storage = FlutterSecureStorage();
+  String _mapStyle = 'street';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStyle();
+  }
+
+  Future<void> _loadStyle() async {
+    final style = await _storage.read(key: 'map_view_style') ?? 'street';
+    if (mounted) setState(() => _mapStyle = style);
+  }
+
+  Future<void> _setStyle(String style) async {
+    setState(() => _mapStyle = style);
+    await _storage.write(key: 'map_view_style', value: style);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  _mapStyle == 'satellite'
+                      ? Icons.satellite_alt_rounded
+                      : Icons.map_rounded,
+                  color: const Color(0xFF2D5F47),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Map Basemap Style',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
+                      Text(
+                        _mapStyle == 'satellite'
+                            ? 'Satellite Aerial Imagery (High-res aerial view)'
+                            : 'Standard Street Map (Offline vector & road detail)',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: ChoiceChip(
+                    avatar: const Icon(Icons.map_outlined, size: 18),
+                    label: const Text('Street Map'),
+                    selected: _mapStyle == 'street',
+                    onSelected: (val) {
+                      if (val) _setStyle('street');
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ChoiceChip(
+                    avatar: const Icon(Icons.satellite_alt_rounded, size: 18),
+                    label: const Text('Satellite Aerial'),
+                    selected: _mapStyle == 'satellite',
+                    onSelected: (val) {
+                      if (val) _setStyle('satellite');
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Row(
+              children: [
+                Icon(
+                  Icons.offline_pin_outlined,
+                  size: 15,
+                  color: Color(0xFF16A34A),
+                ),
+                SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Offline caching enabled. Previously viewed tiles and local district packs work without network.',
+                    style: TextStyle(fontSize: 11, color: Color(0xFF4B5563)),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

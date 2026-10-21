@@ -11,7 +11,6 @@ import '../../features/home/presentation/profile_screen.dart';
 import '../../features/map/presentation/field_map_screen.dart';
 import '../widgets/asha_bottom_nav.dart';
 import '../widgets/asha_search_bar.dart';
-import 'shell_copy.dart';
 import 'shell_tab.dart';
 
 /// One scaffold for Home, Map, Tasks, and Profile.
@@ -169,12 +168,7 @@ class _ShellHeader extends StatelessWidget {
                   _SyncHeaderButton(snapshot: snapshot),
                   InkWell(
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(shellText(lang, 'notif')),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
+                      context.push('/triage/history');
                     },
                     borderRadius: BorderRadius.circular(20),
                     child: const Padding(
@@ -206,7 +200,8 @@ class _SyncHeaderButton extends StatelessWidget {
     final pending = snapshot?.pendingCount ?? 0;
     final isSyncing = snapshot?.state == SyncConnectionState.syncing;
     final isConnected = snapshot?.isConnectedToServer ?? false;
-    final isOffline = !isConnected || snapshot?.state == SyncConnectionState.offline;
+    final isOffline =
+        !isConnected || snapshot?.state == SyncConnectionState.offline;
 
     // Connected = Green dot on cloud.
     // Offline / Syncing / Pending = Yellow/Amber sync icon.

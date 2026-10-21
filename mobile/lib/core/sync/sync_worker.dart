@@ -390,6 +390,50 @@ class SyncWorker {
               updatedAt: (raw['updated_at'] as num?)?.toInt() ?? now,
             ),
           );
+        } else if (table == 'facility_directory') {
+          await _db.into(_db.facilityDirectory).insertOnConflictUpdate(
+            FacilityDirectoryCompanion.insert(
+              id: raw['id']?.toString() ?? '',
+              name: raw['name']?.toString() ?? '',
+              facilityLevel: raw['facility_level']?.toString() ?? 'PHC',
+              district: Value(raw['district']?.toString()),
+              block: Value(raw['block']?.toString()),
+              village: Value(raw['village']?.toString()),
+              latitude: Value((raw['latitude'] as num?)?.toDouble()),
+              longitude: Value((raw['longitude'] as num?)?.toDouble()),
+              contactPhone: Value(raw['contact_phone']?.toString()),
+              servicesJson: Value(raw['services_json']?.toString() ?? '[]'),
+              isActive: Value(raw['is_active'] as bool? ?? true),
+              lastUpdatedAt: (raw['last_updated_at'] as num?)?.toInt() ?? now,
+            ),
+          );
+        } else if (table == 'clinical_encounters') {
+          await _db.into(_db.clinicalEncounters).insertOnConflictUpdate(
+            ClinicalEncountersCompanion.insert(
+              id: raw['id']?.toString() ?? '',
+              memberId: raw['member_id']?.toString() ?? '',
+              encounterType: raw['encounter_type']?.toString() ?? 'general',
+              programCode: raw['program_code']?.toString() ?? 'general',
+              encounterDate: (raw['encounter_date'] as num?)?.toInt() ?? now,
+              ashaId: raw['asha_id']?.toString() ?? '',
+              status: Value(raw['status']?.toString() ?? 'completed'),
+              visitNotes: Value(raw['visit_notes']?.toString()),
+              createdAt: (raw['created_at'] as num?)?.toInt() ?? now,
+              updatedAt: (raw['updated_at'] as num?)?.toInt() ?? now,
+              syncStatus: const Value('synced'),
+            ),
+          );
+        } else if (table == 'triage_results') {
+          await _db.into(_db.triageResults).insertOnConflictUpdate(
+            TriageResultsCompanion.insert(
+              id: raw['id']?.toString() ?? '',
+              encounterId: raw['encounter_id']?.toString() ?? '',
+              flag: raw['flag']?.toString() ?? 'GREEN',
+              ruleVersionId: raw['rule_version_id']?.toString() ?? 'v1.0-mohfw',
+              findingsJson: raw['findings_json']?.toString() ?? '[]',
+              evaluatedAt: (raw['evaluated_at'] as num?)?.toInt() ?? now,
+            ),
+          );
         }
       } catch (_) {}
     }

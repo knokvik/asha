@@ -298,6 +298,12 @@ Language choices from the design document:
     - For arbitrary `RuleSet` values, assert `deserialise(serialise(ruleSet)) == ruleSet` (all condition trees, thresholds, citations preserved)
     - **Validates: Requirements 9.1**
 
+  - [-] 6.8 Extend field triage context and follow-up history
+    - Add patient context fields, symptom chips, disease-radar adaptive-module selection, and an explicit adult/older-adult assessment entry.
+    - Keep compressed image/audio evidence visible at the final ticket step and display synced PHC follow-up schedules and triage history in-app.
+    - Remaining: connect a dedicated server recommendation/notification record when the backend contract is finalized; current follow-ups use synced `visit_schedules`.
+    - _Requirements: 8.1, 8.2, 24.1, 26.1, 31.1_
+
 - [x] 7. Checkpoint — verify triage engine correctness
   - Run the full triage property test suite (Properties 3, 4, 5). Launch the app, register a test household, open a triage form, submit clinical inputs, and verify a RED/YELLOW/GREEN result appears in < 1 s with an audio readout. Ensure all tests pass, ask the user if questions arise.
 

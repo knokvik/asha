@@ -17,6 +17,7 @@ import '../features/household/presentation/household_detail_screen.dart';
 import '../features/household/presentation/household_profile_screen.dart';
 import '../features/triage/presentation/triage_flow_screen.dart';
 import '../features/triage/presentation/triage_assessment_screen.dart';
+import '../features/triage/presentation/triage_history_screen.dart';
 import '../features/reports/presentation/reports_incentives_screen.dart';
 import '../shared/shell/main_shell.dart';
 import '../shared/shell/shell_tab.dart';
@@ -230,6 +231,11 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
       path: '/triage/assessment',
       pageBuilder: (context, state) =>
           _buildSlidePage(state: state, child: const TriageAssessmentScreen()),
+    ),
+    GoRoute(
+      path: '/triage/history',
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const TriageHistoryScreen()),
     ),
     GoRoute(
       path: '/clinical-programs',

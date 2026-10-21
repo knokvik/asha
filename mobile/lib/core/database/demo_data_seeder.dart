@@ -56,6 +56,19 @@ class DemoDataSeeder {
           ),
         );
 
+    await db.into(db.facilityDirectory).insert(
+          FacilityDirectoryCompanion.insert(
+            id: 'fac_bb_district',
+            name: 'District Red Cross Blood Bank & Component Lab',
+            facilityLevel: 'Blood Bank',
+            contactPhone: const Value('+91-94500-77889'),
+            latitude: const Value(25.3210),
+            longitude: const Value(82.9790),
+            servicesJson: const Value('["24x7 Blood Bank", "Platelet Apheresis", "PRBC", "FFP", "Cold Storage"]'),
+            lastUpdatedAt: nowMs,
+          ),
+        );
+
     // 3. Households & Members
     // Household 1: High-Risk Pregnant Mother (Pooja Devi)
     await db.into(db.households).insert(
@@ -217,6 +230,72 @@ class DemoDataSeeder {
             createdAt: nowMs,
             updatedAt: nowMs,
             syncStatus: const Value('pending'),
+          ),
+        );
+
+    // 4b. Reported Disease Outbreak Cases (Dengue Hotspot in Catchment)
+    final dengueEncId1 = 'enc_dengue_kavita_$nowMs';
+    await db.into(db.clinicalEncounters).insert(
+          ClinicalEncountersCompanion.insert(
+            id: dengueEncId1,
+            memberId: 'mem_kavita_02',
+            encounterType: 'fever_survey',
+            programCode: 'vector_borne',
+            encounterDate: nowMs - (1 * dayMs),
+            ashaId: workerId,
+            status: const Value('completed'),
+            visitNotes: const Value('High continuous fever 103.5°F, retro-orbital headache, body ache. Platelets: 54,000/µL. Triage Flag: RED Emergency Dengue.'),
+            createdAt: nowMs - (1 * dayMs),
+            updatedAt: nowMs,
+            syncStatus: const Value('pending'),
+          ),
+        );
+
+    await db.into(db.triageResults).insert(
+          TriageResultsCompanion.insert(
+            id: 'triage_dengue1_$nowMs',
+            encounterId: dengueEncId1,
+            flag: 'RED',
+            ruleVersionId: 'v1.0-mohfw',
+            findingsJson: jsonEncode([
+              {'finding': 'High Fever: 103.5°F continuous', 'severity': 'danger'},
+              {'finding': 'Severe retro-orbital pain & arthralgia', 'severity': 'danger'},
+              {'finding': 'Platelet count: 54,000/µL (Critical)', 'severity': 'danger'},
+              {'finding': 'Dengue NS1 Rapid Antigen Positive', 'severity': 'danger'},
+            ]),
+            evaluatedAt: nowMs - (1 * dayMs),
+          ),
+        );
+
+    final dengueEncId2 = 'enc_dengue_ramprasad_$nowMs';
+    await db.into(db.clinicalEncounters).insert(
+          ClinicalEncountersCompanion.insert(
+            id: dengueEncId2,
+            memberId: 'mem_ramprasad_03',
+            encounterType: 'fever_survey',
+            programCode: 'vector_borne',
+            encounterDate: nowMs,
+            ashaId: workerId,
+            status: const Value('completed'),
+            visitNotes: const Value('Fever Day 4, abdominal pain, petechiae spots on forearm. Triage Flag: RED Dengue Warning Signs.'),
+            createdAt: nowMs,
+            updatedAt: nowMs,
+            syncStatus: const Value('pending'),
+          ),
+        );
+
+    await db.into(db.triageResults).insert(
+          TriageResultsCompanion.insert(
+            id: 'triage_dengue2_$nowMs',
+            encounterId: dengueEncId2,
+            flag: 'RED',
+            ruleVersionId: 'v1.0-mohfw',
+            findingsJson: jsonEncode([
+              {'finding': 'Dengue Warning Signs: Persistent abdominal pain', 'severity': 'danger'},
+              {'finding': 'Petechiae / mucosal bleeding risk', 'severity': 'danger'},
+              {'finding': 'High fever 102.8°F with dehydration', 'severity': 'danger'},
+            ]),
+            evaluatedAt: nowMs,
           ),
         );
 

@@ -21,6 +21,7 @@ import '../../../core/voice/tts_service.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../domain/adaptive_session.dart';
 import 'language_bridge_screen.dart';
+import 'triage_assessment_screen.dart';
 
 /// Common IMCI questions, then outbreak questions from the ward pack or from
 /// illnesses the worker marks herself when the phone is offline.
@@ -64,12 +65,25 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   bool _recordingAttachment = false;
   String? _attachmentMessage;
   List<Map<String, dynamic>> _queuedAttachments = const [];
+  String _sex = 'Unknown';
+  bool _adaptiveFromRadar = false;
+  final _reportedContext = <String>{};
 
   static const _illnesses = <(String, String)>[
     ('dengue', 'Dengue-like'),
     ('measles', 'Measles-like'),
     ('diarrhoea_cluster', 'Diarrhoea'),
     ('aes', 'AES / brain fever'),
+  ];
+
+  static const _reportedContexts = <(String, String)>[
+    ('fever', 'Fever'),
+    ('cough_breathing', 'Cough / breathing'),
+    ('diarrhoea', 'Diarrhoea'),
+    ('rash', 'Rash'),
+    ('weakness', 'Weakness / fall'),
+    ('bp_diabetes', 'BP / diabetes'),
+    ('pregnancy', 'Pregnancy'),
   ];
 
   @override
@@ -220,6 +234,12 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         'age_months': _ageMonths,
         'location': _location.text.trim(),
         'additional_details': _details.text.trim(),
+        'sex': _sex,
+        'reported_context_json': jsonEncode(_reportedContext.toList()),
+        'adaptive_from_disease_radar': _adaptiveFromRadar,
+        'radar_modules_json': jsonEncode(
+          _session?.loop.pack.activeModuleIds(_wardId) ?? const <String>[],
+        ),
         'ward_id': _flow?.wardId,
         'flag': _decision?.flag.wireName,
         'sms': _note?.toSms(),
@@ -324,8 +344,11 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
       );
       return;
     }
+    final radarModules = _adaptiveFromRadar
+        ? session.loop.pack.activeModuleIds(_wardId)
+        : const <String>[];
     final flow = FlowBuilder(session.loop.pack)
-        .build(wardId: _wardId, extraModules: _chosen);
+        .build(wardId: _wardId, extraModules: {..._chosen, ...radarModules});
     session.loop.openAssessment(wardId: _wardId);
     final visible = [
       for (final question in flow.questions)
@@ -499,6 +522,12 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
               'age_months': age,
               'location': location,
               'additional_details': _details.text.trim(),
+              'sex': _sex,
+              'reported_context_json': jsonEncode(_reportedContext.toList()),
+              'adaptive_from_disease_radar': _adaptiveFromRadar,
+              'radar_modules_json': jsonEncode(
+                session.loop.pack.activeModuleIds(_wardId),
+              ),
               'ward_id': flow.wardId,
               'flag': decision.flag.wireName,
               'sms': note.toSms(),
@@ -616,7 +645,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         TextField(
           controller: _name,
           decoration: const InputDecoration(
-            labelText: 'Child’s name',
+            labelText: 'Patient name',
             border: OutlineInputBorder(),
           ),
         ),
@@ -628,6 +657,25 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
             labelText: 'Age in months',
             border: OutlineInputBorder(),
           ),
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          key: const Key('triage_sex_dropdown'),
+          initialValue: _sex,
+          decoration: const InputDecoration(
+            labelText: 'Sex / patient context',
+            border: OutlineInputBorder(),
+          ),
+          items: const [
+            DropdownMenuItem(
+              value: 'Unknown',
+              child: Text('Unknown / prefer not to say'),
+            ),
+            DropdownMenuItem(value: 'Female', child: Text('Female')),
+            DropdownMenuItem(value: 'Male', child: Text('Male')),
+            DropdownMenuItem(value: 'Other', child: Text('Other')),
+          ],
+          onChanged: (value) => setState(() => _sex = value ?? 'Unknown'),
         ),
         const SizedBox(height: 16),
         TextField(
@@ -677,6 +725,66 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                 }),
               ),
           ],
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          'Reported context to consider',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final contextChip in _reportedContexts)
+              FilterChip(
+                label: Text(contextChip.$2),
+                selected: _reportedContext.contains(contextChip.$1),
+                onSelected: (selected) => setState(() {
+                  if (selected) {
+                    _reportedContext.add(contextChip.$1);
+                  } else {
+                    _reportedContext.remove(contextChip.$1);
+                  }
+                }),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          key: const Key('triage_adaptive_radar_button'),
+          onPressed: () =>
+              setState(() => _adaptiveFromRadar = !_adaptiveFromRadar),
+          icon: Icon(_adaptiveFromRadar ? Icons.radar : Icons.radar_outlined),
+          label: Text(
+            _adaptiveFromRadar
+                ? 'Disease-radar adaptive triage enabled'
+                : 'Use disease radar for adaptive triage',
+          ),
+        ),
+        if (_adaptiveFromRadar && packModules.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'The local radar will add: ${packModules.join(', ')}. The adaptive flow and risk model will use these modules.',
+              style: const TextStyle(
+                fontSize: 12,
+                color: AshaColors.textSecondary,
+              ),
+            ),
+          ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          key: const Key('triage_adult_assessment_button'),
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const TriageAssessmentScreen(),
+              ),
+            );
+          },
+          icon: const Icon(Icons.monitor_heart_outlined),
+          label: const Text('Adult / older adult clinical assessment'),
         ),
         if (_error != null) ...[
           const SizedBox(height: 8),
