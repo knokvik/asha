@@ -288,6 +288,9 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
     _zoomLevel = _initialZoom;
     _loadBasemapPreference();
     _rebuildDayRoute();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _locateMeLive();
+    });
   }
 
   LatLon get _effectiveFix => _liveLocation == null
