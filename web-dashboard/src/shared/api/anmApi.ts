@@ -1,8 +1,5 @@
 import { apiClient } from './client';
-import { INITIAL_CLAIM_ITEMS } from './mockData';
 import { IncentiveClaimLineItem } from '@/types';
-
-let claimsCache = [...INITIAL_CLAIM_ITEMS];
 
 export async function getIncentiveVerificationQueue(subcentreId: string = 'sc-shahpur'): Promise<IncentiveClaimLineItem[]> {
   try {
@@ -10,10 +7,8 @@ export async function getIncentiveVerificationQueue(subcentreId: string = 'sc-sh
     if (Array.isArray(res.data)) {
       return res.data;
     }
-  } catch {
-    // fallback
-  }
-  return [...claimsCache];
+  } catch { return []; }
+  return [];
 }
 
 export async function verifyClaimLineItem(
@@ -28,15 +23,7 @@ export async function verifyClaimLineItem(
       verified_at: new Date().toISOString(),
     });
     return res.data;
-  } catch {
-    const item = claimsCache.find((c) => c.id === lineItemId);
-    if (item) {
-      item.status = action;
-      if (rejectionReason) item.rejectionReason = rejectionReason;
-      return { ...item };
-    }
-    throw new Error('Claim line item not found');
-  }
+  } catch { throw new Error('Unable to verify claim on the server.'); }
 }
 
 export async function recordVhsndSession(sessionData: {
@@ -52,7 +39,5 @@ export async function recordVhsndSession(sessionData: {
   try {
     const res = await apiClient.post(`/anm/vhsnd/session`, sessionData);
     return res.data;
-  } catch {
-    return { id: `vhsnd-${Date.now()}`, success: true };
-  }
+  } catch { return { id: '', success: false }; }
 }

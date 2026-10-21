@@ -1,5 +1,4 @@
 import { apiClient } from './client';
-import { INITIAL_INDICATORS, INITIAL_OUTBREAK_ALERTS, INITIAL_SUPPLY_FORECASTS } from './mockData';
 import { DistrictIndicator, OutbreakAlert, SupplyForecast } from '@/types';
 
 export async function getDistrictIndicators(districtCode: string = 'DIST_01'): Promise<DistrictIndicator[]> {
@@ -8,10 +7,8 @@ export async function getDistrictIndicators(districtCode: string = 'DIST_01'): P
     if (Array.isArray(res.data)) {
       return res.data;
     }
-  } catch {
-    // fallback
-  }
-  return [...INITIAL_INDICATORS];
+  } catch { return []; }
+  return [];
 }
 
 export async function getOutbreakAlerts(blockCode: string = 'BLOCK_A'): Promise<OutbreakAlert[]> {
@@ -20,10 +17,8 @@ export async function getOutbreakAlerts(blockCode: string = 'BLOCK_A'): Promise<
     if (Array.isArray(res.data)) {
       return res.data;
     }
-  } catch {
-    // fallback
-  }
-  return [...INITIAL_OUTBREAK_ALERTS];
+  } catch { return []; }
+  return [];
 }
 
 export async function getSupplyForecasts(facilityId: string = 'phc-shahpur'): Promise<SupplyForecast[]> {
@@ -32,8 +27,6 @@ export async function getSupplyForecasts(facilityId: string = 'phc-shahpur'): Pr
     if (Array.isArray(res.data)) {
       return res.data;
     }
-  } catch {
-    // fallback
-  }
-  return [...INITIAL_SUPPLY_FORECASTS];
+  } catch { return []; }
+  return [];
 }

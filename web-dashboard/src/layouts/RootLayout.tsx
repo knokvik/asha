@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet, NavLink, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { Outlet, NavLink, Navigate, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { useTheme } from '@/shared/hooks/useTheme';
 import { useSync } from '@/shared/context/SyncContext';
@@ -92,6 +92,8 @@ export function RootLayout() {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [clinicalToolsOpen, setClinicalToolsOpen] = useState(false);
+
+  if (!user) return <Navigate to="/login" replace />;
 
   const handleLogout = () => {
     logout();

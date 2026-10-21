@@ -14,7 +14,11 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from core.config import get_async_database_url, get_database_connect_args, get_settings
+from core.config import (
+    get_async_database_url,
+    get_database_engine_kwargs,
+    get_settings,
+)
 from core.multi_tenant import install_multi_tenant_listener
 
 _settings = get_settings()
@@ -25,7 +29,7 @@ _engine = create_async_engine(
     _database_url,
     echo=_settings.DEBUG,
     pool_pre_ping=True,
-    connect_args=get_database_connect_args(_settings),
+    **get_database_engine_kwargs(_settings),
 )
 
 AsyncSessionLocal = async_sessionmaker(

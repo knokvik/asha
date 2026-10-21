@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/l10n/app_localizations.dart';
 import '../../../../core/l10n/language_selector_dialog.dart';
 import '../../../../core/security/auth_service.dart';
+import '../../../../core/security/session_service.dart';
 import '../../../../shared/providers/core_providers.dart';
 
 /// Screen presenting PIN setup or PIN unlock flow.
@@ -30,6 +31,7 @@ class PinSetupScreen extends ConsumerStatefulWidget {
 }
 
 class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
+  final _ashaIdController = TextEditingController();
   final _pinController = TextEditingController();
   final _confirmPinController = TextEditingController();
   bool _isPinConfigured = false;
@@ -45,6 +47,7 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
 
   @override
   void dispose() {
+    _ashaIdController.dispose();
     _pinController.dispose();
     _confirmPinController.dispose();
     super.dispose();
@@ -153,6 +156,18 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
       });
 
       try {
+        final ashaId = _ashaIdController.text.trim();
+        if (ashaId.isNotEmpty) {
+          final serverLogin = await auth.loginToServer(
+            apiBaseUrl: defaultAshaApiBaseUrl,
+            ashaId: ashaId,
+            pin: pin,
+          );
+          if (!serverLogin.isSuccess) {
+            throw StateError(serverLogin.error ?? 'Server sign-in failed.');
+          }
+        }
+
         try {
           final dir = await getApplicationDocumentsDirectory();
           final file = File(p.join(dir.path, 'asha_platform.db'));
@@ -185,6 +200,7 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
         final res = await auth.verifyPin(pin);
         if (res.state == AuthState.authenticated) {
           await _unlockDatabase(pin);
+          await _refreshServerSession();
           if (mounted) {
             context.go('/home');
           }
@@ -222,6 +238,21 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
           });
         }
       }
+    }
+  }
+
+  Future<void> _refreshServerSession() async {
+    final result = await SessionService(
+      apiBaseUrl: defaultAshaApiBaseUrl,
+      database: ref.read(appDatabaseProvider),
+    ).refreshAccessToken();
+    // Local unlock remains available when the server is temporarily offline.
+    // A valid refresh silently restores the access token for the next sync.
+    if (result == SessionRefreshResult.rejected && mounted) {
+      setState(() {
+        _errorMessage =
+            'This server session was revoked. Sign in online again to sync.';
+      });
     }
   }
 
@@ -281,6 +312,19 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (!_isPinConfigured) ...[
+                    TextField(
+                      key: const Key('asha_id_field'),
+                      controller: _ashaIdController,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'ASHA ID (for online sync)',
+                        hintText: 'Leave blank for offline-only setup',
+                        prefixIcon: Icon(Icons.badge_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   const Icon(
                     Icons.health_and_safety,
                     size: 72,

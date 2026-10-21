@@ -25,6 +25,8 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       // Clear token and let router redirect to login
       localStorage.removeItem('asha_auth_token');
+      localStorage.removeItem('asha_refresh_token');
+      localStorage.removeItem('asha_worker_id');
     }
     return Promise.reject(error);
   }

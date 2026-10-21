@@ -4,6 +4,8 @@ All secrets (SECRET_KEY, DATABASE_URL) should be injected via environment
 or a .env file — never committed to source control.
 """
 from functools import lru_cache
+from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -35,6 +37,11 @@ class Settings(BaseSettings):
     # For tests: sqlite+aiosqlite:///./test.db
     DATABASE_URL: str = "sqlite+aiosqlite:///./asha_dev.db"
     DATABASE_SSL_REQUIRE: bool = False
+    # Supabase's shared pooler is the IPv4-compatible option for Render.
+    # Use "session" with the Supabase pooler URI on port 5432, or
+    # "transaction" with the URI on port 6543.
+    DATABASE_POOL_MODE: Literal["auto", "session", "transaction"] = "auto"
+    DATABASE_CONNECT_TIMEOUT_SECONDS: float = 15.0
 
     # ── Security ─────────────────────────────────────────────────────────────
     SECRET_KEY: str = "CHANGE_ME_IN_PRODUCTION_USE_A_LONG_RANDOM_STRING"
@@ -102,10 +109,52 @@ def get_async_database_url(database_url: str) -> str:
     return url
 
 
-def get_database_connect_args(settings: Settings) -> dict[str, str]:
+def _is_transaction_pooler(settings: Settings, database_url: str) -> bool:
+    """Return whether the configured database is Supavisor transaction mode."""
+    if settings.DATABASE_POOL_MODE == "transaction":
+        return True
+    if settings.DATABASE_POOL_MODE == "session":
+        return False
+
+    try:
+        return urlsplit(database_url).port == 6543
+    except ValueError:
+        return False
+
+
+def get_database_connect_args(settings: Settings) -> dict[str, object]:
     """Build driver connection options without exposing credentials."""
-    if settings.DATABASE_SSL_REQUIRE and get_async_database_url(
-        settings.DATABASE_URL
-    ).startswith("postgresql+asyncpg://"):
-        return {"ssl": "require"}
-    return {}
+    database_url = get_async_database_url(settings.DATABASE_URL)
+    if not database_url.startswith("postgresql+asyncpg://"):
+        return {}
+
+    connect_args: dict[str, object] = {
+        "timeout": settings.DATABASE_CONNECT_TIMEOUT_SECONDS,
+    }
+    if settings.DATABASE_SSL_REQUIRE:
+        connect_args["ssl"] = "require"
+
+    # Supavisor transaction mode (port 6543) does not support prepared
+    # statements. asyncpg otherwise enables its statement cache by default.
+    if _is_transaction_pooler(settings, database_url):
+        connect_args["statement_cache_size"] = 0
+
+    return connect_args
+
+
+def get_database_engine_kwargs(settings: Settings) -> dict[str, object]:
+    """Return shared SQLAlchemy engine options for API and Alembic.
+
+    A transaction pooler hands a physical connection to a different client
+    after each transaction, so SQLAlchemy's own connection pool must be
+    disabled for that mode. Session mode keeps the normal application pool.
+    """
+    database_url = get_async_database_url(settings.DATABASE_URL)
+    options: dict[str, object] = {
+        "connect_args": get_database_connect_args(settings),
+    }
+    if _is_transaction_pooler(settings, database_url):
+        from sqlalchemy.pool import NullPool
+
+        options["poolclass"] = NullPool
+    return options

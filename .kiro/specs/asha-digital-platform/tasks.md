@@ -76,6 +76,9 @@ Language choices from the design document:
     - Scaffold `backend/` with `main.py`, `api/v1/`, `models/db/`, `models/schemas/`, `services/`, `workers/`, `db/`, `core/`
     - Add dependencies to `requirements.txt`: `fastapi`, `uvicorn[standard]`, `sqlalchemy[asyncio]`, `asyncpg`, `alembic`, `pydantic-settings`, `python-jose[cryptography]`, `passlib[bcrypt]`, `celery[redis]`, `gzip`, `fhir.resources`
     - Create `db/session.py` with async SQLAlchemy engine and session factory
+    - Production deployment note: Render uses the Supabase shared IPv4 Session
+      pooler URI (port 5432); the direct `db.<project-ref>.supabase.co` endpoint
+      is IPv6-only on Supabase projects without the IPv4 add-on.
     - Write Alembic initial migration mirroring all mobile tables plus server-side columns (`worker_id`, `server_received_at`, `server_seq`, `state_code`, `district_code`, `block_code`) and `conflict_review`, `pending_merge` tables
     - _Requirements: 31.1, 32.1_
 

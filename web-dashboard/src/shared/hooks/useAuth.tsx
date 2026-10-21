@@ -54,6 +54,20 @@ export const DEMO_CREDENTIALS: CredentialAccount[] = [
   },
 ];
 
+// These accounts are created only by backend/scripts/seed_demo_data.py. They
+// are shown for local integration testing and still authenticate through the
+// real backend; they never create a local fake token.
+export const TEST_CREDENTIALS: CredentialAccount[] = [
+  {
+    username: 'PHC_TEST_WEB',
+    password: '1357',
+    role: 'PHC_MO',
+    name: 'Test PHC Officer',
+    facility: 'TEST_PHC',
+    designation: 'Integration Test Account',
+  },
+];
+
 interface AuthContextType {
   user: AuthUser | null;
   role: UserRole;
@@ -111,11 +125,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const [user, setUser] = useState<AuthUser | null>(() => {
+    const token = localStorage.getItem('asha_auth_token');
+    if (!token) return null;
     const saved = localStorage.getItem('asha_user');
     if (saved) {
-      try { return JSON.parse(saved); } catch {}
+      try {
+        const parsed = JSON.parse(saved) as AuthUser;
+        return { ...parsed, token };
+      } catch {
+        return null;
+      }
     }
-    return DEFAULT_USERS[role] || DEFAULT_USERS.PHC_MO;
+    return null;
   });
 
   // Verify stored session with live backend on startup
@@ -145,7 +166,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       })
       .catch(() => {
-        // Stored token was rejected by server or server offline
+        // Do not keep a locally fabricated or rejected session authenticated.
+        localStorage.removeItem('asha_auth_token');
+        localStorage.removeItem('asha_refresh_token');
+        localStorage.removeItem('asha_user');
+        setUser(null);
       });
   }, []);
 
@@ -181,6 +206,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       localStorage.setItem('asha_auth_token', token);
+      if (typeof res.data?.refresh_token === 'string') {
+        localStorage.setItem('asha_refresh_token', res.data.refresh_token);
+      }
+      if (typeof res.data?.worker_id === 'string') {
+        localStorage.setItem('asha_worker_id', res.data.worker_id);
+      }
 
       // 2. Fetch authenticated profile from server
       let userInfo: AuthUser;
@@ -199,13 +230,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           phcId: meRes.data.phcId,
           token,
         };
-      } catch {
-        userInfo = {
-          id: res.data.worker_id || 'user-1',
-          name: res.data.name || username,
-          role: (res.data.role as UserRole) || roleOverride || 'PHC_MO',
-          stateCode: 'UP',
-          token,
+      } catch (profileError: any) {
+        localStorage.removeItem('asha_auth_token');
+        localStorage.removeItem('asha_refresh_token');
+        localStorage.removeItem('asha_worker_id');
+        return {
+          success: false,
+          error: profileError.response?.data?.detail || 'Server login succeeded, but the user profile could not be verified.',
         };
       }
 
@@ -225,6 +256,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem('asha_auth_token');
+    localStorage.removeItem('asha_refresh_token');
+    localStorage.removeItem('asha_worker_id');
     localStorage.removeItem('asha_user');
     setUser(null);
   };

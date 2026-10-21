@@ -12,7 +12,7 @@ import models.db.models  # noqa: F401
 
 from core.config import (
     get_async_database_url,
-    get_database_connect_args,
+    get_database_engine_kwargs,
     get_settings,
 )
 from models.db.base import Base
@@ -47,7 +47,7 @@ def do_run_migrations(connection):
 async def run_async_migrations() -> None:
     engine = create_async_engine(
         get_async_database_url(settings.DATABASE_URL),
-        connect_args=get_database_connect_args(settings),
+        **get_database_engine_kwargs(settings),
     )
     async with engine.begin() as conn:
         await conn.run_sync(do_run_migrations)

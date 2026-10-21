@@ -1,9 +1,5 @@
 import { apiClient } from './client';
-import { INITIAL_ASHA_CARDS } from './mockData';
 import { AshaPerformanceCard, SupervisionChecklist } from '@/types';
-
-let ashaCardsCache = [...INITIAL_ASHA_CARDS];
-let checklistsCache: SupervisionChecklist[] = [];
 
 export async function getAshaPerformanceCards(afId: string = 'af-01'): Promise<AshaPerformanceCard[]> {
   try {
@@ -11,10 +7,8 @@ export async function getAshaPerformanceCards(afId: string = 'af-01'): Promise<A
     if (Array.isArray(res.data)) {
       return res.data;
     }
-  } catch {
-    // fallback
-  }
-  return [...ashaCardsCache];
+  } catch { return []; }
+  return [];
 }
 
 export async function submitSupervisionChecklist(checklist: SupervisionChecklist): Promise<{ id: string; success: boolean }> {
@@ -23,10 +17,7 @@ export async function submitSupervisionChecklist(checklist: SupervisionChecklist
   try {
     const res = await apiClient.post(`/supervision/checklists`, record);
     return res.data;
-  } catch {
-    checklistsCache.push(record);
-    return { id: checklistId, success: true };
-  }
+  } catch { throw new Error('Unable to save supervision checklist to the server.'); }
 }
 
 export async function sendAshaRecognition(
@@ -41,8 +32,6 @@ export async function sendAshaRecognition(
       message,
       sent_at: new Date().toISOString(),
     });
-  } catch {
-    console.info(`[Recognition badge ${badgeType} sent to ASHA ${ashaId}]: ${message}`);
-  }
-  return { success: true };
+  } catch { return { success: false }; }
+  return { success: false };
 }

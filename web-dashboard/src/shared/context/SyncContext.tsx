@@ -85,6 +85,11 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const loadActivity = useCallback(async () => {
+    if (!localStorage.getItem('asha_auth_token')) {
+      setSyncActivities([]);
+      setLastSyncTime('Not synced yet');
+      return;
+    }
     setIsSyncing(true);
     try {
       const response = await apiClient.get('/sync/activity?limit=100');
@@ -92,6 +97,9 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       const next = packets.map(mapPacket);
       setSyncActivities(next);
       setLastSyncTime(next.length > 0 ? relativeTime(next[0].timestamp) : 'No packets yet');
+    } catch {
+      // The activity panel is optional; do not surface polling failures as
+      // uncaught errors or interrupt the rest of the dashboard.
     } finally {
       setIsSyncing(false);
     }
