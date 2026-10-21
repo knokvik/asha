@@ -403,9 +403,11 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         : const <String>[];
     final contextModules = <String>{..._chosen, ...radarModules};
     if (_extendedClinicalContext) contextModules.add('adult_vitals');
-    final flow = FlowBuilder(session.loop.pack)
-        .build(wardId: _wardId, month: age, extraModules: contextModules);
-    session.loop.openAssessment(wardId: _wardId, month: age);
+    final flow = session.loop.openAssessment(
+      wardId: _wardId,
+      month: age,
+      extraModules: contextModules,
+    );
     _seedClinicalContext(flow);
     final visible = [
       for (final question in flow.questions)

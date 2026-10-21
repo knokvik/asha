@@ -13,8 +13,8 @@ class AdaptiveTriage {
     required this.engine,
     this.redThreshold = 0.65,
     OutboxSink? outbox,
-  })  : _pack = pack,
-        outbox = outbox ?? OutboxSink();
+  }) : _pack = pack,
+       outbox = outbox ?? OutboxSink();
 
   ContextPack _pack;
   final ImciEngine engine;
@@ -27,17 +27,26 @@ class AdaptiveTriage {
 
   void updateContextPack(ContextPack next) {
     if (next.version < _pack.version) {
-      throw FormatException('pack version ${next.version} is older than ${_pack.version}');
+      throw FormatException(
+        'pack version ${next.version} is older than ${_pack.version}',
+      );
     }
     if (next.districtId != _pack.districtId) {
-      throw FormatException('pack district ${next.districtId} does not match ${_pack.districtId}');
+      throw FormatException(
+        'pack district ${next.districtId} does not match ${_pack.districtId}',
+      );
     }
     _pack = next;
     _openFlow = null;
   }
 
-  FlowState openAssessment({required String wardId, int? month}) {
-    _openFlow = FlowBuilder(_pack).build(wardId: wardId, month: month);
+  FlowState openAssessment({
+    required String wardId,
+    int? month,
+    Set<String> extraModules = const {},
+  }) {
+    _openFlow = FlowBuilder(_pack)
+        .build(wardId: wardId, month: month, extraModules: extraModules);
     return _openFlow!;
   }
 
@@ -45,17 +54,24 @@ class AdaptiveTriage {
     final result = engine.evaluate(input);
     final ward = input.context.wardId ?? '';
     final context = _pack.clusterSummary(ward);
-    return HybridTriage(redThreshold: redThreshold).combine(result, score, outbreakContext: context);
+    return HybridTriage(redThreshold: redThreshold)
+        .combine(result, score, outbreakContext: context);
   }
 
   /// Writes one assessment into the offline outbox. The server module drains it.
-  void enqueue(AssessmentInput input, HybridDecision decision, ReferralNote note) {
-    outbox.add(OutboxItem(
-      packVersion: _pack.version,
-      districtId: _pack.districtId,
-      wardId: input.context.wardId ?? '',
-      flag: decision.flag.wireName,
-      referralSms: note.toSms(),
-    ));
+  void enqueue(
+    AssessmentInput input,
+    HybridDecision decision,
+    ReferralNote note,
+  ) {
+    outbox.add(
+      OutboxItem(
+        packVersion: _pack.version,
+        districtId: _pack.districtId,
+        wardId: input.context.wardId ?? '',
+        flag: decision.flag.wireName,
+        referralSms: note.toSms(),
+      ),
+    );
   }
 }
