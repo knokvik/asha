@@ -600,6 +600,8 @@ Language choices from the design document:
   - [-] 14.7 Implement national map source registry and server-backed layers
     - Register HFR/NHRR, HealthGIS, HMIS, OSM, LGD, Bhuvan, Geofabrik, population, blood-bank, pharmacy, and environmental sources.
     - Render verified `FacilityDirectory` records from `/api/v1/facilities` with source-aware marker categories; complete source ingestion remains required before a source can produce points.
+    - Progress: added capability tags and routing profiles for NRC, DEIC, blood, delivery, antivenom, AB-HWC/CHO/NCD, PM-JAY, Jan Aushadhi, VHSND, ambulance, ERSS-112, and eye-bank layers. The mobile referral flow now requires verified capabilities for obstetric bleeding, SAM, snakebite, and high-BP scenarios; routine referrals retain nearest-facility matching. The facilities API exposes capability-filtered records.
+    - Progress: added source metadata and offline-ingestion strategies for NHM NRC, RBSK DEIC, NHM 108/102 transport, ERSS-112, NOTTO eye banks, NHA PM-JAY, and VHSND plans. Missing/expired capability data is surfaced as a warning rather than inferred.
     - Outcome recording (arrived/treated/admitted/discharged/did not reach) → backend pushes notification to ASHA
     - Active lists: high-risk pregnancies/sick newborns/SAM/NCD defaulters/TB patients (filterable by sub-centre and ASHA)
     - Facility planning view: deliveries expected in next 4 weeks/immunization session demand/commodity stock levels/outstanding referral outcomes

@@ -8,6 +8,7 @@ import '../../../core/pdf/pdf_generator.dart';
 import '../../../core/triage/models/models.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../data/referral_repository.dart';
+import '../domain/offline_referral_router.dart';
 import '../domain/facility_matcher.dart';
 import '../domain/referral_models.dart';
 import '../domain/referral_note_generator.dart';
@@ -43,6 +44,7 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
   bool _useEnglish = true;
   bool _isLoading = true;
   List<FacilityInfo> _candidateFacilities = [];
+  FacilityRoutePlan? _routingPlan;
   FacilityInfo? _selectedFacility;
   String _selectedTransport = '108 — National Emergency Ambulance';
   bool _isSaving = false;
@@ -66,7 +68,9 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
     TriageResult? result = widget.triageResult;
 
     if (member == null && widget.memberId != null) {
-      member = await (db.select(db.members)..where((t) => t.id.equals(widget.memberId!))).getSingleOrNull();
+      member = await (db.select(
+        db.members,
+      )..where((t) => t.id.equals(widget.memberId!))).getSingleOrNull();
     }
     member ??= Member(
       id: widget.memberId ?? 'unregistered_patient',
@@ -103,17 +107,24 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
     _activeTriageResult = result;
 
     try {
-      final matched = await FacilityMatcher.matchFromDb(
-        db: db,
+      final rows = await db.select(db.facilityDirectory).get();
+      final routingRequest = OfflineRoutingRequest.fromTriageInputs(
+        TriageInputs(values: widget.rawVitals ?? const <String, dynamic>{}),
         triageFlag: result.flag,
-        ageInDays: member.dobApprox != null
-            ? ((DateTime.now().millisecondsSinceEpoch - member.dobApprox!) / (1000 * 60 * 60 * 24)).floor()
-            : null,
       );
+      final routingPlan = OfflineReferralRouter.plan(
+        allFacilities: rows,
+        request: routingRequest,
+        district: widget.ashaUser?.areaDistrict,
+      );
+      final matched = routingPlan.destinations
+          .map((item) => item.facility)
+          .toList();
 
       if (mounted) {
         setState(() {
           _candidateFacilities = matched;
+          _routingPlan = routingPlan;
           if (matched.isNotEmpty) {
             _selectedFacility = matched.first;
           }
@@ -158,8 +169,14 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
     setState(() => _isSaving = true);
     try {
       final repo = ref.read(referralRepositoryProvider);
-      final pdfBytes = await PdfGenerator.generateReferralPdf(_note!, thermalLayout: false);
-      final pdfFile = await PdfGenerator.savePdfToFile(pdfBytes, _note!.referralId);
+      final pdfBytes = await PdfGenerator.generateReferralPdf(
+        _note!,
+        thermalLayout: false,
+      );
+      final pdfFile = await PdfGenerator.savePdfToFile(
+        pdfBytes,
+        _note!.referralId,
+      );
 
       final record = await repo.createReferral(
         note: _note!,
@@ -173,15 +190,17 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
           _isSaving = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Referral recorded and enqueued for sync')),
+          const SnackBar(
+            content: Text('Referral recorded and enqueued for sync'),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save referral: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to save referral: $e')));
       }
     }
   }
@@ -214,7 +233,10 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
         ],
       ),
     );
@@ -233,7 +255,11 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
           children: [
             Text(
               'Length: ${smsText.length}/160 characters (1 standard SMS PDU)',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.indigo),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+                color: Colors.indigo,
+              ),
             ),
             const SizedBox(height: 8),
             Container(
@@ -252,7 +278,10 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Done')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Done'),
+          ),
         ],
       ),
     );
@@ -260,7 +289,10 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
 
   Future<void> _printPdf({bool thermal = false}) async {
     if (_note == null) return;
-    final bytes = await PdfGenerator.generateReferralPdf(_note!, thermalLayout: thermal);
+    final bytes = await PdfGenerator.generateReferralPdf(
+      _note!,
+      thermalLayout: thermal,
+    );
     await Printing.layoutPdf(onLayout: (_) => bytes);
   }
 
@@ -287,7 +319,10 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
           // Bilingual Language Toggle (Requirement 10.7)
           Row(
             children: [
-              const Text('EN', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              const Text(
+                'EN',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              ),
               Switch(
                 key: const Key('referral_language_toggle'),
                 value: _useEnglish,
@@ -323,7 +358,11 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
                 children: [
                   Text(
                     'PRIORITY: ${triageResult.flag.label}',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -344,12 +383,22 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Patient Demographics', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    Text(
+                      'Patient Demographics',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const Divider(),
-                    Text('Name: ${note.patient.name} (${note.patient.formattedAge}, ${note.patient.sex})'),
-                    if (note.patient.abhaId != null && note.patient.abhaId!.isNotEmpty)
+                    Text(
+                      'Name: ${note.patient.name} (${note.patient.formattedAge}, ${note.patient.sex})',
+                    ),
+                    if (note.patient.abhaId != null &&
+                        note.patient.abhaId!.isNotEmpty)
                       Text('ABHA ID: ${note.patient.abhaId}'),
-                    Text('Village: ${note.patient.village ?? "Community"} (${note.patient.hamlet ?? "Main"})'),
+                    Text(
+                      'Village: ${note.patient.village ?? "Community"} (${note.patient.hamlet ?? "Main"})',
+                    ),
                     if (note.patient.contactPhone != null)
                       Text('Family Phone: ${note.patient.contactPhone}'),
                   ],
@@ -369,48 +418,97 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Destination Facility', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        Text(
+                          'Destination Facility',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const Chip(
-                          label: Text('Offline Directory', style: TextStyle(fontSize: 10)),
+                          label: Text(
+                            'Offline Directory',
+                            style: TextStyle(fontSize: 10),
+                          ),
                           backgroundColor: Color(0xFFE8F5E9),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     if (_candidateFacilities.isEmpty)
-                      const Text('No designated facilities found in local directory.', style: TextStyle(color: Colors.red))
+                      Text(
+                        _routingPlan?.warnings.isNotEmpty == true
+                            ? _routingPlan!.warnings.first
+                            : 'No designated facilities found in local directory.',
+                        style: const TextStyle(color: Colors.red),
+                      )
                     else
-                      DropdownButtonFormField<FacilityInfo>(
-                        key: const Key('facility_dropdown'),
-                        initialValue: _selectedFacility,
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          labelText: 'Select Receiving Facility',
-                        ),
-                        items: _candidateFacilities.map((f) {
-                          final dist = f.distanceKm != null ? ' (${f.distanceKm} km)' : '';
-                          return DropdownMenuItem(
-                            value: f,
-                            child: Text(
-                              '${f.name} — ${f.level.value}$dist',
-                              overflow: TextOverflow.ellipsis,
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (_routingPlan != null) ...[
+                            Text(
+                              _routingPlan!.rationale,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.black87,
+                              ),
                             ),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          setState(() {
-                            _selectedFacility = val;
-                            _initNote();
-                          });
-                        },
+                            const SizedBox(height: 8),
+                          ],
+                          DropdownButtonFormField<FacilityInfo>(
+                            key: const Key('facility_dropdown'),
+                            initialValue: _selectedFacility,
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              labelText: 'Select Receiving Facility',
+                            ),
+                            items: _candidateFacilities.map((f) {
+                              final dist = f.distanceKm != null
+                                  ? ' (${f.distanceKm} km)'
+                                  : '';
+                              return DropdownMenuItem(
+                                value: f,
+                                child: Text(
+                                  '${f.name} — ${f.level.value}$dist',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              setState(() {
+                                _selectedFacility = val;
+                                _initNote();
+                              });
+                            },
+                          ),
+                        ],
                       ),
+                    if (_routingPlan?.warnings.isNotEmpty == true) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        _routingPlan!.warnings.join(' '),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.orange.shade900,
+                        ),
+                      ),
+                    ],
                     if (_selectedFacility != null) ...[
                       const SizedBox(height: 8),
-                      Text('Care Tier: ${_selectedFacility!.level.displayName}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                      Text(
+                        'Care Tier: ${_selectedFacility!.level.displayName}',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
                       if (_selectedFacility!.contactPhone != null)
                         Text('Phone: ${_selectedFacility!.contactPhone}'),
                       if (_selectedFacility!.services.isNotEmpty)
-                        Text('Services: ${_selectedFacility!.services.join(", ")}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                        Text(
+                          'Services: ${_selectedFacility!.services.join(", ")}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
                     ],
                   ],
                 ),
@@ -426,7 +524,12 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Emergency Transit & Dial Actions', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    Text(
+                      'Emergency Transit & Dial Actions',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
                       key: const Key('transport_dropdown'),
@@ -435,9 +538,12 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
                         border: OutlineInputBorder(),
                         labelText: 'Arranged Transport',
                       ),
-                      items: FacilityMatcher.getTransportOptions(triageResult.flag).map((t) {
-                        return DropdownMenuItem(value: t, child: Text(t));
-                      }).toList(),
+                      items:
+                          FacilityMatcher.getTransportOptions(
+                            triageResult.flag,
+                          ).map((t) {
+                            return DropdownMenuItem(value: t, child: Text(t));
+                          }).toList(),
                       onChanged: (val) {
                         if (val != null) {
                           setState(() {
@@ -460,7 +566,9 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
                           ),
                           onPressed: () {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Dialling 108 Ambulance...')),
+                              const SnackBar(
+                                content: Text('Dialling 108 Ambulance...'),
+                              ),
                             );
                           },
                           icon: const Icon(Icons.emergency),
@@ -474,7 +582,11 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
                           ),
                           onPressed: () {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Dialling 102 Janani Shishu Vahan...')),
+                              const SnackBar(
+                                content: Text(
+                                  'Dialling 102 Janani Shishu Vahan...',
+                                ),
+                              ),
                             );
                           },
                           icon: const Icon(Icons.local_hospital),
@@ -485,7 +597,11 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
                             key: const Key('dial_facility_button'),
                             onPressed: () {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Dialling facility: ${_selectedFacility!.contactPhone}')),
+                                SnackBar(
+                                  content: Text(
+                                    'Dialling facility: ${_selectedFacility!.contactPhone}',
+                                  ),
+                                ),
                               );
                             },
                             icon: const Icon(Icons.phone),
@@ -507,7 +623,12 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Structured Medical Summary (< 30s Readout)', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    Text(
+                      'Structured Medical Summary (< 30s Readout)',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -519,7 +640,10 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
                       child: Text(
                         note.formatSummary(english: _useEnglish),
                         key: const Key('formatted_note_summary_text'),
-                        style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 11,
+                        ),
                       ),
                     ),
                   ],
@@ -571,10 +695,22 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
               ),
               onPressed: _isSaving ? null : _saveReferral,
               child: _isSaving
-                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                   : Text(
-                      _savedRecord != null ? 'Referral Saved (ID: ${_savedRecord!.id})' : 'Confirm & Dispatch Referral',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      _savedRecord != null
+                          ? 'Referral Saved (ID: ${_savedRecord!.id})'
+                          : 'Confirm & Dispatch Referral',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
             ),
           ],

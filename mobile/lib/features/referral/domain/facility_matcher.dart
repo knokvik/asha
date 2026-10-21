@@ -33,7 +33,8 @@ class FacilityMatcher {
     final dLat = _toRadians(lat2 - lat1);
     final dLon = _toRadians(lon2 - lon1);
 
-    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+    final a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
         math.cos(_toRadians(lat1)) *
             math.cos(_toRadians(lat2)) *
             math.sin(dLon / 2) *
@@ -75,7 +76,10 @@ class FacilityMatcher {
             level == FacilityLevel.sncu;
 
       case TriageFlag.yellow:
-        return level == FacilityLevel.phc ||
+        // A yellow NCD/high-BP pathway may be handled at an AB-HWC / HWC
+        // when the directory explicitly carries CHO or NCD capability.
+        return level == FacilityLevel.subCentre ||
+            level == FacilityLevel.phc ||
             level == FacilityLevel.chc ||
             level == FacilityLevel.subDistrictHospital ||
             level == FacilityLevel.districtHospital;
@@ -100,7 +104,11 @@ class FacilityMatcher {
       if (!row.isActive) continue;
 
       final level = FacilityLevel.fromString(row.facilityLevel);
-      if (!isLevelQualified(level: level, flag: triageFlag, ageInDays: ageInDays)) {
+      if (!isLevelQualified(
+        level: level,
+        flag: triageFlag,
+        ageInDays: ageInDays,
+      )) {
         continue;
       }
 
@@ -138,7 +146,9 @@ class FacilityMatcher {
           contactPhone: row.contactPhone,
           services: services,
           isActive: row.isActive,
-          distanceKm: distance != null ? double.parse(distance.toStringAsFixed(1)) : null,
+          distanceKm: distance != null
+              ? double.parse(distance.toStringAsFixed(1))
+              : null,
         ),
       );
     }
@@ -165,7 +175,8 @@ class FacilityMatcher {
     int? ageInDays,
     String? district,
   }) async {
-    final query = db.select(db.facilityDirectory)..where((t) => t.isActive.equals(true));
+    final query = db.select(db.facilityDirectory)
+      ..where((t) => t.isActive.equals(true));
     if (district != null && district.trim().isNotEmpty) {
       query.where((t) => t.district.equals(district.trim()));
     }

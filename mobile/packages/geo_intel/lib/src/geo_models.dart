@@ -157,10 +157,20 @@ List<FacilityPoi> _indiaFacilities(String raw) {
         FacilityPoi(
           id: (row['id'] ?? 'fac-${row['lat']}-${row['lon']}').toString(),
           name: (row['name'] ?? row['n'] ?? 'Health Centre').toString(),
-          category: switch (
-              (row['kind'] ?? row['t'] ?? 'government').toString().toLowerCase()) {
+          category: switch ((row['kind'] ?? row['t'] ?? 'government')
+              .toString()
+              .toLowerCase()) {
             'subcentre' || 'sub_centre' => 'sub_centre',
             'blood_bank' => 'blood_bank',
+            'nrc' ||
+            'nutrition_rehabilitation_centre' ||
+            'nutrition_rehabilitation_center' => 'nrc',
+            'deic' => 'deic',
+            'antivenom' || 'snakebite' => 'antivenom',
+            'ab_hwc' || 'hwc' || 'ayushman_arogya_mandir' => 'ab_hwc',
+            'pmjay' || 'pmjay_hospital' => 'pmjay',
+            'vhsnd' => 'vhsnd',
+            'eye_bank' => 'eye_bank',
             'phc' => 'phc',
             'chc' => 'chc',
             'hospital' || 'dh' || 'dis_h' => 'hospital',
@@ -169,14 +179,29 @@ List<FacilityPoi> _indiaFacilities(String raw) {
             _ => 'government',
           },
           latitude: ((row['lat'] ?? row['latitude']) as num).toDouble(),
-          longitude:
-              ((row['lon'] ?? row['lng'] ?? row['longitude']) as num).toDouble(),
+          longitude: ((row['lon'] ?? row['lng'] ?? row['longitude']) as num)
+              .toDouble(),
           phone: (row['phone'] ?? '').toString(),
           hours: 'National directory · hours not published',
-          capabilities: const [],
+          capabilities: _capabilitiesFromRow(row),
           wardId: (row['district'] ?? row['d'] ?? 'INDIA').toString(),
         ),
   ];
+}
+
+List<String> _capabilitiesFromRow(Map row) {
+  final values = <String>[];
+  final rawCapabilities = row['capabilities'];
+  if (rawCapabilities is List) {
+    values.addAll(rawCapabilities.map((value) => value.toString()));
+  }
+  final rawServices = row['services'];
+  if (rawServices is List) {
+    values.addAll(
+      rawServices.map((value) => value.toString().split(':').first),
+    );
+  }
+  return values.toSet().toList();
 }
 
 class RankedFacility {

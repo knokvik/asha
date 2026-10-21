@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import '../../../core/triage/models/models.dart';
+import '../../../core/database/app_database.dart';
+import 'facility_capabilities.dart';
 
 /// Status of a referral lifecycle.
 ///
@@ -161,9 +163,15 @@ enum FacilityLevel {
     final v = val.toUpperCase().replaceAll('-', '_').replaceAll(' ', '_');
     if (v.contains('SNCU')) return FacilityLevel.sncu;
     if (v.contains('FRU')) return FacilityLevel.fru;
-    if (v.contains('COLLEGE') || v.contains('TERTIARY')) return FacilityLevel.medicalCollege;
-    if (v.contains('DISTRICT') || v == 'DH') return FacilityLevel.districtHospital;
-    if (v.contains('SUB_DISTRICT') || v == 'SDH') return FacilityLevel.subDistrictHospital;
+    if (v.contains('COLLEGE') || v.contains('TERTIARY')) {
+      return FacilityLevel.medicalCollege;
+    }
+    if (v.contains('DISTRICT') || v == 'DH') {
+      return FacilityLevel.districtHospital;
+    }
+    if (v.contains('SUB_DISTRICT') || v == 'SDH') {
+      return FacilityLevel.subDistrictHospital;
+    }
     if (v.contains('CHC') || v.contains('COMMUNITY')) return FacilityLevel.chc;
     if (v.contains('PHC') || v.contains('PRIMARY')) return FacilityLevel.phc;
     return FacilityLevel.subCentre;
@@ -202,29 +210,66 @@ class FacilityInfo {
     this.distanceKm,
   });
 
+  /// Converts the offline directory row without duplicating JSON assumptions
+  /// in each routing consumer.
+  factory FacilityInfo.fromDirectoryRow(FacilityDirectoryData row) {
+    return FacilityInfo(
+      id: row.id,
+      name: row.name,
+      level: FacilityLevel.fromString(row.facilityLevel),
+      district: row.district,
+      block: row.block,
+      village: row.village,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      contactPhone: row.contactPhone,
+      services: _decodeServices(row.servicesJson),
+      isActive: row.isActive,
+    );
+  }
+
+  /// Canonical capabilities exposed by the verified service tags.
+  Set<String> get capabilities => FacilityCapabilityParser.normalise(services);
+
+  bool hasCapability(String capability) => capabilities.contains(capability);
+
+  FacilityInfo copyWithDistance(double? distance) => FacilityInfo(
+    id: id,
+    name: name,
+    level: level,
+    district: district,
+    block: block,
+    village: village,
+    latitude: latitude,
+    longitude: longitude,
+    contactPhone: contactPhone,
+    services: services,
+    isActive: isActive,
+    distanceKm: distance != null
+        ? double.parse(distance.toStringAsFixed(1))
+        : distanceKm,
+  );
+
   factory FacilityInfo.fromJson(Map<String, dynamic> json) {
-    List<String> parsedServices = [];
-    if (json['services'] is List) {
-      parsedServices = (json['services'] as List).map((e) => e.toString()).toList();
-    } else if (json['services_json'] is String) {
-      try {
-        final decoded = jsonDecode(json['services_json'] as String);
-        if (decoded is List) {
-          parsedServices = decoded.map((e) => e.toString()).toList();
-        }
-      } catch (_) {}
-    }
+    final parsedServices = _decodeServices(
+      json['services'] ?? json['services_json'],
+    );
 
     return FacilityInfo(
       id: json['id'] as String? ?? '',
       name: json['name'] as String? ?? 'Health Facility',
-      level: FacilityLevel.fromString(json['facility_level'] as String? ?? json['facilityLevel'] as String? ?? 'PHC'),
+      level: FacilityLevel.fromString(
+        json['facility_level'] as String? ??
+            json['facilityLevel'] as String? ??
+            'PHC',
+      ),
       district: json['district'] as String?,
       block: json['block'] as String?,
       village: json['village'] as String?,
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
-      contactPhone: json['contact_phone'] as String? ?? json['contactPhone'] as String?,
+      contactPhone:
+          json['contact_phone'] as String? ?? json['contactPhone'] as String?,
       services: parsedServices,
       isActive: json['is_active'] as bool? ?? true,
       distanceKm: (json['distance_km'] as num?)?.toDouble(),
@@ -232,19 +277,46 @@ class FacilityInfo {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'facility_level': level.value,
-        'district': district,
-        'block': block,
-        'village': village,
-        'latitude': latitude,
-        'longitude': longitude,
-        'contact_phone': contactPhone,
-        'services': services,
-        'is_active': isActive,
-        if (distanceKm != null) 'distance_km': distanceKm,
-      };
+    'id': id,
+    'name': name,
+    'facility_level': level.value,
+    'district': district,
+    'block': block,
+    'village': village,
+    'latitude': latitude,
+    'longitude': longitude,
+    'contact_phone': contactPhone,
+    'services': services,
+    'is_active': isActive,
+    if (distanceKm != null) 'distance_km': distanceKm,
+  };
+
+  static List<String> _decodeServices(dynamic raw) {
+    if (raw is List) return raw.map((e) => e.toString()).toList();
+    if (raw is Map) {
+      return raw.entries
+          .where(
+            (entry) =>
+                entry.value == true ||
+                entry.value == 1 ||
+                entry.value?.toString().toLowerCase() == 'yes',
+          )
+          .map((entry) => '${entry.key}:yes')
+          .toList();
+    }
+    if (raw is String) {
+      try {
+        return _decodeServices(jsonDecode(raw));
+      } catch (_) {
+        return raw
+            .split(',')
+            .map((value) => value.trim())
+            .where((value) => value.isNotEmpty)
+            .toList();
+      }
+    }
+    return const [];
+  }
 }
 
 /// Patient identification information captured in a referral note.
@@ -362,24 +434,34 @@ class StructuredReferralNote {
 
     buffer.writeln('========================================');
     buffer.writeln(headerTitle);
-    buffer.writeln('Ref ID: $referralId | Date: ${createdAt.toIso8601String().substring(0, 16).replaceAll('T', ' ')}');
+    buffer.writeln(
+      'Ref ID: $referralId | Date: ${createdAt.toIso8601String().substring(0, 16).replaceAll('T', ' ')}',
+    );
     buffer.writeln('========================================');
 
     // 1. Critical Priority Flag
-    buffer.writeln('PRIORITY: [ ${triageFlag.label} ] ${triageFlag == TriageFlag.red ? '— IMMEDIATE CLINICAL ACTION' : ''}');
+    buffer.writeln(
+      'PRIORITY: [ ${triageFlag.label} ] ${triageFlag == TriageFlag.red ? '— IMMEDIATE CLINICAL ACTION' : ''}',
+    );
     if (overrideFlag != null) {
-      buffer.writeln('  * ASHA OVERRIDE TO: $overrideFlag (Reason: $overrideReason)');
+      buffer.writeln(
+        '  * ASHA OVERRIDE TO: $overrideFlag (Reason: $overrideReason)',
+      );
     }
     buffer.writeln('CHIEF COMPLAINT: $primaryReason');
     buffer.writeln('----------------------------------------');
 
     // 2. Patient Demographics & Contact
     buffer.writeln('PATIENT DETAILS:');
-    buffer.writeln('  Name: ${patient.name} | Sex: ${patient.sex} | Age: ${patient.formattedAge}');
+    buffer.writeln(
+      '  Name: ${patient.name} | Sex: ${patient.sex} | Age: ${patient.formattedAge}',
+    );
     if (patient.abhaId != null && patient.abhaId!.isNotEmpty) {
       buffer.writeln('  ABHA ID: ${patient.abhaId}');
     }
-    buffer.writeln('  Village/Hamlet: ${patient.village ?? "Community"}${patient.hamlet != null ? " / ${patient.hamlet}" : ""}');
+    buffer.writeln(
+      '  Village/Hamlet: ${patient.village ?? "Community"}${patient.hamlet != null ? " / ${patient.hamlet}" : ""}',
+    );
     if (patient.contactPhone != null && patient.contactPhone!.isNotEmpty) {
       buffer.writeln('  Family Phone: ${patient.contactPhone}');
     }
@@ -411,16 +493,22 @@ class StructuredReferralNote {
         buffer.writeln('  ✓ $a');
       }
     } else {
-      buffer.writeln('  ✓ Kept patient calm, counselled family, arranged immediate transit');
+      buffer.writeln(
+        '  ✓ Kept patient calm, counselled family, arranged immediate transit',
+      );
     }
     buffer.writeln('----------------------------------------');
 
     // 5. Destination & Transit
     if (destinationFacility != null) {
       buffer.writeln('REFERRED TO:');
-      buffer.writeln('  Facility: ${destinationFacility!.name} (${destinationFacility!.level.displayName})');
+      buffer.writeln(
+        '  Facility: ${destinationFacility!.name} (${destinationFacility!.level.displayName})',
+      );
       if (destinationFacility!.contactPhone != null) {
-        buffer.writeln('  Facility Phone: ${destinationFacility!.contactPhone}');
+        buffer.writeln(
+          '  Facility Phone: ${destinationFacility!.contactPhone}',
+        );
       }
     }
     if (transportArranged != null && transportArranged!.isNotEmpty) {

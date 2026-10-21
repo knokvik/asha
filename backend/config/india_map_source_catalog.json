@@ -17,6 +17,51 @@
     "retrieved_at": "UTC ISO-8601 timestamp",
     "license": "source license or terms URL"
   },
+  "capability_tag_schema": {
+    "blood_bank": "verified blood centre or blood storage capability",
+    "delivery_room": "verified labour/delivery room capability",
+    "nrc": "Nutrition Rehabilitation Centre for facility-based SAM care",
+    "antivenom": "verified snakebite/anti-snake-venom capability",
+    "ab_hwc": "Ayushman Arogya Mandir / Health and Wellness Centre",
+    "cho": "Community Health Officer posted/available",
+    "ncd_clinic": "verified NCD/CBAC service capability",
+    "pmjay": "PM-JAY empanelment indicator",
+    "janaushadhi": "PMBJP Jan Aushadhi store",
+    "vhsnd": "verified VHSND session site",
+    "eye_bank": "NOTTO/state eye-bank directory record",
+    "ambulance_108": "state NHM emergency transport availability",
+    "ambulance_102": "state NHM maternal/child transport availability",
+    "emergency_112": "ERSS-112 emergency response availability",
+    "route_network_v1": "offline road graph version used for route checks",
+    "route_ferry_crossing": "known route crosses a ferry/water crossing",
+    "route_ferry_safe": "route has been verified not to require a ferry"
+  },
+  "routing_profiles": {
+    "obstetric_bleeding": {
+      "required_capabilities": ["blood_bank", "delivery_room"],
+      "emergency_number": "102",
+      "fallback_emergency_number": "108"
+    },
+    "severe_acute_malnutrition": {
+      "trigger": "MUAC < 115 mm or other SAM rule result",
+      "required_capabilities": ["nrc"],
+      "emergency_number": "108"
+    },
+    "snakebite": {
+      "required_capabilities": ["antivenom", "blood_bank"],
+      "route_constraint": "avoid known ferry crossings when an offline road graph is available",
+      "emergency_number": "108"
+    },
+    "high_blood_pressure": {
+      "required_capabilities": ["ab_hwc", "cho_or_ncd_clinic"],
+      "emergency_number": null,
+      "escalate_only_if_danger_sign": true
+    },
+    "routine": {
+      "required_capabilities": [],
+      "companion_layer": "janaushadhi"
+    }
+  },
   "sources": [
     {
       "id": "abdm_hfr",
@@ -129,6 +174,97 @@
       "point_fields": ["blood_centre_id", "name", "latitude", "longitude", "state", "district", "address", "phone", "stock", "last_updated"],
       "normalised_kinds": ["blood_bank"],
       "status": "directory_connector_required"
+    },
+    {
+      "id": "nhm_nrc",
+      "title": "National Health Mission Nutrition Rehabilitation Centres",
+      "coverage": "State and district NRC records for facility-based management of children with severe acute malnutrition",
+      "location_url": "https://nhm.gov.in/nhm_live/index1.php?lang=1&level=3&lid=798&sublinkid=1449",
+      "data_url": "https://www.nhm.gov.in/images/pdf/Nutrition/NRC-guidelines/Operational-Guidelines-on-Facility-Based-Management-of-Children-with-Severe-Acute-Malnutrition.pdf",
+      "access": "official NHM/state facility directory; import facility coordinates and verify operating status",
+      "point_fields": ["facility_id", "name", "latitude", "longitude", "state", "district", "phone", "nrc_status", "last_verified"],
+      "normalised_kinds": ["nrc"],
+      "capability_tags": ["nrc"],
+      "offline_strategy": "join to FacilityDirectory; cache last_verified and never infer NRC capability from hospital level alone",
+      "status": "state_directory_import_required"
+    },
+    {
+      "id": "rbsk_deic",
+      "title": "RBSK District Early Intervention Centres",
+      "coverage": "District-level DEIC referral centres for defects, deficiencies, diseases and developmental delays",
+      "location_url": "https://nhm.gov.in/nammamihaan/index1.php?lang=1&level=2&lid=219&sublinkid=819",
+      "data_url": "https://nhm.gov.in/New-Update-2022-24/CH-Programmes/RBSK-Guidelines/DEIC-RBSK-Operational-Guidelines.pdf",
+      "access": "official NHM/state RBSK list; retain district hospital linkage and service disciplines",
+      "point_fields": ["deic_id", "name", "latitude", "longitude", "state", "district", "facility_id", "services", "phone"],
+      "normalised_kinds": ["deic"],
+      "capability_tags": ["developmental_assessment", "pediatric_referral"],
+      "offline_strategy": "cache as a separate child-referral layer and link to the parent district hospital",
+      "status": "state_directory_import_required"
+    },
+    {
+      "id": "nhm_patient_transport",
+      "title": "NHM National Ambulance Service / Patient Transport",
+      "coverage": "State-operated 108 emergency and 102 maternal/child patient transport services",
+      "location_url": "https://nhm.gov.in/nhm_live/index1.php?lang=1&level=2&lid=189&sublinkid=1217",
+      "data_url": "https://nhm.gov.in/nhm_live/index1.php?lang=1&level=2&lid=189&sublinkid=1217",
+      "access": "offline dial actions; state control-room/base locations only where an official export is provided",
+      "point_fields": ["state", "control_room_phone", "base_id", "latitude", "longitude", "vehicle_type", "service_area", "last_updated"],
+      "normalised_kinds": ["ambulance"],
+      "capability_tags": ["ambulance_108", "ambulance_102"],
+      "offline_strategy": "always cache dial numbers; cache base points only with timestamp and state ownership",
+      "status": "dial_fallback_ready_state_feed_required"
+    },
+    {
+      "id": "erss_112",
+      "title": "Emergency Response Support System 112",
+      "coverage": "Pan-India emergency response number and state emergency response control rooms",
+      "location_url": "https://112.gov.in/",
+      "data_url": "https://112.gov.in/states",
+      "access": "one-tap offline call; live dispatch/location requires network and device permission",
+      "point_fields": ["state", "erc_name", "erc_phone", "latitude", "longitude", "service_types"],
+      "normalised_kinds": ["emergency_response"],
+      "capability_tags": ["emergency_112"],
+      "offline_strategy": "cache the 112 dial action and never present stale dispatch status as live",
+      "status": "dial_action_ready_state_control_room_optional"
+    },
+    {
+      "id": "notto_eye_banks",
+      "title": "NOTTO / State Eye Bank Directory",
+      "coverage": "National and state eye-bank/organ-and-tissue referral directory where published",
+      "location_url": "https://dghs.mohfw.gov.in/notto.php",
+      "data_url": "https://notto.mohfw.gov.in/",
+      "access": "official directory or authorised state export; availability and eligibility are time-sensitive",
+      "point_fields": ["eye_bank_id", "name", "latitude", "longitude", "state", "district", "phone", "services", "last_verified"],
+      "normalised_kinds": ["eye_bank"],
+      "capability_tags": ["eye_bank"],
+      "offline_strategy": "cache directory contact and last verification; do not claim organ/tissue availability offline",
+      "status": "directory_connector_required"
+    },
+    {
+      "id": "nha_pmjay",
+      "title": "National Health Authority PM-JAY Empanelled Hospitals",
+      "coverage": "Hospitals empanelled under AB PM-JAY and applicable convergence schemes",
+      "location_url": "https://pmjay.gov.in/",
+      "data_url": "https://hospitals.pmjay.gov.in/",
+      "access": "official NHA empanelment list/export; package and speciality data must retain effective dates",
+      "point_fields": ["hospital_id", "name", "latitude", "longitude", "state", "district", "specialities", "packages", "empanelment_status", "last_updated"],
+      "normalised_kinds": ["pmjay_hospital"],
+      "capability_tags": ["pmjay"],
+      "offline_strategy": "join PM-JAY status and packages onto FacilityDirectory; display stale-date warning before promising free care",
+      "status": "authorised_export_required"
+    },
+    {
+      "id": "vhsnd_block_plans",
+      "title": "Village Health Sanitation and Nutrition Day site plans",
+      "coverage": "Monthly VHSND session sites published through state/block NHM plans",
+      "location_url": "https://nhm.gov.in/",
+      "data_url": "https://nhm.gov.in/",
+      "access": "state/block plan import; no single national point file",
+      "point_fields": ["session_id", "site_name", "latitude", "longitude", "state", "district", "block", "village", "session_date", "services"],
+      "normalised_kinds": ["vhsnd"],
+      "capability_tags": ["vhsnd"],
+      "offline_strategy": "cache dated sessions in the due-list and map; expire sites after the published session window",
+      "status": "state_block_plan_required"
     },
     {
       "id": "lgd",
