@@ -680,20 +680,19 @@ export function IndiaPhcMapPage() {
             ))}
           </div>
 
-          {/* Map Layer Switcher — 100% Free layers, No API Key needed */}
-          <div className="ml-auto flex items-center gap-1.5">
-            <select
-              value={mapStyle}
-              onChange={(e) => setMapStyle(e.target.value as TileStyle)}
-              className="h-9 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-2 font-medium outline-none cursor-pointer"
-            >
-              <option value="osm_standard">🌍 OpenStreetMap (Free)</option>
-              <option value="esri_topo">🏔️ Esri Topo Terrain</option>
-              <option value="esri_gray">⚪ Esri Clean Gray</option>
-              <option value="esri_dark">🌙 Esri Dark Night</option>
-              <option value="satellite">🛰️ Satellite Aerial</option>
-            </select>
-          </div>
+      {/* Map Layer Switcher — 100% Free layers, No API Key needed */}
+      <div className="ml-auto flex items-center gap-1.5">
+        <select
+          value={mapStyle}
+          onChange={(e) => setMapStyle(e.target.value as TileStyle)}
+          className="h-9 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-2 font-medium outline-none cursor-pointer"
+        >
+          <option value="osm_standard">🌍 OpenStreetMap (Clean Light)</option>
+          <option value="esri_topo">🏔️ Esri Topo Terrain (Light)</option>
+          <option value="esri_gray">⚪ Esri Clean Gray Canvas (Light)</option>
+          <option value="satellite">🛰️ Satellite Aerial</option>
+        </select>
+      </div>
         </div>
       </div>
 

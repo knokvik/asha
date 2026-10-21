@@ -758,17 +758,7 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
                     : 'bg-slate-100 dark:bg-[#1E1E1E] text-[#525252] dark:text-[#94A3B8] hover:bg-slate-200 dark:hover:bg-[#2A2A2A]'
                 }`}
               >
-                OSM Standard
-              </button>
-              <button
-                onClick={() => setMapStyle('dark_tactical')}
-                className={`px-2 py-1.5 rounded-lg font-semibold text-[11px] transition-all cursor-pointer ${
-                  mapStyle === 'dark_tactical'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-[#1E1E1E] text-[#525252] dark:text-[#94A3B8] hover:bg-slate-200 dark:hover:bg-[#2A2A2A]'
-                }`}
-              >
-                Night Mode
+                OSM Standard (Light)
               </button>
             </div>
           </Card>

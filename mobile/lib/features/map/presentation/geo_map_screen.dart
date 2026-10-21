@@ -335,9 +335,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
     ];
     return Scaffold(
       key: const Key('geo_map_screen'),
-      backgroundColor: _satelliteView
-          ? const Color(0xFF0F172A)
-          : const Color(0xFFF2EFE9),
+      backgroundColor: const Color(0xFFF2EFE9),
       bottomNavigationBar: widget.embedded
           ? null
           : const AshaBottomNav(index: 1),
@@ -351,9 +349,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                 initialZoom: _initialZoom,
                 minZoom: 3,
                 maxZoom: 19,
-                backgroundColor: _satelliteView
-                    ? const Color(0xFF0F172A)
-                    : const Color(0xFFF2EFE9),
+                backgroundColor: const Color(0xFFF2EFE9),
                 interactionOptions: const InteractionOptions(
                   flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
                 ),
@@ -491,9 +487,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                   icon: _satelliteView
                       ? Icons.map_rounded
                       : Icons.satellite_alt_rounded,
-                  color: _satelliteView
-                      ? const Color(0xFF10B981)
-                      : const Color(0xFF1E293B),
+                  color: const Color(0xFF10B981),
                   onPressed: _toggleSatellite,
                 ),
                 const SizedBox(height: 8),
@@ -564,9 +558,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
 
   Widget _buildBottomControlBar() {
     return Material(
-      color: _satelliteView
-          ? const Color(0xFF1E293B).withValues(alpha: 0.95)
-          : Colors.white.withValues(alpha: 0.95),
+      color: Colors.white.withValues(alpha: 0.98),
       elevation: 6,
       borderRadius: BorderRadius.circular(20),
       clipBehavior: Clip.antiAlias,
@@ -597,27 +589,21 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                 children: [
                   Text(
                     'Condition: ',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
-                      color: _satelliteView
-                          ? Colors.grey.shade300
-                          : const Color(0xFF374151),
+                      color: Color(0xFF374151),
                     ),
                   ),
                   DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: _condition,
                       isDense: true,
-                      dropdownColor: _satelliteView
-                          ? const Color(0xFF1E293B)
-                          : Colors.white,
-                      style: TextStyle(
+                      dropdownColor: Colors.white,
+                      style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: _satelliteView
-                            ? Colors.white
-                            : const Color(0xFF111827),
+                        color: Color(0xFF111827),
                       ),
                       items: const [
                         DropdownMenuItem(
@@ -649,20 +635,18 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                     onPressed: _week <= 1
                         ? null
                         : () => setState(() => _week--),
-                    icon: Icon(
+                    icon: const Icon(
                       Icons.chevron_left_rounded,
-                      color: _satelliteView ? Colors.white70 : Colors.black87,
+                      color: Colors.black87,
                     ),
                   ),
                   const SizedBox(width: 4),
                   Text(
                     'Week $_week / 12',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 12,
-                      color: _satelliteView
-                          ? Colors.white
-                          : const Color(0xFF111827),
+                      color: Color(0xFF111827),
                     ),
                   ),
                   const SizedBox(width: 4),
@@ -674,9 +658,9 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                     onPressed: _week >= 12
                         ? null
                         : () => setState(() => _week++),
-                    icon: Icon(
+                    icon: const Icon(
                       Icons.chevron_right_rounded,
-                      color: _satelliteView ? Colors.white70 : Colors.black87,
+                      color: Colors.black87,
                     ),
                   ),
                 ],
@@ -1147,9 +1131,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
       final categoryColor = _facilityColor(selected.category);
 
       return Material(
-        color: _satelliteView
-            ? const Color(0xFF1E293B).withValues(alpha: 0.96)
-            : Colors.white,
+        color: Colors.white,
         elevation: 6,
         shadowColor: Colors.black38,
         borderRadius: BorderRadius.circular(16),
@@ -1187,23 +1169,19 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                           selected.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w800,
-                            color: _satelliteView
-                                ? Colors.white
-                                : const Color(0xFF111827),
+                            color: Color(0xFF111827),
                           ),
                         ),
                         Text(
                           '${_categoryLabel(selected.category)}${selected.wardId.isNotEmpty && selected.wardId != "INDIA" ? " · ${selected.wardId}" : ""} · ${metres}m away',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 11,
-                            color: _satelliteView
-                                ? Colors.grey.shade400
-                                : const Color(0xFF6B7280),
+                            color: Color(0xFF6B7280),
                           ),
                         ),
                       ],
@@ -1220,9 +1198,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                     }),
                     icon: Icon(
                       Icons.close_rounded,
-                      color: _satelliteView
-                          ? Colors.grey.shade400
-                          : Colors.grey.shade600,
+                      color: Colors.grey.shade600,
                     ),
                   ),
                 ],
