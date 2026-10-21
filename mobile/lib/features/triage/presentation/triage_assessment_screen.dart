@@ -29,7 +29,8 @@ class TriageAssessmentScreen extends ConsumerStatefulWidget {
       _TriageAssessmentScreenState();
 }
 
-class _TriageAssessmentScreenState extends ConsumerState<TriageAssessmentScreen> {
+class _TriageAssessmentScreenState
+    extends ConsumerState<TriageAssessmentScreen> {
   final _formKey = GlobalKey<FormState>();
 
   // Patient Demographic Controls (Requirement 11.1)
@@ -57,8 +58,9 @@ class _TriageAssessmentScreenState extends ConsumerState<TriageAssessmentScreen>
       _selectedAgeBand = AgeBandCode.pregnant;
     } else if (widget.initialAgeDays != null) {
       _ageDaysController.text = widget.initialAgeDays.toString();
-      _selectedAgeBand =
-          AgeBandResolver.resolve(ageInDays: widget.initialAgeDays);
+      _selectedAgeBand = AgeBandResolver.resolve(
+        ageInDays: widget.initialAgeDays,
+      );
     }
   }
 
@@ -139,9 +141,7 @@ class _TriageAssessmentScreenState extends ConsumerState<TriageAssessmentScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Clinical Assessment'),
-      ),
+      appBar: AppBar(title: const Text('Clinical Assessment')),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -161,7 +161,11 @@ class _TriageAssessmentScreenState extends ConsumerState<TriageAssessmentScreen>
                           color: AshaColors.primaryLight,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.fact_check_outlined, color: AshaColors.primary, size: 20),
+                        child: const Icon(
+                          Icons.fact_check_outlined,
+                          color: AshaColors.primary,
+                          size: 20,
+                        ),
                       ),
                       const SizedBox(width: 10),
                       const Expanded(
@@ -180,37 +184,55 @@ class _TriageAssessmentScreenState extends ConsumerState<TriageAssessmentScreen>
                   const SizedBox(height: 10),
                   const Text(
                     'Ask the Setu questions one at a time, then make a referral QR. They speak and I ask help with the language. The voice model does not choose the colour.',
-                    style: TextStyle(fontSize: 13, color: AshaColors.textSecondary, height: 1.4),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AshaColors.textSecondary,
+                      height: 1.4,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   FilledButton.icon(
                     key: const Key('setu_questions_button'),
                     style: FilledButton.styleFrom(
-                      shape: const RoundedRectangleBorder(borderRadius: AshaShapes.buttonRadius),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: AshaShapes.buttonRadius,
+                      ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     onPressed: () {
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const SetuQuestionsScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => const SetuQuestionsScreen(),
+                        ),
                       );
                     },
                     icon: const Icon(Icons.fact_check_outlined),
-                    label: const Text('Ask the triage questions', style: TextStyle(fontWeight: FontWeight.w700)),
+                    label: const Text(
+                      'Ask the triage questions',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
                   ),
                   const SizedBox(height: 10),
                   OutlinedButton.icon(
                     key: const Key('language_bridge_button'),
                     style: OutlinedButton.styleFrom(
-                      shape: const RoundedRectangleBorder(borderRadius: AshaShapes.buttonRadius),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: AshaShapes.buttonRadius,
+                      ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     onPressed: () {
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const LanguageBridgeScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => const LanguageBridgeScreen(),
+                        ),
                       );
                     },
                     icon: const Icon(Icons.translate),
-                    label: const Text('They speak / I ask', style: TextStyle(fontWeight: FontWeight.w600)),
+                    label: const Text(
+                      'They speak / I ask',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ],
               ),
@@ -225,7 +247,10 @@ class _TriageAssessmentScreenState extends ConsumerState<TriageAssessmentScreen>
                   children: [
                     const Text(
                       'Patient Group (Protocol Scope)',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<AgeBandCode>(
@@ -238,11 +263,15 @@ class _TriageAssessmentScreenState extends ConsumerState<TriageAssessmentScreen>
                       items: const [
                         DropdownMenuItem(
                           value: AgeBandCode.infant02m,
-                          child: Text('Young Infant (0–2 Months) — IMNCI / HBNC'),
+                          child: Text(
+                            'Young Infant (0–2 Months) — IMNCI / HBNC',
+                          ),
                         ),
                         DropdownMenuItem(
                           value: AgeBandCode.child2m5y,
-                          child: Text('Child (2 Months–5 Years) — IMNCI / HBYC'),
+                          child: Text(
+                            'Child (2 Months–5 Years) — IMNCI / HBYC',
+                          ),
                         ),
                         DropdownMenuItem(
                           value: AgeBandCode.adolescent,
@@ -250,7 +279,7 @@ class _TriageAssessmentScreenState extends ConsumerState<TriageAssessmentScreen>
                         ),
                         DropdownMenuItem(
                           value: AgeBandCode.adult,
-                          child: Text('Adult — NP-NCD'),
+                          child: Text('Adult / Older Adult — NP-NCD'),
                         ),
                         DropdownMenuItem(
                           value: AgeBandCode.pregnant,
@@ -265,7 +294,7 @@ class _TriageAssessmentScreenState extends ConsumerState<TriageAssessmentScreen>
                       controller: _ageDaysController,
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
-                        labelText: 'Exact Age in Days (optional)',
+                        labelText: 'Exact age in days (optional)',
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -284,7 +313,10 @@ class _TriageAssessmentScreenState extends ConsumerState<TriageAssessmentScreen>
                   children: [
                     const Text(
                       'Measured Vitals',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -302,7 +334,9 @@ class _TriageAssessmentScreenState extends ConsumerState<TriageAssessmentScreen>
                     TextFormField(
                       key: const Key('temperature_field'),
                       controller: _temperatureController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: const InputDecoration(
                         labelText: 'Axillary Temperature (°C)',
                         hintText: 'e.g. 38.5',
@@ -369,25 +403,31 @@ class _TriageAssessmentScreenState extends ConsumerState<TriageAssessmentScreen>
                   children: [
                     const Text(
                       'Danger Sign Observations',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                     CheckboxListTile(
                       key: const Key('chest_indrawing_checkbox'),
                       title: const Text('Severe chest indrawing'),
                       value: _chestIndrawing,
-                      onChanged: (val) => setState(() => _chestIndrawing = val ?? false),
+                      onChanged: (val) =>
+                          setState(() => _chestIndrawing = val ?? false),
                     ),
                     CheckboxListTile(
                       key: const Key('vomiting_checkbox'),
                       title: const Text('Vomiting everything'),
                       value: _vomitingEverything,
-                      onChanged: (val) => setState(() => _vomitingEverything = val ?? false),
+                      onChanged: (val) =>
+                          setState(() => _vomitingEverything = val ?? false),
                     ),
                     CheckboxListTile(
                       key: const Key('convulsions_checkbox'),
                       title: const Text('Convulsions or lethargy'),
                       value: _convulsions,
-                      onChanged: (val) => setState(() => _convulsions = val ?? false),
+                      onChanged: (val) =>
+                          setState(() => _convulsions = val ?? false),
                     ),
                   ],
                 ),
@@ -408,11 +448,17 @@ class _TriageAssessmentScreenState extends ConsumerState<TriageAssessmentScreen>
                   ? const SizedBox(
                       height: 20,
                       width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Text(
                       'Compute Triage & Action Plan',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
             ),
           ],

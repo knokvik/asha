@@ -1,20 +1,24 @@
+import 'dart:math' as math;
+
+import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:drift/drift.dart' show OrderingTerm;
 
-import '../../../core/l10n/language_provider.dart';
 import '../../../core/database/app_database.dart';
+import '../../../core/l10n/language_provider.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/providers/user_profile_provider.dart';
 import '../../../shared/shell/shell_copy.dart';
 import '../../../shared/widgets/asha_bottom_nav.dart';
+import '../domain/due_list_models.dart';
 import '../domain/task_scheduler.dart';
 
 /// Screen 4: Today's Due List matching the master reference image.
 /// Top Bar: [ < ]  Today's Due List  [ 📅 ]
-/// Filter Pills: All (12), Overdue (3), Upcoming (5)
-/// Detailed Beneficiary Due Cards (Savitri Devi, Meena Kumari, Rekha Sharma, Kamla Bai, Lata Devi)
-/// Fixed 4-item bottom navigation dock (Tasks active).
+/// Filter Pills: All (N), Overdue (N), Upcoming (N) — dynamic from DB & Server sync.
+/// Detailed Beneficiary Due Cards generated dynamically from active schedules.
+/// Supports pull-to-refresh sync and ad-hoc task creation.
 class DueListScreen extends ConsumerStatefulWidget {
   final int initialTab;
   final bool embedded;
@@ -31,11 +35,35 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
   var _calendarExpanded = true;
   final _createdTasks = <_CreatedTaskPreview>[];
 
+  List<DueTask>? _tasks;
+  bool _isLoading = false;
+
   @override
   void initState() {
     super.initState();
     _selectedFilter = widget.initialTab;
     _selectedDate = DateUtils.dateOnly(DateTime.now());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadTasks());
+  }
+
+  Future<void> _loadTasks() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      final scheduler = ref.read(taskSchedulerProvider);
+      final tasks = await scheduler.fetchDueTasks(referenceDate: _selectedDate);
+      if (!mounted) return;
+      setState(() {
+        _tasks = tasks;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _tasks = [];
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -70,6 +98,24 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
   }
 
   Widget _body(BuildContext context, String lang) {
+    final allTasks = _tasks ?? [];
+    final overdueTasks = allTasks
+        .where((t) =>
+            t.urgencyGroup == UrgencyGroup.overdue ||
+            t.urgencyGroup == UrgencyGroup.redFollowUp)
+        .toList();
+    final upcomingTasks = allTasks
+        .where((t) =>
+            t.urgencyGroup == UrgencyGroup.upcoming ||
+            t.urgencyGroup == UrgencyGroup.dueToday)
+        .toList();
+
+    final filteredTasks = switch (_selectedFilter) {
+      1 => overdueTasks,
+      2 => upcomingTasks,
+      _ => allTasks,
+    };
+
     return Column(
       children: [
         if (!widget.embedded)
@@ -99,7 +145,7 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
 
                 Text(
                   shellText(lang, 'dueTitle'),
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
                     color: Color(0xFF111827),
@@ -125,16 +171,25 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
 
         _buildCalendar(context),
 
-        // 2. Filter Pills matching Screen 4: All (12) | Overdue (3) | Upcoming (5)
+        // 2. Filter Pills: All (N) | Overdue (N) | Upcoming (N)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           child: Row(
             children: [
-              _buildFilterPill(0, '${shellText(lang, 'all')} (12)'),
+              _buildFilterPill(
+                0,
+                '${shellText(lang, 'all')} (${allTasks.length + _createdTasks.length})',
+              ),
               const SizedBox(width: 8),
-              _buildFilterPill(1, '${shellText(lang, 'overdue')} (3)'),
+              _buildFilterPill(
+                1,
+                '${shellText(lang, 'overdue')} (${overdueTasks.length})',
+              ),
               const SizedBox(width: 8),
-              _buildFilterPill(2, '${shellText(lang, 'upcoming')} (5)'),
+              _buildFilterPill(
+                2,
+                '${shellText(lang, 'upcoming')} (${upcomingTasks.length + _createdTasks.length})',
+              ),
             ],
           ),
         ),
@@ -169,104 +224,200 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
         ),
         const SizedBox(height: 4),
 
-        // 3. Due Task List Cards
+        // 3. Due Task List Cards with pull-to-refresh
         Expanded(
-          child: ListView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: RefreshIndicator(
+            onRefresh: () async {
+              final coordinator = ref.read(syncCoordinatorProvider);
+              if (coordinator != null) {
+                await coordinator.syncNow();
+              }
+              await _loadTasks();
+              await ref.read(userProfileProvider.notifier).loadProfile();
+            },
+            child: _isLoading && _tasks == null
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(32),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                : filteredTasks.isEmpty && _createdTasks.isEmpty
+                    ? _buildEmptyState(lang)
+                    : ListView(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 6,
+                        ),
+                        children: [
+                          for (final task in _createdTasks) ...[
+                            _buildCreatedTaskCard(task),
+                            const SizedBox(height: 10),
+                          ],
+                          for (final task in filteredTasks) ...[
+                            _buildDueTaskItem(task, lang),
+                            const SizedBox(height: 10),
+                          ],
+                          const SizedBox(height: 24),
+                        ],
+                      ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState(String lang) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              for (final task in _createdTasks) ...[
-                _buildCreatedTaskCard(task),
-                const SizedBox(height: 10),
-              ],
-              // 1. Savitri Devi (Overdue - 10:00 AM)
-              if (_selectedFilter == 0 || _selectedFilter == 1) ...[
-                _buildDueCard(
-                  avatarInitials: 'SD',
-                  avatarBg: const Color(0xFFFEE2E2),
-                  avatarColor: const Color(0xFFDC2626),
-                  name: 'Savitri Devi',
-                  subtitle: 'W7 • ANC Visit',
-                  badgeText: shellText(lang, 'overdue'),
-                  badgeBg: const Color(0xFFFEE2E2),
-                  badgeColor: const Color(0xFFEF4444),
-                  timeText: '10:00 AM',
-                  onTap: () => context.push('/beneficiary/sav-01'),
+              Container(
+                width: 56,
+                height: 56,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFDCFCE7),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(height: 10),
-              ],
-
-              // 2. Meena Kumari (Today - 11:30 AM)
-              if (_selectedFilter == 0 || _selectedFilter == 2) ...[
-                _buildDueCard(
-                  avatarInitials: 'MK',
-                  avatarBg: const Color(0xFFDCFCE7),
-                  avatarColor: const Color(0xFF16A34A),
-                  name: 'Meena Kumari',
-                  subtitle: 'W6 • Child Immunization',
-                  badgeText: shellText(lang, 'todayBadge'),
-                  badgeBg: const Color(0xFFDCFCE7),
-                  badgeColor: const Color(0xFF16A34A),
-                  timeText: '11:30 AM',
-                  onTap: () => context.push('/beneficiary/sav-01'),
+                child: const Icon(
+                  Icons.task_alt_rounded,
+                  color: Color(0xFF16A34A),
+                  size: 32,
                 ),
-                const SizedBox(height: 10),
-              ],
-
-              // 3. Rekha Sharma (Today - 1:00 PM)
-              if (_selectedFilter == 0 || _selectedFilter == 2) ...[
-                _buildDueCard(
-                  avatarInitials: 'RS',
-                  avatarBg: const Color(0xFFDBEAFE),
-                  avatarColor: const Color(0xFF2563EB),
-                  name: 'Rekha Sharma',
-                  subtitle: 'W7 • Follow-up',
-                  badgeText: shellText(lang, 'todayBadge'),
-                  badgeBg: const Color(0xFFDCFCE7),
-                  badgeColor: const Color(0xFF16A34A),
-                  timeText: '1:00 PM',
-                  onTap: () => context.push('/beneficiary/sav-01'),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'No visits due for this date',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF111827),
                 ),
-                const SizedBox(height: 10),
-              ],
-
-              // 4. Kamla Bai (Tomorrow)
-              if (_selectedFilter == 0 || _selectedFilter == 2) ...[
-                _buildDueCard(
-                  avatarInitials: 'KB',
-                  avatarBg: const Color(0xFFF3E8FF),
-                  avatarColor: const Color(0xFF9333EA),
-                  name: 'Kamla Bai',
-                  subtitle: 'W8 • NCD Screening',
-                  badgeText: 'Tomorrow',
-                  badgeBg: const Color(0xFFF3F4F6),
-                  badgeColor: const Color(0xFF6B7280),
-                  timeText: null,
-                  onTap: () => context.push('/beneficiary/sav-01'),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'All scheduled clinical tasks for this period are completed or none have been assigned yet.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF6B7280),
+                  height: 1.4,
                 ),
-                const SizedBox(height: 10),
-              ],
-
-              // 5. Lata Devi (Tomorrow)
-              if (_selectedFilter == 0 || _selectedFilter == 2) ...[
-                _buildDueCard(
-                  avatarInitials: 'LD',
-                  avatarBg: const Color(0xFFFFEDD5),
-                  avatarColor: const Color(0xFFEA580C),
-                  name: 'Lata Devi',
-                  subtitle: 'W6 • PNC Visit',
-                  badgeText: 'Tomorrow',
-                  badgeBg: const Color(0xFFF3F4F6),
-                  badgeColor: const Color(0xFF6B7280),
-                  timeText: null,
-                  onTap: () => context.push('/beneficiary/sav-01'),
-                ),
-                const SizedBox(height: 16),
-              ],
+              ),
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF1E4231),
+                      side: const BorderSide(color: Color(0xFF1E4231)),
+                    ),
+                    onPressed: () async {
+                      final coord = ref.read(syncCoordinatorProvider);
+                      if (coord != null) await coord.syncNow();
+                      await _loadTasks();
+                    },
+                    icon: const Icon(Icons.sync_rounded, size: 16),
+                    label: const Text('Sync with Server'),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF166534),
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: _showCreateTaskSheet,
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('Add Task'),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDueTaskItem(DueTask task, String lang) {
+    final isUrgent = task.urgencyGroup == UrgencyGroup.redFollowUp;
+    final isOverdue = task.urgencyGroup == UrgencyGroup.overdue;
+    final isToday = task.urgencyGroup == UrgencyGroup.dueToday;
+
+    final badgeText = isUrgent
+        ? 'URGENT'
+        : isOverdue
+            ? shellText(lang, 'overdue')
+            : isToday
+                ? shellText(lang, 'todayBadge')
+                : 'Upcoming';
+
+    final badgeBg = (isUrgent || isOverdue)
+        ? const Color(0xFFFEE2E2)
+        : isToday
+            ? const Color(0xFFDCFCE7)
+            : const Color(0xFFF3F4F6);
+
+    final badgeColor = (isUrgent || isOverdue)
+        ? const Color(0xFFEF4444)
+        : isToday
+            ? const Color(0xFF16A34A)
+            : const Color(0xFF6B7280);
+
+    final avatarBg = (isUrgent || isOverdue)
+        ? const Color(0xFFFEE2E2)
+        : isToday
+            ? const Color(0xFFDCFCE7)
+            : const Color(0xFFDBEAFE);
+
+    final avatarColor = (isUrgent || isOverdue)
+        ? const Color(0xFFDC2626)
+        : isToday
+            ? const Color(0xFF16A34A)
+            : const Color(0xFF2563EB);
+
+    String initials = 'BN';
+    final nameParts = task.memberName.trim().split(RegExp(r'\s+'));
+    if (nameParts.length >= 2) {
+      initials = '${nameParts[0][0]}${nameParts[1][0]}'.toUpperCase();
+    } else if (nameParts.isNotEmpty && nameParts[0].isNotEmpty) {
+      initials = nameParts[0]
+          .substring(0, math.min(2, nameParts[0].length))
+          .toUpperCase();
+    }
+
+    final subtitle = [
+      if (task.hamlet.isNotEmpty) task.hamlet,
+      task.visitType,
+    ].join(' • ');
+
+    return _buildDueCard(
+      avatarInitials: initials,
+      avatarBg: avatarBg,
+      avatarColor: avatarColor,
+      name: task.memberName,
+      subtitle: subtitle,
+      badgeText: badgeText,
+      badgeBg: badgeBg,
+      badgeColor: badgeColor,
+      timeText: isToday ? 'Today' : null,
+      onTap: () => context.push('/beneficiary/${task.memberId}'),
     );
   }
 
@@ -326,11 +477,10 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
     List<Member> members;
     try {
       final database = ref.read(appDatabaseProvider);
-      members =
-          await (database.select(database.members)
-                ..where((member) => member.lifecycleStatus.equals('active'))
-                ..orderBy([(member) => OrderingTerm(expression: member.name)]))
-              .get();
+      members = await (database.select(database.members)
+            ..where((member) => member.lifecycleStatus.equals('active'))
+            ..orderBy([(member) => OrderingTerm(expression: member.name)]))
+          .get();
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -381,31 +531,34 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<Member>(
-                  value: selectedMember,
+                  initialValue: selectedMember,
                   decoration: const InputDecoration(
                     labelText: 'Beneficiary',
                     border: OutlineInputBorder(),
                   ),
                   items: [
                     for (final member in members)
-                      DropdownMenuItem(value: member, child: Text(member.name)),
+                      DropdownMenuItem(
+                        value: member,
+                        child: Text(
+                          member.name,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                   ],
-                  onChanged: (member) {
-                    if (member != null) {
-                      setSheetState(() => selectedMember = member);
-                    }
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setSheetState(() => selectedMember = value);
                   },
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: titleController,
-                  autofocus: true,
-                  onChanged: (_) => setSheetState(() {}),
                   decoration: const InputDecoration(
                     labelText: 'Task title',
-                    hintText: 'Example: Follow-up home visit',
                     border: OutlineInputBorder(),
                   ),
+                  onChanged: (_) => setSheetState(() {}),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -414,7 +567,7 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
                       child: OutlinedButton.icon(
                         onPressed: () async {
                           final picked = await showDatePicker(
-                            context: context,
+                            context: sheetContext,
                             initialDate: dueDate,
                             firstDate: DateTime(2024),
                             lastDate: DateTime(2035, 12, 31),
@@ -425,28 +578,29 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
                             );
                           }
                         },
-                        icon: const Icon(Icons.calendar_today_outlined),
+                        icon: const Icon(Icons.event_outlined),
                         label: Text(
                           MaterialLocalizations.of(context)
                               .formatMediumDate(dueDate),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<double>(
-                        value: risk,
+                        initialValue: risk,
                         decoration: const InputDecoration(
-                          labelText: 'Priority',
+                          labelText: 'Risk',
                           border: OutlineInputBorder(),
                         ),
                         items: const [
-                          DropdownMenuItem(value: 1.0, child: Text('Routine')),
+                          DropdownMenuItem(value: 1.0, child: Text('Low')),
                           DropdownMenuItem(value: 2.0, child: Text('Moderate')),
                           DropdownMenuItem(value: 3.0, child: Text('High')),
                         ],
                         onChanged: (value) {
-                          if (value != null) setSheetState(() => risk = value);
+                          if (value == null) return;
+                          setSheetState(() => risk = value);
                         },
                       ),
                     ),
@@ -486,9 +640,7 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
     if (created != true || title == null || !mounted) return;
 
     try {
-      await ref
-          .read(taskSchedulerProvider)
-          .createAdHocTask(
+      await ref.read(taskSchedulerProvider).createAdHocTask(
             memberId: selectedMember.id,
             title: title!,
             dueDate: dueDate,
@@ -506,6 +658,8 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
           ),
         );
       });
+      await _loadTasks();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Task saved offline and queued for sync.'),
@@ -528,24 +682,17 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
     );
     if (picked != null && mounted) {
       setState(() => _selectedDate = DateUtils.dateOnly(picked));
+      _loadTasks();
     }
   }
 
   Widget _buildCalendar(BuildContext context) {
     return Container(
-      key: const Key('due_calendar'),
-      margin: const EdgeInsets.fromLTRB(16, 2, 16, 4),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A0F5138),
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: const Color(0xFFE5E7EB), width: 1.0),
       ),
       child: Column(
         children: [
@@ -602,6 +749,7 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
                     lastDate: DateTime(2035, 12, 31),
                     onDateChanged: (date) {
                       setState(() => _selectedDate = DateUtils.dateOnly(date));
+                      _loadTasks();
                     },
                   )
                 : const SizedBox.shrink(),

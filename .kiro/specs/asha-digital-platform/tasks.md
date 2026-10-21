@@ -579,6 +579,9 @@ Language choices from the design document:
 
   - [x] 14.4 Implement PHC and facility dashboard
     - Create `src/features/phc-dashboard/`: live referral queue sorted by severity (RED first), polled every 30 s (`refetchInterval: 30_000`); full referral note + patient history + ASHA contact per card
+  - [-] 14.7 Implement national map source registry and server-backed layers
+    - Register HFR/NHRR, HealthGIS, HMIS, OSM, LGD, Bhuvan, Geofabrik, population, blood-bank, pharmacy, and environmental sources.
+    - Render verified `FacilityDirectory` records from `/api/v1/facilities` with source-aware marker categories; complete source ingestion remains required before a source can produce points.
     - Outcome recording (arrived/treated/admitted/discharged/did not reach) → backend pushes notification to ASHA
     - Active lists: high-risk pregnancies/sick newborns/SAM/NCD defaulters/TB patients (filterable by sub-centre and ASHA)
     - Facility planning view: deliveries expected in next 4 weeks/immunization session demand/commodity stock levels/outstanding referral outcomes

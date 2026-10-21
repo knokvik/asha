@@ -7,6 +7,7 @@ import { ANMWorkspacePage } from '@/features/anm-workspace/ANMWorkspacePage';
 import { DistrictAnalyticsPage } from '@/features/analytics/DistrictAnalyticsPage';
 import { AdminConsolePage } from '@/features/admin/AdminConsolePage';
 import { OsmAndMapPage } from '@/features/map/OsmAndMapPage';
+import { IndiaPhcMapPage } from '@/features/map/IndiaPhcMapPage';
 import { TicketPage } from '@/features/phc-dashboard/TicketPage';
 import { ResourcesPage } from '@/features/phc-dashboard/ResourcesPage';
 import { LoginPage } from '@/features/auth/LoginPage';
@@ -43,6 +44,10 @@ export const router = createBrowserRouter([
       {
         path: 'map',
         element: <OsmAndMapPage />,
+      },
+      {
+        path: 'india-map',
+        element: <IndiaPhcMapPage />,
       },
       {
         path: 'heatmap',

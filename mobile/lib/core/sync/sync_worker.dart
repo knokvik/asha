@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -144,6 +145,7 @@ class SyncWorker {
   Future<bool> run() async {
     try {
       await _drainQueue();
+      await _pullDelta();
       return true;
     } catch (_) {
       return false;
@@ -283,6 +285,113 @@ class SyncWorker {
         'http_error: ${response.statusCode}',
       );
       throw Exception('Sync push failed: ${response.statusCode}');
+    }
+  }
+
+  Future<void> _pullDelta() async {
+    final workerId = await _storage.read(key: 'worker_id') ?? '';
+    final accessToken = await _storage.read(key: 'access_token') ?? '';
+    if (workerId.isEmpty || accessToken.isEmpty) return;
+
+    final watermarksJson = await _storage.read(key: 'sync_watermarks') ?? '{}';
+    final uri = Uri.parse('$apiBaseUrl/api/v1/sync/pull').replace(
+      queryParameters: {
+        'worker_id': workerId,
+        'watermarks': watermarksJson,
+      },
+    );
+
+    final headers = {
+      'Authorization': 'Bearer $accessToken',
+      'Accept': 'application/json',
+    };
+
+    try {
+      final response = await http
+          .get(uri, headers: headers)
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200 && response.body.isNotEmpty) {
+        final payload = jsonDecode(response.body) as Map<String, dynamic>;
+        final records = payload['records'] as List<dynamic>? ?? [];
+        final serverWatermarks =
+            payload['server_watermarks'] as Map<String, dynamic>?;
+        if (serverWatermarks != null) {
+          await _storage.write(
+            key: 'sync_watermarks',
+            value: jsonEncode(serverWatermarks),
+          );
+        }
+        await _applyIncomingRecords(records);
+      }
+    } catch (_) {
+      // Pull failure must not disrupt overall sync execution
+    }
+  }
+
+  Future<void> _applyIncomingRecords(List<dynamic> records) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    for (final raw in records) {
+      if (raw is! Map<String, dynamic>) continue;
+      final table = raw['_table']?.toString() ?? '';
+      try {
+        if (table == 'visit_schedules') {
+          await _db.into(_db.visitSchedules).insertOnConflictUpdate(
+            VisitSchedulesCompanion.insert(
+              id: raw['id']?.toString() ?? '',
+              memberId: raw['member_id']?.toString() ?? '',
+              programCode: raw['program_code']?.toString() ?? 'ad_hoc',
+              visitType: raw['visit_type']?.toString() ?? 'Visit',
+              dueDate: (raw['due_date'] as num?)?.toInt() ?? now,
+              status: Value(raw['status']?.toString() ?? 'pending'),
+              createdAt: (raw['created_at'] as num?)?.toInt() ?? now,
+            ),
+          );
+        } else if (table == 'households') {
+          await _db.into(_db.households).insertOnConflictUpdate(
+            HouseholdsCompanion.insert(
+              id: raw['id']?.toString() ?? '',
+              village: raw['village']?.toString() ?? 'Shahpur',
+              hamlet: Value(raw['hamlet']?.toString()),
+              headName: raw['head_name']?.toString() ?? 'Head of Household',
+              memberCount: Value((raw['member_count'] as num?)?.toInt() ?? 1),
+              createdAt: (raw['created_at'] as num?)?.toInt() ?? now,
+              updatedAt: (raw['updated_at'] as num?)?.toInt() ?? now,
+              createdBy: raw['created_by']?.toString() ?? 'worker',
+            ),
+          );
+        } else if (table == 'members') {
+          await _db.into(_db.members).insertOnConflictUpdate(
+            MembersCompanion.insert(
+              id: raw['id']?.toString() ?? '',
+              householdId: raw['household_id']?.toString() ?? '',
+              name: raw['name']?.toString() ?? 'Beneficiary',
+              sex: raw['sex']?.toString() ?? 'F',
+              phone: Value(raw['phone']?.toString()),
+              createdAt: (raw['created_at'] as num?)?.toInt() ?? now,
+              updatedAt: (raw['updated_at'] as num?)?.toInt() ?? now,
+              createdBy: raw['created_by']?.toString() ?? 'worker',
+            ),
+          );
+        } else if (table == 'users') {
+          await _db.into(_db.users).insertOnConflictUpdate(
+            UsersCompanion.insert(
+              id: raw['id']?.toString() ?? '',
+              ashaId: raw['asha_id']?.toString() ?? '',
+              name: raw['name']?.toString() ?? '',
+              role: raw['role']?.toString() ?? 'ASHA',
+              areaVillage: Value(raw['area_village']?.toString()),
+              areaSubcentre: Value(raw['area_subcentre']?.toString()),
+              areaPhc: Value(raw['area_phc']?.toString()),
+              areaBlock: Value(raw['area_block']?.toString()),
+              areaDistrict: Value(raw['area_district']?.toString()),
+              areaState: Value(raw['area_state']?.toString()),
+              createdAt: (raw['created_at'] as num?)?.toInt() ?? now,
+              updatedAt: (raw['updated_at'] as num?)?.toInt() ?? now,
+            ),
+          );
+        }
+      } catch (_) {}
     }
   }
 

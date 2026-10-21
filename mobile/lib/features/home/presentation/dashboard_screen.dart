@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/l10n/language_provider.dart';
+import '../../../shared/providers/core_providers.dart';
+import '../../../shared/providers/user_profile_provider.dart';
 import '../../../shared/shell/shell_copy.dart';
 import '../../../shared/shell/shell_tab.dart';
 import '../../../shared/widgets/asha_bottom_nav.dart';
@@ -300,9 +302,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             color: Colors.white.withValues(alpha: 0.94),
                             borderRadius: BorderRadius.circular(14),
                           ),
-                          child: const Text(
-                            '5 households today · 3 due',
-                            style: TextStyle(
+                          child: Text(
+                            () {
+                              final p = ref.watch(userProfileProvider).value;
+                              final pending = p?.pendingVisits ?? 0;
+                              final overdue = p?.overdueVisits ?? 0;
+                              return '$pending visits pending · $overdue overdue';
+                            }(),
+                            style: const TextStyle(
                               color: Color(0xFF111827),
                               fontWeight: FontWeight.w800,
                               fontSize: 12,
@@ -335,34 +342,40 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  /// 4 Metric Blocks in a row: 12 Today (green) | 3 Overdue (red) | 8 Completed (green) | 2 Follow-ups (amber)
+  /// 4 Metric Blocks in a row: Today | Overdue | Completed | Total
   Widget _buildMetricStrip(BuildContext context) {
+    final profile = ref.watch(userProfileProvider).value;
+    final todayCount = profile != null ? '${profile.pendingVisits}' : '0';
+    final overdueCount = profile != null ? '${profile.overdueVisits}' : '0';
+    final completedCount = profile != null ? '${profile.completedVisits}' : '0';
+    final totalCount = profile != null ? '${profile.totalVisits}' : '0';
+
     return Row(
       children: [
         _buildMetricBlock(
-          count: '12',
+          count: todayCount,
           label: shellText(_lang, 'today'),
           color: const Color(0xFF6B7280),
           onTap: () => ref.read(shellTabProvider.notifier).select(2),
         ),
         const SizedBox(width: 8),
         _buildMetricBlock(
-          count: '3',
+          count: overdueCount,
           label: shellText(_lang, 'overdue'),
-          color: const Color(0xFF6B7280),
+          color: const Color(0xFFEF4444),
           onTap: () => ref.read(shellTabProvider.notifier).select(2),
         ),
         const SizedBox(width: 8),
         _buildMetricBlock(
-          count: '8',
+          count: completedCount,
           label: shellText(_lang, 'completed'),
-          color: const Color(0xFF6B7280),
+          color: const Color(0xFF16A34A),
           onTap: () => ref.read(shellTabProvider.notifier).select(2),
         ),
         const SizedBox(width: 8),
         _buildMetricBlock(
-          count: '2',
-          label: shellText(_lang, 'followUps'),
+          count: totalCount,
+          label: shellText(_lang, 'visits'),
           color: const Color(0xFF6B7280),
           onTap: () => ref.read(shellTabProvider.notifier).select(2),
         ),
@@ -614,6 +627,15 @@ class AshaNavigationDrawer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final lang = ref.watch(languageProvider).languageCode;
+    final profile = ref.watch(userProfileProvider).value;
+    final syncCoordinator = ref.watch(syncCoordinatorProvider);
+    final isConnected = syncCoordinator?.snapshot.isConnectedToServer ?? false;
+
+    final initials = profile?.initials ?? 'AS';
+    final name = profile?.name ?? 'ASHA Worker';
+    final facility = profile?.facilityDisplay ?? 'ASHA Worker • Health Centre';
+    final pendingCount = profile?.pendingVisits ?? 0;
+
     return Drawer(
       backgroundColor: const Color(0xFF183D2B),
       child: SafeArea(
@@ -630,9 +652,9 @@ class AshaNavigationDrawer extends ConsumerWidget {
                       CircleAvatar(
                         radius: 24,
                         backgroundColor: Colors.white,
-                        child: const Text(
-                          'SS',
-                          style: TextStyle(
+                        child: Text(
+                          initials,
+                          style: const TextStyle(
                             color: Color(0xFF183D2B),
                             fontWeight: FontWeight.w900,
                             fontSize: 18,
@@ -646,18 +668,21 @@ class AshaNavigationDrawer extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
-                              children: const [
-                                Text(
-                                  'Sunita Sharma',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w800,
-                                    fontFamily: 'SF Pro Display',
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    name,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      fontFamily: 'SF Pro Display',
+                                    ),
                                   ),
                                 ),
-                                SizedBox(width: 4),
-                                Icon(
+                                const SizedBox(width: 4),
+                                const Icon(
                                   Icons.verified_rounded,
                                   color: Color(0xFF22C55E),
                                   size: 16,
@@ -665,9 +690,10 @@ class AshaNavigationDrawer extends ConsumerWidget {
                               ],
                             ),
                             const SizedBox(height: 2),
-                            const Text(
-                              'ASHA Worker • Rampur PHC',
-                              style: TextStyle(
+                            Text(
+                              facility,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
                                 color: Color(0xFFA7C7B7),
                                 fontSize: 12,
                                 fontFamily: 'SF Pro Display',
@@ -688,7 +714,7 @@ class AshaNavigationDrawer extends ConsumerWidget {
                   ),
                   const SizedBox(height: 14),
 
-                  // Pill: 🔒 Offline • Data Encrypted
+                  // Pill: 🔒 Offline • Data Encrypted or Online
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -706,14 +732,14 @@ class AshaNavigationDrawer extends ConsumerWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          Icons.lock_rounded,
+                          isConnected ? Icons.cloud_done_rounded : Icons.lock_rounded,
                           size: 13,
-                          color: Color(0xFF22C55E),
+                          color: const Color(0xFF22C55E),
                         ),
-                        SizedBox(width: 6),
+                        const SizedBox(width: 6),
                         Text(
-                          shellText(lang, 'encrypted'),
-                          style: TextStyle(
+                          isConnected ? 'Server Online • Sync Active' : shellText(lang, 'encrypted'),
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -729,7 +755,7 @@ class AshaNavigationDrawer extends ConsumerWidget {
 
             const SizedBox(height: 8),
 
-            // 8 Menu Items
+            // 8 Menu Items + Sign Out
             Expanded(
               child: Container(
                 decoration: const BoxDecoration(
@@ -753,13 +779,13 @@ class AshaNavigationDrawer extends ConsumerWidget {
                     ),
                     const SizedBox(height: 6),
 
-                    // 2. Today's Due List with red badge 3
+                    // 2. Today's Due List with badge
                     _buildDrawerItem(
                       context: context,
                       icon: Icons.checklist_rounded,
                       title: shellText(lang, 'drawerDue'),
                       subtitle: shellText(lang, 'drawerDueSub'),
-                      badgeCount: '3',
+                      badgeCount: pendingCount > 0 ? '$pendingCount' : null,
                       onTap: () {
                         Navigator.pop(context);
                         ref.read(shellTabProvider.notifier).select(2);
@@ -842,6 +868,48 @@ class AshaNavigationDrawer extends ConsumerWidget {
                       onTap: () {
                         Navigator.pop(context);
                         context.push('/settings');
+                      },
+                    ),
+                    const SizedBox(height: 6),
+
+                    // 9. Sign Out / Switch Account
+                    _buildDrawerItem(
+                      context: context,
+                      icon: Icons.logout_rounded,
+                      title: 'Sign Out / Switch ASHA',
+                      subtitle: 'Change worker or clear PIN',
+                      iconColor: const Color(0xFFEF4444),
+                      onTap: () {
+                        Navigator.pop(context);
+                        showDialog<void>(
+                          context: context,
+                          builder: (dialogCtx) => AlertDialog(
+                            title: const Text(
+                              'Sign Out?',
+                              style: TextStyle(fontWeight: FontWeight.w800),
+                            ),
+                            content: const Text(
+                              'Are you sure you want to sign out and switch accounts?',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(dialogCtx),
+                                child: const Text('Cancel'),
+                              ),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFDC2626),
+                                  foregroundColor: Colors.white,
+                                ),
+                                onPressed: () {
+                                  Navigator.pop(dialogCtx);
+                                  ref.read(userProfileProvider.notifier).logout(context);
+                                },
+                                child: const Text('Sign Out'),
+                              ),
+                            ],
+                          ),
+                        );
                       },
                     ),
                     const SizedBox(height: 16),

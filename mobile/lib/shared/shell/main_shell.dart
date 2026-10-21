@@ -205,22 +205,26 @@ class _SyncHeaderButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final pending = snapshot?.pendingCount ?? 0;
     final isSyncing = snapshot?.state == SyncConnectionState.syncing;
-    final hasError = snapshot?.state == SyncConnectionState.error;
-    final isOffline = snapshot?.state == SyncConnectionState.offline;
-    final color = isSyncing
+    final isConnected = snapshot?.isConnectedToServer ?? false;
+    final isOffline = !isConnected || snapshot?.state == SyncConnectionState.offline;
+
+    // Connected = Green dot on cloud.
+    // Offline / Syncing / Pending = Yellow/Amber sync icon.
+    final iconColor = isConnected && pending == 0
+        ? const Color(0xFF1E4231)
+        : isSyncing
         ? const Color(0xFF2563EB)
-        : hasError
-        ? const Color(0xFFB45309)
-        : isOffline
-        ? const Color(0xFF6B7280)
-        : const Color(0xFF15803D);
+        : const Color(0xFFD97706); // Amber/Yellow
+
     return IconButton(
       key: const Key('shell_sync_button'),
       tooltip: isSyncing
-          ? 'Sending packets…'
-          : pending == 0
-          ? 'Sync complete'
-          : '$pending packets waiting to send',
+          ? 'Syncing with server…'
+          : isConnected && pending == 0
+          ? 'Server Connected (Online) • Tap to sync'
+          : isOffline
+          ? 'Offline • Tap to connect'
+          : '$pending packets waiting to sync',
       onPressed: () => context.push('/sync'),
       icon: Stack(
         clipBehavior: Clip.none,
@@ -228,27 +232,49 @@ class _SyncHeaderButton extends StatelessWidget {
           Icon(
             isSyncing
                 ? Icons.sync_rounded
-                : hasError
-                ? Icons.cloud_off_rounded
+                : isConnected && pending == 0
+                ? Icons.cloud_outlined
                 : pending > 0
                 ? Icons.cloud_upload_outlined
-                : isOffline
-                ? Icons.cloud_queue_outlined
-                : Icons.cloud_done_outlined,
-            color: color,
-            size: 22,
+                : Icons.cloud_queue_outlined,
+            color: iconColor,
+            size: 24,
           ),
+          // Green dot when connected to server
+          if (isConnected && pending == 0)
+            Positioned(
+              right: -1,
+              top: -1,
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF16A34A), // Bright green dot
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x4016A34A),
+                      blurRadius: 3,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          // Yellow/Amber badge when packets are waiting to sync or offline
           if (pending > 0)
             Positioned(
-              right: -7,
-              top: -7,
+              right: -6,
+              top: -6,
               child: Container(
                 constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
                 padding: const EdgeInsets.symmetric(horizontal: 3),
                 alignment: Alignment.center,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFDC2626),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B), // Yellow/Amber badge
                   shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1),
                 ),
                 child: Text(
                   pending > 9 ? '9+' : '$pending',
@@ -257,6 +283,21 @@ class _SyncHeaderButton extends StatelessWidget {
                     fontSize: 9,
                     fontWeight: FontWeight.w800,
                   ),
+                ),
+              ),
+            ),
+          // Yellow dot when offline without pending packets
+          if (isOffline && pending == 0 && !isSyncing)
+            Positioned(
+              right: -1,
+              top: -1,
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B), // Yellow offline dot
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
                 ),
               ),
             ),

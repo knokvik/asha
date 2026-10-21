@@ -8,8 +8,33 @@ import 'package:http/http.dart' as http;
 
 const defaultAshaApiBaseUrl = String.fromEnvironment(
   'ASHA_API_BASE_URL',
-  defaultValue: 'https://asha-setu.onrender.com',
+  defaultValue: 'http://localhost:8000',
 );
+
+/// Resolves the optimal API base URL (stored setting, local server probe, or cloud default).
+Future<String> resolveAshaApiBaseUrl({FlutterSecureStorage? storage}) async {
+  final s = storage ?? const FlutterSecureStorage();
+  final configured = await s.read(key: 'sync_api_base_url');
+  if (configured != null && configured.trim().isNotEmpty) {
+    return configured.trim();
+  }
+  for (final localUrl in [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'http://10.0.2.2:8000',
+  ]) {
+    try {
+      final res = await http
+          .get(Uri.parse('$localUrl/healthz'))
+          .timeout(const Duration(milliseconds: 600));
+      if (res.statusCode == 200) {
+        await s.write(key: 'sync_api_base_url', value: localUrl);
+        return localUrl;
+      }
+    } catch (_) {}
+  }
+  return 'https://asha-setu.onrender.com';
+}
 
 /// Result returned by the first-run server sign-in.
 class ServerLoginResult {
@@ -161,11 +186,13 @@ class AuthService {
             headers: const {'Content-Type': 'application/json'},
             body: jsonEncode({
               'asha_id': ashaId.trim(),
+              'username': ashaId.trim(),
               'pin': pin,
+              'password': pin,
               'device_id': deviceId,
             }),
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 15));
 
       final payload = response.body.isEmpty
           ? const <String, dynamic>{}
@@ -173,7 +200,7 @@ class AuthService {
       if (response.statusCode != 200) {
         return ServerLoginResult.failure(
           payload['detail']?.toString() ??
-              'Server sign-in failed (${response.statusCode}).',
+              'Server authentication failed (${response.statusCode}). Please verify your ASHA ID and PIN.',
         );
       }
 
@@ -193,6 +220,15 @@ class AuthService {
 
       await _storage.write(key: 'access_token', value: accessToken);
       await _storage.write(key: 'refresh_token', value: refreshToken);
+      await _storage.write(key: 'worker_id', value: workerId);
+      await _storage.write(key: 'sync_api_base_url', value: apiBaseUrl);
+      if (payload['name'] is String) {
+        await _storage.write(key: 'server_user_name', value: payload['name']);
+      }
+      if (payload['role'] is String) {
+        await _storage.write(key: 'server_user_role', value: payload['role']);
+      }
+      await _storage.write(key: 'server_user_id', value: ashaId.trim());
       await _storage.write(key: 'worker_id', value: workerId);
       // Keep both historical and current device keys compatible with sync.
       await _storage.write(key: 'device_id', value: deviceId);

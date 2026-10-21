@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -23,6 +24,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PCMC_FACILITIES, PCMC_WARDS } from '@/shared/api/mockData';
+import { getMapFacilities, getMapSources, type MapFacility, type MapSource } from '@/shared/api/mapApi';
 import { PcmcHeatPanel, type HeatView } from '@/features/map/PcmcHeatPanel';
 import { outbreakWards, weekPoint, type WardWeek } from '@/features/clinical-desk/logic';
 
@@ -270,6 +272,9 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
   const [showCatchmentRings, setShowCatchmentRings] = useState(true);
   const [showDeadZone, setShowDeadZone] = useState(true);
   const [selectedAsset, setSelectedAsset] = useState<any | null>(null);
+  const [facilities, setFacilities] = useState<MapFacility[]>([]);
+  const [mapSources, setMapSources] = useState<MapSource[]>([]);
+  const [facilityLoadError, setFacilityLoadError] = useState<string | null>(null);
   const [heatView, setHeatView] = useState<HeatView>({
     week: 11,
     showFlags: true,
@@ -278,6 +283,27 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
     showFacilities: true,
   });
   const onHeatView = useCallback((view: HeatView) => setHeatView(view), []);
+
+  useEffect(() => {
+    let active = true;
+    getMapFacilities()
+      .then((rows) => {
+        if (active) {
+          setFacilities(rows);
+          setFacilityLoadError(null);
+        }
+      })
+      .catch(() => {
+        if (active) setFacilityLoadError('Facility data could not be loaded from the server.');
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    getMapSources().then(setMapSources).catch(() => setMapSources([]));
+  }, []);
 
   // Initialize Leaflet Map
   useEffect(() => {
@@ -310,37 +336,7 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
     const ringsLayer = L.layerGroup().addTo(map);
     const deadZoneLayer = L.layerGroup().addTo(map);
     const pcmcLayer = L.layerGroup().addTo(map);
-    const dummyFacilityLayer = L.layerGroup().addTo(map);
-    function paintDummyFacilities(rows: Array<{ name?: string; kind?: string; lat?: number; lng?: number; lon?: number; phone?: string }>) {
-      dummyFacilityLayer.clearLayers();
-      for (const row of rows) {
-        const lat = row.lat;
-        const lng = row.lng ?? row.lon;
-        if (lat == null || lng == null) continue;
-        L.circleMarker([lat, lng], {
-          radius: 7,
-          color: '#1E4231',
-          weight: 2,
-          fillColor: row.kind === 'hospital' || row.kind === 'phc' ? '#B42318' : '#1D4E89',
-          fillOpacity: 0.9,
-        })
-          .bindPopup(`<strong>${row.name ?? 'Facility'}</strong><br/>${row.kind ?? ''}<br/>${row.phone ?? ''}<br/>Demo point, not HFR`)
-          .addTo(dummyFacilityLayer);
-      }
-    }
-    const bundled = [
-      { name: 'PHC Ramnagar (demo)', kind: 'phc', lat: 25.318, lon: 82.974, phone: '05426700101' },
-      { name: 'Sub-centre Lanka', kind: 'subcentre', lat: 25.282, lon: 83.002, phone: '05426700102' },
-      { name: 'CHC Shivpur', kind: 'chc', lat: 25.355, lon: 82.98, phone: '05426700103' },
-      { name: 'Anganwadi Sigra', kind: 'anganwadi', lat: 25.317, lon: 82.991, phone: '05426700104' },
-    ];
-    paintDummyFacilities(bundled);
-    fetch('/api/v1/facilities/dummy')
-      .then((response) => (response.ok ? response.json() : null))
-      .then((body: { facilities?: Array<{ name?: string; kind?: string; lat?: number; lon?: number; phone?: string }> } | null) => {
-        if (body?.facilities?.length) paintDummyFacilities(body.facilities);
-      })
-      .catch(() => undefined);
+    const facilitiesLayer = L.layerGroup().addTo(map);
 
     layerGroupsRef.current = {
       subcentres: subcentreLayer,
@@ -349,6 +345,7 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
       rings: ringsLayer,
       deadZone: deadZoneLayer,
       pcmc: pcmcLayer,
+      facilities: facilitiesLayer,
     };
 
     // Auto-resize observer to handle any DOM changes or flex calculations
@@ -380,6 +377,37 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
       tileLayerRef.current = null;
     };
   }, [mode]);
+
+  useEffect(() => {
+    const group = layerGroupsRef.current.facilities;
+    if (!group) return;
+    group.clearLayers();
+    const colors: Record<string, string> = {
+      hospital: '#b42318',
+      phc: '#047857',
+      chc: '#0f766e',
+      subcentre: '#2563eb',
+      lab: '#7c3aed',
+      pharmacy: '#c2410c',
+      other: '#475569',
+    };
+    for (const facility of facilities) {
+      if (!Number.isFinite(facility.lat) || !Number.isFinite(facility.lon)) continue;
+      const kind = String(facility.kind || 'other').toLowerCase();
+      const color = colors[kind] ?? colors.other;
+      L.circleMarker([facility.lat, facility.lon], {
+        radius: 7,
+        color,
+        weight: 2,
+        fillColor: color,
+        fillOpacity: 0.9,
+      })
+        .bindPopup(
+          `<strong>${facility.name}</strong><br/>${kind}<br/>${facility.district ?? ''} ${facility.block ?? ''}<br/>${facility.phone ?? ''}<br/><small>Verified server facility directory</small>`,
+        )
+        .addTo(group);
+    }
+  }, [facilities]);
 
   useEffect(() => {
     const group = layerGroupsRef.current.pcmc;
@@ -664,12 +692,19 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
             </Badge>
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Rural terrain contours, 108 ambulance vector lines, 6 linked sub-centres & live ASHA field tracking
+            Server-backed India facility directory • {facilities.length} mapped facilities • {mapSources.length} registered data sources
           </p>
         </div>
 
         {/* Stats Pill Strip */}
         <div className="flex items-center gap-2 flex-wrap text-xs">
+          <Link
+            to="/india-map"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm transition-all"
+          >
+            <Navigation className="w-3.5 h-3.5" />
+            <span>All-India PHC Map (29.5k)</span>
+          </Link>
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-[#2E2E2E] bg-white dark:bg-[#222224] text-[#0F172A] dark:text-[#F8FAFC] font-semibold shadow-xs">
             <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
             <span>2 En-Route (ETA &lt; 15m)</span>

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -34,14 +35,17 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
   final _ashaIdController = TextEditingController();
   final _pinController = TextEditingController();
   final _confirmPinController = TextEditingController();
+  final _captchaController = TextEditingController();
   bool _isPinConfigured = false;
   bool _biometricAvailable = false;
   bool _isSubmitting = false;
   String? _errorMessage;
+  String _captchaCode = '';
 
   @override
   void initState() {
     super.initState();
+    _refreshCaptcha();
     _checkStatus();
   }
 
@@ -50,7 +54,20 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
     _ashaIdController.dispose();
     _pinController.dispose();
     _confirmPinController.dispose();
+    _captchaController.dispose();
     super.dispose();
+  }
+
+  void _refreshCaptcha() {
+    const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+    final random = Random.secure();
+    setState(() {
+      _captchaCode = List.generate(
+        5,
+        (_) => chars[random.nextInt(chars.length)],
+      ).join();
+      _captchaController.clear();
+    });
   }
 
   Future<void> _checkStatus() async {
@@ -158,13 +175,28 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
       try {
         final ashaId = _ashaIdController.text.trim();
         if (ashaId.isNotEmpty) {
+          if (_captchaController.text.trim().toUpperCase() != _captchaCode) {
+            setState(() {
+              _isSubmitting = false;
+              _errorMessage = 'Verification code is incorrect. Please try again.';
+            });
+            _refreshCaptcha();
+            return;
+          }
+          final serverUrl = await resolveAshaApiBaseUrl();
           final serverLogin = await auth.loginToServer(
-            apiBaseUrl: defaultAshaApiBaseUrl,
+            apiBaseUrl: serverUrl,
             ashaId: ashaId,
             pin: pin,
           );
           if (!serverLogin.isSuccess) {
-            throw StateError(serverLogin.error ?? 'Server sign-in failed.');
+            setState(() {
+              _isSubmitting = false;
+              _errorMessage = serverLogin.error ??
+                  'Invalid credentials. Please verify your ASHA ID and PIN.';
+            });
+            _refreshCaptcha();
+            return;
           }
         }
 
@@ -180,6 +212,13 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
         await _unlockDatabase(pin);
 
         if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Authentication successful! Welcome.'),
+              backgroundColor: Color(0xFF166534),
+              duration: Duration(seconds: 2),
+            ),
+          );
           context.go('/home');
         }
       } catch (e) {
@@ -324,6 +363,55 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            key: const Key('captcha_input_field'),
+                            controller: _captchaController,
+                            textCapitalization: TextCapitalization.characters,
+                            decoration: const InputDecoration(
+                              labelText: 'Verification code',
+                              hintText: 'Enter the code shown below',
+                              prefixIcon: Icon(Icons.verified_user_outlined),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Column(
+                          children: [
+                            Container(
+                              key: const Key('captcha_code'),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 13,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade50,
+                                border: Border.all(
+                                  color: Colors.green.shade200,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                _captchaCode,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 2,
+                                ),
+                              ),
+                            ),
+                            TextButton.icon(
+                              onPressed: _refreshCaptcha,
+                              icon: const Icon(Icons.refresh, size: 16),
+                              label: const Text('Refresh'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
                   ],
                   const Icon(
                     Icons.health_and_safety,
@@ -440,6 +528,22 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                       onPressed: _isSubmitting ? null : _handleBiometric,
                       icon: const Icon(Icons.fingerprint_rounded),
                       label: const Text('Unlock with fingerprint / face'),
+                    ),
+                  ],
+                  if (_isPinConfigured) ...[
+                    const SizedBox(height: 10),
+                    TextButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _isPinConfigured = false;
+                          _errorMessage = null;
+                          _pinController.clear();
+                          _confirmPinController.clear();
+                          _refreshCaptcha();
+                        });
+                      },
+                      icon: const Icon(Icons.switch_account_outlined, size: 18),
+                      label: const Text('Sign in with a different ASHA ID'),
                     ),
                   ],
                 ],

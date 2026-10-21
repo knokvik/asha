@@ -196,7 +196,7 @@ export function MainDashboardPage() {
   };
 
   return (
-    <div className="p-3 lg:p-5 space-y-3 max-w-[1560px] mx-auto bg-[#F4F6F5] min-h-screen">
+    <div className="p-3 lg:p-5 space-y-3 max-w-[1560px] mx-auto bg-[#F4F6F5] dark:bg-[#121214] min-h-screen text-slate-800 dark:text-slate-100 transition-colors duration-200">
       {/* Hidden test-compatibility hooks (Required by test suite) */}
       <div className="sr-only" aria-hidden="true">
         <span>PHC Shahpur Integrated Command Center</span>

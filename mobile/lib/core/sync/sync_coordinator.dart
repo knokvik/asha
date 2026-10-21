@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
 
 import '../database/app_database.dart';
 import 'sync_engine.dart';
@@ -14,13 +15,17 @@ class SyncSnapshot {
   final List<SyncQueueData> records;
   final DateTime? lastSyncedAt;
   final String? errorMessage;
+  final bool isConnected;
 
   const SyncSnapshot({
     this.state = SyncConnectionState.offline,
     this.records = const [],
     this.lastSyncedAt,
     this.errorMessage,
+    this.isConnected = false,
   });
+
+  bool get isConnectedToServer => isConnected || state == SyncConnectionState.ready;
 
   int get pendingCount => records
       .where(
@@ -64,8 +69,40 @@ class SyncCoordinator extends ChangeNotifier {
   Future<void> start() async {
     if (_started) return;
     _started = true;
+    await checkServerConnectivity();
     await refresh();
     _pollTimer = Timer.periodic(pollInterval, (_) => _poll());
+  }
+
+  Future<bool> checkServerConnectivity() async {
+    try {
+      final apiBaseUrl = await _storage.read(key: 'sync_api_base_url') ??
+          'http://localhost:8000';
+      final cleanUrl = apiBaseUrl.replaceFirst(RegExp(r'/+$'), '');
+      final res = await http
+          .get(Uri.parse('$cleanUrl/healthz'))
+          .timeout(const Duration(seconds: 3));
+      final connected = res.statusCode == 200;
+      _snapshot = SyncSnapshot(
+        state: connected ? SyncConnectionState.ready : SyncConnectionState.offline,
+        records: _snapshot.records,
+        lastSyncedAt: _snapshot.lastSyncedAt,
+        errorMessage: connected ? null : 'Server unreachable',
+        isConnected: connected,
+      );
+      notifyListeners();
+      return connected;
+    } catch (_) {
+      _snapshot = SyncSnapshot(
+        state: SyncConnectionState.offline,
+        records: _snapshot.records,
+        lastSyncedAt: _snapshot.lastSyncedAt,
+        errorMessage: 'Offline',
+        isConnected: false,
+      );
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<void> refresh() async {
@@ -75,6 +112,7 @@ class SyncCoordinator extends ChangeNotifier {
       records: records,
       lastSyncedAt: _snapshot.lastSyncedAt,
       errorMessage: _snapshot.errorMessage,
+      isConnected: _snapshot.isConnected,
     );
     notifyListeners();
   }
@@ -86,6 +124,7 @@ class SyncCoordinator extends ChangeNotifier {
       state: SyncConnectionState.syncing,
       records: _snapshot.records,
       lastSyncedAt: _snapshot.lastSyncedAt,
+      isConnected: _snapshot.isConnected,
     );
     notifyListeners();
 
@@ -98,7 +137,8 @@ class SyncCoordinator extends ChangeNotifier {
       if (worker == null) {
         await _finish(
           SyncConnectionState.offline,
-          error: 'No sync server is configured. Your packets remain on this device.',
+          error:
+              'No sync server is configured. Your packets remain on this device.',
         );
         return;
       }
@@ -116,6 +156,7 @@ class SyncCoordinator extends ChangeNotifier {
             : hasFailedPackets
             ? 'Some packets need review or another retry.'
             : 'Sync could not reach the server. It will retry automatically.',
+        isConnected: synced || _snapshot.isConnected,
       );
       notifyListeners();
     } catch (error) {
@@ -130,8 +171,11 @@ class SyncCoordinator extends ChangeNotifier {
 
   Future<void> _poll() async {
     if (_syncInFlight) return;
+    await checkServerConnectivity();
     await refresh();
-    if (_snapshot.pendingCount > 0) await syncNow();
+    if (_snapshot.pendingCount > 0 && _snapshot.isConnected) {
+      await syncNow();
+    }
   }
 
   Future<void> _finish(SyncConnectionState state, {String? error}) async {
@@ -141,6 +185,7 @@ class SyncCoordinator extends ChangeNotifier {
       records: records,
       lastSyncedAt: _snapshot.lastSyncedAt,
       errorMessage: error,
+      isConnected: state == SyncConnectionState.ready,
     );
     notifyListeners();
   }

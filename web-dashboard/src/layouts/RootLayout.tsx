@@ -28,6 +28,7 @@ import {
   ChevronDown,
   Sun,
   Moon,
+  Navigation,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -48,6 +49,12 @@ const NAV_ITEMS = [
     label: 'Field Map',
     path: '/map',
     icon: Map,
+  },
+  {
+    label: 'India PHC Map',
+    path: '/india-map',
+    icon: Navigation,
+    badge: '29.5k',
   },
   {
     label: 'ASHA Teams',

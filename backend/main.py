@@ -9,7 +9,20 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.v1 import auth, facilities, incentives, integrations, referrals, reminders, rules, stock, sync, triage_desk
+from api.v1 import (
+    auth,
+    facilities,
+    incentives,
+    integrations,
+    map_sources,
+    referrals,
+    reminders,
+    rules,
+    stock,
+    supervision,
+    sync,
+    triage_desk,
+)
 from core.config import get_settings
 
 settings = get_settings()
@@ -58,8 +71,10 @@ def create_app() -> FastAPI:
     app.include_router(referrals.router, prefix="/api/v1")
     app.include_router(reminders.router, prefix="/api/v1")
     app.include_router(stock.router, prefix="/api/v1")
+    app.include_router(supervision.router, prefix="/api/v1")
     app.include_router(incentives.router, prefix="/api/v1")
     app.include_router(integrations.router, prefix="/api/v1")
+    app.include_router(map_sources.router, prefix="/api/v1")
 
     @app.get("/healthz", tags=["meta"])
     async def health() -> dict[str, str]:
