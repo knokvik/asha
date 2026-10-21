@@ -19,7 +19,8 @@ class AshaApp extends ConsumerWidget {
     final currentLocale = ref.watch(languageProvider);
 
     return MaterialApp.router(
-      title: 'ASHA Platform',
+      onGenerateTitle: (context) =>
+          AppLocalizations.of(context)?.appTitle ?? 'ASHA Platform',
       theme: AppTheme.light,
       // Keep the first release intentionally simple and predictable. The
       // dark theme remains available for the future low-power mode, but it is

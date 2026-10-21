@@ -51,10 +51,10 @@ const NAV_ITEMS = [
     icon: Map,
   },
   {
-    label: 'India PHC Map',
+    label: 'India PHC & RaktKosh Map',
     path: '/india-map',
     icon: Navigation,
-    badge: '29.5k',
+    badge: '35.9k',
   },
   {
     label: 'ASHA Teams',

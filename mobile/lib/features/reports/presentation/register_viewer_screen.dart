@@ -7,6 +7,7 @@ import '../../../core/pdf/pdf_generator.dart';
 import '../../../core/pdf/register_data_service.dart';
 import '../../../core/pdf/register_models.dart';
 import '../../../core/pdf/template_manager.dart';
+import '../../../shared/shell/shell_copy.dart';
 
 /// Full-screen scrollable register viewer with dual on-screen grid and PDF preview,
 /// share-to-messaging-apps, and family-friendly health cards (Requirements 34.1, 34.2, 34.4, 34.5).
@@ -111,20 +112,29 @@ class _RegisterViewerScreenState extends State<RegisterViewerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = Localizations.maybeLocaleOf(context)?.languageCode ?? 'en';
     final theme = Theme.of(context);
     final template = TemplateManager().getTemplate(_selectedRegister);
+    final isDefaultWorker = widget.ashaName.isEmpty ||
+        widget.ashaName == 'Sunita Devi' ||
+        widget.ashaName == 'Sunita Sharma';
+    final ashaNameDisplay = (lang != 'en' && isDefaultWorker)
+        ? shellText(lang, 'workerName')
+        : widget.ashaName;
 
     return Scaffold(
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Official Registers & Reports',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            Text(
+              lang == 'en'
+                  ? 'Official Registers & Reports'
+                  : shellText(lang, 'registers'),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             Text(
-              '${widget.villageName} • ${widget.ashaName}',
+              '${widget.villageName} • $ashaNameDisplay',
               style: const TextStyle(fontSize: 11, color: Colors.white70),
             ),
           ],
@@ -132,19 +142,21 @@ class _RegisterViewerScreenState extends State<RegisterViewerScreen> {
         actions: [
           IconButton(
             icon: Icon(_isPdfMode ? Icons.grid_on : Icons.picture_as_pdf),
-            tooltip: _isPdfMode ? 'Switch to Interactive Grid' : 'Switch to Print Preview',
+            tooltip: _isPdfMode
+                ? shellText(lang, 'switchToGrid')
+                : shellText(lang, 'switchToPdf'),
             onPressed: () {
               setState(() => _isPdfMode = !_isPdfMode);
             },
           ),
           IconButton(
             icon: const Icon(Icons.share),
-            tooltip: 'Share to Messaging Apps (WhatsApp)',
+            tooltip: shellText(lang, 'shareRegister'),
             onPressed: _shareCurrentRegister,
           ),
           IconButton(
             icon: const Icon(Icons.badge),
-            tooltip: 'Family Health Cards',
+            tooltip: shellText(lang, 'familyHealthCards'),
             onPressed: _showFamilyCardDialog,
           ),
         ],
@@ -152,7 +164,7 @@ class _RegisterViewerScreenState extends State<RegisterViewerScreen> {
       body: Column(
         children: [
           // ── Top Selector Bar ──────────────────────────────────────────────
-          _buildSelectorHeader(theme),
+          _buildSelectorHeader(theme, lang),
 
           // ── Main Content Area ─────────────────────────────────────────────
           Expanded(
@@ -168,7 +180,7 @@ class _RegisterViewerScreenState extends State<RegisterViewerScreen> {
     );
   }
 
-  Widget _buildSelectorHeader(ThemeData theme) {
+  Widget _buildSelectorHeader(ThemeData theme, String lang) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       color: Colors.blueGrey.shade50,
@@ -180,10 +192,10 @@ class _RegisterViewerScreenState extends State<RegisterViewerScreen> {
                 child: DropdownButtonFormField<RegisterType>(
                   value: _selectedRegister,
                   isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Select Register / Report',
-                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: shellText(lang, 'selectRegisterLabel'),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    border: const OutlineInputBorder(),
                   ),
                   items: RegisterType.values.map((r) {
                     return DropdownMenuItem(
@@ -209,10 +221,10 @@ class _RegisterViewerScreenState extends State<RegisterViewerScreen> {
                 child: DropdownButtonFormField<String>(
                   value: _reportingPeriod,
                   isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Period',
-                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: shellText(lang, 'periodLabel'),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    border: const OutlineInputBorder(),
                   ),
                   items: const [
                     DropdownMenuItem(value: 'October 2026', child: Text('Oct 2026', style: TextStyle(fontSize: 13))),

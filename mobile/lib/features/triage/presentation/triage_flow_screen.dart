@@ -406,10 +406,13 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
       setState(() => _error = 'Exact age in days cannot be negative.');
       return;
     }
-    // Cached block-level signals from other ASHA workers are applied
-    // automatically; the button remains available as an explicit reminder of
-    // why the adaptive modules were added to this assessment.
-    final radarModules = session.loop.pack.activeModuleIds(_wardId);
+    // Do not inject the demo/sample ward's disease module into every case.
+    // Radar context is applied only after the worker explicitly enables the
+    // adaptive-radar option; otherwise questions are driven by age, vitals,
+    // and answers in this assessment.
+    final radarModules = _adaptiveFromRadar
+        ? session.loop.pack.activeModuleIds(_wardId)
+        : const <String>[];
     final contextModules = <String>{..._chosen, ...radarModules};
     if (_extendedClinicalContext) contextModules.add('adult_vitals');
     final flow = session.loop.openAssessment(
@@ -418,10 +421,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
       extraModules: contextModules,
     );
     _seedClinicalContext(flow);
-    final visible = [
-      for (final question in flow.questions)
-        if (_show(flow, question)) question,
-    ];
+    final visible = _visibleQuestions(flow);
     final firstUnanswered = visible.indexWhere(
       (question) => !flow.answeredIds.contains(question.id),
     );
@@ -493,6 +493,19 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
     }
   }
 
+  /// Keep the common rules-based screen first. Adaptive questions from the
+  /// selected symptoms, radar, and age band are appended after the common
+  /// screening block rather than interrupting it.
+  List<BankQuestion> _visibleQuestions(FlowState flow) {
+    final common = <BankQuestion>[];
+    final adaptive = <BankQuestion>[];
+    for (final question in flow.questions) {
+      if (!_show(flow, question)) continue;
+      (question.module == 'core' ? common : adaptive).add(question);
+    }
+    return [...common, ...adaptive];
+  }
+
   Future<void> _speak(BankQuestion question) async {
     await _tts.speak(text: _questionPrompt(question, _lang), language: _lang);
   }
@@ -501,10 +514,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
     final flow = _flow;
     if (flow == null || _index >= _visible.length) return;
     flow.answer(_visible[_index].id, raw);
-    final visible = [
-      for (final question in flow.questions)
-        if (_show(flow, question)) question,
-    ];
+    final visible = _visibleQuestions(flow);
     final next = visible.indexWhere(
       (question) => !flow.answeredIds.contains(question.id),
     );
@@ -559,6 +569,18 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
       return;
     }
     _answer(value);
+  }
+
+  void _moveQuestion(int delta) {
+    if (_visible.isEmpty) return;
+    final next = (_index + delta).clamp(0, _visible.length - 1);
+    if (next == _index) return;
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _index = next;
+      _answerError = null;
+    });
+    _answerController.clear();
   }
 
   Future<void> _finish(FlowState flow) async {
@@ -1075,6 +1097,10 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                 child: LinearProgressIndicator(
                   minHeight: 7,
                   value: (_index + 1) / _visible.length,
+                  backgroundColor: const Color(0xFFF1F3F5),
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    Color(0xFFD1D5DB),
+                  ),
                 ),
               ),
             ],
@@ -1099,140 +1125,151 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
     final isFocused = index == _index;
     final answered = _flow?.answeredIds.contains(question.id) ?? false;
     final stored = _flow?.answers[question.inputField];
-    return Container(
-      key: _questionKeys.putIfAbsent(question.id, GlobalKey.new),
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isFocused ? Colors.white : const Color(0xFFF7FAF8),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isFocused ? AshaColors.primary : AshaColors.borderSubtle,
-          width: isFocused ? 1.8 : 1,
+    return GestureDetector(
+      onTap: () {
+        if (_index == index) return;
+        FocusScope.of(context).unfocus();
+        setState(() {
+          _index = index;
+          _answerError = null;
+        });
+        _answerController.clear();
+      },
+      child: Container(
+        key: _questionKeys.putIfAbsent(question.id, GlobalKey.new),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isFocused ? Colors.white : const Color(0xFFF7FAF8),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isFocused ? AshaColors.primary : AshaColors.borderSubtle,
+            width: isFocused ? 1.8 : 1,
+          ),
+          boxShadow: isFocused
+              ? const [
+                  BoxShadow(
+                    color: Color(0x140F5138),
+                    blurRadius: 14,
+                    offset: Offset(0, 5),
+                  ),
+                ]
+              : null,
         ),
-        boxShadow: isFocused
-            ? const [
-                BoxShadow(
-                  color: Color(0x140F5138),
-                  blurRadius: 14,
-                  offset: Offset(0, 5),
-                ),
-              ]
-            : null,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 30,
-                height: 30,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: isFocused
-                      ? AshaColors.primary
-                      : answered
-                      ? const Color(0xFFDDEFE4)
-                      : const Color(0xFFE9F0EC),
-                  shape: BoxShape.circle,
-                ),
-                child: answered
-                    ? const Icon(
-                        Icons.check_rounded,
-                        size: 18,
-                        color: AshaColors.primary,
-                      )
-                    : Text(
-                        '${index + 1}',
-                        style: TextStyle(
-                          color: isFocused
-                              ? Colors.white
-                              : AshaColors.textSecondary,
-                          fontWeight: FontWeight.w800,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: isFocused
+                        ? AshaColors.primary
+                        : answered
+                        ? const Color(0xFFDDEFE4)
+                        : const Color(0xFFE9F0EC),
+                    shape: BoxShape.circle,
+                  ),
+                  child: answered
+                      ? const Icon(
+                          Icons.check_rounded,
+                          size: 18,
+                          color: AshaColors.primary,
+                        )
+                      : Text(
+                          '${index + 1}',
+                          style: TextStyle(
+                            color: isFocused
+                                ? Colors.white
+                                : AshaColors.textSecondary,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                      ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  _questionPrompt(question, lang),
-                  style: TextStyle(
-                    fontSize: isFocused ? 19 : 16,
-                    fontWeight: FontWeight.w800,
-                    height: 1.28,
-                    color: AshaColors.textPrimary,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _questionPrompt(question, lang),
+                    style: TextStyle(
+                      fontSize: isFocused ? 19 : 16,
+                      fontWeight: FontWeight.w800,
+                      height: 1.28,
+                      color: AshaColors.textPrimary,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Padding(
-            padding: const EdgeInsets.only(left: 40),
-            child: Text(
-              question.module == 'core'
-                  ? 'Common question'
-                  : 'Adaptive · ${question.module}',
-              style: const TextStyle(color: AshaColors.textSecondary),
+              ],
             ),
-          ),
-          if (isFocused) ...[
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              key: const Key('triage_language_button'),
-              onPressed: () {
-                showDialog<void>(
-                  context: context,
-                  builder: (_) => const LanguageSelectorDialog(),
-                );
-              },
-              icon: const Icon(Icons.language_rounded),
-              label: Text('Speak in ${_languageName(lang)}'),
-              style: OutlinedButton.styleFrom(
-                alignment: Alignment.centerLeft,
-                minimumSize: const Size.fromHeight(46),
-                foregroundColor: AshaColors.primaryDark,
-                side: const BorderSide(color: AshaColors.borderSubtle),
-                shape: const RoundedRectangleBorder(
-                  borderRadius: AshaShapes.buttonRadius,
-                ),
-              ),
-            ),
-            if (question.type != 'bool') ...[
-              const SizedBox(height: 14),
-              _answerControls(question),
-            ],
-          ] else if (answered) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             Padding(
               padding: const EdgeInsets.only(left: 40),
               child: Text(
-                stored == null
-                    ? 'Not sure / cannot check'
-                    : stored == true
-                    ? 'Yes'
-                    : stored == false
-                    ? 'No'
-                    : '$stored',
-                style: const TextStyle(
-                  color: AshaColors.primaryDark,
-                  fontWeight: FontWeight.w800,
+                question.module == 'core'
+                    ? 'Common question'
+                    : 'Adaptive · ${question.module}',
+                style: const TextStyle(color: AshaColors.textSecondary),
+              ),
+            ),
+            if (isFocused) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                key: const Key('triage_language_button'),
+                onPressed: () {
+                  showDialog<void>(
+                    context: context,
+                    builder: (_) => const LanguageSelectorDialog(),
+                  );
+                },
+                icon: const Icon(Icons.language_rounded),
+                label: Text('Speak in ${_languageName(lang)}'),
+                style: OutlinedButton.styleFrom(
+                  alignment: Alignment.centerLeft,
+                  minimumSize: const Size.fromHeight(46),
+                  foregroundColor: AshaColors.primaryDark,
+                  side: const BorderSide(color: AshaColors.borderSubtle),
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: AshaShapes.buttonRadius,
+                  ),
                 ),
               ),
-            ),
-          ] else ...[
-            const SizedBox(height: 8),
-            const Padding(
-              padding: EdgeInsets.only(left: 40),
-              child: Text(
-                'Next question',
-                style: TextStyle(color: AshaColors.textMuted),
+              if (question.type != 'bool') ...[
+                const SizedBox(height: 14),
+                _answerControls(question),
+              ],
+            ] else if (answered) ...[
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.only(left: 40),
+                child: Text(
+                  stored == null
+                      ? 'Not sure / cannot check'
+                      : stored == true
+                      ? 'Yes'
+                      : stored == false
+                      ? 'No'
+                      : '$stored',
+                  style: const TextStyle(
+                    color: AshaColors.primaryDark,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
-            ),
+            ] else ...[
+              const SizedBox(height: 8),
+              const Padding(
+                padding: EdgeInsets.only(left: 40),
+                child: Text(
+                  'Next question',
+                  style: TextStyle(color: AshaColors.textMuted),
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -1247,42 +1284,74 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         top: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-          child: Row(
+          child: Column(
             children: [
-              if (isBoolean) ...[
-                _bottomAnswer(
-                  label: 'Yes',
-                  icon: Icons.check_rounded,
-                  color: AshaColors.primary,
-                  onPressed: () => _answer(true),
-                ),
-                const SizedBox(width: 6),
-                _bottomAnswer(
-                  label: 'No',
-                  icon: Icons.close_rounded,
-                  color: AshaColors.alertHighRisk,
-                  onPressed: () => _answer(false),
-                ),
-                const SizedBox(width: 6),
-                _bottomAnswer(
-                  label: 'Not sure',
-                  icon: Icons.help_outline_rounded,
-                  color: AshaColors.textSecondary,
-                  onPressed: () => _answer(null),
-                ),
-              ] else ...[
-                Expanded(child: _notSureButton()),
-              ],
-              const SizedBox(width: 6),
-              SizedBox(
-                width: 48,
-                height: 48,
-                child: IconButton.filledTonal(
-                  key: const Key('triage_speak_button'),
-                  tooltip: 'Speak question',
-                  onPressed: () => _speak(question),
-                  icon: const Icon(Icons.volume_up_rounded),
-                ),
+              Row(
+                children: [
+                  IconButton(
+                    tooltip: 'Previous question',
+                    onPressed: _index == 0 ? null : () => _moveQuestion(-1),
+                    icon: const Icon(Icons.arrow_back_rounded),
+                  ),
+                  Expanded(
+                    child: Text(
+                      'Tap any question to review it',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AshaColors.textMuted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Next question',
+                    onPressed: _index >= _visible.length - 1
+                        ? null
+                        : () => _moveQuestion(1),
+                    icon: const Icon(Icons.arrow_forward_rounded),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  if (isBoolean) ...[
+                    _bottomAnswer(
+                      label: 'Yes',
+                      icon: Icons.check_rounded,
+                      color: AshaColors.primary,
+                      onPressed: () => _answer(true),
+                    ),
+                    const SizedBox(width: 6),
+                    _bottomAnswer(
+                      label: 'No',
+                      icon: Icons.close_rounded,
+                      color: const Color(0xFFD1D5DB),
+                      foregroundColor: AshaColors.textPrimary,
+                      onPressed: () => _answer(false),
+                    ),
+                    const SizedBox(width: 6),
+                    _bottomAnswer(
+                      label: 'Not sure',
+                      icon: Icons.help_outline_rounded,
+                      color: AshaColors.textSecondary,
+                      onPressed: () => _answer(null),
+                    ),
+                  ] else ...[
+                    Expanded(child: _notSureButton()),
+                  ],
+                  const SizedBox(width: 6),
+                  SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: IconButton.filledTonal(
+                      key: const Key('triage_speak_button'),
+                      tooltip: 'Speak question',
+                      onPressed: () => _speak(question),
+                      icon: const Icon(Icons.volume_up_rounded),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -1295,6 +1364,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
     required String label,
     required IconData icon,
     required Color color,
+    Color foregroundColor = Colors.white,
     required VoidCallback onPressed,
   }) {
     return Expanded(
@@ -1306,7 +1376,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
           label: FittedBox(child: Text(label)),
           style: FilledButton.styleFrom(
             backgroundColor: color,
-            foregroundColor: Colors.white,
+            foregroundColor: foregroundColor,
             padding: const EdgeInsets.symmetric(horizontal: 4),
             textStyle: const TextStyle(
               fontSize: 11,

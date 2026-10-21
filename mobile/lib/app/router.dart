@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/presentation/pin_setup_screen.dart';
+import '../core/l10n/language_provider.dart';
 import '../features/due_list/presentation/due_list_screen.dart';
 import '../features/home/presentation/tools_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
@@ -109,7 +110,11 @@ Page<dynamic> _buildSlidePage({
 /// List of routes shared across routerProvider and appRouter
 List<RouteBase> _buildAppRoutes(Ref? ref) {
   return [
-    GoRoute(path: '/', redirect: (context, state) => '/home'),
+    GoRoute(
+      path: '/',
+      redirect: (context, state) =>
+          ref?.read(databaseKeyProvider) == null ? '/auth' : '/home',
+    ),
     GoRoute(path: '/auth', builder: (context, state) => const PinSetupScreen()),
     GoRoute(
       path: '/home',
@@ -227,10 +232,8 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
     ),
     GoRoute(
       path: '/peer-sync',
-      pageBuilder: (context, state) => _buildSlidePage(
-        state: state,
-        child: const PeerSyncScreen(),
-      ),
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const PeerSyncScreen()),
     ),
     GoRoute(
       path: '/triage',
@@ -446,6 +449,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
           return EarningsScreen(
             repository: EarningsRepository(db: db, incentiveService: service),
             workerId: 'asha-01',
+            language: ref.read(languageProvider).languageCode,
           );
         }
         return const _FallbackContainer(title: 'Incentives');
@@ -718,6 +722,10 @@ class _FallbackContainer extends StatelessWidget {
 /// Provider for app router with role-based guards.
 final routerProvider = Provider<GoRouter>((ref) {
   final role = ref.watch(userRoleProvider);
+  // A PIN unlock is intentionally session-scoped. On every cold app start the
+  // key is null, so the first protected navigation must return to /auth even
+  // when a PIN already exists in secure storage.
+  final databaseKey = ref.watch(databaseKeyProvider);
 
   return GoRouter(
     initialLocation: '/auth',
@@ -726,6 +734,14 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Root redirect
       if (loc == '/') {
+        return databaseKey == null ? '/auth' : '/home';
+      }
+
+      if (loc != '/auth' && databaseKey == null) {
+        return '/auth';
+      }
+
+      if (loc == '/auth' && databaseKey != null) {
         return '/home';
       }
 

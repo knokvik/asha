@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../../core/l10n/language_provider.dart';
 import '../../../core/sync/nearby_peer_transport.dart';
 import '../../../core/sync/peer_sync_service.dart';
+import '../../../shared/shell/shell_copy.dart';
 
-class PeerSyncScreen extends StatefulWidget {
+class PeerSyncScreen extends ConsumerStatefulWidget {
   const PeerSyncScreen({super.key});
 
   @override
-  State<PeerSyncScreen> createState() => _PeerSyncScreenState();
+  ConsumerState<PeerSyncScreen> createState() => _PeerSyncScreenState();
 }
 
-class _PeerSyncScreenState extends State<PeerSyncScreen> {
+class _PeerSyncScreenState extends ConsumerState<PeerSyncScreen> {
   final _packetController = TextEditingController();
   final _service = PeerSyncService();
   final _nearby = NearbyPeerTransport(workerName: 'ASHA Setu worker');
@@ -45,24 +48,26 @@ class _PeerSyncScreenState extends State<PeerSyncScreen> {
   }
 
   Future<void> _showPacket() async {
+    final lang = ref.read(languageProvider).languageCode;
     final packet = await _service.createContextPacket();
     if (!mounted) return;
     setState(() {
       _packet = packet;
       _message = packet == null
-          ? 'No synced area context is available yet.'
-          : 'Show this code to another ASHA worker nearby.';
+          ? shellText(lang, 'noSyncedContextYet')
+          : shellText(lang, 'showCodeNearby');
     });
   }
 
   Future<void> _importPacket() async {
+    final lang = ref.read(languageProvider).languageCode;
     final result = await _service.importContextPacket(
       _packetController.text.trim(),
     );
     if (!mounted) return;
     setState(() {
       _message = result.imported
-          ? '${result.hotspotCount} shared area signals received. Disease radar and adaptive triage are updated.'
+          ? '${result.hotspotCount} ${shellText(lang, 'sharedSignalsReceived')}'
           : result.error;
     });
     if (result.imported) _packetController.clear();
@@ -80,24 +85,25 @@ class _PeerSyncScreenState extends State<PeerSyncScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = ref.watch(languageProvider).languageCode;
     return Scaffold(
-      appBar: AppBar(title: const Text('Peer area sync')),
+      appBar: AppBar(title: Text(shellText(lang, 'peerSyncTitle'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Card(
+          Card(
             child: ListTile(
-              leading: Icon(Icons.people_alt_outlined),
-              title: Text('Share area context without a tower'),
+              leading: const Icon(Icons.people_alt_outlined),
+              title: Text(shellText(lang, 'peerSyncHeader')),
               subtitle: Text(
-                'Only aggregate disease signals are exchanged. Patient records never leave this phone through peer sync.',
+                shellText(lang, 'peerSyncSub'),
               ),
             ),
           ),
           const SizedBox(height: 12),
-          const Text(
-            'Direct nearby exchange',
-            style: TextStyle(fontWeight: FontWeight.w800),
+          Text(
+            shellText(lang, 'directNearbyExchange'),
+            style: const TextStyle(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -164,7 +170,7 @@ class _PeerSyncScreenState extends State<PeerSyncScreen> {
           FilledButton.icon(
             onPressed: _showPacket,
             icon: const Icon(Icons.qr_code_2),
-            label: const Text('Show my area signals'),
+            label: Text(shellText(lang, 'showSyncQr')),
           ),
           if (_packet != null) ...[
             const SizedBox(height: 12),
@@ -187,7 +193,7 @@ class _PeerSyncScreenState extends State<PeerSyncScreen> {
           FilledButton.icon(
             onPressed: _scanPacket,
             icon: const Icon(Icons.qr_code_scanner_rounded),
-            label: const Text('Scan ASHA QR'),
+            label: Text(shellText(lang, 'scanPartnerQr')),
           ),
           const SizedBox(height: 8),
           ExpansionTile(

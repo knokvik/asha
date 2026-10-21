@@ -46,10 +46,20 @@ class ProfileScreen extends ConsumerWidget {
     final isConnected = syncCoordinator?.snapshot.isConnectedToServer ?? false;
 
     final initials = profile?.initials ?? 'AS';
-    final name = profile?.name ?? 'ASHA Worker';
+    final rawName = profile?.name ?? '';
+    final isDefaultName = rawName.isEmpty ||
+        rawName == 'Sunita Devi' ||
+        rawName == 'Sunita Sharma' ||
+        rawName == 'ASHA Worker';
+    final name = isDefaultName ? shellText(lang, 'workerName') : rawName;
     final ashaId = profile?.ashaId ?? '';
-    final roleFacility =
-        profile?.facilityDisplay ?? 'ASHA Worker • Primary Health Centre';
+    final facilityDisplay = profile?.facilityDisplay ?? '';
+    final isDefaultFacility = facilityDisplay.isEmpty ||
+        facilityDisplay == 'ASHA Worker • Primary Health Centre' ||
+        facilityDisplay.contains('ASHA Worker');
+    final roleFacility = isDefaultFacility
+        ? shellText(lang, 'worker')
+        : facilityDisplay;
     final totalVisits = profile?.totalVisits ?? 0;
     final completedVisits = profile?.completedVisits ?? 0;
     final pendingVisits = profile?.pendingVisits ?? 0;
@@ -207,7 +217,7 @@ class ProfileScreen extends ConsumerWidget {
                                     const SizedBox(width: 4),
                                     Text(
                                       isConnected
-                                          ? 'Server Online • Sync Active'
+                                          ? shellText(lang, 'serverOnline')
                                           : shellText(lang, 'offline'),
                                       style: TextStyle(
                                         fontSize: 11,
@@ -306,8 +316,8 @@ class ProfileScreen extends ConsumerWidget {
                   icon: Icons.cloud_sync_outlined,
                   title: shellText(lang, 'sync'),
                   subtitle: isConnected
-                      ? 'Connected to server (${profile?.apiBaseUrl ?? "Online"})'
-                      : 'Offline • Tap to view packets & retry connection',
+                      ? shellText(lang, 'serverOnline')
+                      : shellText(lang, 'offlineSyncSub'),
                   iconColor: isConnected
                       ? const Color(0xFF16A34A)
                       : const Color(0xFFD97706),
@@ -378,10 +388,10 @@ class ProfileScreen extends ConsumerWidget {
                 // Account / Sign Out Section
                 _buildListOption(
                   icon: Icons.logout_rounded,
-                  title: 'Sign Out / Switch ASHA',
-                  subtitle: 'Change worker login or reset credentials',
+                  title: shellText(lang, 'signOut'),
+                  subtitle: shellText(lang, 'signOutSub'),
                   iconColor: const Color(0xFFDC2626),
-                  onTap: () => _confirmSignOut(context, ref),
+                  onTap: () => _confirmSignOut(context, ref, lang),
                 ),
                 const SizedBox(height: 24),
               ],
@@ -392,21 +402,21 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  void _confirmSignOut(BuildContext context, WidgetRef ref) {
+  void _confirmSignOut(BuildContext context, WidgetRef ref, String lang) {
     showDialog<void>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        title: const Text(
-          'Sign Out?',
-          style: TextStyle(fontWeight: FontWeight.w800),
+        title: Text(
+          shellText(lang, 'signOutConfirm'),
+          style: const TextStyle(fontWeight: FontWeight.w800),
         ),
-        content: const Text(
-          'Are you sure you want to sign out? You will need to enter your ASHA ID and PIN to access the application again.',
+        content: Text(
+          shellText(lang, 'signOutConfirmDesc'),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Cancel'),
+            child: Text(shellText(lang, 'cancel')),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -417,7 +427,7 @@ class ProfileScreen extends ConsumerWidget {
               Navigator.pop(dialogCtx);
               ref.read(userProfileProvider.notifier).logout(context);
             },
-            child: const Text('Sign Out'),
+            child: Text(shellText(lang, 'signOut')),
           ),
         ],
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+
 import '../../app/theme/app_theme.dart';
 
 /// Reusable SVG and vector illustrations matching the exact Asha Platform UI design.
@@ -248,43 +249,24 @@ class AshaSvgIllustrations {
 ''';
 }
 
-/// ASHA Logo with green medical emblem and bold modern wordmark (no leaves on top).
+/// ASHA wordmark supplied by the product team.
+///
+/// The source artwork is kept as a bundled local asset so branding works
+/// offline and is identical on the login, shell, and dashboard screens.
 class AshaLogo extends StatelessWidget {
-  const AshaLogo({
-    super.key,
-    this.height = 36,
-    this.showEmblem = true,
-  });
+  const AshaLogo({super.key, this.height = 36});
 
   final double height;
-  final bool showEmblem;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        if (showEmblem) ...[
-          Image.asset(
-            'assets/branding/favicon.png',
-            width: height * 0.88,
-            height: height * 0.88,
-            fit: BoxFit.contain,
-          ),
-          SizedBox(width: height * 0.22),
-        ],
-        Text(
-          'asha',
-          style: TextStyle(
-            fontSize: height * 0.82,
-            fontWeight: FontWeight.w900,
-            color: const Color(0xFF1E4231),
-            letterSpacing: -1.0,
-            fontFamily: 'SF Pro Display',
-          ),
-        ),
-      ],
+    return Image.asset(
+      'assets/branding/asha_wordmark.jpg',
+      height: height,
+      width: height * 2.56,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.high,
+      semanticLabel: 'ASHA',
     );
   }
 }

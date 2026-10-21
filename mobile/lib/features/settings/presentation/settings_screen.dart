@@ -7,9 +7,11 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../../core/bhasha/model_store.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../core/l10n/language_provider.dart';
+import '../../../core/l10n/language_selector_dialog.dart';
 import '../../../core/voice/model_manager.dart';
 import '../../../core/voice/vosk_service.dart';
-import '../../../core/l10n/language_selector_dialog.dart';
+import '../../../shared/shell/shell_copy.dart';
 
 /// App preferences kept intentionally simple for the first light-mode release.
 /// Voice interpreter packs remain installable here without requiring an APK
@@ -19,6 +21,7 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final lang = ref.watch(languageProvider).languageCode;
     final manager = ref.watch(modelManagerProvider);
     final descriptors = VoskModelManager.catalog.values.toList()
       ..sort((a, b) => a.modelKey.compareTo(b.modelKey));
@@ -26,23 +29,23 @@ class SettingsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: Text(shellText(lang, 'settings')),
         backgroundColor: AshaColors.cardSurface,
         foregroundColor: AshaColors.textPrimary,
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
         children: [
-          _sectionTitle('Appearance'),
+          _sectionTitle(shellText(lang, 'appearance')),
           Card(
             child: ListTile(
               leading: const Icon(
                 Icons.light_mode_outlined,
                 color: Color(0xFF2D5F47),
               ),
-              title: const Text('Light mode'),
-              subtitle: const Text(
-                'The app currently uses a clear light interface.',
+              title: Text(shellText(lang, 'lightMode')),
+              subtitle: Text(
+                shellText(lang, 'lightModeDesc'),
               ),
               trailing: const Icon(
                 Icons.check_circle,
@@ -51,15 +54,15 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 22),
-          _sectionTitle('Language'),
+          _sectionTitle(shellText(lang, 'appLanguage')),
           Card(
             child: ListTile(
               leading: const Icon(
                 Icons.language_rounded,
                 color: Color(0xFF2563EB),
               ),
-              title: const Text('App language'),
-              subtitle: const Text('Change labels and audio prompts'),
+              title: Text(shellText(lang, 'appLanguage')),
+              subtitle: Text(shellText(lang, 'appLanguageDesc')),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => showDialog<void>(
                 context: context,
@@ -68,35 +71,39 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 22),
-          _sectionTitle('Map & Navigation'),
-          const _MapStyleSection(),
+          _sectionTitle(shellText(lang, 'mapNav')),
+          _MapStyleSection(lang: lang),
           const SizedBox(height: 22),
-          _sectionTitle('Voice interpreter packs'),
-          const Text(
-            'Install an offline speech pack so interpreter and voice forms keep working without internet.',
-            style: TextStyle(color: Color(0xFF5F6B64), height: 1.4),
+          _sectionTitle(shellText(lang, 'voicePacks')),
+          Text(
+            shellText(lang, 'voicePacksDesc'),
+            style: const TextStyle(color: Color(0xFF5F6B64), height: 1.4),
           ),
           const SizedBox(height: 10),
-          const _InterpreterPackSection(),
+          _InterpreterPackSection(lang: lang),
           const SizedBox(height: 22),
-          _sectionTitle('Clinical voice input packs'),
+          _sectionTitle(shellText(lang, 'clinicalVoicePacks')),
           ...descriptors.map(
             (descriptor) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: _ModelPackCard(descriptor: descriptor, manager: manager),
+              child: _ModelPackCard(
+                descriptor: descriptor,
+                manager: manager,
+                lang: lang,
+              ),
             ),
           ),
           const SizedBox(height: 12),
           Card(
             color: const Color(0xFFF8F9FA),
-            child: const ListTile(
-              leading: Icon(
+            child: ListTile(
+              leading: const Icon(
                 Icons.lock_outline_rounded,
                 color: Color(0xFF6B7280),
               ),
-              title: Text('Private and on-device'),
+              title: Text(shellText(lang, 'privateOnDevice')),
               subtitle: Text(
-                'Voice packs stay in app storage and are not uploaded with patient data.',
+                shellText(lang, 'privateOnDeviceDesc'),
               ),
             ),
           ),
@@ -121,7 +128,8 @@ class SettingsScreen extends ConsumerWidget {
 }
 
 class _MapStyleSection extends StatefulWidget {
-  const _MapStyleSection();
+  final String lang;
+  const _MapStyleSection({required this.lang});
 
   @override
   State<_MapStyleSection> createState() => _MapStyleSectionState();
@@ -168,17 +176,17 @@ class _MapStyleSectionState extends State<_MapStyleSection> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Map Basemap Style',
-                        style: TextStyle(
+                      Text(
+                        shellText(widget.lang, 'mapBasemapStyle'),
+                        style: const TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
                         ),
                       ),
                       Text(
                         _mapStyle == 'satellite'
-                            ? 'Satellite Aerial Imagery (High-res aerial view)'
-                            : 'Standard Street Map (Offline vector & road detail)',
+                            ? shellText(widget.lang, 'satelliteHybridDesc')
+                            : shellText(widget.lang, 'streetDefaultDesc'),
                         style: const TextStyle(
                           fontSize: 12,
                           color: Color(0xFF6B7280),
@@ -195,7 +203,7 @@ class _MapStyleSectionState extends State<_MapStyleSection> {
                 Expanded(
                   child: ChoiceChip(
                     avatar: const Icon(Icons.map_outlined, size: 18),
-                    label: const Text('Street Map'),
+                    label: Text(shellText(widget.lang, 'streetDefault')),
                     selected: _mapStyle == 'street',
                     onSelected: (val) {
                       if (val) _setStyle('street');
@@ -206,7 +214,7 @@ class _MapStyleSectionState extends State<_MapStyleSection> {
                 Expanded(
                   child: ChoiceChip(
                     avatar: const Icon(Icons.satellite_alt_rounded, size: 18),
-                    label: const Text('Satellite Aerial'),
+                    label: Text(shellText(widget.lang, 'satelliteHybrid')),
                     selected: _mapStyle == 'satellite',
                     onSelected: (val) {
                       if (val) _setStyle('satellite');
@@ -216,18 +224,18 @@ class _MapStyleSectionState extends State<_MapStyleSection> {
               ],
             ),
             const SizedBox(height: 8),
-            const Row(
+            Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.offline_pin_outlined,
                   size: 15,
                   color: Color(0xFF16A34A),
                 ),
-                SizedBox(width: 6),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'Offline caching enabled. Previously viewed tiles and local district packs work without network.',
-                    style: TextStyle(fontSize: 11, color: Color(0xFF4B5563)),
+                    shellText(widget.lang, 'mapOfflineCacheNote'),
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF4B5563)),
                   ),
                 ),
               ],
@@ -240,7 +248,8 @@ class _MapStyleSectionState extends State<_MapStyleSection> {
 }
 
 class _InterpreterPackSection extends StatefulWidget {
-  const _InterpreterPackSection();
+  final String lang;
+  const _InterpreterPackSection({required this.lang});
 
   @override
   State<_InterpreterPackSection> createState() =>
@@ -282,7 +291,7 @@ class _InterpreterPackSectionState extends State<_InterpreterPackSection> {
     } catch (_) {
       if (mounted) {
         setState(
-          () => _error = 'Install failed. Check your connection and try again.',
+          () => _error = shellText(widget.lang, 'installErrorMsg'),
         );
       }
     } finally {
@@ -309,34 +318,37 @@ class _InterpreterPackSectionState extends State<_InterpreterPackSection> {
           children: [
             _InterpreterPackTile(
               icon: Icons.translate_rounded,
-              title: 'Interpreter core pack',
+              title: shellText(widget.lang, 'interpreterCorePack'),
               subtitle: store.isReady
-                  ? 'Installed'
-                  : 'Translation, hearing and English voice',
+                  ? shellText(widget.lang, 'installed')
+                  : shellText(widget.lang, 'interpreterCoreDesc'),
               installed: store.isReady,
               busy: _busy,
+              installLabel: shellText(widget.lang, 'install'),
               onInstall: () => _run(store.ensure),
             ),
             const Divider(height: 1),
             _InterpreterPackTile(
               icon: Icons.record_voice_over_rounded,
-              title: 'English ask-back pack',
+              title: shellText(widget.lang, 'askBackPack'),
               subtitle: store.askReady
-                  ? 'Installed'
-                  : 'English to local-language replies',
+                  ? shellText(widget.lang, 'installed')
+                  : shellText(widget.lang, 'askBackDesc'),
               installed: store.askReady,
               busy: _busy,
+              installLabel: shellText(widget.lang, 'install'),
               onInstall: () => _run(store.ensureAsk),
             ),
             const Divider(height: 1),
             _InterpreterPackTile(
               icon: Icons.volume_up_rounded,
-              title: 'Hindi voice pack',
+              title: shellText(widget.lang, 'hindiVoicePack'),
               subtitle: store.hindiVoiceReady
-                  ? 'Installed'
-                  : 'Hindi audio output',
+                  ? shellText(widget.lang, 'installed')
+                  : shellText(widget.lang, 'hindiVoiceDesc'),
               installed: store.hindiVoiceReady,
               busy: _busy,
+              installLabel: shellText(widget.lang, 'install'),
               onInstall: () => _run(store.ensureHindiVoice),
             ),
             if (progress != null && _busy) ...[
@@ -389,6 +401,7 @@ class _InterpreterPackTile extends StatelessWidget {
     required this.subtitle,
     required this.installed,
     required this.busy,
+    required this.installLabel,
     required this.onInstall,
   });
 
@@ -397,6 +410,7 @@ class _InterpreterPackTile extends StatelessWidget {
   final String subtitle;
   final bool installed;
   final bool busy;
+  final String installLabel;
   final VoidCallback onInstall;
 
   @override
@@ -410,17 +424,22 @@ class _InterpreterPackTile extends StatelessWidget {
           ? const Icon(Icons.check_circle, color: Color(0xFF16A34A))
           : OutlinedButton(
               onPressed: busy ? null : onInstall,
-              child: Text(busy ? '…' : 'Install'),
+              child: Text(busy ? '…' : installLabel),
             ),
     );
   }
 }
 
 class _ModelPackCard extends StatelessWidget {
-  const _ModelPackCard({required this.descriptor, required this.manager});
+  const _ModelPackCard({
+    required this.descriptor,
+    required this.manager,
+    required this.lang,
+  });
 
   final VoskModelDescriptor descriptor;
   final VoskModelManager manager;
+  final String lang;
 
   String get _languageName => switch (descriptor.language) {
     'hi' => 'Hindi',
@@ -475,7 +494,7 @@ class _ModelPackCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        '${(descriptor.sizeBytes / (1024 * 1024)).round()} MB · ${_statusLabel(status)}',
+                        '${(descriptor.sizeBytes / (1024 * 1024)).round()} MB · ${_statusLabel(status, lang)}',
                         style: const TextStyle(
                           color: Color(0xFF6B7280),
                           fontSize: 12,
@@ -497,7 +516,7 @@ class _ModelPackCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 if (installed)
                   IconButton(
-                    tooltip: 'Remove pack',
+                    tooltip: shellText(lang, 'removePack'),
                     icon: const Icon(Icons.delete_outline_rounded),
                     onPressed: () => manager.removeModel(
                       descriptor.language,
@@ -514,14 +533,14 @@ class _ModelPackCard extends StatelessWidget {
                             );
                             if (!context.mounted || success) return;
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
+                              SnackBar(
                                 content: Text(
-                                  'Pack could not be installed. Check your connection and try again.',
+                                  shellText(lang, 'installErrorMsg'),
                                 ),
                               ),
                             );
                           },
-                    child: Text(busy ? '…' : 'Install'),
+                    child: Text(busy ? '…' : shellText(lang, 'install')),
                   ),
               ],
             ),
@@ -531,13 +550,13 @@ class _ModelPackCard extends StatelessWidget {
     );
   }
 
-  String _statusLabel(ModelInstallStatus status) => switch (status) {
-    ModelInstallStatus.notInstalled => 'Not installed',
-    ModelInstallStatus.downloading => 'Downloading…',
-    ModelInstallStatus.verifying => 'Verifying…',
-    ModelInstallStatus.extracting => 'Preparing…',
-    ModelInstallStatus.installed => 'Installed',
-    ModelInstallStatus.deferredToWifi => 'Waiting for Wi-Fi',
-    ModelInstallStatus.error => 'Install failed',
+  String _statusLabel(ModelInstallStatus status, String lang) => switch (status) {
+    ModelInstallStatus.notInstalled => shellText(lang, 'notInstalled'),
+    ModelInstallStatus.downloading => shellText(lang, 'downloading'),
+    ModelInstallStatus.verifying => shellText(lang, 'verifying'),
+    ModelInstallStatus.extracting => shellText(lang, 'preparing'),
+    ModelInstallStatus.installed => shellText(lang, 'installed'),
+    ModelInstallStatus.deferredToWifi => shellText(lang, 'waitingWifi'),
+    ModelInstallStatus.error => shellText(lang, 'installFailed'),
   };
 }

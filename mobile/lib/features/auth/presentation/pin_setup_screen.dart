@@ -76,7 +76,7 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
     try {
       final auth = ref.read(authServiceProvider);
       final configured = await auth.isPinConfigured.timeout(
-        const Duration(milliseconds: 100),
+        const Duration(seconds: 2),
         onTimeout: () => false,
       );
       if (mounted) {
@@ -178,32 +178,40 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
 
       try {
         final ashaId = _ashaIdController.text.trim();
-        if (ashaId.isNotEmpty) {
-          if (_captchaController.text.trim().toUpperCase() != _captchaCode) {
-            setState(() {
-              _isSubmitting = false;
-              _errorMessage =
-                  'Verification code is incorrect. Please try again.';
-            });
-            _refreshCaptcha();
-            return;
-          }
-          final serverUrl = await resolveAshaApiBaseUrl();
-          final serverLogin = await auth.loginToServer(
-            apiBaseUrl: serverUrl,
-            ashaId: ashaId,
-            pin: pin,
-          );
-          if (!serverLogin.isSuccess) {
-            setState(() {
-              _isSubmitting = false;
-              _errorMessage =
-                  serverLogin.error ??
-                  'Invalid credentials. Please verify your ASHA ID and PIN.';
-            });
-            _refreshCaptcha();
-            return;
-          }
+        // A local PIN alone must never create an application identity. The
+        // worker ID is required so the backend can return the correct user,
+        // role, assignments, and sync scope.
+        if (ashaId.isEmpty) {
+          setState(() {
+            _isSubmitting = false;
+            _errorMessage =
+                'Enter your ASHA ID to sign in and load your worker profile.';
+          });
+          return;
+        }
+        if (_captchaController.text.trim().toUpperCase() != _captchaCode) {
+          setState(() {
+            _isSubmitting = false;
+            _errorMessage = 'Verification code is incorrect. Please try again.';
+          });
+          _refreshCaptcha();
+          return;
+        }
+        final serverUrl = await resolveAshaApiBaseUrl();
+        final serverLogin = await auth.loginToServer(
+          apiBaseUrl: serverUrl,
+          ashaId: ashaId,
+          pin: pin,
+        );
+        if (!serverLogin.isSuccess) {
+          setState(() {
+            _isSubmitting = false;
+            _errorMessage =
+                serverLogin.error ??
+                'Invalid credentials. Please verify your ASHA ID and PIN.';
+          });
+          _refreshCaptcha();
+          return;
         }
 
         try {
@@ -491,7 +499,7 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                       onChanged: (_) => setState(() {}),
                       decoration: const InputDecoration(
                         labelText: 'ASHA ID (for online sync)',
-                        hintText: 'Leave blank for offline-only setup',
+                        hintText: 'Required to load your worker profile',
                         prefixIcon: Icon(Icons.badge_outlined),
                       ),
                     ),

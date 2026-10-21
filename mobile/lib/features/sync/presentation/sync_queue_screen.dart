@@ -8,44 +8,51 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/l10n/language_provider.dart';
 import '../../../core/sync/sync_coordinator.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/shell/shell_copy.dart';
 
 class SyncQueueScreen extends ConsumerWidget {
   const SyncQueueScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final lang = ref.watch(languageProvider).languageCode;
     final coordinator = ref.watch(syncCoordinatorProvider);
     if (coordinator == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Offline Sync')),
+        appBar: AppBar(title: Text(shellText(lang, 'syncQueueTitle'))),
         body: Center(
-          child: Text('Unlock the app to view the local sync queue.'),
+          child: Text(shellText(lang, 'syncUnlockMsg')),
         ),
       );
     }
     return ListenableBuilder(
       listenable: coordinator,
-      builder: (context, _) => _buildScaffold(context, coordinator),
+      builder: (context, _) => _buildScaffold(context, coordinator, lang),
     );
   }
 
-  Widget _buildScaffold(BuildContext context, SyncCoordinator coordinator) {
+  Widget _buildScaffold(
+    BuildContext context,
+    SyncCoordinator coordinator,
+    String lang,
+  ) {
     final snapshot = coordinator.snapshot;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Offline Sync'),
+        title: Text(shellText(lang, 'syncQueueTitle')),
         actions: [
           IconButton(
             key: const Key('sync_refresh_button'),
-            tooltip: 'Refresh queue',
+            tooltip: shellText(lang, 'syncRefresh'),
             onPressed: coordinator.refresh,
             icon: const Icon(Icons.refresh_rounded),
           ),
           IconButton(
             key: const Key('sync_now_button'),
-            tooltip: 'Sync now',
+            tooltip: shellText(lang, 'syncNow'),
             onPressed: snapshot.state == SyncConnectionState.syncing
                 ? null
                 : coordinator.syncNow,
@@ -58,7 +65,7 @@ class SyncQueueScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
-            _SyncSummaryCard(snapshot: snapshot),
+            _SyncSummaryCard(snapshot: snapshot, lang: lang),
             Card(
               child: ListTile(
                 leading: const Icon(Icons.people_alt_outlined),
@@ -86,7 +93,7 @@ class SyncQueueScreen extends ConsumerWidget {
               const _EmptyQueue()
             else ...[
               Text(
-                'Stored packets (${snapshot.records.length})',
+                '${shellText(lang, 'syncStoredPackets')} (${snapshot.records.length})',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -106,18 +113,19 @@ class SyncQueueScreen extends ConsumerWidget {
 
 class _SyncSummaryCard extends StatelessWidget {
   final SyncSnapshot snapshot;
+  final String lang;
 
-  const _SyncSummaryCard({required this.snapshot});
+  const _SyncSummaryCard({required this.snapshot, required this.lang});
 
   @override
   Widget build(BuildContext context) {
     final isHealthy = snapshot.state == SyncConnectionState.ready;
     final color = isHealthy ? Colors.teal.shade800 : Colors.orange.shade900;
     final title = switch (snapshot.state) {
-      SyncConnectionState.syncing => 'Syncing packets…',
-      SyncConnectionState.ready => 'All packets are up to date',
-      SyncConnectionState.error => 'Waiting to reconnect',
-      SyncConnectionState.offline => 'Working offline',
+      SyncConnectionState.syncing => shellText(lang, 'syncingPackets'),
+      SyncConnectionState.ready => shellText(lang, 'syncAllUpToDate'),
+      SyncConnectionState.error => shellText(lang, 'syncWaitingReconnect'),
+      SyncConnectionState.offline => shellText(lang, 'syncWorkingOffline'),
     };
     return Card(
       margin: EdgeInsets.zero,

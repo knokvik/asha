@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/shell/shell_copy.dart';
 import '../domain/vhsnd_models.dart';
 
 /// Screen displaying the offline multimedia health education library and active public health campaigns
@@ -55,9 +56,11 @@ class _HealthEducationLibraryScreenState extends State<HealthEducationLibraryScr
 
   @override
   Widget build(BuildContext context) {
+    final lang = Localizations.maybeLocaleOf(context)?.languageCode ?? 'en';
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Health Education & Campaigns'),
+        title: Text(shellText(lang, 'healthEducationTitle')),
         backgroundColor: const Color(0xFF1B5E20),
         foregroundColor: Colors.white,
         bottom: TabBar(
@@ -65,23 +68,23 @@ class _HealthEducationLibraryScreenState extends State<HealthEducationLibraryScr
           indicatorColor: Colors.white,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
-          tabs: const [
-            Tab(icon: Icon(Icons.school), text: 'Education Library'),
-            Tab(icon: Icon(Icons.campaign), text: 'Active Campaigns'),
+          tabs: [
+            Tab(icon: const Icon(Icons.school), text: shellText(lang, 'educationLibraryTab')),
+            Tab(icon: const Icon(Icons.campaign), text: shellText(lang, 'activeCampaignsTab')),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildEducationLibraryTab(context),
+          _buildEducationLibraryTab(context, lang),
           _buildActiveCampaignsTab(context),
         ],
       ),
     );
   }
 
-  Widget _buildEducationLibraryTab(BuildContext context) {
+  Widget _buildEducationLibraryTab(BuildContext context, String lang) {
     return Column(
       children: [
         // Search bar
@@ -90,7 +93,7 @@ class _HealthEducationLibraryScreenState extends State<HealthEducationLibraryScr
           child: TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              hintText: 'Search audio clips, topics, danger signs...',
+              hintText: shellText(lang, 'searchAudioClipsHint'),
               prefixIcon: const Icon(Icons.search),
               suffixIcon: _searchQuery.isNotEmpty
                   ? IconButton(
@@ -117,7 +120,7 @@ class _HealthEducationLibraryScreenState extends State<HealthEducationLibraryScr
           child: Row(
             children: [
               FilterChip(
-                label: const Text('All Topics'),
+                label: Text(shellText(lang, 'categoryAll')),
                 selected: _selectedTopic == null,
                 onSelected: (selected) {
                   if (selected) setState(() => _selectedTopic = null);

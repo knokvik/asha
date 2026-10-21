@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../../app/theme/app_theme.dart';
 import '../domain/measurement_aids.dart';
 
 /// Clinical Calculators, MUAC Colour-coded Reference, Timers, and Experimental AI Safety Guard
@@ -7,7 +9,8 @@ class ClinicalCalculatorsScreen extends StatefulWidget {
   const ClinicalCalculatorsScreen({super.key});
 
   @override
-  State<ClinicalCalculatorsScreen> createState() => _ClinicalCalculatorsScreenState();
+  State<ClinicalCalculatorsScreen> createState() =>
+      _ClinicalCalculatorsScreenState();
 }
 
 class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
@@ -69,16 +72,19 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
         title: const Text('Clinical Aids & Calculators'),
-        backgroundColor: const Color(0xFF1B5E20),
-        foregroundColor: Colors.white,
+        backgroundColor: AshaColors.screenBg,
+        foregroundColor: AshaColors.textPrimary,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
+          indicatorColor: AshaColors.primary,
+          labelColor: AshaColors.primaryDark,
+          unselectedLabelColor: AshaColors.textMuted,
           tabs: const [
             Tab(icon: Icon(Icons.pregnant_woman), text: 'EDD & GA'),
             Tab(icon: Icon(Icons.medication), text: 'Drug Dosing'),
@@ -113,7 +119,9 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          const Text('Computed offline using Naegele\'s rule (LMP + 280 days / 40 weeks).'),
+          const Text(
+            'Computed offline using Naegele\'s rule (LMP + 280 days / 40 weeks).',
+          ),
           const SizedBox(height: 20),
 
           ElevatedButton.icon(
@@ -129,11 +137,13 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
               }
             },
             icon: const Icon(Icons.calendar_today),
-            label: Text(_selectedLmp != null
-                ? 'LMP: ${_selectedLmp!.day}/${_selectedLmp!.month}/${_selectedLmp!.year}'
-                : 'Select Last Menstrual Period (LMP)'),
+            label: Text(
+              _selectedLmp != null
+                  ? 'LMP: ${_selectedLmp!.day}/${_selectedLmp!.month}/${_selectedLmp!.year}'
+                  : 'Select Last Menstrual Period (LMP)',
+            ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1B5E20),
+              backgroundColor: AshaColors.primary,
               foregroundColor: Colors.white,
               minimumSize: const Size.fromHeight(48),
             ),
@@ -148,20 +158,35 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
                 child: Column(
                   children: [
                     ListTile(
-                      leading: const Icon(Icons.event_available, color: Color(0xFF1B5E20), size: 36),
+                      leading: const Icon(
+                        Icons.event_available,
+                        color: AshaColors.primary,
+                        size: 36,
+                      ),
                       title: const Text('Expected Date of Delivery (EDD)'),
                       subtitle: Text(
                         '${_calculatedEdd!.day}/${_calculatedEdd!.month}/${_calculatedEdd!.year}',
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20)),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AshaColors.primary,
+                        ),
                       ),
                     ),
                     const Divider(),
                     ListTile(
-                      leading: const Icon(Icons.timelapse, color: Colors.blue, size: 36),
+                      leading: const Icon(
+                        Icons.timelapse,
+                        color: Colors.blue,
+                        size: 36,
+                      ),
                       title: const Text('Current Gestational Age'),
                       subtitle: Text(
                         '${_gestationalAge!['weeks']} weeks and ${_gestationalAge!['days']} days (${_gestationalAge!['total_days']} days total)',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -181,18 +206,28 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('ASHA-Scope Drug Dosing Calculator',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text(
+            'ASHA-Scope Drug Dosing Calculator',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
-          const Text('Guidance for Oral Rehydration Salts (ORS), Zinc, Paracetamol, and IFA tablets.'),
+          const Text(
+            'Guidance for Oral Rehydration Salts (ORS), Zinc, Paracetamol, and IFA tablets.',
+          ),
           const SizedBox(height: 20),
 
           DropdownButtonFormField<String>(
             value: _selectedDrug,
-            decoration: const InputDecoration(labelText: 'Select Medication', border: OutlineInputBorder()),
-            items: ['Paracetamol', 'Zinc Supplement', 'ORS Solution', 'IFA Tablets']
-                .map((d) => DropdownMenuItem(value: d, child: Text(d)))
-                .toList(),
+            decoration: const InputDecoration(
+              labelText: 'Select Medication',
+              border: OutlineInputBorder(),
+            ),
+            items: [
+              'Paracetamol',
+              'Zinc Supplement',
+              'ORS Solution',
+              'IFA Tablets',
+            ].map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
             onChanged: (val) {
               if (val != null) setState(() => _selectedDrug = val);
             },
@@ -206,13 +241,15 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
               min: 3.0,
               max: 30.0,
               divisions: 54,
-              activeColor: const Color(0xFF1B5E20),
+              activeColor: AshaColors.primary,
               onChanged: (val) => setState(() => _childWeightKg = val),
             ),
             const SizedBox(height: 12),
             _buildDoseCard(
               title: 'Pediatric Paracetamol Syrup (120 mg / 5 mL)',
-              details: ClinicalCalculators.calculateParacetamolDose(weightKg: _childWeightKg),
+              details: ClinicalCalculators.calculateParacetamolDose(
+                weightKg: _childWeightKg,
+              ),
             ),
           ] else if (_selectedDrug == 'Zinc Supplement') ...[
             Text('Child Age: $_childAgeMonths months'),
@@ -221,11 +258,13 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
               min: 1.0,
               max: 59.0,
               divisions: 58,
-              activeColor: const Color(0xFF1B5E20),
+              activeColor: AshaColors.primary,
               onChanged: (val) => setState(() => _childAgeMonths = val.round()),
             ),
             const SizedBox(height: 12),
-            _buildZincDoseCard(ClinicalCalculators.calculateZincDose(_childAgeMonths)),
+            _buildZincDoseCard(
+              ClinicalCalculators.calculateZincDose(_childAgeMonths),
+            ),
           ] else if (_selectedDrug == 'ORS Solution') ...[
             Text('Child Weight: ${_childWeightKg.toStringAsFixed(1)} kg'),
             Slider(
@@ -233,14 +272,16 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
               min: 3.0,
               max: 20.0,
               divisions: 34,
-              activeColor: const Color(0xFF1B5E20),
+              activeColor: AshaColors.primary,
               onChanged: (val) => setState(() => _childWeightKg = val),
             ),
             const SizedBox(height: 12),
-            _buildOrsDoseCard(ClinicalCalculators.calculateOrsDosage(
-              weightKg: _childWeightKg,
-              hasSomeDehydration: true,
-            )),
+            _buildOrsDoseCard(
+              ClinicalCalculators.calculateOrsDosage(
+                weightKg: _childWeightKg,
+                hasSomeDehydration: true,
+              ),
+            ),
           ] else if (_selectedDrug == 'IFA Tablets') ...[
             _buildIfaCard(),
           ],
@@ -258,10 +299,14 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('MUAC Tape Colour-Coded Reference Guide',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text(
+            'MUAC Tape Colour-Coded Reference Guide',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
-          const Text('WHO/UNICEF Standard Mid-Upper Arm Circumference tape for children 6–59 months.'),
+          const Text(
+            'WHO/UNICEF Standard Mid-Upper Arm Circumference tape for children 6–59 months.',
+          ),
           const SizedBox(height: 24),
 
           // Interactive Visual MUAC Tape Ruler
@@ -278,10 +323,19 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
                   child: Container(
                     decoration: const BoxDecoration(
                       color: Color(0xFFD32F2F),
-                      borderRadius: BorderRadius.horizontal(left: Radius.circular(7)),
+                      borderRadius: BorderRadius.horizontal(
+                        left: Radius.circular(7),
+                      ),
                     ),
                     alignment: Alignment.center,
-                    child: const Text('RED (<11.5)', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      'RED (<11.5)',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
                 Expanded(
@@ -289,7 +343,14 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
                   child: Container(
                     color: const Color(0xFFFBC02D),
                     alignment: Alignment.center,
-                    child: const Text('YEL', style: TextStyle(color: Colors.black87, fontSize: 10, fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      'YEL',
+                      style: TextStyle(
+                        color: Colors.black87,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
                 Expanded(
@@ -297,10 +358,19 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
                   child: Container(
                     decoration: const BoxDecoration(
                       color: Color(0xFF388E3C),
-                      borderRadius: BorderRadius.horizontal(right: Radius.circular(7)),
+                      borderRadius: BorderRadius.horizontal(
+                        right: Radius.circular(7),
+                      ),
                     ),
                     alignment: Alignment.center,
-                    child: const Text('GREEN (>12.5 cm)', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      'GREEN (>12.5 cm)',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -308,8 +378,10 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
           ),
           const SizedBox(height: 24),
 
-          Text('Measured Reading: ${_muacSliderValue.toStringAsFixed(1)} cm',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(
+            'Measured Reading: ${_muacSliderValue.toStringAsFixed(1)} cm',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           Slider(
             value: _muacSliderValue,
             min: 8.0,
@@ -349,8 +421,8 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
                           category == MuacCategory.redSam
                               ? 'RED ALERT: Immediate referral to Nutrition Rehabilitation Centre (NRC).'
                               : (category == MuacCategory.yellowMam
-                                  ? 'YELLOW ALERT: Enroll in supplementary nutrition; intensive counseling.'
-                                  : 'Adequate nutritional status. Continue routine feeding and growth monitoring.'),
+                                    ? 'YELLOW ALERT: Enroll in supplementary nutrition; intensive counseling.'
+                                    : 'Adequate nutritional status. Continue routine feeding and growth monitoring.'),
                           style: const TextStyle(fontSize: 13),
                         ),
                       ],
@@ -372,10 +444,14 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Adult BMI & Nutritional Status Calculator',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text(
+            'Adult BMI & Nutritional Status Calculator',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
-          const Text('WHO Asian-Indian population risk cutoffs (Normal: 18.5 – 22.9 kg/m²).'),
+          const Text(
+            'WHO Asian-Indian population risk cutoffs (Normal: 18.5 – 22.9 kg/m²).',
+          ),
           const SizedBox(height: 20),
 
           Text('Weight: ${_bmiWeightKg.toStringAsFixed(1)} kg'),
@@ -384,7 +460,7 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
             min: 30.0,
             max: 140.0,
             divisions: 110,
-            activeColor: const Color(0xFF1B5E20),
+            activeColor: AshaColors.primary,
             onChanged: (val) {
               _bmiWeightKg = val;
               _calculateBmi();
@@ -398,7 +474,7 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
             min: 120.0,
             max: 200.0,
             divisions: 80,
-            activeColor: const Color(0xFF1B5E20),
+            activeColor: AshaColors.primary,
             onChanged: (val) {
               _bmiHeightCm = val;
               _calculateBmi();
@@ -408,20 +484,29 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
 
           if (_bmiResult != null) ...[
             Card(
-              color: Color(_bmiResult!['color_value'] as int).withValues(alpha: 0.1),
+              color: Color(_bmiResult!['color_value'] as int)
+                  .withValues(alpha: 0.1),
               child: ListTile(
                 leading: CircleAvatar(
                   backgroundColor: Color(_bmiResult!['color_value'] as int),
                   child: Text(
                     '${(_bmiResult!['bmi'] as double).round()}',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 title: Text(
                   'BMI: ${_bmiResult!['bmi']} kg/m²',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
-                subtitle: Text('Classification: ${_bmiResult!['classification']}'),
+                subtitle: Text(
+                  'Classification: ${_bmiResult!['classification']}',
+                ),
               ),
             ),
           ],
@@ -488,9 +573,18 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
               border: OutlineInputBorder(),
             ),
             items: const [
-              DropdownMenuItem(value: ClinicalTriageTier.red, child: Text('RED Alert (Emergency)')),
-              DropdownMenuItem(value: ClinicalTriageTier.yellow, child: Text('YELLOW Alert (Routine Priority)')),
-              DropdownMenuItem(value: ClinicalTriageTier.green, child: Text('GREEN (Normal)')),
+              DropdownMenuItem(
+                value: ClinicalTriageTier.red,
+                child: Text('RED Alert (Emergency)'),
+              ),
+              DropdownMenuItem(
+                value: ClinicalTriageTier.yellow,
+                child: Text('YELLOW Alert (Routine Priority)'),
+              ),
+              DropdownMenuItem(
+                value: ClinicalTriageTier.green,
+                child: Text('GREEN (Normal)'),
+              ),
             ],
             onChanged: (val) {
               if (val != null) setState(() => _clinicalProtocolTier = val);
@@ -505,9 +599,18 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
               border: OutlineInputBorder(),
             ),
             items: const [
-              DropdownMenuItem(value: ClinicalTriageTier.red, child: Text('Camera AI: RED')),
-              DropdownMenuItem(value: ClinicalTriageTier.yellow, child: Text('Camera AI: YELLOW')),
-              DropdownMenuItem(value: ClinicalTriageTier.green, child: Text('Camera AI: GREEN')),
+              DropdownMenuItem(
+                value: ClinicalTriageTier.red,
+                child: Text('Camera AI: RED'),
+              ),
+              DropdownMenuItem(
+                value: ClinicalTriageTier.yellow,
+                child: Text('Camera AI: YELLOW'),
+              ),
+              DropdownMenuItem(
+                value: ClinicalTriageTier.green,
+                child: Text('Camera AI: GREEN'),
+              ),
             ],
             onChanged: (val) {
               if (val != null) setState(() => _cameraEstimatedTier = val);
@@ -518,13 +621,18 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
           Card(
             color: reconciledTier == ClinicalTriageTier.red
                 ? Colors.red.shade50
-                : (reconciledTier == ClinicalTriageTier.yellow ? Colors.amber.shade50 : Colors.green.shade50),
+                : (reconciledTier == ClinicalTriageTier.yellow
+                      ? Colors.amber.shade50
+                      : Colors.green.shade50),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Final Reconciled Triage Tier:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Final Reconciled Triage Tier:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     reconciledTier.name.toUpperCase(),
@@ -533,15 +641,22 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
                       fontWeight: FontWeight.bold,
                       color: reconciledTier == ClinicalTriageTier.red
                           ? Colors.red
-                          : (reconciledTier == ClinicalTriageTier.yellow ? Colors.orange.shade800 : Colors.green),
+                          : (reconciledTier == ClinicalTriageTier.yellow
+                                ? Colors.orange.shade800
+                                : Colors.green),
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    reconciledTier == _clinicalProtocolTier && _cameraEstimatedTier == ClinicalTriageTier.green && _clinicalProtocolTier != ClinicalTriageTier.green
+                    reconciledTier == _clinicalProtocolTier &&
+                            _cameraEstimatedTier == ClinicalTriageTier.green &&
+                            _clinicalProtocolTier != ClinicalTriageTier.green
                         ? 'Safety Guard Active: Experimental GREEN AI output was rejected from downgrading clinical ${_clinicalProtocolTier.name.toUpperCase()}.'
                         : 'Protocol compliant result.',
-                    style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                 ],
               ),
@@ -552,7 +667,10 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
     );
   }
 
-  Widget _buildDoseCard({required String title, required Map<String, dynamic> details}) {
+  Widget _buildDoseCard({
+    required String title,
+    required Map<String, dynamic> details,
+  }) {
     return Card(
       elevation: 2,
       child: Padding(
@@ -560,14 +678,28 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
             const Divider(),
-            Text('Single Dose: ${details['target_dose_mg']} mg (${details['syrup_volume_ml']} mL)',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
+            Text(
+              'Single Dose: ${details['target_dose_mg']} mg (${details['syrup_volume_ml']} mL)',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AshaColors.primary,
+              ),
+            ),
             const SizedBox(height: 6),
-            Text('Allowable Range: ${details['min_dose_mg']} – ${details['max_dose_mg']} mg'),
+            Text(
+              'Allowable Range: ${details['min_dose_mg']} – ${details['max_dose_mg']} mg',
+            ),
             const SizedBox(height: 6),
-            Text('Frequency: ${details['frequency']}', style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
+            Text(
+              'Frequency: ${details['frequency']}',
+              style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+            ),
           ],
         ),
       ),
@@ -582,13 +714,26 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Pediatric Zinc Sulfate Diarrhea Regimen', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const Text(
+              'Pediatric Zinc Sulfate Diarrhea Regimen',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
             const Divider(),
-            Text('Daily Dose: ${details['dose_mg']} mg', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
+            Text(
+              'Daily Dose: ${details['dose_mg']} mg',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AshaColors.primary,
+              ),
+            ),
             const SizedBox(height: 6),
             Text('Form: ${details['form']}'),
             const SizedBox(height: 6),
-            Text('Duration: ${details['duration_days']} Days (${details['instructions']})', style: const TextStyle(fontSize: 13)),
+            Text(
+              'Duration: ${details['duration_days']} Days (${details['instructions']})',
+              style: const TextStyle(fontSize: 13),
+            ),
           ],
         ),
       ),
@@ -603,12 +748,24 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(details['regimen'] as String, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(
+              details['regimen'] as String,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
             const Divider(),
-            Text('Volume to Prepare: ${details['volume_ml']} mL over ${details['duration_hours']} hours',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
+            Text(
+              'Volume to Prepare: ${details['volume_ml']} mL over ${details['duration_hours']} hours',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AshaColors.primary,
+              ),
+            ),
             const SizedBox(height: 6),
-            Text(details['instructions'] as String, style: const TextStyle(fontSize: 13)),
+            Text(
+              details['instructions'] as String,
+              style: const TextStyle(fontSize: 13),
+            ),
           ],
         ),
       ),
@@ -623,17 +780,30 @@ class _ClinicalCalculatorsScreenState extends State<ClinicalCalculatorsScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Anemia Mukt Bharat IFA Protocols', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(
+              'Anemia Mukt Bharat IFA Protocols',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
             Divider(),
-            Text('• Pregnant Women: 1 Red Tablet daily (60mg iron + 500mcg FA) for 180 days after 1st trimester.'),
+            Text(
+              '• Pregnant Women: 1 Red Tablet daily (60mg iron + 500mcg FA) for 180 days after 1st trimester.',
+            ),
             SizedBox(height: 6),
-            Text('• Lactating Mothers: 1 Red Tablet daily for 180 days postpartum.'),
+            Text(
+              '• Lactating Mothers: 1 Red Tablet daily for 180 days postpartum.',
+            ),
             SizedBox(height: 6),
-            Text('• Children 6–59 months: 1 mL IFA Syrup bi-weekly (20mg iron + 100mcg FA).'),
+            Text(
+              '• Children 6–59 months: 1 mL IFA Syrup bi-weekly (20mg iron + 100mcg FA).',
+            ),
             SizedBox(height: 6),
-            Text('• Children 5–9 years: 1 Pink Tablet weekly (45mg iron + 400mcg FA).'),
+            Text(
+              '• Children 5–9 years: 1 Pink Tablet weekly (45mg iron + 400mcg FA).',
+            ),
             SizedBox(height: 6),
-            Text('• Adolescents 10–19 years: 1 Blue Tablet weekly (60mg iron + 500mcg FA).'),
+            Text(
+              '• Adolescents 10–19 years: 1 Blue Tablet weekly (60mg iron + 500mcg FA).',
+            ),
           ],
         ),
       ),

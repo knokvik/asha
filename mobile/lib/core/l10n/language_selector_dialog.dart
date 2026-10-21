@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'app_localizations.dart';
 import 'language_provider.dart';
 
 /// Modal dialog for selecting one of the 12 supported Indian regional languages.
@@ -15,15 +16,16 @@ class LanguageSelectorDialog extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentLocale = ref.watch(languageProvider);
+    final strings = AppLocalizations.of(context);
 
     return AlertDialog(
-      title: const Row(
+      title: Row(
         children: [
-          Icon(Icons.language, color: Colors.green),
-          SizedBox(width: 10),
+          const Icon(Icons.language, color: Colors.green),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Select Language / भाषा चुनें',
+              strings?.selectLanguage ?? 'Select Language / भाषा चुनें',
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -70,7 +72,7 @@ class LanguageSelectorDialog extends ConsumerWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
+          child: Text(strings?.cancel ?? 'Close'),
         ),
       ],
     );

@@ -1,46 +1,66 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../core/l10n/language_provider.dart';
+import '../../../shared/shell/shell_copy.dart';
 import '../../../shared/widgets/asha_bottom_nav.dart';
 
-class ToolsScreen extends StatelessWidget {
+class ToolsScreen extends ConsumerWidget {
   const ToolsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    const tools = <_Tool>[
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lang = ref.watch(languageProvider).languageCode;
+
+    final tools = <_Tool>[
       _Tool(
         Icons.medical_services_outlined,
-        'Clinical triage',
-        'Start with name, age and location',
+        shellText(lang, 'clinicalTriageTool'),
+        shellText(lang, 'clinicalTriageSub'),
         '/triage',
       ),
       _Tool(
         Icons.translate,
-        'Interpreter',
-        'They speak / I ask',
+        shellText(lang, 'interpreterTool'),
+        shellText(lang, 'interpreterToolSub'),
         '/triage/language',
       ),
-      _Tool(Icons.checklist_rtl, 'Due list', 'Visits due today', '/due-list'),
-      _Tool(Icons.calendar_month, 'Calendar', 'Visits by day', '/calendar'),
+      _Tool(
+        Icons.checklist_rtl,
+        shellText(lang, 'dueListTool'),
+        shellText(lang, 'dueListToolSub'),
+        '/due-list',
+      ),
+      _Tool(
+        Icons.calendar_month,
+        shellText(lang, 'calendarTool'),
+        shellText(lang, 'calendarToolSub'),
+        '/calendar',
+      ),
       _Tool(
         Icons.pie_chart_outline,
-        'Coverage',
-        'Programme reach',
+        shellText(lang, 'coverageTool'),
+        shellText(lang, 'coverageToolSub'),
         '/coverage',
       ),
-      _Tool(Icons.people_alt_outlined, 'Households', 'Registry', '/households'),
+      _Tool(
+        Icons.people_alt_outlined,
+        shellText(lang, 'householdsTool'),
+        shellText(lang, 'householdsToolSub'),
+        '/households',
+      ),
       _Tool(
         Icons.medical_information_outlined,
-        'Clinical programs',
-        'ANC, immunisation, NCD, TB',
+        shellText(lang, 'clinicalProgramsTool'),
+        shellText(lang, 'clinicalProgramsToolSub'),
         '/programs',
       ),
       _Tool(
         Icons.calculate_outlined,
-        'Calculators',
-        'EDD, BMI, breath count',
+        shellText(lang, 'calculatorsTool'),
+        shellText(lang, 'calculatorsToolSub'),
         '/calculators',
       ),
     ];
@@ -50,7 +70,7 @@ class ToolsScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AshaColors.cardSurface,
         foregroundColor: AshaColors.textPrimary,
-        title: const Text('Tools'),
+        title: Text(shellText(lang, 'toolsTitle')),
       ),
       bottomNavigationBar: const AshaBottomNav(index: 2),
       body: GridView.count(

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../core/l10n/language_provider.dart';
+import '../../../shared/shell/shell_copy.dart';
 import '../../household/data/member_search_repository.dart';
 import '../data/clinical_dictionary.dart';
 import '../data/offline_search_index.dart';
@@ -36,6 +38,25 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
     ('person', 'People', Icons.people_alt_outlined),
   ];
 
+  String _getCategoryLabel(String? key, String fallback, String lang) {
+    switch (key) {
+      case null:
+        return shellText(lang, 'categoryAll');
+      case 'disease':
+        return shellText(lang, 'categoryDiseases');
+      case 'medicine':
+        return shellText(lang, 'categoryMedicines');
+      case 'guide':
+        return shellText(lang, 'categoryGuides');
+      case 'danger_sign':
+        return shellText(lang, 'categoryDangerSigns');
+      case 'person':
+        return shellText(lang, 'categoryPeople');
+      default:
+        return fallback;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -51,6 +72,7 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = ref.watch(languageProvider).languageCode;
     final indexAsync = ref.watch(offlineSearchIndexProvider);
     final peopleAsync = _category == 'person'
         ? ref.watch(beneficiarySearchResultsProvider(_query))
@@ -65,19 +87,19 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
         bottom: false,
         child: Column(
           children: [
-            _topHeader(),
-            _categoryBar(),
+            _topHeader(lang),
+            _categoryBar(lang),
             Expanded(
               child: _query.isEmpty
-                  ? _emptyDictionaryHome()
+                  ? _emptyDictionaryHome(lang)
                   : indexAsync.when(
                       loading: () =>
                           const Center(child: CircularProgressIndicator()),
                       error: (error, _) => _errorState(error),
-                      data: (index) => _buildSearchResults(index, peopleAsync),
+                      data: (index) => _buildSearchResults(index, peopleAsync, lang),
                     ),
             ),
-            _bottomSearchBar(context),
+            _bottomSearchBar(context, lang),
           ],
         ),
       ),
@@ -85,7 +107,7 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
   }
 
   /// Top title strip with offline status badge
-  Widget _topHeader() {
+  Widget _topHeader(String lang) {
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 6),
       color: Colors.white,
@@ -112,9 +134,9 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
               children: [
                 Row(
                   children: [
-                    const Text(
-                      'ASHA Knowledge & Dictionary',
-                      style: TextStyle(
+                    Text(
+                      shellText(lang, 'searchKnowledgeTitle'),
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: AshaColors.textPrimary,
@@ -131,9 +153,9 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
                         color: const Color(0xFFDEF7EC),
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: const Text(
-                        'Offline',
-                        style: TextStyle(
+                      child: Text(
+                        shellText(lang, 'offline'),
+                        style: const TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF03543F),
@@ -142,9 +164,9 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
                     ),
                   ],
                 ),
-                const Text(
-                  'Clinical dictionary, medicines, protocols & danger signs',
-                  style: TextStyle(
+                Text(
+                  shellText(lang, 'searchKnowledgeSub'),
+                  style: const TextStyle(
                     fontSize: 11,
                     color: AshaColors.textSecondary,
                   ),
@@ -158,7 +180,7 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
   }
 
   /// Filter category chips
-  Widget _categoryBar() {
+  Widget _categoryBar(String lang) {
     return Container(
       color: Colors.white,
       height: 52,
@@ -170,11 +192,12 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
         itemBuilder: (context, index) {
           final category = _categories[index];
           final selected = _category == category.$1;
+          final label = _getCategoryLabel(category.$1, category.$2, lang);
           return FilterChip(
             key: Key('search_category_${category.$2.toLowerCase()}'),
             selected: selected,
             avatar: Icon(category.$3, size: 16),
-            label: Text(category.$2),
+            label: Text(label),
             labelStyle: TextStyle(
               fontSize: 12,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
@@ -195,6 +218,7 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
   Widget _buildSearchResults(
     OfflineSearchIndex index,
     AsyncValue<List<BeneficiarySearchResult>> peopleAsync,
+    String lang,
   ) {
     final sections = index.searchSections(_query);
     final people =
@@ -232,26 +256,30 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
       children: [
         const _SafetyBanner(),
         if (_selectedQuickDisease != null) ...[
-          _diseaseTaskBar(),
+          _diseaseTaskBar(lang),
           const SizedBox(height: 8),
         ],
 
         // 1. SECTION 1: Diseases & Clinical Conditions (Clinical Dictionary)
         if (showDiseases) ...[
           _sectionHeader(
-            '1. Clinical Conditions & Diseases',
+            lang == 'en'
+                ? '1. Clinical Conditions & Diseases'
+                : '1. ${shellText(lang, 'categoryDiseases')}',
             '${sections.diseases.length} matching conditions',
             Icons.health_and_safety_outlined,
             const Color(0xFF047857),
           ),
-          for (final disease in sections.diseases) _diseaseCard(disease),
+          for (final disease in sections.diseases) _diseaseCard(disease, lang),
           const SizedBox(height: 8),
         ],
 
         // 2. SECTION 2: Recommended Medicines & Dosages
         if (showMedicines) ...[
           _sectionHeader(
-            '2. Medicines & Dosing Protocols',
+            lang == 'en'
+                ? '2. Medicines & Dosing Protocols'
+                : '2. ${shellText(lang, 'categoryMedicines')}',
             '${sections.medicines.length} verified pharmaceuticals',
             Icons.medication_outlined,
             const Color(0xFF1D4ED8),
@@ -263,7 +291,9 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
         // 3. SECTION 3: Field Action Guides & Protocols
         if (showGuides) ...[
           _sectionHeader(
-            '3. Field Guides & Action Protocols',
+            lang == 'en'
+                ? '3. Field Guides & Action Protocols'
+                : '3. ${shellText(lang, 'categoryGuides')}',
             '${sections.guides.length} SOPs and measurement standards',
             Icons.menu_book_outlined,
             const Color(0xFF7C3AED),
@@ -275,7 +305,9 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
         // 4. SECTION 4: Danger Signs & Emergency Warnings
         if (showDangerSigns) ...[
           _sectionHeader(
-            '4. Danger Signs & Red Flag Warnings',
+            lang == 'en'
+                ? '4. Danger Signs & Red Flag Warnings'
+                : '4. ${shellText(lang, 'categoryDangerSigns')}',
             '${sections.dangerSigns.length} critical emergency signs',
             Icons.warning_amber_rounded,
             const Color(0xFFDC2626),
@@ -287,7 +319,9 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
         // Optional 5th Section: Beneficiaries in Household Registry
         if (hasPeople || isLoadingPeople) ...[
           _sectionHeader(
-            'Beneficiaries in Catchment',
+            lang == 'en'
+                ? 'Beneficiaries in Catchment'
+                : shellText(lang, 'categoryPeople'),
             'Local registered individuals',
             Icons.people_alt_outlined,
             const Color(0xFF475569),
@@ -355,7 +389,7 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
   }
 
   /// Disease / Clinical Condition Card (Tapping opens the full Clinical Dictionary)
-  Widget _diseaseCard(ClinicalDisease disease) {
+  Widget _diseaseCard(ClinicalDisease disease, String lang) {
     return Card(
       key: Key('disease_card_${disease.id}'),
       margin: const EdgeInsets.only(bottom: 10),
@@ -367,7 +401,7 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: () => _showClinicalDictionarySheet(disease),
+        onTap: () => _showClinicalDictionarySheet(disease, lang),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
@@ -640,20 +674,20 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
   }
 
   /// Empty state showing clinical dictionary shelf and quick search tags
-  Widget _emptyDictionaryHome() {
+  Widget _emptyDictionaryHome(String lang) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
-        _quickLookupPanel(),
+        _quickLookupPanel(lang),
         const SizedBox(height: 20),
 
         // Clinical Disease Dictionary Header
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Clinical Condition Dictionary (12 Protocols)',
-              style: TextStyle(
+            Text(
+              shellText(lang, 'searchKnowledgeTitle'),
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
                 color: AshaColors.textPrimary,
@@ -680,7 +714,7 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
 
         // List of all 12 diseases in the dictionary
         for (final disease in ClinicalDictionary.allDiseases)
-          _diseaseCard(disease),
+          _diseaseCard(disease, lang),
       ],
     );
   }
@@ -708,7 +742,7 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
     );
   }
 
-  Widget _quickLookupPanel() {
+  Widget _quickLookupPanel(String lang) {
     return Card(
       key: const Key('quick_disease_lookup_panel'),
       margin: EdgeInsets.zero,
@@ -727,11 +761,11 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
           Icons.health_and_safety_outlined,
           color: AshaColors.primary,
         ),
-        title: const Text(
-          'Quick Disease & Symptom Lookups',
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+        title: Text(
+          shellText(lang, 'quickDiseaseGuide'),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
         ),
-        subtitle: const Text('Tap to choose a disease and see its tasks'),
+        subtitle: Text(shellText(lang, 'quickDiseaseSub')),
         children: [
           Wrap(
             spacing: 8,
@@ -796,7 +830,7 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
     );
   }
 
-  Widget _diseaseTaskBar() {
+  Widget _diseaseTaskBar(String lang) {
     final label = _selectedQuickDiseaseLabel ?? _selectedQuickDisease!;
     return Container(
       key: const Key('quick_disease_task_bar'),
@@ -824,17 +858,17 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
               TextButton.icon(
                 onPressed: () => context.push('/triage'),
                 icon: const Icon(Icons.fact_check_outlined, size: 17),
-                label: const Text('Start triage'),
+                label: Text(shellText(lang, 'clinicalTriageTool')),
               ),
               TextButton.icon(
                 onPressed: () => setState(() => _category = 'medicine'),
                 icon: const Icon(Icons.medication_outlined, size: 17),
-                label: const Text('Medicines'),
+                label: Text(shellText(lang, 'categoryMedicines')),
               ),
               TextButton.icon(
                 onPressed: () => setState(() => _category = 'danger_sign'),
                 icon: const Icon(Icons.warning_amber_rounded, size: 17),
-                label: const Text('Danger signs'),
+                label: Text(shellText(lang, 'categoryDangerSigns')),
               ),
             ],
           ),
@@ -844,7 +878,7 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
   }
 
   /// BOTTOM SEARCH BAR with integrated back button
-  Widget _bottomSearchBar(BuildContext context) {
+  Widget _bottomSearchBar(BuildContext context, String lang) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
@@ -914,9 +948,11 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
                   fontWeight: FontWeight.w600,
                   color: AshaColors.textPrimary,
                 ),
-                decoration: const InputDecoration(
-                  hintText: 'Search fever, medicines, guides, signs...',
-                  hintStyle: TextStyle(
+                decoration: InputDecoration(
+                  hintText: lang == 'en'
+                      ? 'Search fever, medicines, guides, signs...'
+                      : '${shellText(lang, 'categoryDiseases')}, ${shellText(lang, 'categoryMedicines')}, ${shellText(lang, 'categoryGuides')}...',
+                  hintStyle: const TextStyle(
                     fontSize: 13.5,
                     color: AshaColors.textMuted,
                     fontWeight: FontWeight.w400,
@@ -966,7 +1002,7 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
   }
 
   /// FULL CLINICAL DICTIONARY MODAL SHEET FOR A SPECIFIC DISEASE
-  void _showClinicalDictionarySheet(ClinicalDisease disease) {
+  void _showClinicalDictionarySheet(ClinicalDisease disease, String lang) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -1096,7 +1132,9 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
 
               // 1. INTRODUCTION & CLINICAL DEFINITION
               _dictionaryCard(
-                title: '1. Introduction & Clinical Definition',
+                title: lang == 'en'
+                    ? '1. Introduction & Clinical Definition'
+                    : shellText(lang, 'dictOverview'),
                 icon: Icons.menu_book_rounded,
                 iconColor: const Color(0xFF0D9488),
                 content: Text(
@@ -1111,7 +1149,9 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
 
               // 2. COUNTER MEASURES & FIRST AID STEPS
               _dictionaryCard(
-                title: '2. Counter Measures & Action Steps',
+                title: lang == 'en'
+                    ? '2. Counter Measures & Action Steps'
+                    : shellText(lang, 'dictCountermeasures'),
                 icon: Icons.shield_rounded,
                 iconColor: const Color(0xFF2563EB),
                 content: Column(
@@ -1162,7 +1202,9 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
 
               // 3. MEDICINES & PRECISE DOSAGES
               _dictionaryCard(
-                title: '3. Recommended Medicines & Dosing Schedule',
+                title: lang == 'en'
+                    ? '3. Recommended Medicines & Dosing Schedule'
+                    : shellText(lang, 'dictMedicines'),
                 icon: Icons.medication_rounded,
                 iconColor: const Color(0xFF059669),
                 content: Column(
@@ -1271,7 +1313,9 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
 
               // 4. DANGER SIGNS & RED FLAGS
               _dictionaryCard(
-                title: '4. Danger Signs & Red Flags (Immediate Referral)',
+                title: lang == 'en'
+                    ? '4. Danger Signs & Red Flags (Immediate Referral)'
+                    : shellText(lang, 'dictDangerSigns'),
                 icon: Icons.emergency_rounded,
                 iconColor: const Color(0xFFDC2626),
                 isAlert: true,
@@ -1305,7 +1349,9 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
 
               // 5. REFERRAL PROTOCOL
               _dictionaryCard(
-                title: '5. Facility Referral & Ambulance Protocol',
+                title: lang == 'en'
+                    ? '5. Facility Referral & Ambulance Protocol'
+                    : shellText(lang, 'dictReferral'),
                 icon: Icons.local_hospital_rounded,
                 iconColor: const Color(0xFF2563EB),
                 content: Column(

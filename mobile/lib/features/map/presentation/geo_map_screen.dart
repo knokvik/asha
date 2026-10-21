@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
@@ -25,6 +26,22 @@ class MapStateShape {
 
   final String name;
   final List<LatLng> points;
+}
+
+class SharedHotspot {
+  const SharedHotspot({
+    required this.condition,
+    required this.cases,
+    required this.workerCount,
+    required this.latitude,
+    required this.longitude,
+  });
+
+  final String condition;
+  final int cases;
+  final int workerCount;
+  final double latitude;
+  final double longitude;
 }
 
 /// Opens the phone dialer. Map drawing never leaves the app.
@@ -59,6 +76,7 @@ class _GeoMapPageState extends State<GeoMapPage> {
   RoadGraph? _roads;
   List<MapLabel> _labels = const [];
   List<MapStateShape> _states = const [];
+  List<SharedHotspot> _sharedHotspots = const [];
   Object? _error;
 
   @override
@@ -110,6 +128,8 @@ class _GeoMapPageState extends State<GeoMapPage> {
         tiles = MbTilesTileProvider(database);
       }
       if (!mounted) return;
+      final sharedHotspots = await _readSharedHotspots();
+      if (!mounted) return;
       setState(() {
         _pack = GeoPack.parse(
           wardsGeoJson: wards,
@@ -125,6 +145,7 @@ class _GeoMapPageState extends State<GeoMapPage> {
         _roads = RoadGraph.parse(roads);
         _labels = MapLabel.parse(labelsRaw);
         _states = _parseStateShapes(states);
+        _sharedHotspots = sharedHotspots;
       });
     } catch (error) {
       if (!mounted) return;
@@ -156,10 +177,37 @@ class _GeoMapPageState extends State<GeoMapPage> {
       roads: _roads,
       labels: _labels,
       stateOutlines: _states,
+      sharedHotspots: _sharedHotspots,
       useOsmBasemap: widget.useOsmBasemap,
       embedded: widget.embedded,
       openUri: widget.openUri,
     );
+  }
+
+  Future<List<SharedHotspot>> _readSharedHotspots() async {
+    try {
+      const storage = FlutterSecureStorage();
+      final raw = await storage.read(key: 'triage_hotspot_context_json');
+      final decoded = raw == null ? null : jsonDecode(raw);
+      final hotspots = decoded is Map ? decoded['hotspots'] : null;
+      if (hotspots is! List) return const [];
+      return [
+        for (final item in hotspots)
+          if (item is Map &&
+              item['active'] == true &&
+              item['latitude'] is num &&
+              item['longitude'] is num)
+            SharedHotspot(
+              condition: '${item['condition'] ?? 'Area signal'}',
+              cases: (item['cases'] as num?)?.toInt() ?? 0,
+              workerCount: (item['worker_count'] as num?)?.toInt() ?? 0,
+              latitude: (item['latitude'] as num).toDouble(),
+              longitude: (item['longitude'] as num).toDouble(),
+            ),
+      ];
+    } catch (_) {
+      return const [];
+    }
   }
 
   List<MapStateShape> _parseStateShapes(String raw) {
@@ -228,6 +276,7 @@ class GeoMapScreen extends StatefulWidget {
     this.useOsmBasemap = false,
     this.embedded = false,
     this.openUri = openExternalUri,
+    this.sharedHotspots = const [],
   });
 
   final GeoPack pack;
@@ -238,6 +287,7 @@ class GeoMapScreen extends StatefulWidget {
   final bool useOsmBasemap;
   final bool embedded;
   final UriOpener openUri;
+  final List<SharedHotspot> sharedHotspots;
 
   @override
   State<GeoMapScreen> createState() => _GeoMapScreenState();
@@ -270,6 +320,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   LatLng? _liveLocation;
   double _liveAccuracy = 10.0;
   String _liveProvider = 'gps';
+  Timer? _liveLocationTimer;
   List<LatLng> _dayRoute = const [];
   static const _secureStorage = FlutterSecureStorage();
   static const _locationChannel = MethodChannel('asha_platform/location');
@@ -372,6 +423,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
         _isLocating = false;
         _rebuildDayRoute();
       });
+      _startLiveLocationTracking();
       _mapController.move(location, math.max(_mapController.camera.zoom, 17.0));
     } on PlatformException catch (error) {
       _locationUnavailable(
@@ -390,6 +442,36 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
     }
   }
 
+  void _startLiveLocationTracking() {
+    _liveLocationTimer?.cancel();
+    _liveLocationTimer = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => _refreshLiveLocation(),
+    );
+  }
+
+  Future<void> _refreshLiveLocation() async {
+    if (!mounted || _liveLocation == null) return;
+    try {
+      final raw = await _locationChannel.invokeMethod<Map<dynamic, dynamic>>(
+        'getCurrentLocation',
+      );
+      final latitude = (raw?['latitude'] as num?)?.toDouble();
+      final longitude = (raw?['longitude'] as num?)?.toDouble();
+      if (latitude == null || longitude == null) return;
+      final next = LatLng(latitude, longitude);
+      if (!mounted) return;
+      setState(() {
+        _liveLocation = next;
+        _liveAccuracy = (raw?['accuracy'] as num?)?.toDouble() ?? _liveAccuracy;
+        _liveProvider = (raw?['provider'] as String?) ?? _liveProvider;
+        _rebuildDayRoute();
+      });
+    } catch (_) {
+      // Keep the last trusted fix visible when a subsequent GPS read fails.
+    }
+  }
+
   void _locationUnavailable(String message) {
     if (!mounted) return;
     setState(() {
@@ -397,12 +479,14 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
       _showLiveLocation = false;
       _liveLocation = null;
     });
+    _liveLocationTimer?.cancel();
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   void dispose() {
+    _liveLocationTimer?.cancel();
     _mapController.dispose();
     super.dispose();
   }
@@ -519,8 +603,6 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                       ),
                     ],
                   ),
-                if (_layer == _MapLayer.radar)
-                  PolygonLayer(polygons: _radarPolygons()),
                 if (_layer == _MapLayer.radar)
                   CircleLayer(circles: _radarCircles()),
                 if (_showLiveLocation)
@@ -939,11 +1021,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                 children: [
                   if (_routeMode && routeIndex >= 0)
                     _NameChip('${routeIndex + 1}. ${household.name}'),
-                  Icon(
-                    Icons.home_rounded,
-                    color: _householdColor(household),
-                    size: 28,
-                  ),
+                  _HouseholdMarker(color: _householdColor(household)),
                 ],
               ),
             ),
@@ -960,12 +1038,13 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
           ward.wardId,
           _condition,
         );
+        if (!active) continue;
         markers.add(
           Marker(
             key: Key('ward-${ward.wardId}'),
             point: LatLng(center.latitude, center.longitude),
-            width: 116,
-            height: 46,
+            width: 44,
+            height: 44,
             child: GestureDetector(
               onTap: () => setState(() {
                 _selected = null;
@@ -975,13 +1054,29 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _NameChip(
-                    '${ward.wardId} · ${widget.pack.counts.cases(_week, ward.wardId, _condition)}',
-                  ),
-                  if (active)
-                    _OutbreakMarker(color: _radarColor(RadarLevel.outbreak)),
+                  _OutbreakMarker(color: _radarColor(RadarLevel.outbreak)),
                 ],
               ),
+            ),
+          ),
+        );
+      }
+      for (final hotspot in widget.sharedHotspots) {
+        markers.add(
+          Marker(
+            key: Key('shared-hotspot-${hotspot.latitude}-${hotspot.longitude}'),
+            point: LatLng(hotspot.latitude, hotspot.longitude),
+            width: 46,
+            height: 46,
+            child: GestureDetector(
+              onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    '${hotspot.condition}: ${hotspot.cases} reports from ${hotspot.workerCount} ASHA workers',
+                  ),
+                ),
+              ),
+              child: const _SharedHotspotMarker(),
             ),
           ),
         );
@@ -1157,39 +1252,20 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
         );
       }
     }
-    return circles;
-  }
-
-  List<Polygon<WardPolygon>> _radarPolygons() {
-    return [
-      for (final ward in widget.pack.wards)
-        Polygon<WardPolygon>(
-          points: [
-            for (final point in ward.ring)
-              LatLng(point.latitude, point.longitude),
-          ],
-          color: _radarColor(
-            radarLevel(
-              widget.pack.counts.cases(_week, ward.wardId, _condition),
-              _condition,
-            ),
-          ).withValues(alpha: 0.28),
-          borderColor: _radarColor(
-            radarLevel(
-              widget.pack.counts.cases(_week, ward.wardId, _condition),
-              _condition,
-            ),
-          ),
+    for (final hotspot in widget.sharedHotspots) {
+      final point = LatLng(hotspot.latitude, hotspot.longitude);
+      circles.add(
+        CircleMarker(
+          point: point,
+          radius: math.min(2400, 700 + hotspot.cases * 120).toDouble(),
+          useRadiusInMeter: true,
+          color: const Color(0x267C3AED),
+          borderColor: const Color(0xAA7C3AED),
           borderStrokeWidth: 2,
-          label: ward.wardId,
-          labelStyle: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF111827),
-          ),
-          hitValue: ward,
         ),
-    ];
+      );
+    }
+    return circles;
   }
 
   List<Polygon> _statePolygons() {
@@ -1892,6 +1968,76 @@ class _OutbreakMarker extends StatelessWidget {
   }
 }
 
+class _SharedHotspotMarker extends StatelessWidget {
+  const _SharedHotspotMarker();
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: const Color(0xFF7C3AED),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2),
+            boxShadow: const [
+              BoxShadow(color: Color(0x557C3AED), blurRadius: 8),
+            ],
+          ),
+          child: const Icon(
+            Icons.groups_2_rounded,
+            color: Colors.white,
+            size: 17,
+          ),
+        ),
+        Positioned(
+          right: -5,
+          top: -5,
+          child: Container(
+            width: 13,
+            height: 13,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFF7C3AED)),
+            ),
+            child: const Icon(
+              Icons.sync_rounded,
+              color: Color(0xFF7C3AED),
+              size: 9,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HouseholdMarker extends StatelessWidget {
+  const _HouseholdMarker({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 30,
+      height: 30,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+        boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 5)],
+      ),
+      child: const Icon(Icons.home_work_rounded, color: Colors.white, size: 16),
+    );
+  }
+}
+
 class _LiveLocationMarker extends StatelessWidget {
   const _LiveLocationMarker({this.accuracy});
 
@@ -1909,10 +2055,7 @@ class _LiveLocationMarker extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           // Name chip floating directly above the centered pin
-          Positioned(
-            bottom: 30,
-            child: const _NameChip('You · live'),
-          ),
+          Positioned(bottom: 30, child: const _NameChip('You · live')),
           // Pulsing halo
           Transform.scale(
             scale: scale,

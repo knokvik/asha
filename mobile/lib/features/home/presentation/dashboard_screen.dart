@@ -8,12 +8,14 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/l10n/language_provider.dart';
+import '../../../core/sync/sync_coordinator.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/user_profile_provider.dart';
 import '../../../shared/shell/shell_copy.dart';
 import '../../../shared/shell/shell_tab.dart';
 import '../../../shared/widgets/asha_bottom_nav.dart';
 import '../../../shared/widgets/asha_search_bar.dart';
+import '../../../shared/widgets/asha_svg_illustrations.dart';
 
 /// Screen 1 & Screen 2: Master Home Dashboard & Navigation Drawer
 /// Exact replica of Screen 1 and Screen 2 from reference design.
@@ -29,9 +31,20 @@ class DashboardScreen extends ConsumerStatefulWidget {
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   final _searchController = TextEditingController();
   int _sharedSignalCount = 0;
-  String _sharedSignalSource = 'No shared area signals yet';
+  String? _sharedSignalPeerWorker;
+  bool _hasServerContext = false;
 
   String get _lang => ref.watch(languageProvider).languageCode;
+
+  String _getSharedSignalSubtitle(String lang) {
+    if (_sharedSignalPeerWorker != null) {
+      return '${shellText(lang, 'peerSignalFrom')} $_sharedSignalPeerWorker';
+    }
+    if (_hasServerContext) {
+      return shellText(lang, 'serverSyncedContext');
+    }
+    return shellText(lang, 'noSharedSignals');
+  }
 
   @override
   void dispose() {
@@ -61,13 +74,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ? const <dynamic>[]
           : jsonDecode(history);
       final latestSource = historyItems is List && historyItems.isNotEmpty
-          ? 'Peer signal from ${historyItems.first['source_worker_id'] ?? 'nearby ASHA'}'
-          : hotspots > 0
-          ? 'Latest server-synced area context'
-          : 'No shared area signals yet';
+          ? (historyItems.first['source_worker_id'] ?? 'nearby ASHA').toString()
+          : null;
       setState(() {
         _sharedSignalCount = hotspots;
-        _sharedSignalSource = latestSource;
+        _sharedSignalPeerWorker = latestSource;
+        _hasServerContext = hotspots > 0;
       });
     } catch (_) {
       // The dashboard remains usable if secure storage has no context yet.
@@ -120,7 +132,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               AshaSearchBar(
                 key: const Key('home_search_bar'),
                 controller: _searchController,
-                hintText: 'Search people, medicines, guides...',
+                hintText: shellText(_lang, 'searchHint'),
                 onTap: () => context.push('/search'),
                 onChanged: (_) => setState(() {}),
                 onSubmitted: (query) {
@@ -177,12 +189,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
         title: Text(
           _sharedSignalCount == 0
-              ? 'Shared area signals'
-              : '$_sharedSignalCount active area signal${_sharedSignalCount == 1 ? '' : 's'}',
+              ? shellText(_lang, 'sharedAreaSignals')
+              : '$_sharedSignalCount ${_sharedSignalCount == 1 ? shellText(_lang, 'activeAreaSignalSingular') : shellText(_lang, 'activeAreaSignals')}',
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         subtitle: Text(
-          '$_sharedSignalSource. Questions and disease radar update offline.',
+          '${_getSharedSignalSubtitle(_lang)}. ${shellText(_lang, 'sharedSignalsSub')}',
         ),
         trailing: const Icon(Icons.chevron_right_rounded),
         onTap: () async {
@@ -196,6 +208,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   /// Top App Bar matching Screen 1:
   /// Far-left hamburger menu ☰, centered 'asha' wordmark, notification bell 🔔 with unread badge.
   Widget _buildTopBar(BuildContext context) {
+    final syncCoordinator = ref.watch(syncCoordinatorProvider);
+    final isReceiving =
+        syncCoordinator?.snapshot.state == SyncConnectionState.syncing;
     return Container(
       color: Colors.transparent,
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -219,15 +234,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           const SizedBox(width: 10),
 
           // Keep the title bar focused on the ASHA wordmark.
-          const Text(
-            'asha',
-            style: TextStyle(
-              fontFamily: 'SF Pro Display',
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-              color: Color(0xFF1E4231),
-              letterSpacing: -1.0,
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const AshaLogo(height: 24),
+              if (isReceiving) ...[
+                const SizedBox(width: 7),
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ],
+            ],
           ),
 
           const Spacer(),
@@ -348,18 +367,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       color: Colors.white.withValues(alpha: 0.94),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.map_outlined,
                           size: 16,
                           color: Color(0xFF166534),
                         ),
-                        SizedBox(width: 6),
+                        const SizedBox(width: 6),
                         Text(
-                          'My area',
-                          style: TextStyle(
+                          shellText(_lang, 'myArea'),
+                          style: const TextStyle(
                             color: Color(0xFF166534),
                             fontWeight: FontWeight.w800,
                           ),
@@ -389,7 +408,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               final p = ref.watch(userProfileProvider).value;
                               final pending = p?.pendingVisits ?? 0;
                               final overdue = p?.overdueVisits ?? 0;
-                              return '$pending visits pending · $overdue overdue';
+                              return '$pending ${shellText(_lang, 'pendingVisitsPending')} · $overdue ${shellText(_lang, 'overdueVisits')}';
                             }(),
                             style: const TextStyle(
                               color: Color(0xFF111827),
@@ -519,7 +538,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         Expanded(
           child: _buildQuickActionCard(
             key: const Key('home_revenue_button'),
-            title: 'Revenue',
+            title: shellText(_lang, 'revenue'),
             iconWidget: _quickActionIcon(
               Icons.payments_outlined,
               const Color(0xFF15803D),
@@ -531,7 +550,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         Expanded(
           child: _buildQuickActionCard(
             key: const Key('home_reports_button'),
-            title: 'Reports',
+            title: shellText(_lang, 'reports'),
             iconWidget: _quickActionIcon(
               Icons.assessment_outlined,
               const Color(0xFF2563EB),
@@ -713,9 +732,16 @@ class AshaNavigationDrawer extends ConsumerWidget {
     final syncCoordinator = ref.watch(syncCoordinatorProvider);
     final isConnected = syncCoordinator?.snapshot.isConnectedToServer ?? false;
 
-    final initials = profile?.initials ?? 'AS';
-    final name = profile?.name ?? 'ASHA Worker';
-    final facility = profile?.facilityDisplay ?? 'ASHA Worker • Health Centre';
+    final rawName = profile?.name ?? '';
+    final isDefaultName = rawName.isEmpty ||
+        rawName == 'Sunita Devi' ||
+        rawName == 'Sunita Sharma' ||
+        rawName == 'ASHA Worker';
+    final name = isDefaultName ? shellText(lang, 'workerName') : rawName;
+    final facility = shellText(lang, 'worker');
+    final initials = isDefaultName
+        ? (lang == 'en' ? 'SS' : name.characters.take(2).toString())
+        : (profile?.initials ?? 'AS');
     final pendingCount = profile?.pendingVisits ?? 0;
 
     return Drawer(
@@ -823,7 +849,7 @@ class AshaNavigationDrawer extends ConsumerWidget {
                         const SizedBox(width: 6),
                         Text(
                           isConnected
-                              ? 'Server Online • Sync Active'
+                              ? shellText(lang, 'serverOnline')
                               : shellText(lang, 'encrypted'),
                           style: const TextStyle(
                             color: Colors.white,
@@ -962,25 +988,25 @@ class AshaNavigationDrawer extends ConsumerWidget {
                     _buildDrawerItem(
                       context: context,
                       icon: Icons.logout_rounded,
-                      title: 'Sign Out / Switch ASHA',
-                      subtitle: 'Change worker or clear PIN',
+                      title: shellText(lang, 'signOut'),
+                      subtitle: shellText(lang, 'signOutSub'),
                       iconColor: const Color(0xFFEF4444),
                       onTap: () {
                         Navigator.pop(context);
                         showDialog<void>(
                           context: context,
                           builder: (dialogCtx) => AlertDialog(
-                            title: const Text(
-                              'Sign Out?',
-                              style: TextStyle(fontWeight: FontWeight.w800),
+                            title: Text(
+                              shellText(lang, 'signOutConfirm'),
+                              style: const TextStyle(fontWeight: FontWeight.w800),
                             ),
-                            content: const Text(
-                              'Are you sure you want to sign out and switch accounts?',
+                            content: Text(
+                              shellText(lang, 'signOutConfirmDesc'),
                             ),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(dialogCtx),
-                                child: const Text('Cancel'),
+                                child: Text(shellText(lang, 'cancel')),
                               ),
                               ElevatedButton(
                                 style: ElevatedButton.styleFrom(
@@ -993,7 +1019,7 @@ class AshaNavigationDrawer extends ConsumerWidget {
                                       .read(userProfileProvider.notifier)
                                       .logout(context);
                                 },
-                                child: const Text('Sign Out'),
+                                child: Text(shellText(lang, 'signOut')),
                               ),
                             ],
                           ),

@@ -7,7 +7,9 @@ import 'package:drift/drift.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../core/l10n/language_provider.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/shell/shell_copy.dart';
 
 /// Local history of triage packets and PHC follow-up instructions received by
 /// the normal sync pull. No demo notification text is used here.
@@ -81,6 +83,7 @@ class _TriageHistoryScreenState extends ConsumerState<TriageHistoryScreen> {
   }
 
   void _showVisitMessage(dynamic visit) {
+    final lang = ref.read(languageProvider).languageCode;
     final days = DateTime.fromMillisecondsSinceEpoch(visit.dueDate)
         .difference(DateTime.now())
         .inDays;
@@ -88,7 +91,7 @@ class _TriageHistoryScreenState extends ConsumerState<TriageHistoryScreen> {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('New PHC follow-up'),
+        title: Text(shellText(lang, 'newPhcFollowup')),
         content: Text(
           '${visit.visitType} is recommended $timing.\n\n'
           'Program: ${visit.programCode}\n'
@@ -98,14 +101,14 @@ class _TriageHistoryScreenState extends ConsumerState<TriageHistoryScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+            child: Text(shellText(lang, 'close')),
           ),
           FilledButton(
             onPressed: () {
               Navigator.pop(context);
               context.push('/due-list');
             },
-            child: const Text('Open Due List'),
+            child: Text(shellText(lang, 'openDueList')),
           ),
         ],
       ),
@@ -114,9 +117,10 @@ class _TriageHistoryScreenState extends ConsumerState<TriageHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = ref.watch(languageProvider).languageCode;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Updates & triage history'),
+        title: Text(shellText(lang, 'updatesTriageHistory')),
         actions: [
           IconButton(onPressed: _load, icon: const Icon(Icons.refresh)),
         ],
@@ -131,18 +135,18 @@ class _TriageHistoryScreenState extends ConsumerState<TriageHistoryScreen> {
                 color: Colors.red.shade50,
                 child: Padding(
                   padding: const EdgeInsets.all(12),
-                  child: Text('Could not load local updates: $_error'),
+                  child: Text('${shellText(lang, 'couldNotLoadUpdates')}: $_error'),
                 ),
               ),
-            Text('PHC recommendations', style: AshaTypography.sectionTitle),
+            Text(shellText(lang, 'phcRecommendations'), style: AshaTypography.sectionTitle),
             const SizedBox(height: 8),
             if (_visits.isEmpty)
-              const Card(
+              Card(
                 child: ListTile(
-                  leading: Icon(Icons.inbox_outlined),
-                  title: Text('No new PHC follow-ups'),
+                  leading: const Icon(Icons.inbox_outlined),
+                  title: Text(shellText(lang, 'noNewPhcFollowups')),
                   subtitle: Text(
-                    'Server recommendations will appear after sync.',
+                    shellText(lang, 'serverRecommendationsSync'),
                   ),
                 ),
               )
@@ -163,7 +167,7 @@ class _TriageHistoryScreenState extends ConsumerState<TriageHistoryScreen> {
                 ),
             if (_areaNotifications.isNotEmpty) ...[
               const SizedBox(height: 20),
-              Text('Shared area alerts', style: AshaTypography.sectionTitle),
+              Text(shellText(lang, 'sharedAreaAlerts'), style: AshaTypography.sectionTitle),
               const SizedBox(height: 8),
               for (final notification in _areaNotifications)
                 Card(
@@ -178,13 +182,13 @@ class _TriageHistoryScreenState extends ConsumerState<TriageHistoryScreen> {
                 ),
             ],
             const SizedBox(height: 20),
-            Text('Triage history', style: AshaTypography.sectionTitle),
+            Text(shellText(lang, 'triageHistory'), style: AshaTypography.sectionTitle),
             const SizedBox(height: 8),
             if (_results.isEmpty)
-              const Card(
+              Card(
                 child: ListTile(
-                  leading: Icon(Icons.history),
-                  title: Text('No triage assessments yet'),
+                  leading: const Icon(Icons.history),
+                  title: Text(shellText(lang, 'noTriageYet')),
                 ),
               )
             else
@@ -217,7 +221,7 @@ class _TriageHistoryScreenState extends ConsumerState<TriageHistoryScreen> {
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(context),
-                            child: const Text('Close'),
+                            child: Text(shellText(lang, 'close')),
                           ),
                         ],
                       ),

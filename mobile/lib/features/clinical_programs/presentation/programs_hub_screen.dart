@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../core/l10n/language_provider.dart';
+import '../../../shared/shell/shell_copy.dart';
 import '../../../shared/widgets/asha_bottom_nav.dart';
 import '../../../shared/widgets/asha_svg_illustrations.dart';
 
 /// Screen 7: Clinical Programs matching the exact Asha Platform mobile design.
-class ProgramsHubScreen extends StatelessWidget {
+class ProgramsHubScreen extends ConsumerWidget {
   const ProgramsHubScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lang = ref.watch(languageProvider).languageCode;
     return Scaffold(
       backgroundColor: AshaColors.screenBg,
       bottomNavigationBar: const AshaBottomNav(index: 2),
@@ -32,9 +36,9 @@ class ProgramsHubScreen extends StatelessWidget {
             }
           },
         ),
-        title: const Text(
-          'Clinical Programs',
-          style: TextStyle(
+        title: Text(
+          shellText(lang, 'clinicalPrograms'),
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w800,
             color: AshaColors.textPrimary,
@@ -51,42 +55,42 @@ class ProgramsHubScreen extends StatelessWidget {
           children: [
             _ClinicalCard(
               title: 'ANC',
-              subtitle: 'Antenatal Care',
+              subtitle: shellText(lang, 'ancSubtitle'),
               type: ClinicalProgramType.anc,
               bgColor: const Color(0xFFF0FDF4),
               onTap: () => context.push('/programs/anc-register'),
             ),
             _ClinicalCard(
               title: 'PNC',
-              subtitle: 'Postnatal Care',
+              subtitle: shellText(lang, 'pncSubtitle'),
               type: ClinicalProgramType.pnc,
               bgColor: const Color(0xFFEFF6FF),
               onTap: () => context.push('/programs/pnc-visit'),
             ),
             _ClinicalCard(
               title: 'Immunization',
-              subtitle: 'Child vaccination',
+              subtitle: shellText(lang, 'immunizationSubtitle'),
               type: ClinicalProgramType.immunization,
               bgColor: const Color(0xFFFEF3C7),
               onTap: () => context.push('/programs/immunization'),
             ),
             _ClinicalCard(
               title: 'NCD',
-              subtitle: 'BP, Sugar Screening',
+              subtitle: shellText(lang, 'ncdSubtitle'),
               type: ClinicalProgramType.ncd,
               bgColor: const Color(0xFFFEE2E2),
               onTap: () => context.push('/programs/cbac'),
             ),
             _ClinicalCard(
               title: 'HBNC',
-              subtitle: 'Home Based Care',
+              subtitle: shellText(lang, 'hbncSubtitle'),
               type: ClinicalProgramType.hbnc,
               bgColor: const Color(0xFFECFDF5),
               onTap: () => context.push('/programs/hbnc-visit'),
             ),
             _ClinicalCard(
               title: 'TB',
-              subtitle: 'Screening & Support',
+              subtitle: shellText(lang, 'tbSubtitle'),
               type: ClinicalProgramType.tb,
               bgColor: const Color(0xFFFFF1F2),
               onTap: () => context.push('/programs/tb-presumptive'),

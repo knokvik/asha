@@ -13,7 +13,8 @@ void main() {
         child: MaterialApp(theme: AppTheme.light, home: DashboardScreen()),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.byKey(const Key('dashboard_screen')), findsOneWidget);
     expect(find.byKey(const Key('home_map_preview')), findsOneWidget);

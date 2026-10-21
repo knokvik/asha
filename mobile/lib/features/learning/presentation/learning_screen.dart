@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../core/database/app_database.dart';
+import '../../../core/l10n/language_provider.dart';
+import '../../../shared/shell/shell_copy.dart';
 import '../data/learning_content_repository.dart';
 import '../domain/learning_service.dart';
 import '../domain/models/learning_models.dart';
-import '../../../core/database/app_database.dart';
 
-class LearningScreen extends StatefulWidget {
+class LearningScreen extends ConsumerStatefulWidget {
   final AppDatabase database;
   final String workerId;
 
@@ -17,10 +20,10 @@ class LearningScreen extends StatefulWidget {
   });
 
   @override
-  State<LearningScreen> createState() => _LearningScreenState();
+  ConsumerState<LearningScreen> createState() => _LearningScreenState();
 }
 
-class _LearningScreenState extends State<LearningScreen>
+class _LearningScreenState extends ConsumerState<LearningScreen>
     with SingleTickerProviderStateMixin {
   late final LearningService _learningService;
   late final TabController _tabController;
@@ -48,19 +51,20 @@ class _LearningScreenState extends State<LearningScreen>
 
   @override
   Widget build(BuildContext context) {
+    final lang = ref.watch(languageProvider).languageCode;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ASHA Micro-Learning & Job Aids'),
+        title: Text(shellText(lang, 'microLearningTitle')),
         backgroundColor: AshaColors.cardSurface,
         foregroundColor: AshaColors.textPrimary,
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
-          tabs: const [
-            Tab(icon: Icon(Icons.school), text: 'Lessons & Quiz'),
-            Tab(icon: Icon(Icons.science), text: 'Simulated Practice'),
-            Tab(icon: Icon(Icons.library_books), text: 'Job Aids Library'),
-            Tab(icon: Icon(Icons.verified), text: 'Certificate'),
+          tabs: [
+            Tab(icon: const Icon(Icons.school), text: shellText(lang, 'lessonsQuiz')),
+            Tab(icon: const Icon(Icons.science), text: shellText(lang, 'simulatedPractice')),
+            Tab(icon: const Icon(Icons.library_books), text: shellText(lang, 'jobAidsLibrary')),
+            Tab(icon: const Icon(Icons.verified), text: shellText(lang, 'certificate')),
           ],
         ),
       ),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/l10n/language_provider.dart';
 import '../../../../core/triage/models/models.dart';
+import '../../../../shared/shell/shell_copy.dart';
 import '../data/tb_repository.dart';
 import '../domain/tb_models.dart';
 
@@ -54,6 +56,7 @@ class _PresumptiveTbScreenState extends ConsumerState<PresumptiveTbScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = ref.watch(languageProvider).languageCode;
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -61,7 +64,14 @@ class _PresumptiveTbScreenState extends ConsumerState<PresumptiveTbScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_t('Presumptive TB Screening'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Text(
+              _privacyMode == TbPrivacyMode.sharedSupervisorView
+                  ? _t('Presumptive TB Screening')
+                  : (lang == 'en'
+                      ? 'Presumptive TB Screening'
+                      : shellText(lang, 'presumptiveTbTitle')),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
             Text(widget.beneficiaryName, style: const TextStyle(fontSize: 12, color: Colors.white70)),
           ],
         ),

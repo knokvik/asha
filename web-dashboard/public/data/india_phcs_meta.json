@@ -1,9 +1,10 @@
 {
-  "total": 35868,
+  "total": 35907,
   "types": {
-    "CHC": 5371,
-    "DH": 933,
-    "PHC": 29564
+    "CHC": 5374,
+    "DH": 936,
+    "PHC": 29568,
+    "BLOOD_BANK": 29
   },
   "states": [
     {
@@ -24,19 +25,19 @@
     },
     {
       "name": "Assam",
-      "count": 881
+      "count": 882
     },
     {
       "name": "Bihar",
-      "count": 1900
+      "count": 1901
     },
     {
       "name": "Chandigarh",
-      "count": 45
+      "count": 46
     },
     {
       "name": "Chhattisgarh",
-      "count": 982
+      "count": 983
     },
     {
       "name": "Dadra & Nagar Haveli",
@@ -48,15 +49,15 @@
     },
     {
       "name": "Delhi",
-      "count": 593
+      "count": 594
     },
     {
       "name": "Goa",
-      "count": 37
+      "count": 38
     },
     {
       "name": "Gujarat",
-      "count": 1938
+      "count": 1939
     },
     {
       "name": "Haryana",
@@ -64,23 +65,23 @@
     },
     {
       "name": "Himachal Pradesh",
-      "count": 571
+      "count": 572
     },
     {
       "name": "Jammu & Kashmir",
-      "count": 804
+      "count": 805
     },
     {
       "name": "Jharkhand",
-      "count": 557
+      "count": 558
     },
     {
       "name": "Karnataka",
-      "count": 2713
+      "count": 2714
     },
     {
       "name": "Kerala",
-      "count": 1198
+      "count": 1199
     },
     {
       "name": "Lakshadweep",
@@ -88,11 +89,11 @@
     },
     {
       "name": "Madhya Pradesh",
-      "count": 1657
+      "count": 1659
     },
     {
       "name": "Maharashtra",
-      "count": 3074
+      "count": 3091
     },
     {
       "name": "Manipur",
@@ -112,7 +113,7 @@
     },
     {
       "name": "Odisha",
-      "count": 1717
+      "count": 1718
     },
     {
       "name": "Puducherry",
@@ -124,7 +125,7 @@
     },
     {
       "name": "Rajasthan",
-      "count": 3012
+      "count": 3013
     },
     {
       "name": "Sikkim",
@@ -132,11 +133,11 @@
     },
     {
       "name": "Tamil Nadu",
-      "count": 2269
+      "count": 2270
     },
     {
       "name": "Telangana",
-      "count": 918
+      "count": 919
     },
     {
       "name": "Tripura",
@@ -144,15 +145,15 @@
     },
     {
       "name": "Uttar Pradesh",
-      "count": 3866
+      "count": 3868
     },
     {
       "name": "Uttarakhand",
-      "count": 307
+      "count": 308
     },
     {
       "name": "West Bengal",
-      "count": 1267
+      "count": 1268
     }
   ],
   "districtsByState": {
@@ -458,6 +459,10 @@
         "count": 35
       },
       {
+        "name": "Kamrup",
+        "count": 1
+      },
+      {
         "name": "Kamrup M",
         "count": 28
       },
@@ -613,7 +618,7 @@
       },
       {
         "name": "Patna",
-        "count": 80
+        "count": 81
       },
       {
         "name": "Purnia",
@@ -667,7 +672,7 @@
     "Chandigarh": [
       {
         "name": "Chandigarh",
-        "count": 45
+        "count": 46
       }
     ],
     "Chhattisgarh": [
@@ -761,7 +766,7 @@
       },
       {
         "name": "Raipur",
-        "count": 45
+        "count": 46
       },
       {
         "name": "Rajnandgaon",
@@ -830,6 +835,10 @@
         "count": 38
       },
       {
+        "name": "South Delhi",
+        "count": 1
+      },
+      {
         "name": "South East",
         "count": 49
       },
@@ -845,7 +854,7 @@
     "Goa": [
       {
         "name": "North Goa",
-        "count": 19
+        "count": 20
       },
       {
         "name": "South Goa",
@@ -855,7 +864,7 @@
     "Gujarat": [
       {
         "name": "Ahmedabad",
-        "count": 110
+        "count": 111
       },
       {
         "name": "Amreli",
@@ -1107,7 +1116,7 @@
       },
       {
         "name": "Shimla",
-        "count": 106
+        "count": 107
       },
       {
         "name": "Sirmaur",
@@ -1205,7 +1214,7 @@
       },
       {
         "name": "Srinagar",
-        "count": 42
+        "count": 43
       },
       {
         "name": "Udhampur",
@@ -1295,7 +1304,7 @@
       },
       {
         "name": "Ranchi",
-        "count": 49
+        "count": 50
       },
       {
         "name": "Sahibganj",
@@ -1330,6 +1339,10 @@
       {
         "name": "Bellary",
         "count": 83
+      },
+      {
+        "name": "Bengaluru",
+        "count": 1
       },
       {
         "name": "Bidar",
@@ -1479,7 +1492,7 @@
       },
       {
         "name": "Thiruvananthapuram",
-        "count": 115
+        "count": 116
       },
       {
         "name": "Thrissur",
@@ -1531,7 +1544,7 @@
       },
       {
         "name": "Bhopal",
-        "count": 21
+        "count": 22
       },
       {
         "name": "Burhanpur",
@@ -1583,7 +1596,7 @@
       },
       {
         "name": "Indore",
-        "count": 51
+        "count": 52
       },
       {
         "name": "Jabalpur",
@@ -1772,8 +1785,12 @@
         "count": 66
       },
       {
+        "name": "Mumbai",
+        "count": 1
+      },
+      {
         "name": "Nagpur",
-        "count": 116
+        "count": 117
       },
       {
         "name": "Nanded",
@@ -1801,7 +1818,7 @@
       },
       {
         "name": "Pune",
-        "count": 221
+        "count": 236
       },
       {
         "name": "Raigarh",
@@ -2087,7 +2104,7 @@
       },
       {
         "name": "Khordha",
-        "count": 80
+        "count": 81
       },
       {
         "name": "Koraput",
@@ -2309,7 +2326,7 @@
       },
       {
         "name": "Jaipur",
-        "count": 205
+        "count": 206
       },
       {
         "name": "Jaisalmer",
@@ -2401,7 +2418,7 @@
       },
       {
         "name": "Chennai",
-        "count": 137
+        "count": 138
       },
       {
         "name": "Coimbatore",
@@ -2531,7 +2548,7 @@
       },
       {
         "name": "Hyderabad",
-        "count": 105
+        "count": 106
       },
       {
         "name": "Karim Nagar",
@@ -2795,7 +2812,7 @@
       },
       {
         "name": "Lucknow",
-        "count": 100
+        "count": 101
       },
       {
         "name": "Maharajganj",
@@ -2899,7 +2916,7 @@
       },
       {
         "name": "Varanasi",
-        "count": 60
+        "count": 61
       }
     ],
     "Uttarakhand": [
@@ -2921,7 +2938,7 @@
       },
       {
         "name": "Dehradun",
-        "count": 42
+        "count": 43
       },
       {
         "name": "Garhwal",
@@ -2996,6 +3013,10 @@
       {
         "name": "Koch Bihar",
         "count": 43
+      },
+      {
+        "name": "Kolkata",
+        "count": 1
       },
       {
         "name": "Maldah",

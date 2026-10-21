@@ -145,13 +145,14 @@ Language choices from the design document:
 - [x] 3. Checkpoint — verify Tasks 1 and 2 integrate correctly
   - Ensure all unit and integration tests pass. Launch the Flutter app: it should present a PIN setup screen, create an encrypted SQLite DB, and reach the placeholder home screen. Ensure all tests pass, ask the user if questions arise.
 
-- [x] 4. Multilingual UI framework and voice input
+- [-] 4. Multilingual UI framework and voice input
   - [x] 4.1 Set up flutter_localizations and ARB files for 12 languages
     - Add `flutter_localizations`, `intl` to `pubspec.yaml`; configure `supportedLocales` in `MaterialApp`
     - Create `lib/core/l10n/arb/` with base `app_en.arb` and stubs for hi, mr, bn, te, ml, ta, kn, or, gu, pa, as
     - Populate ARB files with keys for all screen labels, audio prompt strings, clinical terms, and triage result messages
     - Implement runtime language switching via a `languageProvider` (Riverpod) that updates `MaterialApp.locale` and persists selection to settings — no data loss on switch
     - _Requirements: 3.1, 3.6_
+    - Progress: Runtime switching and 12 locale catalogs implemented across core screens, navigation, drawer, settings, shared area alerts, peer sync, triage history, clinical programs hub, learning tabs, and earnings dashboard. All string catalogs verified with unit tests.
 
   - [x] 4.2 Integrate Vosk ASR for on-device speech recognition
     - Add `vosk_flutter` to `pubspec.yaml`; create `lib/core/voice/vosk_service.dart`

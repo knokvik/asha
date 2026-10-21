@@ -4,6 +4,7 @@ import 'package:printing/printing.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/pdf/pdf_generator.dart';
 import '../../../core/voice/tts_service.dart';
+import '../../../shared/shell/shell_copy.dart';
 import '../data/earnings_repository.dart';
 import '../domain/earnings_models.dart';
 
@@ -160,7 +161,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Earnings & Incentives'),
+        title: Text(shellText(_selectedLanguage, 'earningsTitle')),
         backgroundColor: AshaColors.cardSurface,
         actions: [
           // Privacy Shield Toggle (Req 55.6)

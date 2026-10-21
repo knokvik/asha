@@ -11,6 +11,8 @@ import '../../features/home/presentation/profile_screen.dart';
 import '../../features/map/presentation/field_map_screen.dart';
 import '../widgets/asha_bottom_nav.dart';
 import '../widgets/asha_search_bar.dart';
+import '../widgets/asha_svg_illustrations.dart';
+import 'shell_copy.dart';
 import 'shell_tab.dart';
 
 /// One scaffold for Home, Map, Tasks, and Profile.
@@ -148,18 +150,7 @@ class _ShellHeader extends StatelessWidget {
                 ),
               ),
             ),
-            const Center(
-              child: Text(
-                'asha',
-                style: TextStyle(
-                  fontFamily: 'SF Pro Display',
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF1E4231),
-                  letterSpacing: -1.0,
-                ),
-              ),
-            ),
+            const Center(child: AshaLogo(height: 27)),
             Align(
               alignment: Alignment.centerRight,
               child: Row(
@@ -360,14 +351,14 @@ class _ShellPageViewState extends State<_ShellPageView>
   }
 }
 
-class _ShellSearchBar extends StatefulWidget {
+class _ShellSearchBar extends ConsumerStatefulWidget {
   const _ShellSearchBar();
 
   @override
-  State<_ShellSearchBar> createState() => _ShellSearchBarState();
+  ConsumerState<_ShellSearchBar> createState() => _ShellSearchBarState();
 }
 
-class _ShellSearchBarState extends State<_ShellSearchBar> {
+class _ShellSearchBarState extends ConsumerState<_ShellSearchBar> {
   final _controller = TextEditingController();
 
   @override
@@ -378,10 +369,11 @@ class _ShellSearchBarState extends State<_ShellSearchBar> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = ref.watch(languageProvider).languageCode;
     return AshaSearchBar(
       key: const Key('home_search_bar'),
       controller: _controller,
-      hintText: 'Search people, medicines, guides...',
+      hintText: shellText(lang, 'searchHint'),
       onTap: () => context.push('/search'),
       onChanged: (_) => setState(() {}),
       onSubmitted: (query) {

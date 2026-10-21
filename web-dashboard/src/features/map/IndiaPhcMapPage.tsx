@@ -21,6 +21,8 @@ import {
   RefreshCw,
   SlidersHorizontal,
   ChevronRight,
+  Droplet,
+  Phone,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -33,10 +35,11 @@ export interface PhcRecord {
   s: string; // State
   d: string; // District
   sd: string; // Subdistrict
-  t: 'PHC' | 'CHC' | 'DH'; // Type
+  t: 'PHC' | 'CHC' | 'DH' | 'BLOOD_BANK'; // Type
   lat: number;
   lng: number;
   loc: string; // Rural / Urban
+  phone?: string;
 }
 
 interface StateMeta {
@@ -120,11 +123,26 @@ function getTileLayer(style: TileStyle): L.TileLayer {
 /**
  * Modern SVG Pin Pointer for detailed local view (Zoom >= 10)
  */
-function createModernPinIcon(type: 'PHC' | 'CHC' | 'DH', isSelected = false) {
-  const color = type === 'PHC' ? '#10B981' : type === 'CHC' ? '#2563EB' : '#F59E0B';
-  const strokeColor = type === 'PHC' ? '#064E3B' : type === 'CHC' ? '#1E3A8A' : '#92400E';
-  const label = type === 'PHC' ? 'P' : type === 'CHC' ? 'C' : 'H';
-  const size = isSelected ? 34 : 26;
+function createModernPinIcon(type: 'PHC' | 'CHC' | 'DH' | 'BLOOD_BANK', isSelected = false) {
+  const color =
+    type === 'BLOOD_BANK'
+      ? '#DC2626'
+      : type === 'DH'
+      ? '#F59E0B'
+      : type === 'CHC'
+      ? '#2563EB'
+      : '#10B981';
+  const strokeColor =
+    type === 'BLOOD_BANK'
+      ? '#7F1D1D'
+      : type === 'DH'
+      ? '#92400E'
+      : type === 'CHC'
+      ? '#1E3A8A'
+      : '#064E3B';
+  const label =
+    type === 'BLOOD_BANK' ? 'B' : type === 'DH' ? 'H' : type === 'CHC' ? 'C' : 'P';
+  const size = isSelected ? 36 : 26;
   const height = Math.round(size * 1.25);
 
   return L.divIcon({
@@ -182,10 +200,10 @@ export function IndiaPhcMapPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Filters — default to 'ALL' so yellow (DH) and blue (CHC) are visible immediately!
+  // Filters — default to 'ALL' so blood banks, yellow (DH) and blue (CHC) are visible immediately!
   const [selectedState, setSelectedState] = useState<string>('ALL');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('ALL');
-  const [facilityType, setFacilityType] = useState<'ALL' | 'PHC' | 'CHC' | 'DH'>('ALL');
+  const [facilityType, setFacilityType] = useState<'ALL' | 'PHC' | 'CHC' | 'DH' | 'BLOOD_BANK'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [mapStyle, setMapStyle] = useState<TileStyle>('osm_standard');
   const [currentZoom, setCurrentZoom] = useState<number>(INDIA_DEFAULT_ZOOM);
@@ -312,10 +330,10 @@ export function IndiaPhcMapPage() {
     });
 
     // IMPORTANT: Sort so PHC (green) renders first, CHC (blue) renders second,
-    // and DH (yellow/amber) renders ON TOP!
-    // This ensures yellow hospitals and blue CHCs are never obscured by the 29k green dots.
-    const typeOrder = { PHC: 0, CHC: 1, DH: 2 };
-    return result.sort((a, b) => typeOrder[a.t] - typeOrder[b.t]);
+    // DH (yellow/amber) renders next, and Blood Banks (crimson red) render ON TOP!
+    // This ensures high-acuity facilities and blood banks are never obscured by base green dots.
+    const typeOrder: Record<string, number> = { PHC: 0, CHC: 1, DH: 2, BLOOD_BANK: 3 };
+    return result.sort((a, b) => (typeOrder[a.t] ?? 0) - (typeOrder[b.t] ?? 0));
   }, [facilities, selectedState, selectedDistrict, facilityType, searchQuery]);
 
   // 5. Select & Focus a Facility
@@ -386,8 +404,10 @@ export function IndiaPhcMapPage() {
     const isOverview = currentZoom <= 6;
 
     // Radius scaling according to zoom
-    const getRadius = (type: 'PHC' | 'CHC' | 'DH') => {
-      if (type === 'DH') {
+    const getRadius = (type: 'PHC' | 'CHC' | 'DH' | 'BLOOD_BANK') => {
+      if (type === 'BLOOD_BANK') {
+        return isOverview ? 7 : isZoomedInClose ? 10 : 8;
+      } else if (type === 'DH') {
         return isOverview ? 6.5 : isZoomedInClose ? 9 : 7.5;
       } else if (type === 'CHC') {
         return isOverview ? 4.5 : isZoomedInClose ? 7.5 : 6;
@@ -397,10 +417,11 @@ export function IndiaPhcMapPage() {
     };
 
     // Color definitions
-    const colorMap = {
+    const colorMap: Record<string, { fill: string; stroke: string; opacity: number }> = {
       PHC: { fill: '#10B981', stroke: '#064E3B', opacity: isOverview ? 0.6 : 0.85 }, // Green
       CHC: { fill: '#2563EB', stroke: '#1E3A8A', opacity: 0.95 }, // Blue
       DH: { fill: '#F59E0B', stroke: '#92400E', opacity: 1.0 }, // Vibrant Golden Yellow
+      BLOOD_BANK: { fill: '#DC2626', stroke: '#7F1D1D', opacity: 1.0 }, // Crimson Red
     };
 
     // When zoomed in very close (zoom >= 10) and filtering to state/district:
@@ -409,7 +430,7 @@ export function IndiaPhcMapPage() {
       filteredFacilities.forEach((f) => {
         const pin = L.marker([f.lat, f.lng], {
           icon: createModernPinIcon(f.t, false),
-          zIndexOffset: f.t === 'DH' ? 300 : f.t === 'CHC' ? 200 : 100,
+          zIndexOffset: f.t === 'BLOOD_BANK' ? 400 : f.t === 'DH' ? 300 : f.t === 'CHC' ? 200 : 100,
         });
 
         pin.bindTooltip(
@@ -483,7 +504,7 @@ export function IndiaPhcMapPage() {
 
   // Counts of each type currently shown
   const typeCounts = useMemo(() => {
-    const counts = { PHC: 0, CHC: 0, DH: 0 };
+    const counts: Record<string, number> = { PHC: 0, CHC: 0, DH: 0, BLOOD_BANK: 0 };
     filteredFacilities.forEach((f) => {
       counts[f.t] = (counts[f.t] || 0) + 1;
     });
@@ -509,7 +530,7 @@ export function IndiaPhcMapPage() {
                 </Badge>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Interactive spatial map of 35,868 national facilities across 37 States & UTs • Zoom in for modern pointer pins
+                Interactive spatial map of 35,907 national facilities across 37 States & UTs • Zoom in for modern pointer pins
               </p>
             </div>
           </div>
@@ -526,7 +547,7 @@ export function IndiaPhcMapPage() {
               title="Filter to Primary Health Centres"
             >
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 border border-white shadow-xs"></span>
-              <span>PHCs: {typeCounts.PHC.toLocaleString('en-IN')}</span>
+              <span>PHCs: {(typeCounts.PHC || 0).toLocaleString('en-IN')}</span>
             </button>
 
             <button
@@ -539,7 +560,7 @@ export function IndiaPhcMapPage() {
               title="Filter to Community Health Centres"
             >
               <span className="h-2.5 w-2.5 rounded-full bg-blue-500 border border-white shadow-xs"></span>
-              <span>CHCs: {typeCounts.CHC.toLocaleString('en-IN')}</span>
+              <span>CHCs: {(typeCounts.CHC || 0).toLocaleString('en-IN')}</span>
             </button>
 
             <button
@@ -552,7 +573,20 @@ export function IndiaPhcMapPage() {
               title="Filter to District Hospitals"
             >
               <span className="h-2.5 w-2.5 rounded-full bg-amber-500 border border-white shadow-xs"></span>
-              <span>Hospitals: {typeCounts.DH.toLocaleString('en-IN')}</span>
+              <span>Hospitals: {(typeCounts.DH || 0).toLocaleString('en-IN')}</span>
+            </button>
+
+            <button
+              onClick={() => setFacilityType('BLOOD_BANK')}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border font-semibold transition-all cursor-pointer ${
+                facilityType === 'BLOOD_BANK'
+                  ? 'bg-red-600 text-white border-red-700 shadow-xs'
+                  : 'bg-red-50 dark:bg-red-950/40 text-red-900 dark:text-red-300 border-red-300 dark:border-red-800 hover:bg-red-100'
+              }`}
+              title="Filter to Blood Banks (e-RaktKosh)"
+            >
+              <span className="h-2.5 w-2.5 rounded-full bg-red-600 border border-white shadow-xs"></span>
+              <span>Blood Banks: {(typeCounts.BLOOD_BANK || 0).toLocaleString('en-IN')}</span>
             </button>
 
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold border border-slate-200 dark:border-slate-700">
@@ -659,6 +693,17 @@ export function IndiaPhcMapPage() {
             >
               🟡 DH Only
             </button>
+            <button
+              onClick={() => setFacilityType('BLOOD_BANK')}
+              className={`px-3 py-1.5 rounded-md transition-all cursor-pointer flex items-center gap-1 ${
+                facilityType === 'BLOOD_BANK'
+                  ? 'bg-red-600 text-white shadow-xs'
+                  : 'text-red-600 dark:text-red-400 hover:text-red-700'
+              }`}
+            >
+              <Droplet className="h-3.5 w-3.5 fill-current" />
+              <span>Blood Banks</span>
+            </button>
           </div>
 
           {/* Quick Region Presets */}
@@ -760,11 +805,20 @@ export function IndiaPhcMapPage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
+                <span className="h-3.5 w-3.5 rounded-full bg-red-600 border-2 border-red-900 shadow-xs"></span>
+                <span className="text-slate-800 dark:text-slate-200 font-semibold">Blood Bank (e-RaktKosh)</span>
+              </div>
+              <Badge variant="outline" className="text-[10px] bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-300 border-red-300">
+                {(typeCounts.BLOOD_BANK || 29)} Top
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
                 <span className="h-3.5 w-3.5 rounded-full bg-amber-500 border-2 border-amber-800 shadow-xs"></span>
                 <span className="text-slate-800 dark:text-slate-200 font-semibold">District Hospital (DH)</span>
               </div>
               <Badge variant="outline" className="text-[10px] bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-300">
-                933 Top
+                {(typeCounts.DH || 936).toLocaleString('en-IN')} Mid-High
               </Badge>
             </div>
             <div className="flex items-center justify-between gap-3">
@@ -773,7 +827,7 @@ export function IndiaPhcMapPage() {
                 <span className="text-slate-800 dark:text-slate-200 font-semibold">Community Health Centre (CHC)</span>
               </div>
               <Badge variant="outline" className="text-[10px] bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border-blue-300">
-                5,371 Mid
+                {(typeCounts.CHC || 5374).toLocaleString('en-IN')} Mid
               </Badge>
             </div>
             <div className="flex items-center justify-between gap-3">
@@ -782,7 +836,7 @@ export function IndiaPhcMapPage() {
                 <span className="text-slate-800 dark:text-slate-200 font-semibold">Primary Health Centre (PHC)</span>
               </div>
               <Badge variant="outline" className="text-[10px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-300">
-                29,564 Base
+                {(typeCounts.PHC || 29568).toLocaleString('en-IN')} Base
               </Badge>
             </div>
           </div>
@@ -798,14 +852,22 @@ export function IndiaPhcMapPage() {
               <div className="flex items-center gap-2">
                 <Badge
                   className={`text-[11px] font-bold ${
-                    selectedFacility.t === 'PHC'
+                    selectedFacility.t === 'BLOOD_BANK'
+                      ? 'bg-red-600 text-white'
+                      : selectedFacility.t === 'PHC'
                       ? 'bg-emerald-600 text-white'
                       : selectedFacility.t === 'CHC'
                       ? 'bg-blue-600 text-white'
                       : 'bg-amber-600 text-white'
                   }`}
                 >
-                  {selectedFacility.t === 'PHC' ? 'Primary Health Centre' : selectedFacility.t === 'CHC' ? 'Community Health Centre' : 'District Hospital'}
+                  {selectedFacility.t === 'BLOOD_BANK'
+                    ? 'Blood Bank (e-RaktKosh)'
+                    : selectedFacility.t === 'PHC'
+                    ? 'Primary Health Centre'
+                    : selectedFacility.t === 'CHC'
+                    ? 'Community Health Centre'
+                    : 'District Hospital'}
                 </Badge>
                 <Badge variant="outline" className="text-[10px] text-slate-500 dark:text-slate-400">
                   {selectedFacility.loc}
@@ -842,6 +904,18 @@ export function IndiaPhcMapPage() {
                 <span className="font-medium">Subdistrict / Block:</span>
                 <span className="font-semibold text-slate-900 dark:text-slate-200">{selectedFacility.sd || 'NA'}</span>
               </div>
+              {selectedFacility.phone && (
+                <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+                  <span className="font-medium">Helpline / Phone:</span>
+                  <a
+                    href={`tel:${selectedFacility.phone}`}
+                    className="flex items-center gap-1 font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    <Phone className="h-3 w-3" />
+                    <span>{selectedFacility.phone}</span>
+                  </a>
+                </div>
+              )}
               <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
                 <span className="font-medium">Coordinates:</span>
                 <div className="flex items-center gap-1 font-mono text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">

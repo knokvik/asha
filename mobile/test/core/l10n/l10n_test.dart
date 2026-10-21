@@ -7,6 +7,7 @@ import 'package:asha_platform/app/app.dart';
 import 'package:asha_platform/core/l10n/app_localizations.dart';
 import 'package:asha_platform/core/l10n/language_provider.dart';
 import 'package:asha_platform/core/l10n/language_selector_dialog.dart';
+import 'package:asha_platform/shared/shell/shell_copy.dart';
 
 class FakeSecureStorage extends Fake implements FlutterSecureStorage {
   final Map<String, String> _store = {};
@@ -20,8 +21,7 @@ class FakeSecureStorage extends Fake implements FlutterSecureStorage {
     AppleOptions? mOptions,
     WebOptions? webOptions,
     WindowsOptions? wOptions,
-  }) async =>
-      _store[key];
+  }) async => _store[key];
 
   @override
   Future<void> write({
@@ -71,34 +71,94 @@ void main() {
       }
     });
 
-    test('AppLocalizations supports all 12 locales and provides localized values',
-        () async {
-      for (final lang in supportedLanguages) {
-        final loc = await AppLocalizations.delegate.load(Locale(lang.code));
-        expect(loc.appTitle, isNotEmpty,
-            reason: '${lang.code} appTitle should not be empty');
-        expect(loc.dueList, isNotEmpty,
-            reason: '${lang.code} dueList should not be empty');
-        expect(loc.triageFlagRed, isNotEmpty,
-            reason: '${lang.code} triageFlagRed should not be empty');
-        expect(loc.triageFlagYellow, isNotEmpty,
-            reason: '${lang.code} triageFlagYellow should not be empty');
-        expect(loc.triageFlagGreen, isNotEmpty,
-            reason: '${lang.code} triageFlagGreen should not be empty');
-        expect(loc.muac, isNotEmpty,
-            reason: '${lang.code} muac should not be empty');
-        expect(loc.tapToListen, isNotEmpty,
-            reason: '${lang.code} tapToListen should not be empty');
-        expect(loc.jaundice, isNotEmpty,
-            reason: '${lang.code} jaundice should not be empty');
-      }
-    });
+    test(
+      'AppLocalizations supports all 12 locales and provides localized values',
+      () async {
+        for (final lang in supportedLanguages) {
+          final loc = await AppLocalizations.delegate.load(Locale(lang.code));
+          expect(
+            loc.appTitle,
+            isNotEmpty,
+            reason: '${lang.code} appTitle should not be empty',
+          );
+          expect(
+            loc.dueList,
+            isNotEmpty,
+            reason: '${lang.code} dueList should not be empty',
+          );
+          expect(
+            loc.triageFlagRed,
+            isNotEmpty,
+            reason: '${lang.code} triageFlagRed should not be empty',
+          );
+          expect(
+            loc.triageFlagYellow,
+            isNotEmpty,
+            reason: '${lang.code} triageFlagYellow should not be empty',
+          );
+          expect(
+            loc.triageFlagGreen,
+            isNotEmpty,
+            reason: '${lang.code} triageFlagGreen should not be empty',
+          );
+          expect(
+            loc.muac,
+            isNotEmpty,
+            reason: '${lang.code} muac should not be empty',
+          );
+          expect(
+            loc.tapToListen,
+            isNotEmpty,
+            reason: '${lang.code} tapToListen should not be empty',
+          );
+          expect(
+            loc.jaundice,
+            isNotEmpty,
+            reason: '${lang.code} jaundice should not be empty',
+          );
+        }
+      },
+    );
+
+    test(
+      'Shared page labels use the selected locale where catalog entries exist',
+      () {
+        expect(shellText('hi', 'drawerHome'), 'होम');
+        expect(shellText('mr', 'drawerDue'), 'आजची कार्ये');
+        expect(shellText('te', 'drawerSettings'), 'సెట్టింగ్‌లు');
+        expect(shellText('fr', 'drawerHome'), 'Home');
+
+        // Verify settings and new keys for Hindi
+        expect(shellText('hi', 'appearance'), 'थीम और दिखावट');
+        expect(shellText('hi', 'mapNav'), 'नक्शा और नेविगेशन');
+        expect(shellText('hi', 'voicePacks'), 'आवाज़ दुभाषिया पैक');
+        expect(shellText('hi', 'clinicalVoicePacks'), 'क्लिनिकल आवाज़ इनपुट पैक');
+        expect(shellText('hi', 'mapBasemapStyle'), 'नक्शा आधार शैली');
+        expect(shellText('hi', 'interpreterCorePack'), 'दुभाषिया मुख्य पैक');
+        expect(shellText('hi', 'signOut'), 'लॉग आउट / आशा बदलें');
+
+        // Verify shared area signals & peer sync for Marathi
+        expect(shellText('mr', 'sharedAreaSignals'), 'सामायिक क्षेत्र संकेत');
+        expect(shellText('mr', 'peerSyncTitle'), 'सहकारी क्षेत्र सिंक (पीअर)');
+        expect(shellText('mr', 'directNearbyExchange'), 'जवळपास थेट देवाणघेवाण');
+        expect(shellText('mr', 'myArea'), 'माझा परिसर');
+        expect(shellText('mr', 'revenue'), 'मानधन (उत्पन्न)');
+
+        // Verify clinical programs & learning for Bengali & Telugu
+        expect(shellText('bn', 'clinicalPrograms'), 'ক্লিনিকাল প্রোগ্রাম');
+        expect(shellText('te', 'clinicalPrograms'), 'క్లినికల్ ప్రోగ్రామ్‌లు');
+        expect(shellText('bn', 'microLearningTitle'), 'আশা মাইক্রো-লার্নিং ও সহায়িকা');
+        expect(shellText('te', 'microLearningTitle'), 'ఆశా మైక్రో-లెర్నింగ్ & జాబ్ ఎయిడ్స్');
+      },
+    );
 
     test('LanguageNotifier switches locale and persists to storage', () async {
       final fakeStorage = FakeSecureStorage();
       final container = ProviderContainer(
         overrides: [
-          languageProvider.overrideWith(() => LanguageNotifier(storage: fakeStorage)),
+          languageProvider.overrideWith(
+            () => LanguageNotifier(storage: fakeStorage),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -119,98 +179,104 @@ void main() {
     });
 
     testWidgets(
-        'Runtime language switch updates MaterialApp without data loss',
-        (tester) async {
-      final fakeStorage = FakeSecureStorage();
-      final container = ProviderContainer(
-        overrides: [
-          languageProvider.overrideWith(() => LanguageNotifier(storage: fakeStorage)),
-        ],
-      );
-      addTearDown(container.dispose);
+      'Runtime language switch updates MaterialApp without data loss',
+      (tester) async {
+        final fakeStorage = FakeSecureStorage();
+        final container = ProviderContainer(
+          overrides: [
+            languageProvider.overrideWith(
+              () => LanguageNotifier(storage: fakeStorage),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
 
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: const AshaApp(),
-        ),
-      );
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const AshaApp(),
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      // Initially in English
-      expect(find.text('Security Setup'), findsOneWidget);
+        // Initially in English
+        expect(find.text('Security Setup'), findsOneWidget);
 
-      // Switch to Hindi at runtime
-      await container.read(languageProvider.notifier).setLanguageCode('hi');
-      await tester.pumpAndSettle();
+        // Switch to Hindi at runtime
+        await container.read(languageProvider.notifier).setLanguageCode('hi');
+        await tester.pumpAndSettle();
 
-      // UI should now show Hindi text
-      expect(find.text('सुरक्षा सेटअप'), findsOneWidget);
-      expect(find.text('पिन बनाएं (4-8 अंक)'), findsOneWidget);
+        // UI should now show Hindi text
+        expect(find.text('सुरक्षा सेटअप'), findsOneWidget);
+        expect(find.text('पिन बनाएं (4-8 अंक)'), findsOneWidget);
 
-      // Switch to Marathi at runtime
-      await container.read(languageProvider.notifier).setLanguageCode('mr');
-      await tester.pumpAndSettle();
+        // Switch to Marathi at runtime
+        await container.read(languageProvider.notifier).setLanguageCode('mr');
+        await tester.pumpAndSettle();
 
-      // UI should now show Marathi text
-      expect(find.text('सुरक्षा सेटअप'), findsOneWidget);
-      expect(find.text('पिन तयार करा (4-8 अंक)'), findsOneWidget);
+        // UI should now show Marathi text
+        expect(find.text('सुरक्षा सेटअप'), findsOneWidget);
+        expect(find.text('पिन तयार करा (4-8 अंक)'), findsOneWidget);
 
-      // Switch back to English
-      await container.read(languageProvider.notifier).setLanguageCode('en');
-      await tester.pumpAndSettle();
+        // Switch back to English
+        await container.read(languageProvider.notifier).setLanguageCode('en');
+        await tester.pumpAndSettle();
 
-      expect(find.text('Security Setup'), findsOneWidget);
-    });
+        expect(find.text('Security Setup'), findsOneWidget);
+      },
+    );
 
     testWidgets(
-        'LanguageSelectorDialog displays all 12 options and updates language on selection',
-        (tester) async {
-      final fakeStorage = FakeSecureStorage();
-      final container = ProviderContainer(
-        overrides: [
-          languageProvider.overrideWith(() => LanguageNotifier(storage: fakeStorage)),
-        ],
-      );
-      addTearDown(container.dispose);
+      'LanguageSelectorDialog displays all 12 options and updates language on selection',
+      (tester) async {
+        final fakeStorage = FakeSecureStorage();
+        final container = ProviderContainer(
+          overrides: [
+            languageProvider.overrideWith(
+              () => LanguageNotifier(storage: fakeStorage),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
 
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: MaterialApp(
-            home: Scaffold(
-              body: Builder(
-                builder: (context) => ElevatedButton(
-                  onPressed: () => showDialog(
-                    context: context,
-                    builder: (_) => const LanguageSelectorDialog(),
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              home: Scaffold(
+                body: Builder(
+                  builder: (context) => ElevatedButton(
+                    onPressed: () => showDialog(
+                      context: context,
+                      builder: (_) => const LanguageSelectorDialog(),
+                    ),
+                    child: const Text('Open Picker'),
                   ),
-                  child: const Text('Open Picker'),
                 ),
               ),
             ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
+        await tester.pumpAndSettle();
 
-      // Open dialog
-      await tester.tap(find.text('Open Picker'));
-      await tester.pumpAndSettle();
+        // Open dialog
+        await tester.tap(find.text('Open Picker'));
+        await tester.pumpAndSettle();
 
-      // The dialog list should be present and visible
-      expect(find.byType(LanguageSelectorDialog), findsOneWidget);
-      expect(find.byKey(const Key('lang_option_en')), findsOneWidget);
-      expect(find.byKey(const Key('lang_option_hi')), findsOneWidget);
+        // The dialog list should be present and visible
+        expect(find.byType(LanguageSelectorDialog), findsOneWidget);
+        expect(find.byKey(const Key('lang_option_en')), findsOneWidget);
+        expect(find.byKey(const Key('lang_option_hi')), findsOneWidget);
 
-      // Tap Hindi option
-      await tester.tap(find.byKey(const Key('lang_option_hi')));
-      await tester.pumpAndSettle();
+        // Tap Hindi option
+        await tester.tap(find.byKey(const Key('lang_option_hi')));
+        await tester.pumpAndSettle();
 
-      // Dialog closed and state is Hindi
-      expect(find.byType(LanguageSelectorDialog), findsNothing);
-      expect(container.read(languageProvider), const Locale('hi'));
-      expect(await fakeStorage.read(key: LanguageNotifier.storageKey), 'hi');
-    });
+        // Dialog closed and state is Hindi
+        expect(find.byType(LanguageSelectorDialog), findsNothing);
+        expect(container.read(languageProvider), const Locale('hi'));
+        expect(await fakeStorage.read(key: LanguageNotifier.storageKey), 'hi');
+      },
+    );
   });
 }

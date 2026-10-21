@@ -277,6 +277,7 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
   const [showAshas, setShowAshas] = useState(true);
   const [showCatchmentRings, setShowCatchmentRings] = useState(true);
   const [showDeadZone, setShowDeadZone] = useState(true);
+  const [showServerFacilities, setShowServerFacilities] = useState(true);
   const [selectedAsset, setSelectedAsset] = useState<any | null>(null);
   const [facilities, setFacilities] = useState<MapFacility[]>([]);
   const [mapSources, setMapSources] = useState<MapSource[]>([]);
@@ -388,11 +389,16 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
     const group = layerGroupsRef.current.facilities;
     if (!group) return;
     group.clearLayers();
+    if (!showServerFacilities) return;
+
     const colors: Record<string, string> = {
-      hospital: '#b42318',
-      phc: '#047857',
-      chc: '#0f766e',
-      subcentre: '#2563eb',
+      blood_bank: '#dc2626',
+      hospital: '#f59e0b',
+      dh: '#f59e0b',
+      phc: '#10b981',
+      chc: '#2563eb',
+      subcentre: '#0284c7',
+      sub_centre: '#0284c7',
       lab: '#7c3aed',
       pharmacy: '#c2410c',
       other: '#475569',
@@ -401,19 +407,27 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
       if (!Number.isFinite(facility.lat) || !Number.isFinite(facility.lon)) continue;
       const kind = String(facility.kind || 'other').toLowerCase();
       const color = colors[kind] ?? colors.other;
+      const isBloodBank = kind === 'blood_bank' || facility.name.toLowerCase().includes('blood');
+
       L.circleMarker([facility.lat, facility.lon], {
-        radius: 7,
-        color,
-        weight: 2,
-        fillColor: color,
-        fillOpacity: 0.9,
+        radius: isBloodBank ? 9 : 7,
+        color: isBloodBank ? '#7f1d1d' : color,
+        weight: isBloodBank ? 3 : 2,
+        fillColor: isBloodBank ? '#dc2626' : color,
+        fillOpacity: 1.0,
       })
         .bindPopup(
-          `<strong>${facility.name}</strong><br/>${kind}<br/>${facility.district ?? ''} ${facility.block ?? ''}<br/>${facility.phone ?? ''}<br/><small>Verified server facility directory</small>`,
+          `<div style="font-family:system-ui; font-size:12px; color:#0F172A; min-width:180px;">
+            <strong style="color:${isBloodBank ? '#dc2626' : color}; font-size:13px;">${isBloodBank ? '🩸 ' : '🏥 '}${facility.name}</strong><br/>
+            <span style="display:inline-block; margin-top:2px; font-weight:700; text-transform:uppercase; font-size:10px; color:${color};">${kind.replace('_', ' ')}</span><br/>
+            <span style="color:#64748B;">${facility.district ?? ''} ${facility.block ? '• ' + facility.block : ''}</span><br/>
+            ${facility.phone ? `<a href="tel:${facility.phone}" style="display:inline-block; margin-top:4px; color:#2563eb; font-weight:600;">📞 ${facility.phone}</a><br/>` : ''}
+            <small style="color:#94a3b8; font-size:10px; margin-top:4px; display:block;">Verified e-RaktKosh / Server Directory</small>
+          </div>`,
         )
         .addTo(group);
     }
-  }, [facilities]);
+  }, [facilities, showServerFacilities]);
 
   useEffect(() => {
     const group = layerGroupsRef.current.pcmc;
@@ -432,19 +446,20 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
             ? '#f59e0b'
             : '#10b981';
       const bounds = (ward as WardWeek & { bounds: [[number, number], [number, number]] }).bounds;
-      L.rectangle(bounds, {
+      const center: [number, number] = [
+        (bounds[0][0] + bounds[1][0]) / 2,
+        (bounds[0][1] + bounds[1][1]) / 2,
+      ];
+      L.circleMarker(center, {
+        radius: hot.has(ward.wardId) ? 12 : 7,
         color: hot.has(ward.wardId) ? '#be123c' : fill,
-        weight: hot.has(ward.wardId) ? 3 : 1,
+        weight: hot.has(ward.wardId) ? 3 : 2,
         fillColor: fill,
-        fillOpacity: 0.35,
+        fillOpacity: 0.55,
       })
-        .bindTooltip(`${ward.wardId}: ${point.dengueLike} dengue-like`)
+        .bindPopup(`${ward.wardId}: ${point.dengueLike} dengue-like`)
         .addTo(group);
       if (hot.has(ward.wardId)) {
-        const center: [number, number] = [
-          (bounds[0][0] + bounds[1][0]) / 2,
-          (bounds[0][1] + bounds[1][1]) / 2,
-        ];
         L.circle(center, { radius: 1800, color: '#be123c', fillOpacity: 0.15 }).addTo(group);
       }
     }
@@ -859,6 +874,19 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
                   checked={showDeadZone}
                   onChange={(e) => setShowDeadZone(e.target.checked)}
                   className="rounded text-rose-600 focus:ring-0"
+                />
+              </label>
+
+              <label className="flex items-center justify-between cursor-pointer hover:opacity-80 pt-1 border-t border-slate-100 dark:border-slate-800">
+                <span className="flex items-center gap-1.5 text-[#0F172A] dark:text-[#F8FAFC]">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-600 inline-block" />
+                  <span>Blood Banks & Facilities ({facilities.length})</span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={showServerFacilities}
+                  onChange={(e) => setShowServerFacilities(e.target.checked)}
+                  className="rounded text-red-600 focus:ring-0"
                 />
               </label>
             </div>
