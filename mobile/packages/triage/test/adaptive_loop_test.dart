@@ -105,6 +105,19 @@ void main() {
   });
 
   group('question flow safety', () {
+    test('adult context adds the unified adult vitals questions', () {
+      final flow = FlowBuilder(
+        pack,
+      ).build(wardId: 'W3', month: 840, extraModules: const {'adult_vitals'});
+      expect(
+        flow.questions.map((question) => question.id),
+        containsAll(['adult.systolic_bp', 'adult.diastolic_bp', 'adult.pulse']),
+      );
+      flow.seedInput('vitals.systolic_bp', 182);
+      expect(flow.answers['vitals.systolic_bp'], 182);
+      expect(flow.answeredIds, contains('adult.systolic_bp'));
+    });
+
     test('danger signs come first, in chart order', () {
       final flow = FlowBuilder(pack).build(wardId: 'W3');
       expect(flow.questions.take(5).map((question) => question.id).toList(), [

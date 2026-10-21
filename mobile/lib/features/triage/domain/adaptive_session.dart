@@ -5,7 +5,11 @@ import 'package:triage/triage.dart';
 
 /// Loads the cached pack and the chart tables. Nothing here touches the network.
 class AdaptiveSession {
-  AdaptiveSession({required this.loop, required this.model, required this.prior});
+  AdaptiveSession({
+    required this.loop,
+    required this.model,
+    required this.prior,
+  });
 
   final AdaptiveTriage loop;
   final RiskModel? model;
@@ -20,6 +24,7 @@ class AdaptiveSession {
     'fever',
     'ear',
     'malnutrition_anaemia',
+    'adult_vitals',
   ];
 
   static Future<AdaptiveSession> load() async {
@@ -39,7 +44,9 @@ class AdaptiveSession {
     }
     RiskModel? model;
     try {
-      model = RiskModel.fromJson(await read('packages/triage/lib/data/model/model.json'));
+      model = RiskModel.fromJson(
+        await read('packages/triage/lib/data/model/model.json'),
+      );
     } catch (_) {
       model = null;
     }
@@ -55,5 +62,6 @@ class AdaptiveSession {
   }
 
   /// The demo starts from the cached sample fix, which sits inside ward W3.
-  WardResolution resolve(LatLon? fix) => WardIndex(loop.pack.wards).resolve(fix ?? loop.pack.sampleFix);
+  WardResolution resolve(LatLon? fix) =>
+      WardIndex(loop.pack.wards).resolve(fix ?? loop.pack.sampleFix);
 }

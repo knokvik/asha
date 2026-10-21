@@ -1,0 +1,53 @@
+{
+  "module": "adult_vitals",
+  "guideline": "NP-NCD Operational Guidelines, MoHFW",
+  "rules": [
+    {
+      "rule_id": "ADULT-BP-CRISIS",
+      "module": "adult_vitals",
+      "severity": "RED",
+      "reason_text": {"en": "Very high blood pressure (180/120 or higher). Refer urgently."},
+      "guideline_ref": "NP-NCD Operational Guidelines, MoHFW",
+      "suspected_disease": "Hypertensive crisis",
+      "follow_up_days": null,
+      "actions": ["refer_urgently"],
+      "conditions": {
+        "any": [
+          {"field": "vitals.systolic_bp", "op": "gte", "value": 180},
+          {"field": "vitals.diastolic_bp", "op": "gte", "value": 120}
+        ]
+      }
+    },
+    {
+      "rule_id": "ADULT-BP-HIGH",
+      "module": "adult_vitals",
+      "severity": "YELLOW",
+      "reason_text": {"en": "Raised blood pressure. Arrange a PHC review."},
+      "guideline_ref": "NP-NCD Operational Guidelines, MoHFW",
+      "suspected_disease": "Raised blood pressure",
+      "follow_up_days": 7,
+      "actions": ["schedule_phc_visit", "follow_up"],
+      "conditions": {
+        "any": [
+          {"field": "vitals.systolic_bp", "op": "gte", "value": 140},
+          {"field": "vitals.diastolic_bp", "op": "gte", "value": 90}
+        ]
+      }
+    },
+    {
+      "rule_id": "ADULT-PULSE-HIGH",
+      "module": "adult_vitals",
+      "severity": "YELLOW",
+      "reason_text": {"en": "Fast pulse. Arrange a clinical review, especially if the person feels unwell."},
+      "guideline_ref": "NP-NCD Operational Guidelines, MoHFW",
+      "suspected_disease": "Tachycardia observation",
+      "follow_up_days": 1,
+      "actions": ["schedule_phc_visit", "follow_up"],
+      "conditions": {
+        "field": "vitals.pulse_rate",
+        "op": "gte",
+        "value": 120
+      }
+    }
+  ]
+}

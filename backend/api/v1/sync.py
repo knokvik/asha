@@ -8,9 +8,9 @@ Requirements: 31.1, 31.2, 32.2, 32.3
 """
 from __future__ import annotations
 
+import base64
 import gzip
 import json
-import base64
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from fastapi.responses import Response
@@ -125,13 +125,14 @@ async def sync_pull(
 @router.get("/activity")
 async def sync_activity(
     limit: int = Query(default=100, ge=1, le=500),
-    _: TenantContext = Depends(_get_tenant),
+    tenant: TenantContext = Depends(_get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Return persisted packet history for the live web sync panel."""
-    result = await db.execute(
-        select(AuditLog).order_by(desc(AuditLog.server_timestamp)).limit(limit)
-    )
+    query = select(AuditLog).order_by(desc(AuditLog.server_timestamp)).limit(limit)
+    if tenant.role == "ASHA":
+        query = query.where(AuditLog.changed_by == tenant.worker_id)
+    result = await db.execute(query)
     rows = result.scalars().all()
     ticket_ids = [row.record_id for row in rows if row.table_name == "triage_tickets"]
     tickets: dict[str, TriageTicket] = {}
@@ -164,13 +165,18 @@ async def sync_activity(
 async def triage_attachment(
     ticket_id: str,
     attachment_index: int,
-    _: TenantContext = Depends(_get_tenant),
+    tenant: TenantContext = Depends(_get_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """Return one authenticated evidence file without exposing it in activity JSON."""
     ticket = await db.get(TriageTicket, ticket_id)
     if ticket is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ticket not found")
+    if not _can_access_ticket(ticket, tenant):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="ticket is outside your assigned area",
+        )
     attachments = _ticket_attachments(ticket)
     if attachment_index < 0 or attachment_index >= len(attachments):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="attachment not found")
@@ -228,3 +234,10 @@ def _ticket_attachments(ticket: TriageTicket) -> list[dict]:
     except json.JSONDecodeError:
         return []
     return [item for item in attachments if isinstance(item, dict)] if isinstance(attachments, list) else []
+
+
+def _can_access_ticket(ticket: TriageTicket, tenant: TenantContext) -> bool:
+    """Enforce the direct-object check that ORM area filters cannot cover."""
+    if tenant.role == "ASHA":
+        return ticket.worker_id == tenant.worker_id
+    return not tenant.block_code or ticket.block_code == tenant.block_code

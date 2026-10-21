@@ -5,16 +5,16 @@ extension TriageFlagX on TriageFlag {
   String get wireName => name.toUpperCase();
 
   int get rank => switch (this) {
-        TriageFlag.red => 3,
-        TriageFlag.yellow => 2,
-        TriageFlag.green => 1,
-      };
+    TriageFlag.red => 3,
+    TriageFlag.yellow => 2,
+    TriageFlag.green => 1,
+  };
 
   String get urgency => switch (this) {
-        TriageFlag.red => 'refer URGENTLY',
-        TriageFlag.yellow => 'refer / follow-up',
-        TriageFlag.green => 'home care',
-      };
+    TriageFlag.red => 'refer URGENTLY',
+    TriageFlag.yellow => 'refer / follow-up',
+    TriageFlag.green => 'home care',
+  };
 }
 
 /// Measured values. Null means not measured, so a numeric rule does not fire.
@@ -24,12 +24,18 @@ class Vitals {
     this.tempC,
     this.weightKg,
     this.weightForAgeZscore,
+    this.systolicBp,
+    this.diastolicBp,
+    this.pulseRate,
   });
 
   final num? respiratoryRate;
   final num? tempC;
   final num? weightKg;
   final num? weightForAgeZscore;
+  final num? systolicBp;
+  final num? diastolicBp;
+  final num? pulseRate;
 }
 
 /// Booleans default to false. Durations stay null until the worker enters them.
@@ -205,58 +211,61 @@ class AssessmentInput {
 
   /// Flat values addressed by rule conditions.
   Map<String, Object?> toFields() => {
-        'age_months': ageMonths,
-        'sex': sex,
-        'vitals.respiratory_rate': vitals.respiratoryRate,
-        'vitals.temp_c': vitals.tempC,
-        'vitals.weight_kg': vitals.weightKg,
-        'vitals.weight_for_age_zscore': vitals.weightForAgeZscore,
-        'symptoms.unable_to_drink': symptoms.unableToDrink,
-        'symptoms.vomits_everything': symptoms.vomitsEverything,
-        'symptoms.convulsions': symptoms.convulsions,
-        'symptoms.convulsing_now': symptoms.convulsingNow,
-        'symptoms.lethargic_or_unconscious': symptoms.lethargicOrUnconscious,
-        'symptoms.cough': symptoms.cough,
-        'symptoms.cough_or_difficult_breathing': symptoms.coughOrDifficultBreathing,
-        'symptoms.cough_duration_days': symptoms.coughDurationDays,
-        'symptoms.chest_indrawing': symptoms.chestIndrawing,
-        'symptoms.stridor_in_calm_child': symptoms.stridorInCalmChild,
-        'symptoms.diarrhoea': symptoms.diarrhoea,
-        'symptoms.diarrhoea_duration_days': symptoms.diarrhoeaDurationDays,
-        'symptoms.blood_in_stool': symptoms.bloodInStool,
-        'symptoms.restless_irritable': symptoms.restlessIrritable,
-        'symptoms.sunken_eyes': symptoms.sunkenEyes,
-        'symptoms.drinks_eagerly': symptoms.drinksEagerly,
-        'symptoms.drinking_poorly': symptoms.drinkingPoorly,
-        'symptoms.skin_pinch_slow': symptoms.skinPinchSlow,
-        'symptoms.skin_pinch_very_slow': symptoms.skinPinchVerySlow,
-        'symptoms.fever': symptoms.fever,
-        'symptoms.stiff_neck': symptoms.stiffNeck,
-        'symptoms.malaria_test_positive': symptoms.malariaTestPositive,
-        'symptoms.severe_malaria': symptoms.severeMalaria,
-        'symptoms.ear_pain': symptoms.earPain,
-        'symptoms.ear_discharge': symptoms.earDischarge,
-        'symptoms.ear_discharge_days': symptoms.earDischargeDays,
-        'symptoms.tender_swelling_behind_ear': symptoms.tenderSwellingBehindEar,
-        'symptoms.ear_assessed': symptoms.earAssessed,
-        'symptoms.visible_severe_wasting': symptoms.visibleSevereWasting,
-        'symptoms.oedema_both_feet': symptoms.oedemaBothFeet,
-        'symptoms.palmar_pallor': symptoms.palmarPallor,
-        'symptoms.severe_abdominal_pain': symptoms.severeAbdominalPain,
-        'symptoms.persistent_vomiting': symptoms.persistentVomiting,
-        'symptoms.mucosal_bleeding': symptoms.mucosalBleeding,
-        'symptoms.clinical_fluid_accumulation': symptoms.clinicalFluidAccumulation,
-        'symptoms.measles_rash': symptoms.measlesRash,
-        'symptoms.red_eyes': symptoms.redEyes,
-        'symptoms.runny_nose': symptoms.runnyNose,
-        'symptoms.acute_encephalopathy': symptoms.acuteEncephalopathy,
-        'symptoms.watery_stools_many': symptoms.wateryStoolsMany,
-        'symptoms.mosquito_breeding_nearby': symptoms.mosquitoBreedingNearby,
-        'symptoms.dengue_restless_or_lethargic': symptoms.dengueRestlessOrLethargic,
-        'context.malaria_risk_area': context.malariaRiskArea,
-        'context.district_id': context.districtId,
-        'context.ward_id': context.wardId,
-      };
+    'age_months': ageMonths,
+    'sex': sex,
+    'vitals.respiratory_rate': vitals.respiratoryRate,
+    'vitals.temp_c': vitals.tempC,
+    'vitals.weight_kg': vitals.weightKg,
+    'vitals.weight_for_age_zscore': vitals.weightForAgeZscore,
+    'vitals.systolic_bp': vitals.systolicBp,
+    'vitals.diastolic_bp': vitals.diastolicBp,
+    'vitals.pulse_rate': vitals.pulseRate,
+    'symptoms.unable_to_drink': symptoms.unableToDrink,
+    'symptoms.vomits_everything': symptoms.vomitsEverything,
+    'symptoms.convulsions': symptoms.convulsions,
+    'symptoms.convulsing_now': symptoms.convulsingNow,
+    'symptoms.lethargic_or_unconscious': symptoms.lethargicOrUnconscious,
+    'symptoms.cough': symptoms.cough,
+    'symptoms.cough_or_difficult_breathing': symptoms.coughOrDifficultBreathing,
+    'symptoms.cough_duration_days': symptoms.coughDurationDays,
+    'symptoms.chest_indrawing': symptoms.chestIndrawing,
+    'symptoms.stridor_in_calm_child': symptoms.stridorInCalmChild,
+    'symptoms.diarrhoea': symptoms.diarrhoea,
+    'symptoms.diarrhoea_duration_days': symptoms.diarrhoeaDurationDays,
+    'symptoms.blood_in_stool': symptoms.bloodInStool,
+    'symptoms.restless_irritable': symptoms.restlessIrritable,
+    'symptoms.sunken_eyes': symptoms.sunkenEyes,
+    'symptoms.drinks_eagerly': symptoms.drinksEagerly,
+    'symptoms.drinking_poorly': symptoms.drinkingPoorly,
+    'symptoms.skin_pinch_slow': symptoms.skinPinchSlow,
+    'symptoms.skin_pinch_very_slow': symptoms.skinPinchVerySlow,
+    'symptoms.fever': symptoms.fever,
+    'symptoms.stiff_neck': symptoms.stiffNeck,
+    'symptoms.malaria_test_positive': symptoms.malariaTestPositive,
+    'symptoms.severe_malaria': symptoms.severeMalaria,
+    'symptoms.ear_pain': symptoms.earPain,
+    'symptoms.ear_discharge': symptoms.earDischarge,
+    'symptoms.ear_discharge_days': symptoms.earDischargeDays,
+    'symptoms.tender_swelling_behind_ear': symptoms.tenderSwellingBehindEar,
+    'symptoms.ear_assessed': symptoms.earAssessed,
+    'symptoms.visible_severe_wasting': symptoms.visibleSevereWasting,
+    'symptoms.oedema_both_feet': symptoms.oedemaBothFeet,
+    'symptoms.palmar_pallor': symptoms.palmarPallor,
+    'symptoms.severe_abdominal_pain': symptoms.severeAbdominalPain,
+    'symptoms.persistent_vomiting': symptoms.persistentVomiting,
+    'symptoms.mucosal_bleeding': symptoms.mucosalBleeding,
+    'symptoms.clinical_fluid_accumulation': symptoms.clinicalFluidAccumulation,
+    'symptoms.measles_rash': symptoms.measlesRash,
+    'symptoms.red_eyes': symptoms.redEyes,
+    'symptoms.runny_nose': symptoms.runnyNose,
+    'symptoms.acute_encephalopathy': symptoms.acuteEncephalopathy,
+    'symptoms.watery_stools_many': symptoms.wateryStoolsMany,
+    'symptoms.mosquito_breeding_nearby': symptoms.mosquitoBreedingNearby,
+    'symptoms.dengue_restless_or_lethargic': symptoms.dengueRestlessOrLethargic,
+    'context.malaria_risk_area': context.malariaRiskArea,
+    'context.district_id': context.districtId,
+    'context.ward_id': context.wardId,
+  };
 }
 
 class FiredRule {
@@ -294,7 +303,8 @@ class TriageResult {
   /// Taken from the rule that set [flag]. Null when that rule has no return visit.
   final int? followUpDays;
 
-  List<String> get ruleIds => firedRules.map((rule) => rule.ruleId).toList(growable: false);
+  List<String> get ruleIds =>
+      firedRules.map((rule) => rule.ruleId).toList(growable: false);
 }
 
 class PatientProfile {
@@ -316,10 +326,7 @@ class PatientProfile {
 }
 
 class FacilityProfile {
-  const FacilityProfile({
-    required this.id,
-    required this.name,
-  });
+  const FacilityProfile({required this.id, required this.name});
 
   final String id;
   final String name;

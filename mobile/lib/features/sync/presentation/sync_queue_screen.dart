@@ -214,11 +214,15 @@ class _QueuePacketTile extends StatelessWidget {
 class _PacketSummary {
   const _PacketSummary({
     required this.recordId,
+    required this.targetTable,
+    required this.operation,
     required this.payload,
     required this.attachments,
   });
 
   final String recordId;
+  final String targetTable;
+  final String operation;
   final Map<String, dynamic> payload;
   final List<_PacketAttachment> attachments;
 
@@ -241,6 +245,8 @@ class _PacketSummary {
     }
     return _PacketSummary(
       recordId: record.recordId,
+      targetTable: record.targetTable,
+      operation: record.operation,
       payload: payload,
       attachments: [
         for (var index = 0; index < items.length; index++)
@@ -258,7 +264,7 @@ class _PacketSummary {
       final name = _text(payload['name'], fallback: 'unnamed patient');
       return 'Triage ticket · $name';
     }
-    return '${_text(payload['operation'], fallback: 'Sync').toUpperCase()} packet';
+    return '${operation.toUpperCase()} ${targetTable.replaceAll('_', ' ')}';
   }
 
   String get subtitle {

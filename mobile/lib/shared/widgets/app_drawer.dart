@@ -77,7 +77,11 @@ class AppDrawer extends ConsumerWidget {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 24),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: Colors.white70,
+                          size: 24,
+                        ),
                         onPressed: () => Navigator.of(context).pop(),
                       ),
                     ],
@@ -85,16 +89,25 @@ class AppDrawer extends ConsumerWidget {
                   const SizedBox(height: 12),
                   // Offline - Data Encrypted Pill
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.2),
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: const [
-                        Icon(Icons.lock_rounded, size: 12, color: AshaColors.leafMint),
+                        Icon(
+                          Icons.lock_rounded,
+                          size: 12,
+                          color: AshaColors.leafMint,
+                        ),
                         SizedBox(width: 6),
                         Text(
                           'Offline • Data Encrypted',
@@ -116,7 +129,10 @@ class AppDrawer extends ConsumerWidget {
             // Navigation Menu Items List
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 children: [
                   // 1. Home (Active state)
                   _buildMenuItem(
@@ -167,7 +183,7 @@ class AppDrawer extends ConsumerWidget {
                     icon: Icons.emergency_rounded,
                     title: 'Emergency Triage',
                     subtitle: 'Maternal & child danger signs',
-                    route: '/triage/assessment',
+                    route: '/triage',
                     iconColor: AshaColors.alertHighRisk,
                     showRedChevron: true,
                   ),
@@ -222,10 +238,15 @@ class AppDrawer extends ConsumerWidget {
     Color? iconColor,
     bool showRedChevron = false,
   }) {
-    final bgColor = isSelected ? Colors.white : Colors.white.withValues(alpha: 0.08);
+    final bgColor = isSelected
+        ? Colors.white
+        : Colors.white.withValues(alpha: 0.08);
     final titleColor = isSelected ? const Color(0xFF1E4231) : Colors.white;
-    final subtitleColor = isSelected ? AshaColors.textSecondary : const Color(0xFFB7D5C6);
-    final effectiveIconColor = iconColor ?? (isSelected ? const Color(0xFF1E4231) : Colors.white);
+    final subtitleColor = isSelected
+        ? AshaColors.textSecondary
+        : const Color(0xFFB7D5C6);
+    final effectiveIconColor =
+        iconColor ?? (isSelected ? const Color(0xFF1E4231) : Colors.white);
 
     return Material(
       color: bgColor,
@@ -261,17 +282,17 @@ class AppDrawer extends ConsumerWidget {
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: subtitleColor,
-                      ),
+                      style: TextStyle(fontSize: 11, color: subtitleColor),
                     ),
                   ],
                 ),
               ),
               if (trailingBadge != null) ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: badgeColor ?? AshaColors.alertHighRisk,
                     shape: BoxShape.circle,

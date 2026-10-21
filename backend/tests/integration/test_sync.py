@@ -179,6 +179,12 @@ class TestSyncPush:
         assert evidence.headers["content-type"].startswith("image/jpeg")
         assert evidence.content == b"photo-bytes"
 
+        forbidden = await async_client.get(
+            f"/api/v1/sync/triage-tickets/{record_id}/attachments/0",
+            headers=_auth_header("another-worker"),
+        )
+        assert forbidden.status_code == 403
+
 
 @pytest.mark.asyncio
 class TestSyncPull:

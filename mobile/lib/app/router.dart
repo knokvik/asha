@@ -16,7 +16,6 @@ import '../features/household/presentation/household_list_screen.dart';
 import '../features/household/presentation/household_detail_screen.dart';
 import '../features/household/presentation/household_profile_screen.dart';
 import '../features/triage/presentation/triage_flow_screen.dart';
-import '../features/triage/presentation/triage_assessment_screen.dart';
 import '../features/triage/presentation/triage_history_screen.dart';
 import '../features/reports/presentation/reports_incentives_screen.dart';
 import '../shared/shell/main_shell.dart';
@@ -26,7 +25,6 @@ import '../features/sync/presentation/sync_queue_screen.dart';
 // Triage & Referral
 import '../features/referral/presentation/referral_slip_screen.dart';
 import '../features/triage/presentation/language_bridge_screen.dart';
-import '../features/triage/presentation/setu_questions_screen.dart';
 
 // Clinical Programs Hub & Protocols
 import '../features/clinical_programs/presentation/programs_hub_screen.dart';
@@ -229,8 +227,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
     ),
     GoRoute(
       path: '/triage/assessment',
-      pageBuilder: (context, state) =>
-          _buildSlidePage(state: state, child: const TriageAssessmentScreen()),
+      redirect: (context, state) => '/triage',
     ),
     GoRoute(
       path: '/triage/history',
@@ -247,11 +244,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
       pageBuilder: (context, state) =>
           _buildSlidePage(state: state, child: const LanguageBridgeScreen()),
     ),
-    GoRoute(
-      path: '/triage/questions',
-      pageBuilder: (context, state) =>
-          _buildSlidePage(state: state, child: const SetuQuestionsScreen()),
-    ),
+    GoRoute(path: '/triage/questions', redirect: (context, state) => '/triage'),
     GoRoute(
       path: '/triage/language',
       pageBuilder: (context, state) =>

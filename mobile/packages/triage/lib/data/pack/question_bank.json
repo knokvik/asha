@@ -616,5 +616,48 @@
       "is_red_flag": true,
       "input_field": "symptoms.acute_encephalopathy"
     }
+    ,
+    {
+      "id": "adult.systolic_bp",
+      "module": "adult_vitals",
+      "text": {
+        "en": "What is the systolic blood pressure (top number)?",
+        "hi": "सिस्टोलिक ब्लड प्रेशर (ऊपर की संख्या) कितना है?",
+        "mr": "सिस्टोलिक रक्तदाब (वरचा आकडा) किती आहे?"
+      },
+      "type": "number",
+      "weight": 8,
+      "is_red_flag": false,
+      "input_field": "vitals.systolic_bp",
+      "numeric": {"unit": "mmHg", "min": 30, "max": 300}
+    },
+    {
+      "id": "adult.diastolic_bp",
+      "module": "adult_vitals",
+      "text": {
+        "en": "What is the diastolic blood pressure (bottom number)?",
+        "hi": "डायस्टोलिक ब्लड प्रेशर (नीचे की संख्या) कितना है?",
+        "mr": "डायस्टोलिक रक्तदाब (खालचा आकडा) किती आहे?"
+      },
+      "type": "number",
+      "weight": 7,
+      "is_red_flag": false,
+      "input_field": "vitals.diastolic_bp",
+      "numeric": {"unit": "mmHg", "min": 20, "max": 200}
+    },
+    {
+      "id": "adult.pulse",
+      "module": "adult_vitals",
+      "text": {
+        "en": "What is the pulse rate?",
+        "hi": "नाड़ी की दर कितनी है?",
+        "mr": "नाडीचा दर किती आहे?"
+      },
+      "type": "number",
+      "weight": 6,
+      "is_red_flag": false,
+      "input_field": "vitals.pulse_rate",
+      "numeric": {"unit": "beats/min", "min": 20, "max": 300}
+    }
   ]
 }

@@ -17,11 +17,11 @@ import '../../../app/theme/app_theme.dart';
 import '../../../core/l10n/language_provider.dart';
 import '../../../core/l10n/language_selector_dialog.dart';
 import '../../../core/sync/sync_engine.dart';
+import '../../../core/triage/models/age_band.dart';
 import '../../../core/voice/tts_service.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../domain/adaptive_session.dart';
 import 'language_bridge_screen.dart';
-import 'triage_assessment_screen.dart';
 
 /// Common IMCI questions, then outbreak questions from the ward pack or from
 /// illnesses the worker marks herself when the phone is offline.
@@ -37,6 +37,12 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   final _age = TextEditingController();
   final _location = TextEditingController();
   final _details = TextEditingController();
+  final _ageDays = TextEditingController();
+  final _respiratoryRate = TextEditingController();
+  final _temperature = TextEditingController();
+  final _systolicBp = TextEditingController();
+  final _diastolicBp = TextEditingController();
+  final _pulseRate = TextEditingController();
   final _answerController = TextEditingController();
   final _questionScrollController = ScrollController();
   final _questionKeys = <String, GlobalKey>{};
@@ -70,6 +76,11 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   String _sex = 'Unknown';
   bool _adaptiveFromRadar = false;
   final _reportedContext = <String>{};
+  AgeBandCode _ageBand = AgeBandCode.child2m5y;
+  String _ageUnit = 'months';
+  bool _chestIndrawing = false;
+  bool _vomitingEverything = false;
+  bool _convulsions = false;
 
   String get _engineVersion =>
       'imci-engine/pack-${_session?.loop.pack.version ?? 'unknown'}';
@@ -105,6 +116,12 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
     _age.dispose();
     _location.dispose();
     _details.dispose();
+    _ageDays.dispose();
+    _respiratoryRate.dispose();
+    _temperature.dispose();
+    _systolicBp.dispose();
+    _diastolicBp.dispose();
+    _pulseRate.dispose();
     _answerController.dispose();
     _questionScrollController.dispose();
     _audioRecorder.dispose();
@@ -233,6 +250,10 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
       {
         'name': _name.text.trim(),
         'age_months': _ageMonths,
+        'age_days': int.tryParse(_ageDays.text.trim()),
+        'age_band': _ageBand.code,
+        'patient_group': _patientGroupLabel,
+        'age_unit': _ageUnit,
         'location': _location.text.trim(),
         'additional_details': _details.text.trim(),
         'sex': _sex,
@@ -248,6 +269,16 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         'sms': _note?.toSms(),
         'modules_json': jsonEncode(_flow?.activeModules ?? const <String>[]),
         'worker_modules_json': jsonEncode(_chosen.toList()),
+        'clinical_context_json': jsonEncode({
+          'respiratory_rate': num.tryParse(_respiratoryRate.text.trim()),
+          'temperature': num.tryParse(_temperature.text.trim()),
+          'systolic_bp': int.tryParse(_systolicBp.text.trim()),
+          'diastolic_bp': int.tryParse(_diastolicBp.text.trim()),
+          'pulse_rate': int.tryParse(_pulseRate.text.trim()),
+          'chest_indrawing': _chestIndrawing,
+          'vomiting_everything': _vomitingEverything,
+          'convulsions': _convulsions,
+        }),
         'attachments_json': jsonEncode(attachments),
       };
 
@@ -353,43 +384,71 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
 
   Future<void> _startQuestions() async {
     final session = _session;
-    final age = int.tryParse(_age.text.trim());
+    final age = _ageMonthsValue();
     final name = _name.text.trim();
     final location = _location.text.trim();
-    if (session == null ||
-        age == null ||
-        age < 0 ||
-        age > 59 ||
-        name.isEmpty ||
-        location.isEmpty) {
+    if (session == null || age == null || name.isEmpty || location.isEmpty) {
       setState(
-        () => _error = 'Enter the name, age from 0 to 59 months, and location before starting.',
+        () => _error = 'Enter the name, age, and location before starting.',
       );
+      return;
+    }
+    final exactAgeDays = int.tryParse(_ageDays.text.trim());
+    if (exactAgeDays != null && exactAgeDays < 0) {
+      setState(() => _error = 'Exact age in days cannot be negative.');
       return;
     }
     final radarModules = _adaptiveFromRadar
         ? session.loop.pack.activeModuleIds(_wardId)
         : const <String>[];
+    final contextModules = <String>{..._chosen, ...radarModules};
+    if (_extendedClinicalContext) contextModules.add('adult_vitals');
     final flow = FlowBuilder(session.loop.pack)
-        .build(wardId: _wardId, extraModules: {..._chosen, ...radarModules});
-    session.loop.openAssessment(wardId: _wardId);
+        .build(wardId: _wardId, month: age, extraModules: contextModules);
+    session.loop.openAssessment(wardId: _wardId, month: age);
+    _seedClinicalContext(flow);
     final visible = [
       for (final question in flow.questions)
         if (_show(flow, question)) question,
     ];
+    final firstUnanswered = visible.indexWhere(
+      (question) => !flow.answeredIds.contains(question.id),
+    );
     setState(() {
       _flow = flow;
       _visible = visible;
-      _index = 0;
+      _index = firstUnanswered < 0 ? 0 : firstUnanswered;
       _phase = _Phase.questions;
       _error = null;
       _answerError = null;
+      _ageMonths = age;
     });
     _questionKeys
       ..clear()
       ..addEntries(
         visible.map((question) => MapEntry(question.id, GlobalKey())),
       );
+  }
+
+  void _seedClinicalContext(FlowState flow) {
+    int? integer(TextEditingController controller) =>
+        int.tryParse(controller.text.trim());
+    num? decimal(TextEditingController controller) =>
+        num.tryParse(controller.text.trim());
+
+    final values = <String, Object?>{
+      'vitals.respiratory_rate': integer(_respiratoryRate),
+      'vitals.temp_c': decimal(_temperature),
+      'vitals.systolic_bp': integer(_systolicBp),
+      'vitals.diastolic_bp': integer(_diastolicBp),
+      'vitals.pulse_rate': integer(_pulseRate),
+      'symptoms.chest_indrawing': _chestIndrawing ? true : null,
+      'symptoms.vomits_everything': _vomitingEverything ? true : null,
+      'symptoms.convulsions': _convulsions ? true : null,
+    };
+    for (final entry in values.entries) {
+      if (entry.value != null) flow.seedInput(entry.key, entry.value);
+    }
   }
 
   bool _show(FlowState flow, BankQuestion question) {
@@ -424,7 +483,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   }
 
   Future<void> _speak(BankQuestion question) async {
-    await _tts.speak(text: question.prompt(_lang), language: _lang);
+    await _tts.speak(text: _questionPrompt(question, _lang), language: _lang);
   }
 
   void _answer(Object? raw) {
@@ -493,7 +552,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
 
   Future<void> _finish(FlowState flow) async {
     final session = _session;
-    final age = int.tryParse(_age.text.trim());
+    final age = _ageMonthsValue();
     final location = _location.text.trim();
     if (session == null || age == null || location.isEmpty) return;
     if (flow.answers['symptoms.convulsions'] != true &&
@@ -504,7 +563,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
     final input = flow.toAssessmentInput(
       patientId: code,
       ageMonths: age,
-      sex: 'F',
+      sex: _sex,
     );
     final score = session.model?.score(input, session.prior);
     final decision = session.loop.decide(input, score: score);
@@ -516,7 +575,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         abhaId: '91-0000-0000-${age.toString().padLeft(4, '0')}',
         name: _name.text.trim(),
         ageMonths: age,
-        sex: 'F',
+        sex: _sex,
         village: location,
       ),
       FacilityProfile(
@@ -544,7 +603,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
           : stored == false
           ? 'No'
           : '$stored';
-      answers.add((question.prompt(_lang), shown));
+      answers.add((_questionPrompt(question, _lang), shown));
     }
     final model = decision.modelContribution.score;
     final scoreLine = model == null
@@ -643,12 +702,76 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         TextField(
           controller: _age,
           keyboardType: TextInputType.number,
+          onChanged: _syncAgeBandFromInput,
           decoration: const InputDecoration(
-            labelText: 'Age in months',
+            labelText: 'Age',
+            hintText: 'Enter months for a child or years for an older patient',
             border: OutlineInputBorder(),
           ),
         ),
         const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          key: const Key('triage_age_unit_dropdown'),
+          initialValue: _ageUnit,
+          decoration: const InputDecoration(
+            labelText: 'Age unit',
+            border: OutlineInputBorder(),
+          ),
+          items: const [
+            DropdownMenuItem(value: 'months', child: Text('Months')),
+            DropdownMenuItem(value: 'years', child: Text('Years')),
+          ],
+          onChanged: (value) => setState(() => _ageUnit = value ?? 'months'),
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<AgeBandCode>(
+          key: const Key('triage_age_band_dropdown'),
+          initialValue: _ageBand,
+          decoration: const InputDecoration(
+            labelText: 'Patient group / protocol',
+            helperText:
+                'This selects the adaptive questions and safety checks.',
+            border: OutlineInputBorder(),
+          ),
+          items: const [
+            DropdownMenuItem(
+              value: AgeBandCode.infant02m,
+              child: Text('Young infant (0–2 months)'),
+            ),
+            DropdownMenuItem(
+              value: AgeBandCode.child2m5y,
+              child: Text('Child (2 months–5 years)'),
+            ),
+            DropdownMenuItem(
+              value: AgeBandCode.adolescent,
+              child: Text('Adolescent (5–19 years)'),
+            ),
+            DropdownMenuItem(
+              value: AgeBandCode.adult,
+              child: Text('Adult / older adult'),
+            ),
+            DropdownMenuItem(
+              value: AgeBandCode.pregnant,
+              child: Text('Pregnant / ANC'),
+            ),
+          ],
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() {
+              _ageBand = value;
+              if (value == AgeBandCode.infant02m ||
+                  value == AgeBandCode.child2m5y) {
+                _ageUnit = 'months';
+              } else {
+                _ageUnit = 'years';
+              }
+            });
+          },
+        ),
+        if (_extendedClinicalContext) ...[
+          const SizedBox(height: 16),
+          _extendedClinicalIntake(),
+        ],
         DropdownButtonFormField<String>(
           key: const Key('triage_sex_dropdown'),
           initialValue: _sex,
@@ -763,19 +886,6 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
               ),
             ),
           ),
-        const SizedBox(height: 8),
-        OutlinedButton.icon(
-          key: const Key('triage_adult_assessment_button'),
-          onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const TriageAssessmentScreen(),
-              ),
-            );
-          },
-          icon: const Icon(Icons.monitor_heart_outlined),
-          label: const Text('Adult / older adult clinical assessment'),
-        ),
         if (_error != null) ...[
           const SizedBox(height: 8),
           Text(_error!, style: const TextStyle(color: Color(0xFF9F2D2D))),
@@ -786,6 +896,149 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
           child: Text('Start questions ($lang)'),
         ),
       ],
+    );
+  }
+
+  Widget _extendedClinicalIntake() {
+    return Card(
+      key: const Key('triage_extended_clinical_intake'),
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.monitor_heart_outlined,
+                  color: AshaColors.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '$_patientGroupLabel details',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Optional measurements are carried into the same adaptive triage flow. Leave a value blank if it was not measured.',
+              style: TextStyle(color: AshaColors.textSecondary, height: 1.3),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              key: const Key('triage_exact_age_days'),
+              controller: _ageDays,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Exact age in days (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _clinicalNumber(
+                    key: const Key('triage_respiratory_rate'),
+                    controller: _respiratoryRate,
+                    label: 'Respiratory rate',
+                    suffix: '/min',
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _clinicalNumber(
+                    key: const Key('triage_temperature'),
+                    controller: _temperature,
+                    label: 'Temperature',
+                    suffix: '°C',
+                    decimal: true,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _clinicalNumber(
+                    key: const Key('triage_systolic_bp'),
+                    controller: _systolicBp,
+                    label: 'Systolic BP',
+                    suffix: 'mmHg',
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _clinicalNumber(
+                    key: const Key('triage_diastolic_bp'),
+                    controller: _diastolicBp,
+                    label: 'Diastolic BP',
+                    suffix: 'mmHg',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            _clinicalNumber(
+              key: const Key('triage_pulse_rate'),
+              controller: _pulseRate,
+              label: 'Pulse rate',
+              suffix: 'beats/min',
+            ),
+            const SizedBox(height: 8),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Lower chest wall indrawing'),
+              value: _chestIndrawing,
+              onChanged: (value) =>
+                  setState(() => _chestIndrawing = value ?? false),
+            ),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Vomits everything'),
+              value: _vomitingEverything,
+              onChanged: (value) =>
+                  setState(() => _vomitingEverything = value ?? false),
+            ),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Convulsions during this illness'),
+              value: _convulsions,
+              onChanged: (value) =>
+                  setState(() => _convulsions = value ?? false),
+            ),
+            if (_ageBand == AgeBandCode.pregnant)
+              const Text(
+                'Pregnancy context is included in this triage packet. Confirm gestational age and ANC details in the notes if known.',
+                style: TextStyle(color: AshaColors.textSecondary, height: 1.3),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _clinicalNumber({
+    required Key key,
+    required TextEditingController controller,
+    required String label,
+    required String suffix,
+    bool decimal = false,
+  }) {
+    return TextField(
+      key: key,
+      controller: controller,
+      keyboardType: TextInputType.numberWithOptions(decimal: decimal),
+      decoration: InputDecoration(
+        labelText: label,
+        suffixText: suffix,
+        border: const OutlineInputBorder(),
+      ),
     );
   }
 
@@ -900,7 +1153,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  question.prompt(lang),
+                  _questionPrompt(question, lang),
                   style: TextStyle(
                     fontSize: isFocused ? 19 : 16,
                     fontWeight: FontWeight.w800,
@@ -1069,6 +1322,61 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
       if (language.code == code) return language.nativeName;
     }
     return code.toUpperCase();
+  }
+
+  bool get _extendedClinicalContext =>
+      _ageBand != AgeBandCode.child2m5y || (_ageMonthsValue() ?? 0) >= 60;
+
+  int? _ageMonthsValue() {
+    final value = int.tryParse(_age.text.trim());
+    if (value == null || value < 0) return null;
+    return _ageUnit == 'years' ? value * 12 : value;
+  }
+
+  String get _patientGroupLabel => switch (_ageBand) {
+    AgeBandCode.infant02m => 'Young infant (0–2 months)',
+    AgeBandCode.child2m5y => 'Child (2 months–5 years)',
+    AgeBandCode.adolescent => 'Adolescent (5–19 years)',
+    AgeBandCode.adult => 'Adult / older adult',
+    AgeBandCode.pregnant => 'Pregnant / ANC',
+  };
+
+  String get _displayAge {
+    final months = _ageMonths ?? _ageMonthsValue();
+    if (months == null) return '—';
+    if (months < 60) return '$months months';
+    final years = months / 12;
+    return years == years.roundToDouble()
+        ? '${years.round()} years'
+        : '${years.toStringAsFixed(1)} years';
+  }
+
+  String _questionPrompt(BankQuestion question, String language) {
+    final prompt = question.prompt(language);
+    if (!_extendedClinicalContext) return prompt;
+    return prompt
+        .replaceAll('the child', 'the patient')
+        .replaceAll('child ', 'patient ')
+        .replaceAll('Child ', 'Patient ')
+        .replaceAll('बच्चे', 'मरीज़')
+        .replaceAll('बच्चा', 'मरीज़')
+        .replaceAll('मुलाला', 'रुग्णाला')
+        .replaceAll('मुलाची', 'रुग्णाची');
+  }
+
+  void _syncAgeBandFromInput(String raw) {
+    if (_ageUnit != 'months') return;
+    final months = int.tryParse(raw.trim());
+    if (months == null) return;
+    final next = months < 2
+        ? AgeBandCode.infant02m
+        : months < 60
+        ? AgeBandCode.child2m5y
+        : AgeBandCode.adult;
+    if (next != _ageBand &&
+        (_ageBand == AgeBandCode.child2m5y || months >= 60)) {
+      setState(() => _ageBand = next);
+    }
   }
 
   Widget _answerControls(BankQuestion question) {
@@ -1322,7 +1630,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                       const SizedBox(height: 18),
                       _TicketGrid(
                         values: [
-                          ('Age', '${_ageMonths ?? ''} months'),
+                          ('Age', _displayAge),
                           ('Location', note.patient.village),
                           ('Ward', _flow?.wardId ?? '—'),
                           ('Facility', note.facility.name),

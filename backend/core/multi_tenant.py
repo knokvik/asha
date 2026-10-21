@@ -59,8 +59,8 @@ try:
         on that directly. SQLAlchemy will fire the hook for every query that
         goes through AsyncSession as well.
 
-        The listener appends a WHERE block_code = :block_code filter to every
-        SELECT for ASHA / AF roles.
+        The listener appends a WHERE block_code = :block_code filter to SELECTs
+        that include a model with a block_code column for ASHA / AF roles.
         """
         # do_orm_execute is defined on Session, not AsyncSession.
         target = Session
@@ -76,11 +76,20 @@ try:
                 return
             stmt = execute_state.statement
             try:
-                from sqlalchemy import text  # noqa: PLC0415
-
+                entities = getattr(stmt, "column_descriptions", [])
+                scoped_models = [
+                    item.get("entity")
+                    for item in entities
+                    if getattr(item.get("entity"), "block_code", None) is not None
+                ]
+                if not scoped_models:
+                    return
                 execute_state.statement = stmt.where(
-                    text("block_code = :_block_code")
-                ).params(_block_code=ctx.block_code)
+                    *[
+                        model.block_code == ctx.block_code
+                        for model in scoped_models
+                    ]
+                )
             except Exception:  # noqa: BLE001
                 pass
 

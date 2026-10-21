@@ -299,7 +299,7 @@ Language choices from the design document:
     - **Validates: Requirements 9.1**
 
   - [-] 6.8 Extend field triage context and follow-up history
-    - Add patient context fields, symptom chips, disease-radar adaptive-module selection, and an explicit adult/older-adult assessment entry.
+    - Add patient context fields, symptom chips, disease-radar adaptive-module selection, and keep infant, child, adolescent, adult/older-adult, and pregnancy intake on one adaptive triage flow. Legacy adult/questions deep links redirect to the unified flow; older-adult vitals and danger signs are seeded into the adaptive assessment.
     - Keep compressed image/audio evidence visible at the final ticket step and display synced PHC follow-up schedules and triage history in-app. Create the encrypted outbox packet only after the worker explicitly selects “Send ticket with attachments”; show ticket IDs, evidence previews, and audio playback in the app’s sync history and authenticated web sync feed.
     - Remaining: connect a dedicated server recommendation/notification record when the backend contract is finalized; current follow-ups use synced `visit_schedules`.
     - _Requirements: 8.1, 8.2, 24.1, 26.1, 31.1_

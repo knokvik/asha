@@ -52,6 +52,20 @@ class FlowState {
     answers[question.inputField] = raw;
   }
 
+  /// Seeds an answer collected during the unified intake screen.
+  ///
+  /// Seeded values are treated as answered but do not early-stop the flow;
+  /// the adaptive question list still controls the remaining assessment.
+  void seedInput(String inputField, Object? value) {
+    final question = questions.cast<BankQuestion?>().firstWhere(
+      (item) => item!.inputField == inputField,
+      orElse: () => null,
+    );
+    if (question == null) return;
+    answeredIds.add(question.id);
+    answers[inputField] = value;
+  }
+
   List<BankQuestion> get pending {
     if (earlyStopped) return const [];
     return [
@@ -84,7 +98,8 @@ class FlowState {
     }
 
     final pinch = answers['symptoms.skin_pinch'];
-    final earTouched = answers.containsKey('symptoms.ear_pain') ||
+    final earTouched =
+        answers.containsKey('symptoms.ear_pain') ||
         answers.containsKey('symptoms.ear_discharge') ||
         answers.containsKey('symptoms.ear_discharge_days') ||
         answers.containsKey('symptoms.tender_swelling_behind_ear');
@@ -104,6 +119,9 @@ class FlowState {
         tempC: measure('vitals.temp_c'),
         weightKg: measure('vitals.weight_kg'),
         weightForAgeZscore: measure('vitals.weight_for_age_zscore'),
+        systolicBp: measure('vitals.systolic_bp'),
+        diastolicBp: measure('vitals.diastolic_bp'),
+        pulseRate: measure('vitals.pulse_rate'),
       ),
       symptoms: Symptoms(
         unableToDrink: flag('symptoms.unable_to_drink'),
@@ -111,8 +129,12 @@ class FlowState {
         convulsions: flag('symptoms.convulsions'),
         convulsingNow: flag('symptoms.convulsing_now'),
         lethargicOrUnconscious: flag('symptoms.lethargic_or_unconscious'),
-        cough: flag('symptoms.cough') || flag('symptoms.cough_or_difficult_breathing'),
-        coughOrDifficultBreathing: flag('symptoms.cough') || flag('symptoms.cough_or_difficult_breathing'),
+        cough:
+            flag('symptoms.cough') ||
+            flag('symptoms.cough_or_difficult_breathing'),
+        coughOrDifficultBreathing:
+            flag('symptoms.cough') ||
+            flag('symptoms.cough_or_difficult_breathing'),
         coughDurationDays: days('symptoms.cough_duration_days'),
         chestIndrawing: flag('symptoms.chest_indrawing'),
         stridorInCalmChild: flag('symptoms.stridor_in_calm_child'),
@@ -147,7 +169,9 @@ class FlowState {
         acuteEncephalopathy: flag('symptoms.acute_encephalopathy'),
         wateryStoolsMany: flag('symptoms.watery_stools_many'),
         mosquitoBreedingNearby: flag('symptoms.mosquito_breeding_nearby'),
-        dengueRestlessOrLethargic: flag('symptoms.dengue_restless_or_lethargic'),
+        dengueRestlessOrLethargic: flag(
+          'symptoms.dengue_restless_or_lethargic',
+        ),
       ),
     );
   }
@@ -158,8 +182,15 @@ class FlowBuilder {
 
   final ContextPack pack;
 
-  FlowState build({required String wardId, int? month, Set<String> extraModules = const {}}) {
-    final active = {...pack.activeModuleIds(wardId, month: month), ...extraModules}.toList();
+  FlowState build({
+    required String wardId,
+    int? month,
+    Set<String> extraModules = const {},
+  }) {
+    final active = {
+      ...pack.activeModuleIds(wardId, month: month),
+      ...extraModules,
+    }.toList();
     final activeSet = active.toSet();
     final byField = <String, BankQuestion>{};
     for (final question in pack.questions) {
@@ -174,15 +205,23 @@ class FlowBuilder {
 
     final outbreakFlags = _sorted([
       for (final question in pack.questions)
-        if (question.module != 'core' && question.isRedFlag && activeSet.contains(question.module)) question,
+        if (question.module != 'core' &&
+            question.isRedFlag &&
+            activeSet.contains(question.module))
+          question,
     ]);
     final coreRest = _sorted([
       for (final question in pack.questions)
-        if (question.module == 'core' && !dangerFields.contains(question.inputField)) question,
+        if (question.module == 'core' &&
+            !dangerFields.contains(question.inputField))
+          question,
     ]);
     final outbreakRest = _sorted([
       for (final question in pack.questions)
-        if (question.module != 'core' && !question.isRedFlag && activeSet.contains(question.module)) question,
+        if (question.module != 'core' &&
+            !question.isRedFlag &&
+            activeSet.contains(question.module))
+          question,
     ]);
 
     return FlowState(

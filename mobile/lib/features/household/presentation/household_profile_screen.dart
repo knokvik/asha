@@ -58,7 +58,11 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: AshaColors.textPrimary),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 20,
+            color: AshaColors.textPrimary,
+          ),
           onPressed: () {
             if (context.canPop()) {
               context.pop();
@@ -69,7 +73,10 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.more_vert_rounded, color: AshaColors.textPrimary),
+            icon: const Icon(
+              Icons.more_vert_rounded,
+              color: AshaColors.textPrimary,
+            ),
             onPressed: () => _showMoreSheet(context),
           ),
         ],
@@ -119,7 +126,10 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
                               ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFEFF6FF),
                                 borderRadius: BorderRadius.circular(6),
@@ -127,7 +137,11 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: const [
-                                  Icon(Icons.check_circle_rounded, size: 12, color: Color(0xFF2563EB)),
+                                  Icon(
+                                    Icons.check_circle_rounded,
+                                    size: 12,
+                                    color: Color(0xFF2563EB),
+                                  ),
                                   SizedBox(width: 3),
                                   Text(
                                     'ABHA ID linked',
@@ -146,7 +160,11 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.location_on_rounded, size: 14, color: AshaColors.textMuted),
+                            const Icon(
+                              Icons.location_on_rounded,
+                              size: 14,
+                              color: AshaColors.textMuted,
+                            ),
                             const SizedBox(width: 3),
                             Text(
                               'Ward 7  •  ${widget.distance}',
@@ -171,7 +189,10 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
                     indicatorColor: AshaColors.primary,
                     indicatorWeight: 3,
                     indicatorSize: TabBarIndicatorSize.label,
-                    labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                    labelStyle: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
                     tabs: const [
                       Tab(text: 'Profile'),
                       Tab(text: 'Visits'),
@@ -212,7 +233,11 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
                                 color: const Color(0xFFFFF1F2),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(Icons.favorite_rounded, color: Color(0xFFE11D48), size: 20),
+                              child: const Icon(
+                                Icons.favorite_rounded,
+                                color: Color(0xFFE11D48),
+                                size: 20,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Column(
@@ -230,7 +255,10 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
                                     ),
                                     const SizedBox(width: 6),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 1.5,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: const Color(0xFFFEE2E2),
                                         borderRadius: BorderRadius.circular(6),
@@ -261,7 +289,10 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
 
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Divider(color: AshaColors.borderSubtle, height: 1),
+                          child: Divider(
+                            color: AshaColors.borderSubtle,
+                            height: 1,
+                          ),
                         ),
 
                         // Detail Rows: EDD, Last Visit, Risk Level
@@ -274,10 +305,16 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
                           children: [
                             const Text(
                               'Risk Level',
-                              style: TextStyle(fontSize: 13, color: AshaColors.textSecondary),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AshaColors.textSecondary,
+                              ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFDCFCE7),
                                 borderRadius: BorderRadius.circular(12),
@@ -312,13 +349,16 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
                           borderRadius: BorderRadius.circular(26),
                         ),
                       ),
-                      onPressed: () => context.push('/triage/assessment'),
+                      onPressed: () => context.push('/triage'),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: const [
                           Text(
                             'Start Assessment',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                           SizedBox(width: 8),
                           Icon(Icons.arrow_forward_rounded, size: 18),
@@ -352,7 +392,7 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
                     icon: Icons.warning_amber_rounded,
                     label: 'Triage',
                     color: AshaColors.alertHighRisk,
-                    onTap: () => context.push('/triage/assessment'),
+                    onTap: () => context.push('/triage'),
                   ),
                   _buildBottomAction(
                     icon: Icons.shortcut_rounded,
@@ -464,13 +504,17 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
 
   void _showAddVisitSheet(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Scheduled ANC follow-up recorded for Savitri Devi.')),
+      const SnackBar(
+        content: Text('Scheduled ANC follow-up recorded for Savitri Devi.'),
+      ),
     );
   }
 
   void _callFamily(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Dialing beneficiary guardian: +91 98765 43210')),
+      const SnackBar(
+        content: Text('Dialing beneficiary guardian: +91 98765 43210'),
+      ),
     );
   }
 }
