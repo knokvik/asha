@@ -62,6 +62,10 @@ class _EarningsScreenState extends State<EarningsScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // Rates come from the versioned catalogue, so every completed task has
+      // a deterministic value before approval/DBT status is displayed.
+      await widget.repository.incentiveService
+          .loadDefaultCatalogueFromAssets();
       final periods = await widget.repository.getAvailablePeriods();
       if (!periods.contains(_selectedPeriod) && periods.isNotEmpty) {
         _selectedPeriod = periods.first;

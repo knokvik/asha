@@ -20,6 +20,7 @@ class HbncVisitScreen extends ConsumerStatefulWidget {
   final String motherId;
   final String visitScheduleId;
   final String visitTitle;
+  final int visitDay;
   final double birthWeightKg;
   final bool isPreterm;
   final String? ashaId;
@@ -30,6 +31,7 @@ class HbncVisitScreen extends ConsumerStatefulWidget {
     required this.motherId,
     required this.visitScheduleId,
     required this.visitTitle,
+    this.visitDay = 7,
     this.birthWeightKg = 2.8,
     this.isPreterm = false,
     this.ashaId,
@@ -161,6 +163,8 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
           children: [
             Text(
               widget.visitTitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
             ),
             const Text(
@@ -176,6 +180,9 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _buildVisitSummaryCard(),
+          const SizedBox(height: 12),
+
           // ── Danger Signs Alert Banner (Requirement 12.3) ───────────────────
           if (hasDangers)
             Card(
@@ -193,12 +200,14 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
                       children: [
                         Icon(Icons.warning, color: Colors.red.shade800, size: 28),
                         const SizedBox(width: 8),
-                        Text(
-                          'DANGER SIGN DETECTED — URGENT',
-                          style: TextStyle(
-                            color: Colors.red.shade900,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                        Expanded(
+                          child: Text(
+                            'DANGER SIGN DETECTED — URGENT',
+                            style: TextStyle(
+                              color: Colors.red.shade900,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
                         ),
                       ],
@@ -233,7 +242,9 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
                 onExpansionChanged: (v) => setState(() => _showKmcDetails = v),
                 leading: Icon(Icons.favorite, color: Colors.amber.shade900),
                 title: Text(
-                  'High Risk Newborn: Low Birth Weight (${widget.birthWeightKg} kg)',
+                  'High-risk newborn · ${widget.birthWeightKg.toStringAsFixed(1)} kg',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber.shade900),
                 ),
                 subtitle: const Text('Kangaroo Mother Care (KMC) guidance active'),
@@ -325,23 +336,25 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
           _buildSectionHeader('4. Breathing & Respiratory Rate', Icons.air),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  child: TextFormField(
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Breaths per minute',
-                      suffixText: '/min',
-                      border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+                TextFormField(
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Breaths per minute',
+                    suffixText: '/min',
+                    border: OutlineInputBorder(
+                      borderRadius: AshaShapes.searchRadius,
+                      borderSide: BorderSide(color: AshaColors.borderSubtle),
                     ),
-                    onChanged: (val) {
-                      final rr = int.tryParse(val);
-                      setState(() => _respiratoryRate = rr);
-                    },
                   ),
+                  onChanged: (val) {
+                    final rr = int.tryParse(val);
+                    setState(() => _respiratoryRate = rr);
+                  },
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(height: 8),
                 OutlinedButton.icon(
                   onPressed: () {
                     // Quick simulated 60-second counter prompt
@@ -546,6 +559,65 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildVisitSummaryCard() {
+    return Card(
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      color: AshaColors.cardSurface,
+      shape: RoundedRectangleBorder(
+        borderRadius: AshaShapes.cardRadius,
+        side: const BorderSide(color: AshaColors.borderSubtle),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AshaColors.primaryLight,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.child_care, color: AshaColors.primary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('HBNC home follow-up', style: AshaTypography.cardTitle),
+                  const SizedBox(height: 3),
+                  Text(
+                    'Day ${widget.visitDay} check for the newborn and mother',
+                    style: AshaTypography.bodyMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: AshaColors.surfaceMuted,
+                      borderRadius: AshaShapes.chipBorderRadius,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      child: Text(
+                        'Scheduled visit · record observations below',
+                        style: AshaTypography.subtitleSmall.copyWith(
+                          color: AshaColors.primaryDark,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

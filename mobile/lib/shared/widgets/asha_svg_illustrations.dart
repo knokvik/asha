@@ -318,20 +318,30 @@ class AshaClinicalProgramIllustrationWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final svgString = switch (type) {
-      ClinicalProgramType.anc => AshaSvgIllustrations.ancSvg,
-      ClinicalProgramType.pnc => AshaSvgIllustrations.pncSvg,
-      ClinicalProgramType.immunization => AshaSvgIllustrations.immunizationSvg,
-      ClinicalProgramType.ncd => AshaSvgIllustrations.ncdSvg,
-      ClinicalProgramType.hbnc => AshaSvgIllustrations.hbncSvg,
-      ClinicalProgramType.tb => AshaSvgIllustrations.tbSvg,
+    final assetPath = switch (type) {
+      ClinicalProgramType.anc => 'assets/clinical_programs/anc.png',
+      ClinicalProgramType.pnc => 'assets/clinical_programs/pnc.png',
+      ClinicalProgramType.immunization =>
+        'assets/clinical_programs/immunization.png',
+      ClinicalProgramType.ncd => 'assets/clinical_programs/ncd.png',
+      ClinicalProgramType.hbnc => 'assets/clinical_programs/hbnc.png',
+      ClinicalProgramType.tb => 'assets/clinical_programs/tb.png',
     };
 
-    return SvgPicture.string(
-      svgString,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Image.asset(
+        assetPath,
       width: size,
       height: size,
-      fit: BoxFit.contain,
+        fit: BoxFit.cover,
+        semanticLabel: '${type.name.toUpperCase()} clinical program',
+        errorBuilder: (context, error, stackTrace) => Icon(
+          Icons.medical_services_outlined,
+          size: size * .55,
+          color: AshaColors.primary,
+        ),
+      ),
     );
   }
 }

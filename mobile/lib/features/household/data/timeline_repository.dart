@@ -78,6 +78,10 @@ class TimelineRepository {
     final encounters = await (db.select(db.clinicalEncounters)
           ..where((t) => t.memberId.equals(memberId)))
         .get();
+    final encounterIds = encounters.map((encounter) => encounter.id).toSet();
+    final triageResults = await (db.select(db.triageResults)
+          ..where((t) => t.encounterId.isIn(encounterIds)))
+        .get();
     final referrals = await (db.select(db.referralRecords)
           ..where((t) => t.memberId.equals(memberId)))
         .get();
@@ -90,6 +94,7 @@ class TimelineRepository {
 
     final events = <TimelineEventItem>[
       ...encounters.map(_mapEncounter),
+      ...triageResults.map(_mapTriage),
       ...referrals.map(_mapReferral),
       ...incentives.map(_mapIncentive),
       ...schedules.map(_mapSchedule),
@@ -150,6 +155,27 @@ class TimelineRepository {
         'status': r.status,
         'outcome': r.outcome,
         'destinationLevel': r.destinationLevel,
+      },
+    );
+  }
+
+  TimelineEventItem _mapTriage(TriageResult result) {
+    final flag = result.overrideFlag ?? result.flag;
+    final normalizedFlag = flag.toUpperCase();
+    final isRed = normalizedFlag == 'RED';
+    return TimelineEventItem(
+      id: result.id,
+      type: TimelineEventType.triage,
+      title: 'Triage assessment',
+      subtitle: 'Rule engine ${result.ruleVersionId}',
+      timestamp: result.evaluatedAt,
+      badgeText: '$normalizedFlag FLAG',
+      badgeColor: isRed ? Colors.red : Colors.teal,
+      icon: Icons.health_and_safety_outlined,
+      metadata: {
+        'flag': flag,
+        'encounterId': result.encounterId,
+        'ruleVersionId': result.ruleVersionId,
       },
     );
   }

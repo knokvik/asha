@@ -5,7 +5,6 @@ import { useTheme } from '@/shared/hooks/useTheme';
 import { useSync } from '@/shared/context/SyncContext';
 import { SyncToastContainer } from '@/components/SyncToastContainer';
 import { GlobalSearchBar } from '@/components/GlobalSearchBar';
-import { JudgeTriageTriggerModal } from '@/features/triage-trigger/JudgeTriageTriggerModal';
 import {
   Home,
   Activity,
@@ -106,7 +105,6 @@ export function RootLayout() {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [clinicalToolsOpen, setClinicalToolsOpen] = useState(false);
-  const [judgeTriggerOpen, setJudgeTriggerOpen] = useState(false);
   const catchment = localStorage.getItem('asha_catchment') || 'delhi-aerocity';
   const isDelhiCatchment = catchment === 'delhi-aerocity';
   const facilityName = isDelhiCatchment ? 'PHC Aerocity' : 'PHC Shahpur';
@@ -561,20 +559,6 @@ export function RootLayout() {
               </span>
             </button>
 
-            {/* ⚡ Judge Demo: Trigger Hotspot at Indira Airport, Delhi */}
-            <button
-              onClick={() => setJudgeTriggerOpen(true)}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-rose-600 via-amber-600 to-emerald-600 hover:from-rose-700 hover:to-emerald-700 text-white text-xs font-black shadow-xs hover:shadow-md hover:scale-105 transition-all cursor-pointer"
-              title="Click to trigger Live Outbreak Hotspot at Indira Airport, Delhi for Judges"
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
-              </span>
-              <span className="hidden sm:inline">⚡ Judge Demo:</span>
-              <span>Hotspot Trigger</span>
-            </button>
-
             {/* Offline Mode Button */}
             <button
               onClick={() => setOfflineMode(!offlineMode)}
@@ -631,9 +615,6 @@ export function RootLayout() {
 
       {/* Real-time Frontline Sync Toast Notifications */}
       <SyncToastContainer />
-
-      {/* ⚡ Judges Presentation Hotspot & Triage Trigger Modal */}
-      <JudgeTriageTriggerModal open={judgeTriggerOpen} onClose={() => setJudgeTriggerOpen(false)} />
     </div>
   );
 }

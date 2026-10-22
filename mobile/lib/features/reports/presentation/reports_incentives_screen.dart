@@ -1,19 +1,68 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:drift/drift.dart' hide Column;
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../shared/providers/core_providers.dart';
+import '../../incentives/data/earnings_repository.dart';
+import '../../incentives/domain/earnings_models.dart';
+import '../../incentives/domain/incentive_service.dart';
 
 /// Screen 9: Reports & Incentives matching the exact Asha Platform mobile design.
-class ReportsIncentivesScreen extends StatefulWidget {
+class ReportsIncentivesScreen extends ConsumerStatefulWidget {
   const ReportsIncentivesScreen({super.key});
 
   @override
-  State<ReportsIncentivesScreen> createState() =>
+  ConsumerState<ReportsIncentivesScreen> createState() =>
       _ReportsIncentivesScreenState();
 }
 
-class _ReportsIncentivesScreenState extends State<ReportsIncentivesScreen> {
-  final String _selectedPeriod = 'This Month';
+class _ReportsIncentivesScreenState
+    extends ConsumerState<ReportsIncentivesScreen> {
+  late final String _selectedPeriod;
+  bool _loading = true;
+  int _visits = 0;
+  int _completed = 0;
+  int _pending = 0;
+  EarningsStatusTotals _earnings = const EarningsStatusTotals();
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _selectedPeriod = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+    _loadLiveData();
+  }
+
+  Future<void> _loadLiveData() async {
+    setState(() => _loading = true);
+    final db = ref.read(appDatabaseProvider);
+    final rangeStart = DateTime(DateTime.now().year, DateTime.now().month);
+    final rangeEnd = DateTime(DateTime.now().year, DateTime.now().month + 1);
+    final encounters = await (db.select(db.clinicalEncounters)
+          ..where((row) => row.encounterDate.isBiggerOrEqualValue(
+                rangeStart.millisecondsSinceEpoch,
+              ) & row.encounterDate.isSmallerThanValue(
+                rangeEnd.millisecondsSinceEpoch,
+              )))
+        .get();
+    final service = IncentiveService(
+      db: db,
+      syncEngine: ref.read(syncEngineProvider),
+    );
+    await service.loadDefaultCatalogueFromAssets();
+    final repository = EarningsRepository(db: db, incentiveService: service);
+    final earnings = await repository.getStatusTotals(_selectedPeriod);
+    if (!mounted) return;
+    setState(() {
+      _visits = encounters.length;
+      _completed = encounters.where((row) => row.status == 'completed').length;
+      _pending = encounters.length - _completed;
+      _earnings = earnings;
+      _loading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +96,11 @@ class _ReportsIncentivesScreenState extends State<ReportsIncentivesScreen> {
         ),
       ),
       body: SafeArea(
-        child: ListView(
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: _loadLiveData,
+                child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           children: [
             // Period Filter Dropdown / Header
@@ -100,21 +153,21 @@ class _ReportsIncentivesScreenState extends State<ReportsIncentivesScreen> {
             Row(
               children: [
                 _buildStatCard(
-                  count: '28',
+                  count: '$_visits',
                   label: 'Visits',
                   bgColor: const Color(0xFFEFF6FF),
                   textColor: const Color(0xFF2563EB),
                 ),
                 const SizedBox(width: 10),
                 _buildStatCard(
-                  count: '24',
+                  count: '$_completed',
                   label: 'Completed',
                   bgColor: const Color(0xFFF0FDF4),
                   textColor: const Color(0xFF16A34A),
                 ),
                 const SizedBox(width: 10),
                 _buildStatCard(
-                  count: '4',
+                  count: '$_pending',
                   label: 'Pending',
                   bgColor: const Color(0xFFFEF2F2),
                   textColor: const Color(0xFFDC2626),
@@ -130,7 +183,8 @@ class _ReportsIncentivesScreenState extends State<ReportsIncentivesScreen> {
               iconColor: AshaColors.vitalNormal,
               iconBgColor: const Color(0xFFDCFCE7),
               title: 'Earnings & Incentives',
-              subtitle: '₹4,200 claimed',
+              subtitle:
+                  '₹${(_earnings.approvedAmount + _earnings.paidAmount).toStringAsFixed(0)} approved / paid',
               onTap: () => context.push('/incentives'),
             ),
 
@@ -159,16 +213,17 @@ class _ReportsIncentivesScreenState extends State<ReportsIncentivesScreen> {
               subtitle: 'Sync when online',
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
+                  SnackBar(
                     content: Text(
-                      'Reports verified. 12 encounters queued for background sync.',
+                      '$_pending encounters are pending completion or sync.',
                     ),
                   ),
                 );
               },
             ),
           ],
-        ),
+                ),
+              ),
       ),
     );
   }

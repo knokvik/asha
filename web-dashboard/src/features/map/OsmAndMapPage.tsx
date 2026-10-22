@@ -28,7 +28,6 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useSync } from '@/shared/context/SyncContext';
-import { JudgeTriageTriggerModal } from '@/features/triage-trigger/JudgeTriageTriggerModal';
 import { PCMC_FACILITIES, PCMC_WARDS } from '@/shared/api/mockData';
 import { getDiseaseHotspots, getMapFacilities, getMapSources, type MapFacility, type MapSource } from '@/shared/api/mapApi';
 import { PcmcHeatPanel, type HeatView } from '@/features/map/PcmcHeatPanel';
@@ -268,7 +267,6 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { activeHotspot, clearHotspot } = useSync();
-  const [triggerModalOpen, setTriggerModalOpen] = useState(false);
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -871,14 +869,6 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
 
         {/* Stats Pill Strip */}
         <div className="flex items-center gap-2 flex-wrap text-xs">
-          <Button
-            size="sm"
-            onClick={() => setTriggerModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 via-amber-600 to-emerald-600 hover:from-rose-700 hover:to-amber-700 text-white font-bold text-xs shadow-md cursor-pointer"
-          >
-            <Flame className="w-3.5 h-3.5" />
-            <span>⚡ Trigger Hotspot (Indira Airport)</span>
-          </Button>
           <Link
             to="/india-map"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm transition-all"
@@ -1153,9 +1143,6 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
           </Card>
         </div>
       </div>
-
-      {/* ⚡ Judges Presentation Hotspot & Triage Trigger Modal */}
-      <JudgeTriageTriggerModal open={triggerModalOpen} onClose={() => setTriggerModalOpen(false)} />
     </div>
   );
 }

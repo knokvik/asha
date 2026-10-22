@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:drift/drift.dart' show Value;
+import 'package:uuid/uuid.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../data/timeline_repository.dart';
 
 /// Screen 5: Beneficiary Profile (Savitri Devi) matching master reference image.
 /// Top Bar: [ < ]  [ ⋮ ]
@@ -24,6 +27,7 @@ class BeneficiaryTimelineScreen extends ConsumerStatefulWidget {
 
 class _BeneficiaryTimelineScreenState
     extends ConsumerState<BeneficiaryTimelineScreen> {
+  static const _uuid = Uuid();
   int _selectedTab = 0; // 0: Profile, 1: Visits, 2: Triage, 3: Family
   Member? _member;
   Household? _household;
@@ -490,82 +494,141 @@ class _BeneficiaryTimelineScreenState
   }
 
   Widget _buildVisitsPanel() {
+    final timeline = ref.watch(beneficiaryTimelineStreamProvider(widget.memberId));
     return _panelCard(
       icon: Icons.event_note_outlined,
       title: 'Visits',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _timelineRow('12 Oct 2026', 'ANC follow-up', 'Completed'),
-          const Divider(height: 20),
-          _timelineRow('Next due', 'Routine home visit', 'Pending'),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
+      child: timeline.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Text('Could not load visits: $error'),
+        data: (events) {
+          final visits = events
+              .where((event) => event.type == TimelineEventType.encounter ||
+                  event.type == TimelineEventType.immunization ||
+                  event.type == TimelineEventType.visitSchedule)
+              .toList();
+          return _buildEventList(
+            visits,
+            emptyText: 'No visits recorded for this beneficiary yet.',
+            action: OutlinedButton.icon(
               key: const Key('profile_add_visit_button'),
               onPressed: () => _showAddVisitSheet(context),
               icon: const Icon(Icons.add),
               label: const Text('Add visit record'),
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 
   Widget _buildTriagePanel() {
+    final timeline = ref.watch(beneficiaryTimelineStreamProvider(widget.memberId));
     return _panelCard(
       icon: Icons.health_and_safety_outlined,
       title: 'Triage history',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _timelineRow('12 Oct 2026', 'Routine screening', 'Normal'),
-          const Divider(height: 20),
-          const Text(
-            'Start a new assessment to record current symptoms and vitals. The result will remain linked to this beneficiary.',
-            style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+      child: timeline.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Text('Could not load triage history: $error'),
+        data: (events) => _buildEventList(
+          events.where((event) => event.type == TimelineEventType.triage).toList(),
+          emptyText: 'No saved triage assessments for this beneficiary yet.',
+          action: ElevatedButton.icon(
+            key: const Key('profile_start_triage_button'),
+            onPressed: () => context.push('/triage'),
+            icon: const Icon(Icons.play_arrow_rounded),
+            label: const Text('Start assessment'),
           ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              key: const Key('profile_start_triage_button'),
-              onPressed: () => context.push('/triage'),
-              icon: const Icon(Icons.play_arrow_rounded),
-              label: const Text('Start assessment'),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
+  Widget _buildEventList(
+    List<TimelineEventItem> events, {
+    required String emptyText,
+    required Widget action,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (events.isEmpty)
+          Text(emptyText, style: const TextStyle(color: Color(0xFF6B7280)))
+        else
+          for (var i = 0; i < events.length && i < 8; i++) ...[
+            if (i > 0) const Divider(height: 20),
+            _timelineEventRow(events[i]),
+          ],
+        const SizedBox(height: 16),
+        SizedBox(width: double.infinity, child: action),
+      ],
+    );
+  }
+
+  Widget _timelineEventRow(TimelineEventItem event) {
+    final date = DateTime.fromMillisecondsSinceEpoch(event.timestamp);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(event.icon, size: 20, color: const Color(0xFF1E4231)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(event.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+              Text(event.subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+              Text('${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}',
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
+            ],
+          ),
+        ),
+        if (event.badgeText != null)
+          Text(event.badgeText!, style: TextStyle(fontSize: 11, color: event.badgeColor ?? const Color(0xFF6B7280))),
+      ],
+    );
+  }
+
   Widget _buildFamilyPanel() {
+    final householdId = _household?.id;
     return _panelCard(
       icon: Icons.groups_outlined,
       title: 'Family',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Household-linked family records are available from the household profile.',
-            style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              key: const Key('profile_family_records_button'),
-              onPressed: () => context.go('/households'),
-              icon: const Icon(Icons.home_work_outlined),
-              label: const Text('Open household records'),
+      child: householdId == null
+          ? const Text('No household is linked to this beneficiary.', style: TextStyle(color: Color(0xFF6B7280)))
+          : FutureBuilder<List<Member>>(
+              future: _loadFamilyMembers(householdId),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                final family = snapshot.data!;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${family.length} household member${family.length == 1 ? '' : 's'}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 10),
+                    ...family.where((member) => member.id != widget.memberId).map((member) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const CircleAvatar(child: Icon(Icons.person_outline)),
+                      title: Text(member.name),
+                      subtitle: Text(member.sex),
+                      onTap: () => context.push('/beneficiary/${member.id}'),
+                    )),
+                    OutlinedButton.icon(
+                      key: const Key('profile_family_records_button'),
+                      onPressed: () => context.go('/households'),
+                      icon: const Icon(Icons.home_work_outlined),
+                      label: const Text('Open household records'),
+                    ),
+                  ],
+                );
+              },
             ),
-          ),
-        ],
-      ),
     );
+  }
+
+  Future<List<Member>> _loadFamilyMembers(String householdId) {
+    final db = ref.read(appDatabaseProvider);
+    return (db.select(db.members)..where((row) => row.householdId.equals(householdId))).get();
   }
 
   Widget _panelCard({
@@ -604,31 +667,6 @@ class _BeneficiaryTimelineScreenState
     );
   }
 
-  Widget _timelineRow(String date, String title, String status) {
-    return Row(
-      children: [
-        const Icon(Icons.circle, size: 8, color: Color(0xFF1E4231)),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-              Text(
-                date,
-                style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-              ),
-            ],
-          ),
-        ),
-        Text(
-          status,
-          style: const TextStyle(fontSize: 12, color: Color(0xFF16A34A)),
-        ),
-      ],
-    );
-  }
-
   void _showMoreSheet(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
@@ -659,6 +697,14 @@ class _BeneficiaryTimelineScreenState
               onTap: () {
                 Navigator.pop(sheetContext);
                 context.push('/triage');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.reply_rounded),
+              title: const Text('Create referral'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                context.push('/referral/${widget.memberId}');
               },
             ),
             ListTile(
@@ -718,10 +764,28 @@ class _BeneficiaryTimelineScreenState
     );
   }
 
-  void _saveVisit(BuildContext sheetContext, String type) {
+  Future<void> _saveVisit(BuildContext sheetContext, String type) async {
     Navigator.pop(sheetContext);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final db = ref.read(appDatabaseProvider);
+    await db.into(db.clinicalEncounters).insert(
+      ClinicalEncountersCompanion.insert(
+        id: _uuid.v4(),
+        memberId: widget.memberId,
+        encounterType: type.toUpperCase().replaceAll(' ', '_'),
+        programCode: type.toLowerCase().contains('anc') ? 'anc' : 'general_visit',
+        encounterDate: now,
+        ashaId: 'local_worker',
+        status: const Value('completed'),
+        visitNotes: const Value('Visit recorded from beneficiary profile'),
+        createdAt: now,
+        updatedAt: now,
+        syncStatus: const Value('pending'),
+      ),
+    );
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$type saved locally for this beneficiary.')),
+      SnackBar(content: Text('$type saved locally and queued for sync.')),
     );
   }
 

@@ -31,6 +31,7 @@ class LanguageContentPackStore {
   Future<void> install({
     required String languageCode,
     required String apiBaseUrl,
+    void Function(int received, int total)? onProgress,
   }) async {
     final code = _validateCode(languageCode);
     final base = apiBaseUrl.replaceFirst(RegExp(r'/+$'), '');
@@ -45,8 +46,12 @@ class LanguageContentPackStore {
         );
       }
       final bytes = <int>[];
+      final total = response.contentLength ?? 0;
+      var received = 0;
       await for (final chunk in response.stream) {
         bytes.addAll(chunk);
+        received += chunk.length;
+        onProgress?.call(received, total);
       }
       await installArchive(
         code,
@@ -68,7 +73,9 @@ class LanguageContentPackStore {
     if (expectedSha256 != null &&
         expectedSha256.isNotEmpty &&
         actual.toLowerCase() != expectedSha256.toLowerCase()) {
-      throw const LanguageContentPackException('Language pack integrity check failed.');
+      throw const LanguageContentPackException(
+        'Language pack integrity check failed.',
+      );
     }
     final destination = await directoryFor(code);
     final staging = Directory('${destination.path}.installing');
@@ -77,9 +84,13 @@ class LanguageContentPackStore {
     try {
       final archive = ZipDecoder().decodeBytes(bytes);
       final expectedName = 'app_$code.arb';
-      final entry = archive.files.where((file) => file.name == expectedName).firstOrNull;
+      final entry = archive.files
+          .where((file) => file.name == expectedName)
+          .firstOrNull;
       if (entry == null || !entry.isFile) {
-        throw LanguageContentPackException('Language pack is missing $expectedName.');
+        throw LanguageContentPackException(
+          'Language pack is missing $expectedName.',
+        );
       }
       final target = File(p.join(staging.path, expectedName));
       await target.writeAsBytes(entry.content as List<int>, flush: true);
@@ -99,7 +110,19 @@ class LanguageContentPackStore {
 
   String _validateCode(String value) {
     final code = value.toLowerCase();
-    const supported = {'hi', 'mr', 'bn', 'te', 'ta', 'kn', 'ml', 'or', 'gu', 'pa', 'as'};
+    const supported = {
+      'hi',
+      'mr',
+      'bn',
+      'te',
+      'ta',
+      'kn',
+      'ml',
+      'or',
+      'gu',
+      'pa',
+      'as',
+    };
     if (!supported.contains(code)) {
       throw LanguageContentPackException('Unsupported language pack: $value');
     }

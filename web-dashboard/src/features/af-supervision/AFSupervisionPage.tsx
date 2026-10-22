@@ -132,10 +132,10 @@ export function AFSupervisionPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-            ASHA Facilitator (AF) Supportive Supervision & Field Sync
+            ASHA Team
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Facilitator: Sarita Singh • Sector: Shahpur Central • ABDM Gateway Live Sync Feed & Performance
+            Frontline worker roster, household coverage, triage activity, and sync status
           </p>
         </div>
 
@@ -175,8 +175,6 @@ export function AFSupervisionPage() {
       <>
         {/* ASHA Team Supervision & Performance */}
         <div className="space-y-6">
-          <ImciAshaTable />
-
           {/* Search Bar */}
           <div className="relative max-w-md">
             <Search className="w-4 h-4 text-[#71717A] absolute left-3.5 top-3" />
@@ -188,6 +186,27 @@ export function AFSupervisionPage() {
               className="w-full pl-10 pr-4 py-2 rounded-xl bg-white dark:bg-[#1E1E1E] border border-[#E5E7EB] dark:border-[#2E2E2E] text-xs text-[#0F172A] dark:text-[#F8FAFC] placeholder-[#71717A] focus:outline-none focus:ring-1 focus:ring-amber-500 transition-colors"
             />
           </div>
+
+          {/* Live catchment counts */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { label: 'ASHA workers', value: ashas.length, icon: Users, tone: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
+              { label: 'Households covered', value: ashas.reduce((sum, item) => sum + item.totalAssignedHouseholds, 0), icon: Layers, tone: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
+              { label: 'Triage packets', value: syncActivities.filter((item) => item.severity === 'RED' || item.severity === 'YELLOW').length, icon: Activity, tone: 'text-rose-700 bg-rose-50 border-rose-200' },
+              { label: 'Live sync records', value: syncActivities.length, icon: Radio, tone: 'text-amber-700 bg-amber-50 border-amber-200' },
+            ].map(({ label, value, icon: Icon, tone }) => (
+              <div key={label} className={`rounded-xl border px-4 py-3 ${tone}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase tracking-wider font-bold">{label}</span>
+                  <Icon className="w-4 h-4" />
+                </div>
+                <div className="text-xl font-black mt-1">{value}</div>
+                <div className="text-[10px] opacity-70">Authenticated dashboard data</div>
+              </div>
+            ))}
+          </div>
+
+          <ImciAshaTable />
 
           {/* ASHA Performance List - Single Row Expandable with Recent Tasks & Detailed Profile */}
           <div className="space-y-3">
@@ -444,9 +463,24 @@ export function AFSupervisionPage() {
               );
             })}
           </div>
+
+          <div className="rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/60 dark:bg-rose-950/20 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-bold text-rose-900 dark:text-rose-200">
+                <Activity className="w-4 h-4" />
+                Live triage packets
+              </div>
+              <p className="text-xs text-rose-800/70 dark:text-rose-200/70 mt-1">Open the separate triage desk to review reporter, patient, vitals, danger signs, and attachments.</p>
+            </div>
+            <Button onClick={() => navigate('/af/live-triage')} className="bg-rose-600 hover:bg-rose-700 text-white text-xs gap-1.5">
+              Open live triage <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
         </div>
 
-        {/* Live Frontline Data Sync Feed (What Was Received & When) */}
+        {/* Live Frontline Data Sync Feed is available on the dedicated triage/log pages. */}
+        {false && (
+        /* Live Frontline Data Sync Feed (What Was Received & When) */
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
@@ -743,6 +777,7 @@ export function AFSupervisionPage() {
             )}
           </div>
         </div>
+        )}
       </>
 
       {/* Digital Field Supervision Checklist Modal (Req 39.2) */}

@@ -28,6 +28,7 @@ import {
   X,
 } from 'lucide-react';
 import { useSync } from '@/shared/context/SyncContext';
+import { JudgeTriageTriggerModal } from '@/features/triage-trigger/JudgeTriageTriggerModal';
 
 export function MainDashboardPage() {
   const navigate = useNavigate();
@@ -35,6 +36,7 @@ export function MainDashboardPage() {
   const leafletMapRef = useRef<L.Map | null>(null);
   const [emergencyWindowCollapsed, setEmergencyWindowCollapsed] = useState(true);
   const [activeKpi, setActiveKpi] = useState<'referrals' | 'workers' | 'visits' | 'beds' | null>(null);
+  const [judgeDemoOpen, setJudgeDemoOpen] = useState(false);
   const { syncActivities } = useSync();
 
   // Initialize Real Leaflet Map
@@ -221,6 +223,15 @@ export function MainDashboardPage() {
           </p>
         </div>
 
+        <button
+          type="button"
+          onClick={() => setJudgeDemoOpen(true)}
+          className="inline-flex items-center gap-2 self-start rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 shadow-sm hover:bg-amber-100"
+        >
+          <AlertTriangle className="h-4 w-4" />
+          Judge demo triage
+        </button>
+
         {/* 3 Top Metadata Cards */}
         <div className="flex items-center gap-2.5 flex-wrap">
           {/* Date Card */}
@@ -275,6 +286,11 @@ export function MainDashboardPage() {
           </div>
         </div>
       </div>
+
+      <JudgeTriageTriggerModal
+        open={judgeDemoOpen}
+        onClose={() => setJudgeDemoOpen(false)}
+      />
 
       {/* 2. Live Health Bulletin News Marquee (Directly below Title Bar) */}
       <div className="w-full bg-white dark:bg-[#1E1E1E] border border-slate-200 dark:border-[#2E2E2E] rounded-xl px-3 py-1.5 flex items-center gap-3 overflow-hidden shadow-2xs">
@@ -433,9 +449,18 @@ export function MainDashboardPage() {
         </div>
       </div>
 
-      {activeKpi && (
-        <div className="fixed inset-0 z-50 bg-slate-900/20" onClick={() => setActiveKpi(null)}>
-          <aside className="absolute right-0 top-0 h-full w-full max-w-xl bg-white dark:bg-[#18181B] shadow-2xl border-l border-slate-200 dark:border-[#2E2E2E] p-5 overflow-y-auto animate-in slide-in-from-right duration-200" onClick={(event) => event.stopPropagation()}>
+      <div
+        className={`fixed inset-0 z-50 bg-slate-900/20 transition-opacity duration-300 ${
+          activeKpi ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setActiveKpi(null)}
+      >
+          <aside
+            className={`absolute right-0 top-0 h-full w-full max-w-xl bg-white dark:bg-[#18181B] shadow-2xl border-l border-slate-200 dark:border-[#2E2E2E] p-5 overflow-y-auto transform transition-transform duration-300 ease-out ${
+              activeKpi ? 'translate-x-0' : 'translate-x-full'
+            }`}
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#2E2E2E] pb-4">
               <div><div className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Live dashboard detail</div><h2 className="text-lg font-black text-slate-900 dark:text-white">{activeKpi === 'referrals' ? 'Urgent referrals' : activeKpi === 'workers' ? 'ASHA workers online' : activeKpi === 'visits' ? 'Visits due today' : 'Bed availability'}</h2></div>
               <button aria-label="Close detail panel" onClick={() => setActiveKpi(null)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"><X className="h-4 w-4" /></button>
@@ -444,11 +469,30 @@ export function MainDashboardPage() {
               {activeKpi === 'referrals' && <><p className="text-xs text-slate-500">Open referral activity currently received from the authenticated field feed.</p>{syncActivities.filter((item) => item.severity === 'RED' || item.severity === 'YELLOW').slice(0, 8).map((item) => <div key={item.id} className="rounded-xl border border-rose-200 bg-rose-50/50 p-3 text-xs"><div className="font-bold text-slate-900">{item.workerName} · {item.severity || 'Priority'}</div><div className="mt-1 text-slate-700">{item.details}</div><div className="mt-1 text-slate-500">{item.syncTime} · {item.status}</div></div>)}{syncActivities.filter((item) => item.severity === 'RED' || item.severity === 'YELLOW').length === 0 && <div className="rounded-xl bg-slate-50 p-4 text-xs text-slate-500">No priority packets received.</div>}</>}
               {activeKpi === 'workers' && <>{Array.from(new Set(syncActivities.map((item) => item.workerName))).map((worker) => <div key={worker} className="flex items-center justify-between rounded-xl border border-slate-200 p-3 text-xs"><span className="font-bold text-slate-900">{worker}</span><span className="text-emerald-600">Active sync</span></div>)}{syncActivities.length === 0 && <div className="rounded-xl bg-slate-50 p-4 text-xs text-slate-500">No worker packets received yet.</div>}</>}
               {activeKpi === 'visits' && <div className="rounded-xl border border-teal-200 bg-teal-50/60 p-4"><div className="text-3xl font-black text-slate-900">18</div><div className="text-xs text-slate-600">Due today: 12 ANC · 4 PNC · 2 NCD</div><button onClick={() => navigate('/anm')} className="mt-4 text-xs font-bold text-teal-700">Open household due list →</button></div>}
-              {activeKpi === 'beds' && <div className="rounded-xl border border-sky-200 bg-sky-50/60 p-4"><div className="text-3xl font-black text-slate-900">12 / 16</div><div className="text-xs text-slate-600">Current occupancy and availability reported by the facility inventory.</div><button onClick={() => navigate('/resources')} className="mt-4 text-xs font-bold text-sky-700">Open inventory →</button></div>}
+              {activeKpi === 'beds' && (
+                <div className="rounded-xl border border-sky-200 bg-sky-50/60 p-4 space-y-4">
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <div className="text-3xl font-black text-slate-900">12 / 16</div>
+                      <div className="text-xs text-slate-600">Beds occupied at PHC Shahpur</div>
+                    </div>
+                    <span className="rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-bold text-emerald-700">4 available</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+                    <div className="h-full w-3/4 rounded-full bg-sky-500" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="rounded-lg bg-white/80 p-3"><div className="font-bold text-slate-900">10</div><div className="text-slate-500">General beds</div></div>
+                    <div className="rounded-lg bg-white/80 p-3"><div className="font-bold text-slate-900">2</div><div className="text-slate-500">Maternity beds</div></div>
+                    <div className="rounded-lg bg-white/80 p-3"><div className="font-bold text-slate-900">1</div><div className="text-slate-500">Isolation occupied</div></div>
+                    <div className="rounded-lg bg-white/80 p-3"><div className="font-bold text-slate-900">4</div><div className="text-slate-500">General vacant</div></div>
+                  </div>
+                  <div className="border-t border-sky-200 pt-3 text-[11px] text-slate-500">Last inventory update: today · PHC facility feed</div>
+                </div>
+              )}
             </div>
           </aside>
-        </div>
-      )}
+      </div>
 
       {/* 4. Live Frontline ASHA Activity & Synchronization Stream */}
       <div className="bg-white dark:bg-[#1E1E1E] border border-slate-200 dark:border-[#2E2E2E] rounded-2xl overflow-hidden shadow-xs">

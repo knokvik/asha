@@ -173,6 +173,7 @@ Language choices from the design document:
     - Wire tap-to-hear audio prompt widget available on every screen
     - Implement step-by-step audio guidance sequences for clinical procedures (breath counting, MUAC, ORS preparation)
     - _Requirements: 7.1, 7.2, 7.3, 7.4_
+    - Progress: Offline pack downloads now expose per-pack determinate progress in the row and app bar. Triage question speech normalizes bare and regional language codes (for example `bn`/`bn-IN`) for the selected voice and registered clips, avoiding an accidental English-locale fallback.
 
   - [x] 4.5 Implement one-question-per-screen form framework with accessibility
     - Create `lib/shared/widgets/clinical_question_scaffold.dart`: one question per screen, 48×48 dp minimum touch targets, WCAG AA high-contrast colours
@@ -468,6 +469,7 @@ Language choices from the design document:
 
 - [x] 11. Checkpoint — verify clinical programs and triage integration
   - Run all clinical program integration tests. Verify a complete flow: register household → ANC registration → high-risk flag fires → referral generated → HBNC scheduled on delivery → immunization schedule correct → NCD screening scores correctly. Ensure all tests pass, ask the user if questions arise.
+  - Progress: mobile clinical-program forms now share the light app shell, rounded input borders, consistent primary actions, and neutral title bars across ANC, PNC, HBNC, immunization, NCD/CBAC, and TB screens; danger and high-risk colours remain reserved for clinical status banners.
 
 - [x] 12. Due list, reminders, VHSND, BLE devices, and measurement tools
   - [x] 12.1 Implement reminders and beneficiary communication
@@ -484,6 +486,7 @@ Language choices from the design document:
     - Coverage heatmap aggregate view for supervisors (requires ASHA consent)
     - _Requirements: 25.1, 25.2, 25.3, 25.4, 25.5_
     - Progress: the all-India geo payload is no longer declared as a mobile asset. The server build produces an allowlisted, SHA-256-verified `map-india` archive; the worker installs it on demand to protected app storage, where the map and route views read it. Old map-pack deep links now open the unified Offline Packs screen.
+    - Progress: state-level facility views now use zoom-aware geographic clustering once a viewport contains more than 120 facilities, preventing a state tap from materialising thousands of Flutter markers and freezing the map.
 
   - [x] 12.3 Implement VHSND session planning and health education library
     - VHSND: session beneficiary list per service (immunization/ANC/CBAC/FP) + mobilisation checklist + session summary form; attendance + services recording → update individual beneficiary timelines; VHSNC meeting log
@@ -716,8 +719,15 @@ Language choices from the design document:
 - Web dashboard progress: critical triage defaults to compact mode; the overview now places live authenticated ASHA activity ahead of priority referrals; ASHA supervision and frontline sync are consolidated into one expandable worker page with recent packets and last-sync details; analytics surfaces the authenticated sync snapshot; and login stores the selected Delhi IGI Airport/Aerocity catchment for the dashboard shell.
 - Web dashboard progress: notifications now have a dedicated live activity route, Clinical Programs has a separate hub matching the mobile ANC/PNC/immunization/NCD/HBNC/TB program set, and the PHC referral alert is a data-driven live ticker without hardcoded diagnoses.
 - Web dashboard progress: the four overview KPIs now open a right-side detail panel, the corner emergency triage control starts minimized, the overview keeps live ASHA logs above priority referrals, and ASHA workers have a dedicated detail route with recent synced activity.
+- Web dashboard progress: ASHA Teams now leads with search and live roster counts, renders worker rows separately from triage activity, and links to a dedicated live-triage detail page showing the reporting worker, beneficiary, ticket, vitals, danger signs, and attachments from the sync stream.
 - Web dashboard progress: Drug & Bed Discovery now uses the authenticated supply-forecast API with live loading/empty states instead of PCMC/demo alert data.
+- Mobile progress: Clinical Programs hub cards now use the supplied offline ANC, PNC, immunization, NCD, HBNC, and TB illustrations instead of the old SVG badges.
 - Mobile progress: Quick Actions now include a local-first Tracking page with filter chips for people, triage tickets, households and other field work; selecting an item slides to a dedicated detail screen with record metadata, sync state and referral outcome/status. The summary activity card was removed to keep the page focused.
+- Mobile progress: the Due List calendar now starts collapsed to keep the task list compact and expands on demand.
+- Mobile progress: shell-tab back handling now returns Map, Tasks, and Profile to Home before allowing the app to exit; pushed detail pages continue to pop back through their route history.
+- Mobile progress: Tracking now refreshes from the encrypted local database, shows live filtered counts for records/pending sync/triage, and presents a clearer status timeline on each record detail.
+- Mobile progress: triage answers now remain visible as selected outlined controls; revisiting a question restores its saved value so workers can edit it and continue with Next/Back.
+- Mobile progress: Reports & Incentives now read current-month encounters and incentive events from the encrypted database; task amounts come from the versioned catalogue, and approved/paid totals are shown only from their PHC/DBT statuses.
 
 - [x] 16. Final checkpoint — full system validation
   - Run the complete property test suite (all 18 properties, 500 iterations each). Run all integration tests. Build the APK and verify size < 50 MB. Verify Docker Compose stack starts cleanly. Walk through the end-to-end flow (registration → triage → referral → incentive → claim) against a staging backend. Ensure all tests pass, ask the user if questions arise.

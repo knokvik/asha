@@ -107,7 +107,9 @@ class DueListScreen extends ConsumerStatefulWidget {
 class _DueListScreenState extends ConsumerState<DueListScreen> {
   late int _selectedFilter;
   late DateTime _selectedDate;
-  var _calendarExpanded = true;
+  // Keep the due-list calendar compact by default; workers can expand it when
+  // they need to browse dates.
+  var _calendarExpanded = false;
   final _createdTasks = <_CreatedTaskPreview>[];
 
   List<DueTask>? _tasks;

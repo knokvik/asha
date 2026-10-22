@@ -121,6 +121,7 @@ flutter:
     - assets/lexicon/
     - assets/incentives/
     - assets/search/
+    - assets/clinical_programs/
     - assets/triage/
     - packages/triage/lib/data/pack/
     - packages/triage/lib/data/model/

@@ -972,6 +972,18 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
         visiblePool = facilities;
       }
 
+      // A state tap moves the camera to roughly zoom 8.5. At that level a
+      // Maharashtra-sized viewport can still contain thousands of facilities;
+      // creating one Flutter widget per POI blocks the UI thread and makes the
+      // map appear frozen. Keep the overview bounded with geographic clusters
+      // until the worker zooms into a smaller area.
+      if (visiblePool.length > 120) {
+        return [
+          ...markers,
+          ..._facilityClusterMarkers(visiblePool),
+        ];
+      }
+
       for (final poi in visiblePool) {
         final chosen = _selected?.id == poi.id;
         final showLabel =
@@ -1115,6 +1127,55 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
       }
     }
     return markers;
+  }
+
+  List<Marker> _facilityClusterMarkers(List<FacilityPoi> facilities) {
+    final cellSize = (1.0 / math.pow(2, (_zoomLevel - 7) / 2))
+        .clamp(0.025, 1.0)
+        .toDouble();
+    final groups = <String, List<FacilityPoi>>{};
+    for (final facility in facilities) {
+      final latCell = (facility.latitude / cellSize).floor();
+      final lngCell = (facility.longitude / cellSize).floor();
+      groups.putIfAbsent('$latCell:$lngCell', () => []).add(facility);
+    }
+
+    return [
+      for (final group in groups.values)
+        if (group.isNotEmpty)
+          () {
+            final latitude = group
+                    .map((item) => item.latitude)
+                    .reduce((a, b) => a + b) /
+                group.length;
+            final longitude = group
+                    .map((item) => item.longitude)
+                    .reduce((a, b) => a + b) /
+                group.length;
+            final category = group.any((item) => item.category == 'hospital')
+                ? 'hospital'
+                : group.any((item) => item.category == 'blood_bank')
+                    ? 'blood_bank'
+                    : group.first.category;
+            return Marker(
+              key: Key('facility-cluster-${group.first.id}'),
+              point: LatLng(latitude, longitude),
+              width: 52,
+              height: 52,
+              child: _ClusterMarker(
+                count: group.length,
+                color: _facilityColor(category),
+                onTap: () {
+                  _ateMarkerTap = true;
+                  _mapController.move(
+                    LatLng(latitude, longitude),
+                    math.min(_zoomLevel + 2, 18),
+                  );
+                },
+              ),
+            );
+          }(),
+    ];
   }
 
   List<CircleMarker> _liveLocationCircles() {

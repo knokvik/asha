@@ -721,7 +721,19 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
       _index = next;
       _answerError = null;
     });
-    _answerController.clear();
+    _loadAnswerIntoEditor(_visible[next]);
+  }
+
+  void _loadAnswerIntoEditor(BankQuestion question) {
+    final stored = _flow?.answers[question.inputField];
+    if (question.type == 'number' || question.type == 'text') {
+      _answerController.text = stored?.toString() ?? '';
+      _answerController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _answerController.text.length),
+      );
+    } else {
+      _answerController.clear();
+    }
   }
 
   Future<void> _finish(FlowState flow) async {
@@ -1294,7 +1306,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
           _index = index;
           _answerError = null;
         });
-        _answerController.clear();
+        _loadAnswerIntoEditor(question);
       },
       child: Container(
         key: _questionKeys.putIfAbsent(question.id, GlobalKey.new),
@@ -1440,6 +1452,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   Widget _answerBar(BankQuestion question) {
     final isBoolean = question.type == 'bool';
     final lang = ref.read(languageProvider).languageCode;
+    final stored = _flow?.answers[question.inputField];
     return Material(
       color: Colors.white,
       elevation: 10,
@@ -1484,6 +1497,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                       label: _triageCopy(lang, 'yes'),
                       icon: Icons.check_rounded,
                       color: AshaColors.primary,
+                      selected: stored == true,
                       onPressed: () => _answer(true),
                     ),
                     const SizedBox(width: 6),
@@ -1492,6 +1506,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                       icon: Icons.close_rounded,
                       color: const Color(0xFFD1D5DB),
                       foregroundColor: AshaColors.textPrimary,
+                      selected: stored == false,
                       onPressed: () => _answer(false),
                     ),
                     const SizedBox(width: 6),
@@ -1499,6 +1514,8 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                       label: _triageCopy(lang, 'notSure'),
                       icon: Icons.help_outline_rounded,
                       color: AshaColors.textSecondary,
+                      selected: (_flow?.answeredIds.contains(question.id) ?? false) &&
+                          stored == null,
                       onPressed: () => _answer(null),
                     ),
                   ] else ...[
@@ -1529,6 +1546,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
     required IconData icon,
     required Color color,
     Color foregroundColor = Colors.white,
+    bool selected = false,
     required VoidCallback onPressed,
   }) {
     return Expanded(
@@ -1546,8 +1564,11 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
               fontSize: 11,
               fontWeight: FontWeight.w800,
             ),
-            shape: const RoundedRectangleBorder(
+            shape: RoundedRectangleBorder(
               borderRadius: AshaShapes.buttonRadius,
+              side: selected
+                  ? BorderSide(color: AshaColors.primaryDark, width: 2)
+                  : BorderSide.none,
             ),
           ),
         ),
@@ -1716,18 +1737,29 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   }
 
   Widget _choiceButton(ChoiceOption option) {
+    final selected = _flow?.answers[_visible[_index].inputField] == option.value;
     return SizedBox(
       height: 56,
       child: OutlinedButton.icon(
         onPressed: () => _answer(option.value),
-        icon: const Icon(Icons.radio_button_unchecked_rounded),
+        icon: Icon(
+          selected
+              ? Icons.radio_button_checked_rounded
+              : Icons.radio_button_unchecked_rounded,
+        ),
         label: Align(
           alignment: Alignment.centerLeft,
           child: Text(option.label),
         ),
         style: OutlinedButton.styleFrom(
           foregroundColor: AshaColors.primaryDark,
-          side: const BorderSide(color: AshaColors.borderSubtle, width: 1.5),
+          side: BorderSide(
+            color: selected ? AshaColors.primary : AshaColors.borderSubtle,
+            width: selected ? 2 : 1.5,
+          ),
+          backgroundColor: selected
+              ? AshaColors.primary.withValues(alpha: .06)
+              : null,
           shape: const RoundedRectangleBorder(
             borderRadius: AshaShapes.cardRadius,
           ),

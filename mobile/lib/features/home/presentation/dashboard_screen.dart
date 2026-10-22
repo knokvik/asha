@@ -652,7 +652,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           children: [
             Expanded(
               child: _buildQuickActionCard(
-                title: hasInterpreter ? shellText(_lang, 'interpreter') : 'Offline packs',
+                title: hasInterpreter
+                    ? shellText(_lang, 'interpreter')
+                    : shellText(_lang, 'voicePacks'),
                 iconWidget: _quickActionIcon(
                   hasInterpreter ? Icons.translate_rounded : Icons.download_rounded,
                   const Color(0xFF2563EB),

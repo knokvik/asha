@@ -42,6 +42,9 @@ class _PackManagerScreenState extends ConsumerState<PackManagerScreen> {
   String? _error;
   int _mapBytes = 0;
   Map<String, int> _remotePackBytes = const {};
+  String? _activePackId;
+  double? _packProgress;
+  String? _packProgressLabel;
 
   @override
   void initState() {
@@ -52,7 +55,9 @@ class _PackManagerScreenState extends ConsumerState<PackManagerScreen> {
   Future<void> _load() async {
     try {
       final support = await getApplicationSupportDirectory();
-      final interpreter = ModelStore(Directory('${support.path}/bhasha-models'));
+      final interpreter = ModelStore(
+        Directory('${support.path}/bhasha-models'),
+      );
       final installed = await _mapStore.isInstalled();
       final bytes = installed ? await _mapStore.installedBytes() : 0;
       Map<String, int> remoteBytes = const {};
@@ -87,43 +92,58 @@ class _PackManagerScreenState extends ConsumerState<PackManagerScreen> {
     }
   }
 
-  Future<void> _run(Future<void> Function() job) async {
+  Future<void> _run(
+    Future<void> Function() job, {
+    required String packId,
+  }) async {
     if (_busy) return;
     setState(() {
       _busy = true;
       _error = null;
       _mapProgress = null;
+      _activePackId = packId;
+      _packProgress = 0;
+      _packProgressLabel = 'Preparing download';
     });
     try {
       await job();
     } catch (error) {
       if (mounted) setState(() => _error = '$error');
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _activePackId = null;
+          _packProgress = null;
+          _packProgressLabel = null;
+        });
+      }
     }
   }
 
   Future<void> _installMap() => _run(() async {
-        final baseUrl = await resolveAshaPackBaseUrl();
-        await _mapStore.install(
-          apiBaseUrl: baseUrl,
-          onProgress: (received, total) {
-            if (!mounted) return;
-            setState(
-              () => _mapProgress = total > 0 ? received / total : null,
-            );
-          },
-        );
-        final bytes = await _mapStore.installedBytes();
-        await ref.read(offlinePackProvider.notifier).setMapInstalled(true);
-        if (mounted) setState(() => _mapBytes = bytes);
-      });
+    final baseUrl = await resolveAshaPackBaseUrl();
+    await _mapStore.install(
+      apiBaseUrl: baseUrl,
+      onProgress: (received, total) {
+        if (!mounted) return;
+        setState(() {
+          _mapProgress = total > 0 ? received / total : null;
+          _packProgress = _mapProgress;
+          _packProgressLabel = 'India map';
+        });
+      },
+    );
+    final bytes = await _mapStore.installedBytes();
+    await ref.read(offlinePackProvider.notifier).setMapInstalled(true);
+    if (mounted) setState(() => _mapBytes = bytes);
+  }, packId: 'map-india');
 
   Future<void> _removeMap() => _run(() async {
-        await _mapStore.remove();
-        await ref.read(offlinePackProvider.notifier).setMapInstalled(false);
-        if (mounted) setState(() => _mapBytes = 0);
-      });
+    await _mapStore.remove();
+    await ref.read(offlinePackProvider.notifier).setMapInstalled(false);
+    if (mounted) setState(() => _mapBytes = 0);
+  }, packId: 'map-india');
 
   Future<void> _installInterpreterLanguage(IndicLanguage language) =>
       _run(() async {
@@ -131,24 +151,31 @@ class _PackManagerScreenState extends ConsumerState<PackManagerScreen> {
         if (store == null) return;
         // One verified model core is shared by the language choices. The
         // language is not exposed until that download has completed.
-        await store.ensure((_) {});
+        await store.ensure((progress) {
+          if (!mounted) return;
+          setState(() {
+            _packProgress = progress.fraction;
+            _packProgressLabel = progress.label;
+          });
+        });
         await ref
             .read(offlinePackProvider.notifier)
             .setInterpreterLanguageInstalled(language.code, true);
-      });
+      }, packId: 'interpreter-${language.code}');
 
   Future<void> _removeInterpreterLanguage(IndicLanguage language) => _run(
-        () => ref
-            .read(offlinePackProvider.notifier)
-            .setInterpreterLanguageInstalled(language.code, false),
-      );
+    () => ref
+        .read(offlinePackProvider.notifier)
+        .setInterpreterLanguageInstalled(language.code, false),
+    packId: 'interpreter-${language.code}',
+  );
 
   Future<void> _removeInterpreterCore() => _run(() async {
-        final store = _interpreterStore;
-        if (store == null) return;
-        await store.removeAll();
-        await ref.read(offlinePackProvider.notifier).clearInterpreterLanguages();
-      });
+    final store = _interpreterStore;
+    if (store == null) return;
+    await store.removeAll();
+    await ref.read(offlinePackProvider.notifier).clearInterpreterLanguages();
+  }, packId: 'interpreter-core');
 
   @override
   Widget build(BuildContext context) {
@@ -156,6 +183,9 @@ class _PackManagerScreenState extends ConsumerState<PackManagerScreen> {
     final currentLanguage = ref.watch(languageProvider).languageCode;
     final store = _interpreterStore;
     final mapInstalled = packState.mapInstalled;
+    final packStatus = _busy && _packProgressLabel != null
+        ? '${_packProgressLabel!} · ${((_packProgress ?? 0) * 100).round()}%'
+        : null;
 
     return Scaffold(
       backgroundColor: AshaColors.screenBg,
@@ -163,6 +193,33 @@ class _PackManagerScreenState extends ConsumerState<PackManagerScreen> {
         title: const Text('Offline packs'),
         backgroundColor: AshaColors.cardSurface,
         foregroundColor: AshaColors.textPrimary,
+        actions: [
+          if (_busy)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: SizedBox(
+                width: 38,
+                height: 38,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: _packProgress,
+                      strokeWidth: 3,
+                      color: AshaColors.primary,
+                    ),
+                    Text(
+                      '${((_packProgress ?? 0) * 100).round()}%',
+                      style: const TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -172,15 +229,17 @@ class _PackManagerScreenState extends ConsumerState<PackManagerScreen> {
                 _InfoCard(
                   icon: Icons.inventory_2_outlined,
                   text:
-                      _remotePackBytes.isEmpty
+                      packStatus ??
+                      (_remotePackBytes.isEmpty
                           ? 'Install only what this phone needs. The hosted pack catalogue is currently unavailable; try again when connected.'
-                          : '${_remotePackBytes.length} hosted packs available. Install only what this phone needs; removing a pack deletes only its downloaded files.',
+                          : '${_remotePackBytes.length} hosted packs available. Install only what this phone needs; removing a pack deletes only its downloaded files.'),
                 ),
                 const SizedBox(height: 14),
                 _PackExpansion(
                   icon: Icons.language_rounded,
                   title: 'App language packs',
-                  subtitle: '${packState.appLanguageCodes.length} language${packState.appLanguageCodes.length == 1 ? '' : 's'} available',
+                  subtitle:
+                      '${packState.appLanguageCodes.length} language${packState.appLanguageCodes.length == 1 ? '' : 's'} available',
                   children: [
                     for (final language in supportedLanguages)
                       _LanguageRow(
@@ -189,25 +248,37 @@ class _PackManagerScreenState extends ConsumerState<PackManagerScreen> {
                         base: language.code == 'en',
                         remoteBytes: _remotePackBytes['ui-${language.code}'],
                         busy: _busy,
+                        downloading: _activePackId == 'ui-${language.code}',
+                        progress: _activePackId == 'ui-${language.code}'
+                            ? _packProgress
+                            : null,
                         onInstall: () => _run(() async {
                           final baseUrl = await resolveAshaPackBaseUrl();
                           await _languageStore.install(
                             languageCode: language.code,
                             apiBaseUrl: baseUrl,
+                            onProgress: (received, total) {
+                              if (!mounted) return;
+                              setState(() {
+                                _packProgress = total > 0
+                                    ? received / total
+                                    : null;
+                                _packProgressLabel =
+                                    '${language.englishName} pack';
+                              });
+                            },
                           );
                           await ref
                               .read(offlinePackProvider.notifier)
                               .setAppLanguageInstalled(language.code, true);
-                        }),
+                        }, packId: 'ui-${language.code}'),
                         onRemove: () async {
-                          await _run(
-                            () async {
-                              await _languageStore.remove(language.code);
-                              await ref
-                                  .read(offlinePackProvider.notifier)
-                                  .setAppLanguageInstalled(language.code, false);
-                            },
-                          );
+                          await _run(() async {
+                            await _languageStore.remove(language.code);
+                            await ref
+                                .read(offlinePackProvider.notifier)
+                                .setAppLanguageInstalled(language.code, false);
+                          }, packId: 'ui-${language.code}');
                           if (currentLanguage == language.code && mounted) {
                             await ref
                                 .read(languageProvider.notifier)
@@ -233,6 +304,10 @@ class _PackManagerScreenState extends ConsumerState<PackManagerScreen> {
                           : '${_formatBytes(_remotePackBytes['map-india'] ?? 0)} download. Includes facilities, roads, household and district reference data.',
                       installed: mapInstalled,
                       busy: _busy,
+                      downloading: _activePackId == 'map-india',
+                      progress: _activePackId == 'map-india'
+                          ? _packProgress
+                          : null,
                       onInstall: _installMap,
                       onRemove: _removeMap,
                     ),
@@ -247,7 +322,10 @@ class _PackManagerScreenState extends ConsumerState<PackManagerScreen> {
                     ),
                     if (_mapProgress != null && _busy) ...[
                       const SizedBox(height: 4),
-                      LinearProgressIndicator(value: _mapProgress, minHeight: 5),
+                      LinearProgressIndicator(
+                        value: _mapProgress,
+                        minHeight: 5,
+                      ),
                     ],
                   ],
                 ),
@@ -269,9 +347,18 @@ class _PackManagerScreenState extends ConsumerState<PackManagerScreen> {
                           detail: language.speech
                               ? '${language.name} · voice and typed interpretation'
                               : '${language.name} · typed interpretation',
-                          installed: packState.hasInterpreterLanguage(language.code),
+                          installed: packState.hasInterpreterLanguage(
+                            language.code,
+                          ),
                           busy: _busy,
-                          onInstall: () => _installInterpreterLanguage(language),
+                          downloading:
+                              _activePackId == 'interpreter-${language.code}',
+                          progress:
+                              _activePackId == 'interpreter-${language.code}'
+                              ? _packProgress
+                              : null,
+                          onInstall: () =>
+                              _installInterpreterLanguage(language),
                           onRemove: () => _removeInterpreterLanguage(language),
                         ),
                       if (store.isReady) ...[
@@ -329,16 +416,16 @@ class _PackExpansion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-        margin: EdgeInsets.zero,
-        clipBehavior: Clip.antiAlias,
-        child: ExpansionTile(
-          leading: Icon(icon, color: AshaColors.primary),
-          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-          subtitle: Text(subtitle),
-          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          children: children,
-        ),
-      );
+    margin: EdgeInsets.zero,
+    clipBehavior: Clip.antiAlias,
+    child: ExpansionTile(
+      leading: Icon(icon, color: AshaColors.primary),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+      subtitle: Text(subtitle),
+      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      children: children,
+    ),
+  );
 }
 
 class _LanguageRow extends StatelessWidget {
@@ -348,6 +435,8 @@ class _LanguageRow extends StatelessWidget {
     required this.base,
     required this.remoteBytes,
     required this.busy,
+    required this.downloading,
+    required this.progress,
     required this.onInstall,
     required this.onRemove,
   });
@@ -357,36 +446,63 @@ class _LanguageRow extends StatelessWidget {
   final bool base;
   final int? remoteBytes;
   final bool busy;
+  final bool downloading;
+  final double? progress;
   final VoidCallback onInstall;
   final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) => ListTile(
-        contentPadding: EdgeInsets.zero,
-        title: Text(language.nativeName),
-        subtitle: Text(
-          base
-              ? '${language.englishName} · included with the app'
-              : '${language.englishName}${remoteBytes == null ? '' : ' · ${_formatPackBytes(remoteBytes!)} download'}',
-        ),
-        trailing: base || installed
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.check_circle_rounded, color: Color(0xFF15803D)),
-                  if (!base)
-                    IconButton(
-                      tooltip: 'Remove ${language.englishName}',
-                      onPressed: busy ? null : onRemove,
-                      icon: const Icon(Icons.delete_outline_rounded),
+    contentPadding: EdgeInsets.zero,
+    title: Text(language.nativeName),
+    subtitle: Text(
+      base
+          ? '${language.englishName} · included with the app'
+          : '${language.englishName}${remoteBytes == null ? '' : ' · ${_formatPackBytes(remoteBytes!)} download'}',
+    ),
+    trailing: downloading
+        ? SizedBox(
+            width: 38,
+            height: 38,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                CircularProgressIndicator(
+                  value: progress,
+                  strokeWidth: 3,
+                  color: Colors.grey.shade600,
+                  backgroundColor: Colors.grey.shade200,
+                ),
+                if (progress != null)
+                  Text(
+                    '${(progress! * 100).round()}%',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.grey.shade700,
                     ),
-                ],
-              )
-            : OutlinedButton(
-                onPressed: busy ? null : onInstall,
-                child: const Text('Install'),
-              ),
-      );
+                  ),
+              ],
+            ),
+          )
+        : base || installed
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Color(0xFF15803D)),
+              if (!base)
+                IconButton(
+                  tooltip: 'Remove ${language.englishName}',
+                  onPressed: busy ? null : onRemove,
+                  icon: const Icon(Icons.delete_outline_rounded),
+                ),
+            ],
+          )
+        : OutlinedButton(
+            onPressed: busy ? null : onInstall,
+            child: const Text('Download'),
+          ),
+  );
 }
 
 class _PackActionRow extends StatelessWidget {
@@ -396,6 +512,8 @@ class _PackActionRow extends StatelessWidget {
     required this.detail,
     required this.installed,
     required this.busy,
+    required this.downloading,
+    required this.progress,
     required this.onInstall,
     required this.onRemove,
   });
@@ -405,26 +523,37 @@ class _PackActionRow extends StatelessWidget {
   final String detail;
   final bool installed;
   final bool busy;
+  final bool downloading;
+  final double? progress;
   final VoidCallback onInstall;
   final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) => ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: Icon(icon, color: AshaColors.primary),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: Text(detail),
-        trailing: installed
-            ? IconButton(
-                tooltip: 'Remove $title',
-                onPressed: busy ? null : onRemove,
-                icon: const Icon(Icons.delete_outline_rounded),
-              )
-            : OutlinedButton(
-                onPressed: busy ? null : onInstall,
-                child: Text(busy ? '…' : 'Install'),
-              ),
-      );
+    contentPadding: EdgeInsets.zero,
+    leading: Icon(icon, color: AshaColors.primary),
+    title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+    subtitle: Text(detail),
+    trailing: installed
+        ? IconButton(
+            tooltip: 'Remove $title',
+            onPressed: busy ? null : onRemove,
+            icon: const Icon(Icons.delete_outline_rounded),
+          )
+        : OutlinedButton(
+            onPressed: busy ? null : onInstall,
+            child: downloading
+                ? SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      value: progress,
+                      strokeWidth: 2,
+                    ),
+                  )
+                : const Text('Download'),
+          ),
+  );
 }
 
 class _InfoCard extends StatelessWidget {
@@ -436,19 +565,19 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF1F5F9),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: color ?? const Color(0xFF2563EB)),
-            const SizedBox(width: 10),
-            Expanded(child: Text(text, style: const TextStyle(height: 1.35))),
-          ],
-        ),
-      );
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: const Color(0xFFF1F5F9),
+      border: Border.all(color: const Color(0xFFE2E8F0)),
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: color ?? const Color(0xFF2563EB)),
+        const SizedBox(width: 10),
+        Expanded(child: Text(text, style: const TextStyle(height: 1.35))),
+      ],
+    ),
+  );
 }

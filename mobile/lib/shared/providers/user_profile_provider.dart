@@ -185,6 +185,36 @@ class UserProfileNotifier extends AsyncNotifier<UserProfile> {
     state = await AsyncValue.guard(() => _loadProfile());
   }
 
+  /// Saves worker-editable profile fields locally so the profile remains
+  /// available offline. The next authenticated profile refresh can reconcile
+  /// these values with the server.
+  Future<void> updateEditableProfile({
+    required String name,
+    required String phone,
+    required String village,
+    required String subcentre,
+    required String phc,
+  }) async {
+    final current = state.value;
+    if (current == null) return;
+
+    await _storage.write(key: 'server_user_name', value: name.trim());
+    await _storage.write(key: 'server_user_phone', value: phone.trim());
+    await _storage.write(key: 'server_village', value: village.trim());
+    await _storage.write(key: 'server_subcentre_id', value: subcentre.trim());
+    await _storage.write(key: 'server_phc_id', value: phc.trim());
+
+    state = AsyncData(
+      current.copyWith(
+        name: name.trim(),
+        phone: phone.trim(),
+        village: village.trim(),
+        subcentre: subcentre.trim(),
+        phc: phc.trim(),
+      ),
+    );
+  }
+
   void _triggerBackgroundServerFetch() {
     _fetchFromServer().catchError((_) {});
   }

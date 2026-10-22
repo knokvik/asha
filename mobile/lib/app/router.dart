@@ -6,6 +6,7 @@ import '../features/auth/presentation/pin_setup_screen.dart';
 import '../core/l10n/language_provider.dart';
 import '../features/due_list/presentation/due_list_screen.dart';
 import '../features/home/presentation/tools_screen.dart';
+import '../features/home/presentation/edit_worker_profile_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
 import '../features/settings/presentation/pack_manager_screen.dart';
 
@@ -151,6 +152,13 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
           },
         ),
       ],
+    ),
+    GoRoute(
+      path: '/profile/edit',
+      pageBuilder: (context, state) => _buildSlidePage(
+        state: state,
+        child: const EditWorkerProfileScreen(),
+      ),
     ),
     GoRoute(
       path: '/profile',
@@ -346,7 +354,9 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
             motherId: 'mem_kavita_02',
             visitScheduleId:
                 state.uri.queryParameters['visitId'] ?? 'sched_hbnc_01',
-            visitTitle: 'HBNC Visit 3 (Day 7)',
+            visitDay:
+                int.tryParse(state.uri.queryParameters['day'] ?? '7') ?? 7,
+            visitTitle: 'HBNC follow-up',
             birthWeightKg: 2.7,
             isPreterm: false,
             ashaId: 'asha-01',

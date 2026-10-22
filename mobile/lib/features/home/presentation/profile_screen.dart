@@ -320,6 +320,16 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 20),
 
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.push('/profile/edit'),
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('Edit profile'),
+                  ),
+                ),
+                const SizedBox(height: 22),
+
                 // Performance Metric: "This Month"
                 Text(
                   shellText(lang, 'thisMonth'),

@@ -54,8 +54,20 @@ class MainShell extends ConsumerWidget {
         ),
       ),
     );
-    if (sync == null) return shell;
-    return _SyncToastListener(sync: sync, child: shell);
+    final shellWithBackStack = PopScope<void>(
+      // The shell tabs are kept in one route, so handle the first back press
+      // by returning to Home instead of letting Android close the app while a
+      // worker is on Map, Tasks, or Profile.
+      canPop: index == 0,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && index != 0) {
+          ref.read(shellTabProvider.notifier).select(0);
+        }
+      },
+      child: shell,
+    );
+    if (sync == null) return shellWithBackStack;
+    return _SyncToastListener(sync: sync, child: shellWithBackStack);
   }
 }
 
