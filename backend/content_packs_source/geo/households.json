@@ -1,0 +1,38 @@
+[
+  {
+    "id": "hh-near",
+    "name": "Demo household near",
+    "age_years": 2,
+    "lat": 18.641,
+    "lng": 73.84,
+    "dues": ["follow-up"],
+    "due_today": true
+  },
+  {
+    "id": "hh-mid",
+    "name": "Demo household mid",
+    "age_years": 24,
+    "lat": 18.645,
+    "lng": 73.84,
+    "dues": ["ANC"],
+    "due_today": true
+  },
+  {
+    "id": "hh-far",
+    "name": "Demo household far",
+    "age_years": 0,
+    "lat": 18.655,
+    "lng": 73.84,
+    "dues": ["immunization"],
+    "due_today": true
+  },
+  {
+    "id": "hh-later",
+    "name": "Demo household later",
+    "age_years": 4,
+    "lat": 18.67,
+    "lng": 73.88,
+    "dues": ["ANC"],
+    "due_today": false
+  }
+]

@@ -1,0 +1,879 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-01",
+        "name": "UPHC W1",
+        "category": "phc",
+        "phone": "02067000001",
+        "hours": "08:00-16:00",
+        "capabilities": [
+          "delivery_care",
+          "ns1_dengue_test",
+          "oxygen",
+          "pediatric"
+        ],
+        "ward_id": "W1",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.7552,
+          18.6336
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-02",
+        "name": "Sub-centre W2",
+        "category": "sub_centre",
+        "phone": "02067000002",
+        "hours": "09:00-15:00",
+        "capabilities": [
+          "pediatric"
+        ],
+        "ward_id": "W2",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.7992,
+          18.6384
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-03",
+        "name": "CHC W3",
+        "category": "chc",
+        "phone": "02067000003",
+        "hours": "00:00-24:00",
+        "capabilities": [
+          "delivery_care",
+          "oxygen",
+          "ambulance",
+          "pediatric"
+        ],
+        "ward_id": "W3",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.8432,
+          18.6432
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-04",
+        "name": "General hospital W4",
+        "category": "hospital",
+        "phone": "02067000004",
+        "hours": "00:00-24:00",
+        "capabilities": [
+          "delivery_care",
+          "ns1_dengue_test",
+          "oxygen",
+          "ambulance",
+          "icu",
+          "pediatric"
+        ],
+        "ward_id": "W4",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.8712,
+          18.648
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-05",
+        "name": "Dispensary W5",
+        "category": "dispensary",
+        "phone": "02067000005",
+        "hours": "09:00-16:00",
+        "capabilities": [
+          "oxygen"
+        ],
+        "ward_id": "W5",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.7552,
+          18.6688
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-06",
+        "name": "Diagnostic lab W6",
+        "category": "lab",
+        "phone": "02067000006",
+        "hours": "09:00-17:00",
+        "capabilities": [
+          "ns1_dengue_test"
+        ],
+        "ward_id": "W6",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.7992,
+          18.6736
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-07",
+        "name": "Blood bank W7",
+        "category": "blood_bank",
+        "phone": "02067000007",
+        "hours": "09:00-17:00",
+        "capabilities": [],
+        "ward_id": "W7",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.8432,
+          18.6784
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-08",
+        "name": "Janaushadhi Kendra W8",
+        "category": "janaushadhi",
+        "phone": "02067000008",
+        "hours": "09:00-20:00",
+        "capabilities": [],
+        "ward_id": "W8",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.8712,
+          18.6832
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-09",
+        "name": "Anganwadi W1",
+        "category": "anganwadi",
+        "phone": "02067000009",
+        "hours": "09:00-13:00",
+        "capabilities": [],
+        "ward_id": "W1",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.7552,
+          18.648
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-10",
+        "name": "Block office W2",
+        "category": "block_office",
+        "phone": "02067000010",
+        "hours": "10:00-17:00",
+        "capabilities": [],
+        "ward_id": "W2",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.7992,
+          18.6288
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-11",
+        "name": "Panchayat office W3",
+        "category": "panchayat",
+        "phone": "02067000011",
+        "hours": "10:00-17:00",
+        "capabilities": [],
+        "ward_id": "W3",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.8432,
+          18.6336
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-12",
+        "name": "Police station W4",
+        "category": "police",
+        "phone": "02067000012",
+        "hours": "00:00-24:00",
+        "capabilities": [],
+        "ward_id": "W4",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.8712,
+          18.6384
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-13",
+        "name": "Ration shop W5",
+        "category": "ration_shop",
+        "phone": "02067000013",
+        "hours": "10:00-17:00",
+        "capabilities": [],
+        "ward_id": "W5",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.7552,
+          18.6832
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-14",
+        "name": "UPHC W6",
+        "category": "phc",
+        "phone": "02067000014",
+        "hours": "08:00-16:00",
+        "capabilities": [
+          "delivery_care",
+          "ns1_dengue_test",
+          "oxygen",
+          "pediatric"
+        ],
+        "ward_id": "W6",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.7992,
+          18.688
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-15",
+        "name": "Sub-centre W7",
+        "category": "sub_centre",
+        "phone": "02067000015",
+        "hours": "09:00-15:00",
+        "capabilities": [
+          "pediatric"
+        ],
+        "ward_id": "W7",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.8432,
+          18.6688
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-16",
+        "name": "CHC W8",
+        "category": "chc",
+        "phone": "02067000016",
+        "hours": "00:00-24:00",
+        "capabilities": [
+          "delivery_care",
+          "oxygen",
+          "ambulance",
+          "pediatric"
+        ],
+        "ward_id": "W8",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.8712,
+          18.6736
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-17",
+        "name": "General hospital W1",
+        "category": "hospital",
+        "phone": "02067000017",
+        "hours": "00:00-24:00",
+        "capabilities": [
+          "delivery_care",
+          "ns1_dengue_test",
+          "oxygen",
+          "ambulance",
+          "icu",
+          "pediatric"
+        ],
+        "ward_id": "W1",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.7552,
+          18.6384
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-18",
+        "name": "Dispensary W2",
+        "category": "dispensary",
+        "phone": "02067000018",
+        "hours": "09:00-16:00",
+        "capabilities": [
+          "oxygen"
+        ],
+        "ward_id": "W2",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.7992,
+          18.6432
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-19",
+        "name": "Diagnostic lab W3",
+        "category": "lab",
+        "phone": "02067000019",
+        "hours": "09:00-17:00",
+        "capabilities": [
+          "ns1_dengue_test"
+        ],
+        "ward_id": "W3",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.8408,
+          18.6412
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-20",
+        "name": "Blood bank W4",
+        "category": "blood_bank",
+        "phone": "02067000020",
+        "hours": "09:00-17:00",
+        "capabilities": [],
+        "ward_id": "W4",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.8712,
+          18.6288
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-21",
+        "name": "Janaushadhi Kendra W5",
+        "category": "janaushadhi",
+        "phone": "02067000021",
+        "hours": "09:00-20:00",
+        "capabilities": [],
+        "ward_id": "W5",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.7552,
+          18.6736
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-22",
+        "name": "Anganwadi W6",
+        "category": "anganwadi",
+        "phone": "02067000022",
+        "hours": "09:00-13:00",
+        "capabilities": [],
+        "ward_id": "W6",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.7992,
+          18.6784
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-23",
+        "name": "Block office W7",
+        "category": "block_office",
+        "phone": "02067000023",
+        "hours": "10:00-17:00",
+        "capabilities": [],
+        "ward_id": "W7",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.8432,
+          18.6832
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-24",
+        "name": "Panchayat office W8",
+        "category": "panchayat",
+        "phone": "02067000024",
+        "hours": "10:00-17:00",
+        "capabilities": [],
+        "ward_id": "W8",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.8712,
+          18.688
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-25",
+        "name": "Police station W1",
+        "category": "police",
+        "phone": "02067000025",
+        "hours": "00:00-24:00",
+        "capabilities": [],
+        "ward_id": "W1",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.7552,
+          18.6288
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-26",
+        "name": "Ration shop W2",
+        "category": "ration_shop",
+        "phone": "02067000026",
+        "hours": "10:00-17:00",
+        "capabilities": [],
+        "ward_id": "W2",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.7992,
+          18.6336
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-27",
+        "name": "UPHC W3",
+        "category": "phc",
+        "phone": "02067000027",
+        "hours": "08:00-16:00",
+        "capabilities": [
+          "delivery_care",
+          "ns1_dengue_test",
+          "oxygen",
+          "pediatric"
+        ],
+        "ward_id": "W3",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.8432,
+          18.6384
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-28",
+        "name": "Sub-centre W4",
+        "category": "sub_centre",
+        "phone": "02067000028",
+        "hours": "09:00-15:00",
+        "capabilities": [
+          "pediatric"
+        ],
+        "ward_id": "W4",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.8712,
+          18.6432
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-29",
+        "name": "CHC W5",
+        "category": "chc",
+        "phone": "02067000029",
+        "hours": "00:00-24:00",
+        "capabilities": [
+          "delivery_care",
+          "oxygen",
+          "ambulance",
+          "pediatric"
+        ],
+        "ward_id": "W5",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.7552,
+          18.688
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-30",
+        "name": "General hospital W6",
+        "category": "hospital",
+        "phone": "02067000030",
+        "hours": "00:00-24:00",
+        "capabilities": [
+          "delivery_care",
+          "ns1_dengue_test",
+          "oxygen",
+          "ambulance",
+          "icu",
+          "pediatric"
+        ],
+        "ward_id": "W6",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.7992,
+          18.6688
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-31",
+        "name": "Dispensary W7",
+        "category": "dispensary",
+        "phone": "02067000031",
+        "hours": "09:00-16:00",
+        "capabilities": [
+          "oxygen"
+        ],
+        "ward_id": "W7",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.8432,
+          18.6736
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-32",
+        "name": "Diagnostic lab W8",
+        "category": "lab",
+        "phone": "02067000032",
+        "hours": "09:00-17:00",
+        "capabilities": [
+          "ns1_dengue_test"
+        ],
+        "ward_id": "W8",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.8712,
+          18.6784
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-33",
+        "name": "Blood bank W1",
+        "category": "blood_bank",
+        "phone": "02067000033",
+        "hours": "09:00-17:00",
+        "capabilities": [],
+        "ward_id": "W1",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.7552,
+          18.6432
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-34",
+        "name": "Janaushadhi Kendra W2",
+        "category": "janaushadhi",
+        "phone": "02067000034",
+        "hours": "09:00-20:00",
+        "capabilities": [],
+        "ward_id": "W2",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.7992,
+          18.648
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-35",
+        "name": "Anganwadi W3",
+        "category": "anganwadi",
+        "phone": "02067000035",
+        "hours": "09:00-13:00",
+        "capabilities": [],
+        "ward_id": "W3",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.8432,
+          18.6288
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-36",
+        "name": "Block office W4",
+        "category": "block_office",
+        "phone": "02067000036",
+        "hours": "10:00-17:00",
+        "capabilities": [],
+        "ward_id": "W4",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.8712,
+          18.6336
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-37",
+        "name": "Panchayat office W5",
+        "category": "panchayat",
+        "phone": "02067000037",
+        "hours": "10:00-17:00",
+        "capabilities": [],
+        "ward_id": "W5",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.7552,
+          18.6784
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-38",
+        "name": "Police station W6",
+        "category": "police",
+        "phone": "02067000038",
+        "hours": "00:00-24:00",
+        "capabilities": [],
+        "ward_id": "W6",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.7992,
+          18.6832
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-39",
+        "name": "Ration shop W7",
+        "category": "ration_shop",
+        "phone": "02067000039",
+        "hours": "10:00-17:00",
+        "capabilities": [],
+        "ward_id": "W7",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.8432,
+          18.688
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "POI-40",
+        "name": "UPHC W8",
+        "category": "phc",
+        "phone": "02067000040",
+        "hours": "08:00-16:00",
+        "capabilities": [
+          "delivery_care",
+          "ns1_dengue_test",
+          "oxygen",
+          "pediatric"
+        ],
+        "ward_id": "W8",
+        "synthetic": true
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          73.8712,
+          18.6688
+        ]
+      }
+    }
+  ]
+}

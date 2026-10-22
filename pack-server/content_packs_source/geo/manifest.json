@@ -1,0 +1,6 @@
+{
+  "district_id": "PCMC",
+  "sample_fix": {"latitude": 18.64, "longitude": 73.84},
+  "synthetic": true,
+  "note": "Cached fix inside W3. Tiles are local MBTiles. Facilities are synthetic."
+}

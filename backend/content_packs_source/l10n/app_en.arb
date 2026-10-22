@@ -1,0 +1,311 @@
+{
+  "@@locale": "en",
+  "appTitle": "Asha",
+  "@appTitle": {
+    "description": "Application title shown in the app bar"
+  },
+  "settingUp": "Setting up encrypted storage...",
+  "@settingUp": {
+    "description": "Shown on the PIN setup screen during initial setup"
+  },
+  "pinSetupTitle": "ASHA Digital Platform",
+  "@pinSetupTitle": {
+    "description": "Title on the PIN setup / welcome screen"
+  },
+  "welcomeBack": "Welcome Back",
+  "@welcomeBack": {
+    "description": "Title on unlock screen when PIN is already configured"
+  },
+  "securitySetup": "Security Setup",
+  "@securitySetup": {
+    "description": "Title on initial PIN configuration screen"
+  },
+  "createPin": "Create PIN (4–8 digits)",
+  "@createPin": {
+    "description": "Field label for creating new PIN"
+  },
+  "confirmPin": "Confirm PIN",
+  "@confirmPin": {
+    "description": "Field label for confirming PIN"
+  },
+  "securityPin": "Security PIN",
+  "@securityPin": {
+    "description": "Field label for entering security PIN"
+  },
+  "unlockDatabase": "Unlock Database",
+  "@unlockDatabase": {
+    "description": "Button label to unlock local encrypted database"
+  },
+  "setPinAndInitialize": "Set PIN & Initialize",
+  "@setPinAndInitialize": {
+    "description": "Button label to submit initial PIN"
+  },
+  "pinMismatch": "PINs do not match. Please re-enter.",
+  "@pinMismatch": {
+    "description": "Validation error when PINs do not match"
+  },
+  "pinLengthError": "PIN must be between 4 and 8 numeric digits.",
+  "@pinLengthError": {
+    "description": "Validation error for invalid PIN length"
+  },
+  "tooManyAttempts": "Too many attempts. Supervisor OTP required.",
+  "@tooManyAttempts": {
+    "description": "Error message when maximum failed attempts reached"
+  },
+  "incorrectPin": "Incorrect PIN. Please try again.",
+  "@incorrectPin": {
+    "description": "Error message for wrong PIN"
+  },
+  "savedOnPhone": "Saved on phone",
+  "@savedOnPhone": {
+    "description": "Sync status indicator — record saved locally but not yet synced"
+  },
+  "synced": "Synced",
+  "@synced": {
+    "description": "Sync status indicator — record confirmed on server"
+  },
+  "needsAttention": "Needs attention",
+  "@needsAttention": {
+    "description": "Sync status indicator — sync error requiring user action"
+  },
+  "home": "Home",
+  "@home": {
+    "description": "Navigation label for the home / due-list screen"
+  },
+  "dueList": "Today's Tasks",
+  "@dueList": {
+    "description": "Title of the daily due task list screen"
+  },
+  "household": "Household",
+  "@household": {
+    "description": "Navigation label for the household registry"
+  },
+  "households": "Households",
+  "@households": {
+    "description": "Plural label for households"
+  },
+  "registerHousehold": "Register Household",
+  "@registerHousehold": {
+    "description": "Action label for registering a new household"
+  },
+  "triage": "Triage",
+  "@triage": {
+    "description": "Navigation label for the triage workflow"
+  },
+  "referral": "Referral",
+  "@referral": {
+    "description": "Navigation label for the referral workflow"
+  },
+  "referrals": "Referrals",
+  "@referrals": {
+    "description": "Plural label for referrals"
+  },
+  "learning": "Learning",
+  "@learning": {
+    "description": "Navigation label for the training / learning module"
+  },
+  "incentives": "Incentives",
+  "@incentives": {
+    "description": "Navigation label for the earnings / incentives screen"
+  },
+  "settings": "Settings",
+  "@settings": {
+    "description": "Navigation label for the settings screen"
+  },
+  "language": "Language",
+  "@language": {
+    "description": "Label for language setting"
+  },
+  "selectLanguage": "Select Language",
+  "@selectLanguage": {
+    "description": "Title of the language selector dialog or screen"
+  },
+  "save": "Save",
+  "@save": {
+    "description": "Generic save button label"
+  },
+  "cancel": "Cancel",
+  "@cancel": {
+    "description": "Generic cancel button label"
+  },
+  "submit": "Submit",
+  "@submit": {
+    "description": "Generic submit button label"
+  },
+  "next": "Next",
+  "@next": {
+    "description": "Generic next step button label"
+  },
+  "back": "Back",
+  "@back": {
+    "description": "Generic back button label"
+  },
+  "done": "Done",
+  "@done": {
+    "description": "Generic done button label"
+  },
+  "skip": "Skip",
+  "@skip": {
+    "description": "Generic skip button label"
+  },
+  "search": "Search",
+  "@search": {
+    "description": "Generic search button or placeholder label"
+  },
+  "triageFlagRed": "RED — Refer immediately",
+  "@triageFlagRed": {
+    "description": "Triage result label for red (urgent referral) flag"
+  },
+  "triageFlagYellow": "YELLOW — Monitor closely",
+  "@triageFlagYellow": {
+    "description": "Triage result label for yellow (monitor) flag"
+  },
+  "triageFlagGreen": "GREEN — Continue home care",
+  "@triageFlagGreen": {
+    "description": "Triage result label for green (home care) flag"
+  },
+  "triageDisclaimer": "This is clinical decision support. Your judgment as an ASHA is the final decision.",
+  "@triageDisclaimer": {
+    "description": "Disclaimer shown alongside every triage result"
+  },
+  "referImmediately": "Immediate referral required",
+  "@referImmediately": {
+    "description": "Instruction for urgent referral"
+  },
+  "callAmbulanceImmediately": "Call 108 ambulance immediately",
+  "@callAmbulanceImmediately": {
+    "description": "Emergency instruction to call 108 ambulance"
+  },
+  "offlineIndicator": "Working offline — data saved on phone",
+  "@offlineIndicator": {
+    "description": "Banner shown when the device has no network connectivity"
+  },
+  "lowStorageWarning": "Storage is running low. Some cached data can be cleared.",
+  "@lowStorageWarning": {
+    "description": "Warning shown when device storage falls below the configured threshold"
+  },
+  "consentTitle": "Your Health Information",
+  "@consentTitle": {
+    "description": "Title on the informed consent screen"
+  },
+  "consentGrant": "I agree",
+  "@consentGrant": {
+    "description": "Button label for granting consent"
+  },
+  "consentDecline": "Not now",
+  "@consentDecline": {
+    "description": "Button label for declining consent"
+  },
+  "emergencyDialTitle": "Emergency Contacts",
+  "@emergencyDialTitle": {
+    "description": "Title on the emergency dial screen"
+  },
+  "ambulanceLabel": "Ambulance (108)",
+  "@ambulanceLabel": {
+    "description": "Label for the 108 ambulance dial action"
+  },
+  "obstetricTransportLabel": "Obstetric transport (102)",
+  "@obstetricTransportLabel": {
+    "description": "Label for the 102 obstetric transport dial action"
+  },
+  "anc": "Antenatal Care (ANC)",
+  "@anc": {
+    "description": "Clinical term for antenatal care"
+  },
+  "pnc": "Postnatal Care (PNC)",
+  "@pnc": {
+    "description": "Clinical term for postnatal care"
+  },
+  "hbnc": "Home Based Newborn Care (HBNC)",
+  "@hbnc": {
+    "description": "Clinical term for home based newborn care"
+  },
+  "hbyc": "Home Based Young Child Care (HBYC)",
+  "@hbyc": {
+    "description": "Clinical term for home based young child care"
+  },
+  "ncd": "Non-Communicable Diseases (NCD)",
+  "@ncd": {
+    "description": "Clinical term for non-communicable diseases"
+  },
+  "immunization": "Immunization",
+  "@immunization": {
+    "description": "Clinical term for immunization / vaccination"
+  },
+  "muac": "Mid-Upper Arm Circumference (MUAC)",
+  "@muac": {
+    "description": "Clinical term for MUAC tape measurement"
+  },
+  "jaundice": "Jaundice",
+  "@jaundice": {
+    "description": "Clinical term for jaundice (yellow skin/eyes)"
+  },
+  "anemia": "Anemia",
+  "@anemia": {
+    "description": "Clinical term for anemia / low hemoglobin"
+  },
+  "malnutrition": "Malnutrition",
+  "@malnutrition": {
+    "description": "Clinical term for child malnutrition"
+  },
+  "severeMalnutrition": "Severe Acute Malnutrition (SAM)",
+  "@severeMalnutrition": {
+    "description": "Clinical term for SAM"
+  },
+  "diarrhea": "Diarrhea",
+  "@diarrhea": {
+    "description": "Clinical term for diarrhea"
+  },
+  "ors": "Oral Rehydration Salts (ORS)",
+  "@ors": {
+    "description": "Clinical term for ORS preparation"
+  },
+  "fever": "Fever",
+  "@fever": {
+    "description": "Clinical term for fever"
+  },
+  "fastBreathing": "Fast Breathing / Pneumonia",
+  "@fastBreathing": {
+    "description": "Clinical term for rapid respiratory rate"
+  },
+  "hypertension": "High Blood Pressure",
+  "@hypertension": {
+    "description": "Clinical term for hypertension"
+  },
+  "diabetes": "Diabetes",
+  "@diabetes": {
+    "description": "Clinical term for diabetes"
+  },
+  "tapToListen": "Tap to listen",
+  "@tapToListen": {
+    "description": "Tooltip or label for tap-to-hear audio prompt button"
+  },
+  "playingAudio": "Playing audio instructions...",
+  "@playingAudio": {
+    "description": "Status shown while TTS or voice clip is playing"
+  },
+  "stopAudio": "Stop audio",
+  "@stopAudio": {
+    "description": "Button label to halt playing audio"
+  },
+  "audioPromptPinSetup": "Please set your 4 to 8 digit security PIN.",
+  "@audioPromptPinSetup": {
+    "description": "Spoken instruction for PIN setup screen"
+  },
+  "audioPromptDueList": "Here is your task list for today.",
+  "@audioPromptDueList": {
+    "description": "Spoken instruction for daily due list"
+  },
+  "audioPromptTriageRed": "Emergency flag red. Immediate referral required.",
+  "@audioPromptTriageRed": {
+    "description": "Spoken instruction for red triage result"
+  },
+  "audioPromptTriageYellow": "Flag yellow. Close monitoring and home care required.",
+  "@audioPromptTriageYellow": {
+    "description": "Spoken instruction for yellow triage result"
+  },
+  "audioPromptTriageGreen": "Flag green. Standard home care and follow-up.",
+  "@audioPromptTriageGreen": {
+    "description": "Spoken instruction for green triage result"
+  }
+}
