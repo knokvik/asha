@@ -315,14 +315,14 @@ class _EarningsScreenState extends State<EarningsScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [AshaColors.primary, AshaColors.primaryDark],
+          colors: [Color(0xFF15803D), Color(0xFF16A34A)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: AshaShapes.cardRadius,
         boxShadow: const [
           BoxShadow(
-            color: Color.fromRGBO(18, 26, 21, 0.12),
+            color: Color.fromRGBO(22, 163, 74, 0.22),
             blurRadius: 14,
             offset: Offset(0, 4),
           ),

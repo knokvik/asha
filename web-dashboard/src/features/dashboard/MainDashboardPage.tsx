@@ -450,25 +450,105 @@ export function MainDashboardPage() {
         </div>
       )}
 
-      {/* 4. Live field log */}
-      <div className="bg-white dark:bg-[#1E1E1E] border border-slate-200 dark:border-[#2E2E2E] rounded-xl overflow-hidden shadow-xs">
-        <div className="px-3.5 py-2 border-b border-slate-100 dark:border-[#2E2E2E] flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Radio className="h-4 w-4 text-emerald-600" />
-            <h3 className="text-xs font-bold text-slate-900 dark:text-white">Live ASHA activity log</h3>
+      {/* 4. Live Frontline ASHA Activity & Synchronization Stream */}
+      <div className="bg-white dark:bg-[#1E1E1E] border border-slate-200 dark:border-[#2E2E2E] rounded-2xl overflow-hidden shadow-xs">
+        <div className="px-4 py-3 border-b border-slate-100 dark:border-[#2E2E2E] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-gradient-to-r from-emerald-50/40 via-transparent to-transparent dark:from-emerald-950/20">
+          <div className="flex items-center gap-2.5">
+            <div className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs lg:text-sm font-bold text-slate-900 dark:text-white">
+                  Live ASHA Activity &amp; Synchronization Feed
+                </h3>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold">
+                  ABDM Gateway Live
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Real-time clinical encounters, triage tickets, and home visits from frontline tablets
+              </p>
+            </div>
           </div>
-          <span className="text-[10px] text-slate-500">{syncActivities.length} packets received</span>
+
+          <div className="flex items-center gap-2.5">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+              {syncActivities.length} packets received
+            </span>
+            <button
+              onClick={() => navigate('/logs')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0C5A3E] hover:bg-[#094630] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+            >
+              <span>Detailed View</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
-        <div className="divide-y divide-slate-100 dark:divide-[#2E2E2E]">
+
+        <div className="divide-y divide-slate-100 dark:divide-[#28282C]">
           {syncActivities.slice(0, 4).map((activity) => (
-            <div key={activity.id} className="px-3.5 py-2 flex items-center gap-3 text-xs">
-              <span className={`h-2 w-2 rounded-full shrink-0 ${activity.severity === 'RED' ? 'bg-rose-500' : activity.severity === 'YELLOW' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-              <span className="font-semibold text-slate-900 dark:text-white">{activity.workerName}</span>
-              <span className="text-slate-600 dark:text-slate-300 truncate">{activity.details}</span>
-              <span className="ml-auto shrink-0 text-[10px] text-slate-400">{activity.syncTime}</span>
+            <div
+              key={activity.id}
+              onClick={() => navigate(`/logs?search=${encodeURIComponent(activity.patientName || activity.workerName)}`)}
+              className="px-4 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs hover:bg-slate-50/80 dark:hover:bg-[#252528] cursor-pointer transition-colors group"
+            >
+              <div className="flex items-start md:items-center gap-3 flex-1 min-w-0">
+                <span
+                  className={`h-2.5 w-2.5 rounded-full shrink-0 mt-1 md:mt-0 ${
+                    activity.severity === 'RED'
+                      ? 'bg-rose-500 ring-4 ring-rose-100 dark:ring-rose-950/60'
+                      : activity.severity === 'YELLOW'
+                      ? 'bg-amber-500 ring-4 ring-amber-100 dark:ring-amber-950/60'
+                      : 'bg-emerald-500 ring-4 ring-emerald-100 dark:ring-emerald-950/60'
+                  }`}
+                />
+
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <span className="font-bold text-slate-900 dark:text-white">
+                    {activity.workerName}
+                  </span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-[#2A2A2E] text-slate-500 font-medium">
+                    {activity.village}
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#28282C] text-slate-600 dark:text-slate-300">
+                    {activity.category}
+                  </span>
+                </div>
+
+                <div className="text-slate-700 dark:text-slate-300 truncate min-w-0 flex-1">
+                  <span className="font-semibold text-slate-900 dark:text-white">{activity.details}</span>
+                  {activity.patientName && (
+                    <span className="text-slate-500 dark:text-slate-400 ml-1.5">
+                      · Beneficiary: {activity.patientName}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between md:justify-end gap-3 shrink-0">
+                {activity.vitalsSummary && (
+                  <span className="hidden lg:inline text-[10px] font-mono bg-slate-50 dark:bg-[#242426] text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded border border-slate-200 dark:border-[#303034]">
+                    {activity.vitalsSummary}
+                  </span>
+                )}
+                <span className="text-slate-400 font-mono text-[11px] flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {activity.syncTime}
+                </span>
+                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
+                  View Ticket <ArrowRight className="w-3 h-3" />
+                </span>
+              </div>
             </div>
           ))}
-          {syncActivities.length === 0 && <div className="px-3.5 py-3 text-xs text-slate-500">Waiting for the next field packet.</div>}
+
+          {syncActivities.length === 0 && (
+            <div className="px-4 py-6 text-center text-xs text-slate-500">
+              Waiting for live frontline synchronization packets...
+            </div>
+          )}
         </div>
       </div>
 

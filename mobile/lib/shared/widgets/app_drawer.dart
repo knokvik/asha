@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/theme/app_theme.dart';
 import '../../core/l10n/language_provider.dart';
+import '../../core/packs/pack_manager.dart';
 import '../shell/shell_copy.dart';
 
 /// Screen 2: Side Menu (Drawer) matching the exact Asha Platform mobile design.
@@ -16,6 +17,10 @@ class AppDrawer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final lang = ref.watch(languageProvider).languageCode;
+    final hasInterpreter = ref
+        .watch(offlinePackProvider)
+        .interpreterLanguageCodes
+        .isNotEmpty;
     return Drawer(
       backgroundColor: const Color(0xFF1E4231),
       child: SafeArea(
@@ -192,15 +197,17 @@ class AppDrawer extends ConsumerWidget {
                   ),
                   const SizedBox(height: 6),
 
-                  // 6. Interpreter
-                  _buildMenuItem(
-                    context: context,
-                    icon: Icons.translate_rounded,
-                    title: shellText(lang, 'drawerInterp'),
-                    subtitle: shellText(lang, 'drawerInterpSub'),
-                    route: '/interpreter',
-                  ),
-                  const SizedBox(height: 6),
+                  // 6. Interpreter only appears after a language pack exists.
+                  if (hasInterpreter) ...[
+                    _buildMenuItem(
+                      context: context,
+                      icon: Icons.translate_rounded,
+                      title: shellText(lang, 'drawerInterp'),
+                      subtitle: shellText(lang, 'drawerInterpSub'),
+                      route: '/interpreter',
+                    ),
+                    const SizedBox(height: 6),
+                  ],
 
                   // 7. Reports & Incentives
                   _buildMenuItem(

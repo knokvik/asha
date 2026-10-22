@@ -102,6 +102,14 @@ class ModelStore {
         phontab.lengthSync() > 100;
   }
 
+  /// Deletes the optional interpreter payloads without touching any clinical
+  /// records or other application support files.
+  Future<void> removeAll() async {
+    if (await root.exists()) {
+      await root.delete(recursive: true);
+    }
+  }
+
   Future<void> ensure(void Function(DownloadProgress progress) onProgress) async {
     await root.create(recursive: true);
     final client = http.Client();

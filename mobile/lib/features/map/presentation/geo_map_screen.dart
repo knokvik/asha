@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -10,13 +9,13 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geo_intel/geo_intel.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' hide Path;
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sqlite3/sqlite3.dart' as sql;
 import 'package:triage/triage.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../shared/widgets/asha_bottom_nav.dart';
+import '../../../core/packs/map_content_pack_store.dart';
 import '../data/mbtiles_tile_provider.dart';
 
 typedef UriOpener = Future<bool> Function(Uri uri);
@@ -87,40 +86,30 @@ class _GeoMapPageState extends State<GeoMapPage> {
 
   Future<void> _load() async {
     try {
+      final mapStore = MapContentPackStore();
+      if (!await mapStore.isInstalled()) {
+        throw const MapContentPackException(
+          'Install the Offline maps pack before opening the map.',
+        );
+      }
       final wards = await rootBundle.loadString(
         'packages/triage/lib/data/pack/wards.geojson',
       );
       final counts = await rootBundle.loadString(
         'packages/triage/lib/data/pack/disease_counts.csv',
       );
-      final facilities = await rootBundle.loadString(
-        'assets/geo/facilities.geojson',
-      );
-      final indiaFacilities = await rootBundle.loadString(
-        'assets/geo/india_facilities.json',
-      );
-      final states = await rootBundle.loadString(
-        'assets/geo/india_states.geojson',
-      );
-      final households = await rootBundle.loadString(
-        'assets/geo/households.json',
-      );
-      final referrals = await rootBundle.loadString(
-        'assets/geo/referrals.json',
-      );
-      final roads = await rootBundle.loadString('assets/geo/roads.json');
-      final labelsRaw = await rootBundle.loadString('assets/geo/labels.json');
+      final facilities = await (await mapStore.file('facilities.geojson')).readAsString();
+      final indiaFacilities = await (await mapStore.file('india_facilities.json')).readAsString();
+      final states = await (await mapStore.file('india_states.geojson')).readAsString();
+      final households = await (await mapStore.file('households.json')).readAsString();
+      final referrals = await (await mapStore.file('referrals.json')).readAsString();
+      final roads = await (await mapStore.file('roads.json')).readAsString();
+      final labelsRaw = await (await mapStore.file('labels.json')).readAsString();
       TileProvider? tiles;
       if (widget.useOsmBasemap) {
         tiles = MemoryTileProvider(MbTilesTileProvider.blank);
       } else {
-        final bytes = await rootBundle.load('assets/geo/pcmc.mbtiles');
-        final dir = await getTemporaryDirectory();
-        final file = File('${dir.path}/pcmc.mbtiles');
-        await file.writeAsBytes(
-          bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
-          flush: true,
-        );
+        final file = await mapStore.file('pcmc.mbtiles');
         final database = sql.sqlite3.open(
           file.path,
           mode: sql.OpenMode.readOnly,

@@ -427,6 +427,16 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 22),
 
+                _buildListOption(
+                  icon: Icons.inventory_2_outlined,
+                  iconColor: const Color(0xFF7C3AED),
+                  iconBgColor: const Color(0xFFF3E8FF),
+                  title: 'Offline packs',
+                  subtitle: 'Language, map and interpreter downloads',
+                  onTap: () => context.push('/packs'),
+                ),
+                const SizedBox(height: 22),
+
                 // ── SECTION 2: Clinical Tools & Field Operations ────────────
                 Text(
                   shellText(lang, 'moreFeatures'),
@@ -476,7 +486,7 @@ class ProfileScreen extends ConsumerWidget {
                   iconBgColor: const Color(0xFFD1FAE5),
                   title: shellText(lang, 'maps'),
                   subtitle: shellText(lang, 'mapsSub'),
-                  onTap: () => context.push('/map-packs'),
+                  onTap: () => context.push('/packs'),
                 ),
                 const SizedBox(height: 10),
 

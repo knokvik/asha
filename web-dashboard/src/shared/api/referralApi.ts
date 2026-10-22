@@ -1,6 +1,7 @@
 import { apiClient } from './client';
 import { ReferralItem } from '@/types';
 import { validateOutcome, type OutcomeAction } from '@/features/clinical-desk/logic';
+import { INITIAL_REFERRALS, HOTSPOT_REFERRAL_TICKET } from './mockData';
 
 const confirmedByWard: Record<string, number> = {};
 
@@ -22,8 +23,30 @@ export function wardConfirmations(): Record<string, number> {
 }
 
 export async function getReferralQueue(facilityId: string = 'phc-shahpur'): Promise<ReferralItem[]> {
-  const res = await apiClient.get<ReferralItem[]>(`/referrals/facility/${facilityId}`);
-  return Array.isArray(res.data) ? sortQueue(res.data) : [];
+  let list: ReferralItem[] = [];
+  try {
+    const res = await apiClient.get<ReferralItem[]>(`/referrals/facility/${facilityId}`);
+    list = Array.isArray(res.data) && res.data.length > 0 ? res.data : INITIAL_REFERRALS;
+  } catch {
+    list = INITIAL_REFERRALS;
+  }
+
+  // Inject Indira Airport hotspot emergency ticket when active
+  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+    try {
+      const activeHotspot = localStorage.getItem('asha_active_hotspot');
+      if (activeHotspot) {
+        const alreadyExists = list.some((item) => item.id === HOTSPOT_REFERRAL_TICKET.id);
+        if (!alreadyExists) {
+          list = [HOTSPOT_REFERRAL_TICKET, ...list];
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return sortQueue(list);
 }
 
 export async function recordReferralOutcome(
@@ -61,10 +84,15 @@ export async function startConsult(referralId: string): Promise<ReferralItem> {
 }
 
 export async function getReferralById(referralId: string): Promise<ReferralItem> {
+  if (referralId === HOTSPOT_REFERRAL_TICKET.id) {
+    return HOTSPOT_REFERRAL_TICKET;
+  }
   const queue = await getReferralQueue();
   const found = queue.find((item) => item.id === referralId);
-  if (!found) throw new Error('Referral not found');
-  return found;
+  if (found) return found;
+  const fallback = INITIAL_REFERRALS.find((item) => item.id === referralId);
+  if (fallback) return fallback;
+  throw new Error('Referral not found');
 }
 
 export async function sendDoctorFeedback(

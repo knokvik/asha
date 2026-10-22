@@ -889,13 +889,13 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
             border: OutlineInputBorder(),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         DropdownButtonFormField<String>(
           key: const Key('triage_age_unit_dropdown'),
           initialValue: _ageUnit,
           decoration: InputDecoration(
             labelText: _triageCopy(lang, 'ageUnit'),
-            border: OutlineInputBorder(),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
           ),
           items: [
             DropdownMenuItem(
@@ -913,16 +913,17 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
             _syncAgeBandFromInput(_age.text);
           },
         ),
+        const SizedBox(height: 16),
         if (_extendedClinicalContext) ...[
-          const SizedBox(height: 16),
           _extendedClinicalIntake(),
+          const SizedBox(height: 16),
         ],
         DropdownButtonFormField<String>(
           key: const Key('triage_sex_dropdown'),
           initialValue: _sex,
           decoration: InputDecoration(
             labelText: _triageCopy(lang, 'sexContext'),
-            border: OutlineInputBorder(),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
           ),
           items: [
             DropdownMenuItem(

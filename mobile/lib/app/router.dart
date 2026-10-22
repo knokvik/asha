@@ -7,6 +7,7 @@ import '../core/l10n/language_provider.dart';
 import '../features/due_list/presentation/due_list_screen.dart';
 import '../features/home/presentation/tools_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
+import '../features/settings/presentation/pack_manager_screen.dart';
 
 // Registry & Households
 import '../features/household/presentation/beneficiary_timeline_screen.dart';
@@ -65,7 +66,6 @@ import '../features/due_list/presentation/route_map_screen.dart';
 import '../features/due_list/presentation/coverage_analysis_screen.dart';
 import '../features/due_list/domain/route_models.dart';
 import '../features/teleconsultation/presentation/teleconsultation_screen.dart';
-import '../features/map/presentation/map_pack_screen.dart';
 import '../features/map/presentation/india_map_page.dart';
 import '../shared/providers/core_providers.dart';
 
@@ -664,11 +664,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
         ),
       ),
     ),
-    GoRoute(
-      path: '/map-packs',
-      pageBuilder: (context, state) =>
-          _buildSlidePage(state: state, child: const MapPackScreen()),
-    ),
+    GoRoute(path: '/map-packs', redirect: (context, state) => '/packs'),
     GoRoute(
       path: '/india-map',
       pageBuilder: (context, state) =>
@@ -726,6 +722,11 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
     GoRoute(
       path: '/settings',
       builder: (context, state) => const SettingsScreen(),
+    ),
+    GoRoute(
+      path: '/packs',
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const PackManagerScreen()),
     ),
     GoRoute(path: '/af', builder: (context, state) => const DueListScreen()),
   ];

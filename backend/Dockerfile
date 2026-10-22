@@ -11,10 +11,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY backend .
+COPY mobile/assets/geo /source-map
+COPY mobile/lib/core/l10n/arb /source-l10n
+RUN python scripts/build_content_packs.py --source /source-map --language-source /source-l10n --output content_packs/map-india.zip
 RUN chmod +x entrypoint.sh
 
 EXPOSE 8000

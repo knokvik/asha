@@ -29,6 +29,7 @@ import {
   ShieldCheck,
   ArrowRight,
   Filter,
+  ChevronDown,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -53,6 +54,7 @@ export function AFSupervisionPage() {
     }
   }, [urlSearch]);
   const [selectedAsha, setSelectedAsha] = useState<AshaPerformanceCard | null>(null);
+  const [expandedAshaId, setExpandedAshaId] = useState<string | null>(null);
   const [checklistOpen, setChecklistOpen] = useState(false);
   const [badgeModalOpen, setBadgeModalOpen] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState<
@@ -187,156 +189,258 @@ export function AFSupervisionPage() {
             />
           </div>
 
-          {/* ASHA Performance Cards Grid (Req 39.1) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* ASHA Performance List - Single Row Expandable with Recent Tasks & Detailed Profile */}
+          <div className="space-y-3">
             {filteredAshas.map((asha) => {
+              const isExpanded = expandedAshaId === asha.ashaId;
               const recentTasks = syncActivities
                 .filter((activity) => activity.workerName === asha.ashaName)
                 .slice(0, 4);
+
               return (
-                <details
+                <div
                   key={asha.ashaId}
-                  className="group rounded-xl border border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] shadow-xs"
+                  className="rounded-2xl border border-slate-200 dark:border-[#2E2E2E] bg-white dark:bg-[#1E1E1E] shadow-xs overflow-hidden transition-all duration-200 hover:border-emerald-300 dark:hover:border-emerald-500/40"
                 >
-                  <summary className="cursor-pointer list-none px-5 py-4 text-sm font-bold text-slate-900 dark:text-white flex items-center justify-between">
-                    <span>{asha.ashaName} <span className="font-normal text-slate-500">· {asha.village}</span></span>
-                    <span className="text-[11px] text-emerald-600">Last sync {new Date(asha.lastSyncAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                  </summary>
-                <Card
-                  className="border-0 border-t border-[#E5E7EB] dark:border-[#2E2E2E] rounded-none rounded-b-xl p-6 bg-transparent space-y-4"
-                >
-                  {/* Card Top: Name, Village, Sync Time */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <h2 className="text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC]">{asha.ashaName}</h2>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#2E2E2E] text-[#525252] dark:text-[#94A3B8] font-mono border border-slate-200 dark:border-[#404040]">
-                          {asha.village}
+                  {/* Single Row Clickable Bar */}
+                  <div
+                    onClick={() => setExpandedAshaId(isExpanded ? null : asha.ashaId)}
+                    className="cursor-pointer p-4 lg:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 select-none hover:bg-slate-50/70 dark:hover:bg-[#252528] transition-colors"
+                  >
+                    {/* Left: Avatar + Name + ID + Village */}
+                    <div className="flex items-center gap-3.5 min-w-[260px]">
+                      <div className="relative">
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                          {asha.ashaName.split(' ').map((n) => n[0]).join('')}
+                        </div>
+                        <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#1E1E1E]" />
+                      </div>
+
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-sm lg:text-base font-bold text-slate-900 dark:text-white">
+                            {asha.ashaName}
+                          </h2>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#2A2A2A] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-[#383838]">
+                            {asha.ashaId}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          <span className="font-medium text-slate-700 dark:text-slate-300">{asha.village}</span>
+                          <span>•</span>
+                          <span>{asha.hamletsCount} Hamlets</span>
+                          <span>•</span>
+                          <span>{asha.totalAssignedHouseholds} HHs</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Middle: Performance Badges in a Row */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 lg:gap-3 flex-1 max-w-2xl">
+                      {/* Coverage */}
+                      <div className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-[#252528] border border-slate-100 dark:border-[#303034] text-center">
+                        <span className="text-[10px] text-slate-400 block uppercase font-medium tracking-wider">Coverage</span>
+                        <span className={`text-xs lg:text-sm font-bold ${asha.coveragePct >= 90 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                          {asha.coveragePct}%
                         </span>
                       </div>
-                      <div className="text-xs text-[#525252] dark:text-[#94A3B8] flex items-center space-x-2 pt-0.5">
-                        <span>{asha.totalAssignedHouseholds} HHs</span>
-                        <span>•</span>
-                        <span>{asha.hamletsCount} Hamlets</span>
-                        <span>•</span>
-                        <span className="text-emerald-600 dark:text-emerald-400">Synced {new Date(asha.lastSyncAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+
+                      {/* Overdue */}
+                      <div className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-[#252528] border border-slate-100 dark:border-[#303034] text-center">
+                        <span className="text-[10px] text-slate-400 block uppercase font-medium tracking-wider">Overdue</span>
+                        <span className={`text-xs lg:text-sm font-bold ${asha.overdueVisitsCount > 4 ? 'text-rose-600 dark:text-rose-400' : asha.overdueVisitsCount > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                          {asha.overdueVisitsCount} visits
+                        </span>
+                      </div>
+
+                      {/* Data Quality */}
+                      <div className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-[#252528] border border-slate-100 dark:border-[#303034] text-center">
+                        <span className="text-[10px] text-slate-400 block uppercase font-medium tracking-wider">Quality</span>
+                        <span className="text-xs lg:text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                          {asha.dataQualityScorePct}%
+                        </span>
+                      </div>
+
+                      {/* Learning */}
+                      <div className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-[#252528] border border-slate-100 dark:border-[#303034] text-center">
+                        <span className="text-[10px] text-slate-400 block uppercase font-medium tracking-wider">Modules</span>
+                        <span className="text-xs lg:text-sm font-bold text-amber-600 dark:text-amber-400">
+                          {asha.learningModulesCompleted}/16
+                        </span>
                       </div>
                     </div>
 
-                    <a
-                      href={`tel:${asha.phone}`}
-                      className="p-2 rounded-xl bg-slate-100 dark:bg-[#2A2A2A] hover:bg-slate-200 dark:hover:bg-[#383838] text-[#0F172A] dark:text-[#F8FAFC] text-xs flex items-center space-x-1.5 transition-colors"
-                    >
-                      <Phone className="w-3.5 h-3.5 text-slate-500" />
-                      <span className="hidden sm:inline font-mono">{asha.phone}</span>
-                    </a>
-                  </div>
+                    {/* Right: Last Sync Badge + Chevron */}
+                    <div className="flex items-center justify-between lg:justify-end gap-3 min-w-[200px]">
+                      <div className="text-right">
+                        <div className="text-[10px] uppercase font-semibold tracking-wider text-slate-400">Last Synced</div>
+                        <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-end gap-1.5 mt-0.5">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span>{new Date(asha.lastSyncAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                      </div>
 
-                  {/* 4 Core Metrics Grid */}
-                  <div className="grid grid-cols-4 gap-2 pt-1">
-                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#1E1E1E] border border-[#E5E7EB] dark:border-[#2E2E2E] text-center">
-                      <div className="text-[10px] text-[#525252] dark:text-[#94A3B8]">Coverage</div>
-                      <div className={`text-base font-bold ${asha.coveragePct >= 90 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                        {asha.coveragePct}%
-                      </div>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#1E1E1E] border border-[#E5E7EB] dark:border-[#2E2E2E] text-center">
-                      <div className="text-[10px] text-[#525252] dark:text-[#94A3B8]">Overdue</div>
-                      <div className={`text-base font-bold ${asha.overdueVisitsCount > 4 ? 'text-rose-600 dark:text-rose-400' : 'text-[#0F172A] dark:text-[#F8FAFC]'}`}>
-                        {asha.overdueVisitsCount}
-                      </div>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#1E1E1E] border border-[#E5E7EB] dark:border-[#2E2E2E] text-center">
-                      <div className="text-[10px] text-[#525252] dark:text-[#94A3B8]">Data Quality</div>
-                      <div className="text-base font-bold text-indigo-600 dark:text-indigo-400">
-                        {asha.dataQualityScorePct}%
-                      </div>
-                    </div>
-                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#1E1E1E] border border-[#E5E7EB] dark:border-[#2E2E2E] text-center">
-                      <div className="text-[10px] text-[#525252] dark:text-[#94A3B8]">Learning</div>
-                      <div className="text-base font-bold text-amber-600 dark:text-amber-400">
-                        {asha.learningModulesCompleted} / 16
+                      <div className={`p-2 rounded-xl bg-slate-100 dark:bg-[#28282B] text-slate-600 dark:text-slate-300 transition-transform duration-300 ${isExpanded ? 'rotate-180 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600' : ''}`}>
+                        <ChevronDown className="w-4 h-4" />
                       </div>
                     </div>
                   </div>
 
-                  {/* Mentoring Pattern Detection Callout (Req 39.3) */}
-                  {asha.mentoringFlags && asha.mentoringFlags.length > 0 && (
-                    <div className="space-y-2">
-                      {asha.mentoringFlags.map((flag, idx) => (
-                        <div
-                          key={idx}
-                          className={`p-3 rounded-xl border text-xs flex items-start space-x-2.5 ${
-                            flag.type === 'positive'
-                              ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300'
-                              : flag.type === 'warning'
-                              ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-300'
-                              : 'bg-indigo-50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-500/30 text-indigo-800 dark:text-indigo-300'
-                          }`}
-                        >
-                          <Sparkles className="w-4 h-4 shrink-0 mt-0.5" />
-                          <div>
-                            <div className="font-semibold">{flag.message}</div>
-                            {flag.suggestedModule && (
-                              <div className="text-[11px] text-[#525252] dark:text-[#94A3B8] pt-0.5 flex items-center gap-1">
-                                <BookOpen className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                                <span>Recommended Micro-Lesson: <span className="font-mono font-medium text-amber-700 dark:text-amber-300">{flag.suggestedModule}</span></span>
+                  {/* Smooth Animated Expanded Accordion */}
+                  <div
+                    className={`transition-all duration-300 ease-in-out ${
+                      isExpanded ? 'max-h-[1200px] opacity-100 border-t border-slate-200 dark:border-[#2E2E2E]' : 'max-h-0 opacity-0 overflow-hidden'
+                    }`}
+                  >
+                    {isExpanded && (
+                      <div className="p-4 lg:p-6 bg-slate-50/50 dark:bg-[#18181A] space-y-4">
+                        {/* Mentoring callouts if any */}
+                        {asha.mentoringFlags && asha.mentoringFlags.length > 0 && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                            {asha.mentoringFlags.map((flag, idx) => (
+                              <div
+                                key={idx}
+                                className={`p-3 rounded-xl border text-xs flex items-start gap-2.5 ${
+                                  flag.type === 'positive'
+                                    ? 'bg-emerald-50/80 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-500/30 text-emerald-800 dark:text-emerald-300'
+                                    : flag.type === 'warning'
+                                    ? 'bg-amber-50/80 dark:bg-amber-950/20 border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-300'
+                                    : 'bg-indigo-50/80 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-500/30 text-indigo-800 dark:text-indigo-300'
+                                }`}
+                              >
+                                <Sparkles className="w-4 h-4 shrink-0 mt-0.5" />
+                                <div>
+                                  <div className="font-semibold">{flag.message}</div>
+                                  {flag.suggestedModule && (
+                                    <div className="text-[11px] text-slate-600 dark:text-slate-400 pt-0.5 flex items-center gap-1">
+                                      <BookOpen className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                                      <span>Recommended: <span className="font-mono font-medium text-amber-700 dark:text-amber-300">{flag.suggestedModule}</span></span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* 3 to 4 Recent Tasks Section */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                              <Activity className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Recent Field Tasks & Clinical Visits ({recentTasks.length})</span>
+                            </h3>
+                            <span className="text-[11px] text-slate-400">Live synced from field tablet</span>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                            {recentTasks.length > 0 ? (
+                              recentTasks.map((task) => (
+                                <div
+                                  key={task.id}
+                                  className={`p-3 rounded-xl border bg-white dark:bg-[#1E1E1E] flex flex-col justify-between gap-2 shadow-2xs ${
+                                    task.severity === 'RED'
+                                      ? 'border-l-4 border-l-rose-500 border-slate-200 dark:border-[#2E2E2E]'
+                                      : task.severity === 'YELLOW'
+                                      ? 'border-l-4 border-l-amber-500 border-slate-200 dark:border-[#2E2E2E]'
+                                      : 'border-l-4 border-l-emerald-500 border-slate-200 dark:border-[#2E2E2E]'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-2 text-[11px]">
+                                    <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
+                                      task.severity === 'RED'
+                                        ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                                        : task.severity === 'YELLOW'
+                                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+                                        : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                    }`}>
+                                      {task.category}
+                                    </span>
+                                    <span className="text-slate-400 flex items-center gap-1 font-mono">
+                                      <Clock className="w-3 h-3" />
+                                      {task.syncTime}
+                                    </span>
+                                  </div>
+
+                                  <div className="text-xs font-semibold text-slate-800 dark:text-slate-100 line-clamp-2">
+                                    {task.details}
+                                  </div>
+
+                                  <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-[#2A2A2E]">
+                                    <span>{task.patientName ? `Patient: ${task.patientName}` : task.village}</span>
+                                    {task.vitalsSummary && (
+                                      <span className="font-mono text-[10px] text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-[#252528] px-1.5 py-0.5 rounded">
+                                        {task.vitalsSummary}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="col-span-2 py-6 text-center text-xs text-slate-500 bg-white dark:bg-[#1E1E1E] rounded-xl border border-dashed border-slate-200 dark:border-[#2E2E2E]">
+                                No recent field packets logged for this worker in current shift.
                               </div>
                             )}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
 
-                  <div className="rounded-xl border border-slate-200 dark:border-[#2E2E2E] bg-slate-50/70 dark:bg-[#1E1E1E] p-3 space-y-2">
-                    <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Recent field tasks</div>
-                    {recentTasks.length > 0 ? recentTasks.map((task) => (
-                      <div key={task.id} className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        <span className="truncate">{task.details}</span>
-                        <span className="ml-auto text-[10px] text-slate-400">{task.syncTime}</span>
+                        {/* Expanded Action Bar: More Details & Supervisory Tools */}
+                        <div className="pt-3 border-t border-slate-200 dark:border-[#2E2E2E] flex flex-wrap items-center justify-between gap-2">
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/af/worker/${encodeURIComponent(asha.ashaName)}`);
+                            }}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-2 shadow-xs cursor-pointer"
+                          >
+                            <span>More Details</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </Button>
+
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedAsha(asha);
+                                setChecklistOpen(true);
+                              }}
+                              className="gap-1.5 text-xs cursor-pointer"
+                            >
+                              <ClipboardCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                              <span>Checklist (Req 39.2)</span>
+                            </Button>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedAsha(asha);
+                                setBadgeModalOpen(true);
+                              }}
+                              className="gap-1.5 text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-500/30 cursor-pointer"
+                            >
+                              <Award className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Award Recognition (Req 39.5)</span>
+                            </Button>
+
+                            <a
+                              href={`tel:${asha.phone}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-2 rounded-xl bg-slate-100 dark:bg-[#28282B] hover:bg-slate-200 dark:hover:bg-[#343438] text-slate-700 dark:text-slate-300 text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                              title={`Call ${asha.phone}`}
+                            >
+                              <Phone className="w-3.5 h-3.5" />
+                              <span className="font-mono">{asha.phone}</span>
+                            </a>
+                          </div>
+                        </div>
                       </div>
-                    )) : <div className="text-xs text-slate-500">No recent field packets for this worker.</div>}
+                    )}
                   </div>
-
-                  {/* Card Actions: Checklist & Recognition */}
-                  <div className="flex items-center gap-2 pt-2 border-t border-[#E5E7EB] dark:border-[#2E2E2E]">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate(`/af/worker/${encodeURIComponent(asha.ashaName)}`)}
-                      className="gap-1.5"
-                    >
-                      <ArrowRight className="w-3.5 h-3.5" />
-                      <span>More details</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedAsha(asha);
-                        setChecklistOpen(true);
-                      }}
-                      className="flex-1 gap-1.5"
-                    >
-                      <ClipboardCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                      <span>Digital Supervision Checklist (Req 39.2)</span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setSelectedAsha(asha);
-                        setBadgeModalOpen(true);
-                      }}
-                      className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 gap-1.5 shadow-none"
-                    >
-                      <Award className="w-3.5 h-3.5" />
-                      <span>Give Recognition (Req 39.5)</span>
-                    </Button>
-                  </div>
-                </Card>
-                </details>
+                </div>
               );
             })}
           </div>
@@ -344,6 +448,25 @@ export function AFSupervisionPage() {
 
         {/* Live Frontline Data Sync Feed (What Was Received & When) */}
         <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Radio className="w-4 h-4 text-emerald-600" />
+                <span>Live Frontline Data Sync Stream</span>
+              </h2>
+              <p className="text-xs text-slate-500">Live records synced from frontline tablets via ABDM Gateway</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/logs')}
+              className="text-xs text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 gap-1.5 cursor-pointer"
+            >
+              <span>Open Logs &amp; Systems Grid</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+
           {/* Real-time Ingest Status Strip */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="p-3.5 rounded-xl bg-white dark:bg-[#18181B] border border-slate-200 dark:border-[#26262A] shadow-xs">

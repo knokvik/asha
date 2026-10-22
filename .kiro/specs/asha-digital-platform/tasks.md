@@ -179,11 +179,13 @@ Language choices from the design document:
     - Add voice input button wired to `VoskService` and `LexiconService` on every form field
     - Implement OTA string bundle delivery: backend serves updated ARB bundles; app applies on next sync without APK update
     - _Requirements: 3.2, 3.3, 3.4, 3.6, 49.1, 49.4_
+    - Progress: language availability is now pack-gated. English remains in the base app; every other app language is downloaded as a SHA-256-verified ARB archive into protected app storage before it appears in the language picker. The backend publishes an allowlisted manifest and immutable download URL for each bundle.
 
   - [x] 4.6 Implement optional Vosk model download manager
     - Create `lib/core/voice/model_manager.dart`: each language model is an independently downloadable SHA-256-verified `.zip`; store in `getApplicationSupportDirectory()`; exclude from cloud backup; support install/remove without APK update
-    - Wire Hindi model as default post-install download (deferred to Wi-Fi if data-cost control mode on)
+    - Present model installation only through Offline Packs; no interpreter model download begins when a worker merely opens a language/interpreter screen
     - _Requirements: 6.9_
+    - Progress: the central Offline Packs screen is now the only installer for interpreter capability. It never starts a model download simply by opening an interpreter screen; the screen is enabled only after the worker installs a permitted interpreter language, and removal clears the model core without touching health records.
 
   - [x] 4.7 Write unit tests for Lexicon lookup, noise detection, and TTS fallback
     - Test: `lookup` returns correct canonical concept for each language
@@ -477,10 +479,11 @@ Language choices from the design document:
 
   - [x] 12.2 Implement route planning and offline maps
     - Create `lib/features/due_list/domain/route_planner.dart`: nearest-neighbour hamlet ordering using household lat/lon (opt-in GPS only; no continuous background tracking)
-    - Offline OpenStreetMap tile display (district-level base tiles bundled ~8 MB; block tiles as OTA download) using `flutter_map`
+    - Offline OpenStreetMap tile display using `flutter_map`, with all-India base data delivered as an explicit SHA-256-verified on-demand pack rather than an APK asset
     - Seasonal/remote hamlet flag with reason; adjust scheduling to reflect unavailability
     - Coverage heatmap aggregate view for supervisors (requires ASHA consent)
     - _Requirements: 25.1, 25.2, 25.3, 25.4, 25.5_
+    - Progress: the all-India geo payload is no longer declared as a mobile asset. The server build produces an allowlisted, SHA-256-verified `map-india` archive; the worker installs it on demand to protected app storage, where the map and route views read it. Old map-pack deep links now open the unified Offline Packs screen.
 
   - [x] 12.3 Implement VHSND session planning and health education library
     - VHSND: session beneficiary list per service (immunization/ANC/CBAC/FP) + mobilisation checklist + session summary form; attendance + services recording → update individual beneficiary timelines; VHSNC meeting log

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -20,10 +20,15 @@ import {
   ShieldCheck,
   CheckCircle2,
   Navigation,
+  Flame,
+  ArrowRight,
+  Plane,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useSync } from '@/shared/context/SyncContext';
+import { JudgeTriageTriggerModal } from '@/features/triage-trigger/JudgeTriageTriggerModal';
 import { PCMC_FACILITIES, PCMC_WARDS } from '@/shared/api/mockData';
 import { getDiseaseHotspots, getMapFacilities, getMapSources, type MapFacility, type MapSource } from '@/shared/api/mapApi';
 import { PcmcHeatPanel, type HeatView } from '@/features/map/PcmcHeatPanel';
@@ -260,6 +265,11 @@ function getTileLayer(style: 'osmand_topo' | 'osm_standard' | 'dark_tactical') {
 }
 
 export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }) {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { activeHotspot, clearHotspot } = useSync();
+  const [triggerModalOpen, setTriggerModalOpen] = useState(false);
+
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
@@ -344,6 +354,7 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
     const deadZoneLayer = L.layerGroup().addTo(map);
     const pcmcLayer = L.layerGroup().addTo(map);
     const facilitiesLayer = L.layerGroup().addTo(map);
+    const hotspotLayer = L.layerGroup().addTo(map);
 
     layerGroupsRef.current = {
       subcentres: subcentreLayer,
@@ -353,6 +364,7 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
       deadZone: deadZoneLayer,
       pcmc: pcmcLayer,
       facilities: facilitiesLayer,
+      hotspots: hotspotLayer,
     };
 
     // Auto-resize observer to handle any DOM changes or flex calculations
@@ -712,6 +724,124 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
     }
   }, [showSubcentres, showAmbulances, showAshas, showCatchmentRings, showDeadZone]);
 
+  // Draw Active Demo Hotspot (Indira Airport, Delhi) & Sync to ASHAs
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    const { hotspots } = layerGroupsRef.current;
+    if (!hotspots) return;
+
+    hotspots.clearLayers();
+
+    if (!activeHotspot) return;
+
+    // 1. Draw Hotspot Isochrone Containment Perimeter (1.8 km)
+    L.circle([activeHotspot.lat, activeHotspot.lng], {
+      radius: activeHotspot.radiusMeters,
+      color: '#DC2626',
+      weight: 3,
+      fillColor: '#EF4444',
+      fillOpacity: 0.18,
+      dashArray: '8, 8',
+    }).addTo(hotspots).bindPopup(`
+      <div style="font-family:system-ui;font-size:12px;color:#0F172A;min-width:220px;">
+        <strong style="color:#DC2626;font-size:14px;">🚨 OUTBREAK HOTSPOT: Indira Airport</strong><br/>
+        <span style="color:#64748B;">Condition: <strong>${activeHotspot.condition}</strong></span><br/>
+        <div style="margin-top:6px;padding:6px;background:#FFF1F2;border:1px solid #FECDD3;border-radius:6px;">
+          • Confirmed Cluster: <strong>${activeHotspot.casesCount} Cases</strong><br/>
+          • Radius: <strong>1.8 km Isochrone Zone</strong><br/>
+          • 4 Frontline ASHA Workers Mobilized
+        </div>
+      </div>
+    `);
+
+    // 2. Inner High-Density Core (800m)
+    L.circle([activeHotspot.lat, activeHotspot.lng], {
+      radius: 800,
+      color: '#B91C1C',
+      weight: 2,
+      fillColor: '#DC2626',
+      fillOpacity: 0.32,
+    }).addTo(hotspots);
+
+    // 3. Central Indira Airport Marker Pin with Flashing Effect
+    const airportIcon = L.divIcon({
+      className: 'airport-hotspot-pin',
+      html: `
+        <div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;">
+          <div style="background:#DC2626;color:white;padding:5px 10px;border-radius:12px;font-weight:900;font-size:11px;border:2px solid white;box-shadow:0 0 20px rgba(220,38,38,0.9);display:flex;align-items:center;gap:6px;">
+            <span style="font-size:14px;">✈️🚨</span>
+            <span>Indira Airport Hotspot</span>
+          </div>
+          <div style="width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid #DC2626;"></div>
+        </div>
+      `,
+      iconSize: [180, 36],
+      iconAnchor: [90, 34],
+    });
+
+    L.marker([activeHotspot.lat, activeHotspot.lng], { icon: airportIcon })
+      .addTo(hotspots)
+      .bindPopup(`
+        <div style="font-family:system-ui;font-size:12px;">
+          <strong style="color:#DC2626;font-size:13px;">🚨 Indira Gandhi Int'l Airport Catchment Hotspot</strong><br/>
+          <span style="color:#64748B;">Dengue / AFI Cluster Active</span><br/>
+          <div style="margin-top:6px;font-size:11px;">
+            • Cases: <strong>14 Confirmed (NS1 Positive)</strong><br/>
+            • Area: Mahipalpur & Aerocity Sector<br/>
+            • Synced: 4 ASHA Workers Deployed
+          </div>
+        </div>
+      `);
+
+    // 4. Plot Nearby ASHA Workers Stationed in Catchment
+    activeHotspot.nearbyAshas.forEach((worker) => {
+      const workerIcon = L.divIcon({
+        className: 'hotspot-asha-pin',
+        html: `
+          <div style="display:flex;align-items:center;gap:4px;background:#7C3AED;color:white;padding:3px 7px;border-radius:8px;font-size:10px;font-weight:bold;border:2px solid white;box-shadow:0 2px 8px rgba(124,58,237,0.5);cursor:pointer;">
+            <span>👩‍⚕️</span>
+            <span>${worker.name}</span>
+          </div>
+        `,
+        iconSize: [110, 24],
+        iconAnchor: [55, 12],
+      });
+
+      L.marker([worker.lat, worker.lng], { icon: workerIcon })
+        .addTo(hotspots)
+        .bindPopup(`
+          <div style="font-family:system-ui;font-size:12px;min-width:180px;">
+            <strong style="color:#7C3AED;">👩‍⚕️ ASHA ${worker.name}</strong><br/>
+            <span style="color:#64748B;">Beat: ${worker.beat}</span><br/>
+            <div style="margin-top:4px;padding:6px;background:#F5F3FF;border-radius:6px;font-size:11px;">
+              • Status: <strong>${worker.status}</strong><br/>
+              • Proximity: <strong>Within Indira Airport Hotspot</strong><br/>
+              • Contact: <a href="tel:${worker.phone}" style="color:#7C3AED;font-weight:bold;">${worker.phone}</a>
+            </div>
+          </div>
+        `);
+    });
+
+    // 5. Emergency Corridor Polyline to PHC Aerocity
+    L.polyline(
+      [
+        [28.5480, 77.1250],
+        [28.5490, 77.1180],
+        [activeHotspot.lat, activeHotspot.lng],
+      ],
+      {
+        color: '#DC2626',
+        weight: 3.5,
+        dashArray: '6, 6',
+        opacity: 0.85,
+      }
+    ).addTo(hotspots);
+
+    // Smoothly fly camera to Indira Airport
+    map.flyTo([activeHotspot.lat, activeHotspot.lng], 13, { duration: 1.5 });
+  }, [activeHotspot]);
+
   // Center Map on PHC
   const handleCenterPHC = () => {
     mapInstanceRef.current?.setView(PHC_COORDINATES, 13, { animate: true });
@@ -741,6 +871,14 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
 
         {/* Stats Pill Strip */}
         <div className="flex items-center gap-2 flex-wrap text-xs">
+          <Button
+            size="sm"
+            onClick={() => setTriggerModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 via-amber-600 to-emerald-600 hover:from-rose-700 hover:to-amber-700 text-white font-bold text-xs shadow-md cursor-pointer"
+          >
+            <Flame className="w-3.5 h-3.5" />
+            <span>⚡ Trigger Hotspot (Indira Airport)</span>
+          </Button>
           <Link
             to="/india-map"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm transition-all"
@@ -765,6 +903,57 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
 
       {/* 2. Main Workspace: Map Canvas + Floating Overlay Controls */}
       <div className="flex-1 relative min-h-0 w-full h-full">
+        {/* Floating Hotspot Outbreak Indicator Banner */}
+        {activeHotspot && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 w-[92%] max-w-2xl bg-white/95 dark:bg-[#1E1E22]/95 border-2 border-rose-500 rounded-2xl p-3.5 shadow-2xl backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="flex items-start sm:items-center gap-2.5">
+              <span className="relative flex h-3 w-3 shrink-0 mt-1 sm:mt-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-rose-700 dark:text-rose-400 uppercase tracking-wide">
+                    🚨 ACTIVE OUTBREAK HOTSPOT DRAWN: {activeHotspot.name}
+                  </span>
+                  <Badge className="bg-rose-600 text-white border-0 text-[9px] font-bold">
+                    14 Dengue Cases
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                  Catchment: Indira Airport / Mahipalpur • 4 ASHA Workers Deployed on Fever Surveillance
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                size="xs"
+                onClick={() => mapInstanceRef.current?.setView([activeHotspot.lat, activeHotspot.lng], 13)}
+                className="bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold cursor-pointer"
+              >
+                <span>Re-Center</span>
+              </Button>
+              <Button
+                size="xs"
+                onClick={() => navigate('/phc?hotspot=true')}
+                className="bg-[#0C5A3E] hover:bg-[#08422d] text-white text-[11px] font-bold gap-1 cursor-pointer"
+              >
+                <span>Triage Case</span>
+                <ArrowRight className="w-3 h-3" />
+              </Button>
+              <Button
+                size="xs"
+                variant="ghost"
+                onClick={clearHotspot}
+                className="text-[11px] text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Leaflet DOM Node */}
         <div
           ref={mapContainerRef}
@@ -964,6 +1153,9 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
           </Card>
         </div>
       </div>
+
+      {/* ⚡ Judges Presentation Hotspot & Triage Trigger Modal */}
+      <JudgeTriageTriggerModal open={triggerModalOpen} onClose={() => setTriggerModalOpen(false)} />
     </div>
   );
 }

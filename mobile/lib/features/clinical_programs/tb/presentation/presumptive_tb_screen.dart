@@ -60,7 +60,11 @@ class _PresumptiveTbScreenState extends ConsumerState<PresumptiveTbScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
+        backgroundColor: AshaColors.cardSurface,
+        foregroundColor: AshaColors.textPrimary,
+        elevation: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -70,9 +74,9 @@ class _PresumptiveTbScreenState extends ConsumerState<PresumptiveTbScreen> {
                   : (lang == 'en'
                       ? 'Presumptive TB Screening'
                       : shellText(lang, 'presumptiveTbTitle')),
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
             ),
-            Text(widget.beneficiaryName, style: const TextStyle(fontSize: 12, color: Colors.white70)),
+            Text(widget.beneficiaryName, style: const TextStyle(fontSize: 12, color: AshaColors.textMuted)),
           ],
         ),
         actions: [
@@ -83,7 +87,7 @@ class _PresumptiveTbScreenState extends ConsumerState<PresumptiveTbScreen> {
                 : 'Switch to ASHA Private Clinical View',
             icon: Icon(
               _privacyMode == TbPrivacyMode.sharedSupervisorView ? Icons.visibility_off : Icons.visibility,
-              color: Colors.amberAccent,
+              color: AshaColors.primary,
             ),
             onPressed: () {
               setState(() {
@@ -134,6 +138,12 @@ class _PresumptiveTbScreenState extends ConsumerState<PresumptiveTbScreen> {
 
           // Symptoms Card
           Card(
+            color: AshaColors.cardSurface,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: AshaColors.borderSubtle),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -141,11 +151,13 @@ class _PresumptiveTbScreenState extends ConsumerState<PresumptiveTbScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.medical_services, color: Colors.teal),
+                      const Icon(Icons.medical_services_outlined, color: AshaColors.primary),
                       const SizedBox(width: 8),
-                      Text(
-                        _t('Presumptive TB Symptoms Checklist (Req 20.1)'),
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      Expanded(
+                        child: Text(
+                          _t('Presumptive TB Symptoms Checklist'),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
                       ),
                     ],
                   ),
@@ -194,6 +206,12 @@ class _PresumptiveTbScreenState extends ConsumerState<PresumptiveTbScreen> {
 
           // Sputum Collection Section
           Card(
+            color: AshaColors.cardSurface,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: AshaColors.borderSubtle),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -201,11 +219,13 @@ class _PresumptiveTbScreenState extends ConsumerState<PresumptiveTbScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.science, color: Colors.indigo),
+                      const Icon(Icons.science_outlined, color: Color(0xFF4F46E5)),
                       const SizedBox(width: 8),
-                      Text(
-                        _t('Sputum Sample Collection & Tracking (Req 20.2)'),
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      Expanded(
+                        child: Text(
+                          _t('Sputum Sample Collection & Tracking'),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
                       ),
                     ],
                   ),

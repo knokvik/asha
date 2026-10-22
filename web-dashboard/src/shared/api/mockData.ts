@@ -7,6 +7,52 @@ import {
   SupplyForecast,
 } from '@/types';
 
+export const HOTSPOT_REFERRAL_TICKET: ReferralItem = {
+  id: 'TKT-HOTSPOT-DEL-01',
+  patientId: 'pat-del-hotspot-01',
+  patientName: 'Sunita Devi',
+  patientAge: 29,
+  patientGender: 'F',
+  village: 'Mahipalpur Extn (Indira Airport Sector)',
+  wardId: 'Delhi-Aerocity-Z2',
+  abhaId: '91-7710-0014-9921',
+  ashaId: 'asha-01',
+  ashaName: 'Meena Sharma',
+  ashaPhone: '+91 98765 43210',
+  subcentreId: 'sc-aerocity-01',
+  facilityId: 'phc-shahpur',
+  facilityName: 'PHC Aerocity / Indira Airport Hub',
+  severity: 'RED',
+  urgency: 'HIGH · Immediate Triage (Active Outbreak Proximity)',
+  reason: 'Suspected Severe Dengue with Petechial Rash & Thrombocytopenia (Indira Airport Outbreak Zone)',
+  clinicalNote: 'Patient located 0.8 km east of Indira Airport Outbreak Epicentre. High pyrexia (103.4°F, Day 4), acute retro-orbital headache, persistent vomiting, epistaxis, and bilateral petechial rash. Field rapid NS1 Ag positive. Platelets ~42,000/μL. Automatically escalated to RED Emergency due to Indira Airport Dengue Cluster proximity.',
+  outbreakContext: 'EPIDEMIC ALERT: 14 confirmed Dengue / AFI cases within 1.8km Indira Airport radius. Vector index 3.4/household.',
+  preReferral: [
+    'Field ORS and IV normal saline 500mL started at 10:15 AM',
+    'Oral paracetamol 650mg administered; NSAIDs withheld',
+    'Tourniquet test positive (>20 petechiae/sq inch)',
+    '108 Emergency Ambulance dispatched from Aerocity Post',
+  ],
+  vitals: {
+    temp: 103.4,
+    bpSystolic: 94,
+    bpDiastolic: 62,
+    pulse: 114,
+    respRate: 24,
+    spo2: 96,
+  },
+  redFlags: ['SEVERE_THROMBOCYTOPENIA', 'ACTIVE_OUTBREAK_PROXIMITY', 'PERSISTENT_VOMITING', 'PETECHIAE'],
+  screenedDangerSigns: [
+    { sign: 'Persistent High Fever > 103°F', present: true },
+    { sign: 'Petechial Rash / Capillary Leak', present: true },
+    { sign: 'Persistent Vomiting / Abdominal Pain', present: true },
+    { sign: 'Postural Hypotension / Shock Signs', present: true },
+    { sign: 'Altered Sensorium / Lethargy', present: false },
+  ],
+  referredAt: new Date(Date.now() - 1000 * 60 * 14).toISOString(),
+  status: 'pending',
+};
+
 export const INITIAL_REFERRALS: ReferralItem[] = [
   {
     id: 'ref-001',

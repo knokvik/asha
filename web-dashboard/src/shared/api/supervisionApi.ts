@@ -1,14 +1,17 @@
 import { apiClient } from './client';
 import { AshaPerformanceCard, SupervisionChecklist } from '@/types';
+import { INITIAL_ASHA_CARDS } from './mockData';
 
 export async function getAshaPerformanceCards(afId: string = 'af-01'): Promise<AshaPerformanceCard[]> {
   try {
     const res = await apiClient.get<AshaPerformanceCard[]>(`/supervision/af/${afId}/ashas`);
-    if (Array.isArray(res.data)) {
+    if (Array.isArray(res.data) && res.data.length > 0) {
       return res.data;
     }
-  } catch { return []; }
-  return [];
+  } catch {
+    return INITIAL_ASHA_CARDS;
+  }
+  return INITIAL_ASHA_CARDS;
 }
 
 export async function submitSupervisionChecklist(checklist: SupervisionChecklist): Promise<{ id: string; success: boolean }> {

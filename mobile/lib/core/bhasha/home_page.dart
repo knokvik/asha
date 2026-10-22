@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
+import 'hi_mr_repair.dart';
 import 'indic_translator.dart';
 import 'languages.dart';
 import 'model_store.dart';
@@ -19,6 +21,9 @@ class HomePage extends StatefulWidget {
     required this.settings,
     this.title = 'Bhasha',
     this.notice,
+    this.availableLanguages,
+    this.autoDownloadMissingModels = true,
+    this.allowSecondaryDownloads = true,
   });
 
   final SettingsStore settings;
@@ -27,6 +32,14 @@ class HomePage extends StatefulWidget {
   /// Shown under the mode switch. The triage screen uses this to say that
   /// speech does not choose the colour.
   final String? notice;
+
+  /// Only languages whose interpreter packs are installed on this phone.
+  final List<IndicLanguage>? availableLanguages;
+
+  /// The ASHA application delegates downloads to its Pack Manager. Standalone
+  /// use keeps the previous opt-in download behaviour for backwards use.
+  final bool autoDownloadMissingModels;
+  final bool allowSecondaryDownloads;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -45,6 +58,8 @@ class _Turn {
   final String translation;
   final bool fromEnglish;
   String? audioPath;
+  int? hearMs;
+  int? translateMs;
 }
 
 class _HomePageState extends State<HomePage> {
@@ -55,12 +70,21 @@ class _HomePageState extends State<HomePage> {
   final ValueNotifier<double> _level = ValueNotifier(0);
 
   Timer? _ticker;
+  Timer? _liveTimer;
   StreamSubscription<Amplitude>? _levels;
+  StreamSubscription<Uint8List>? _pcmSub;
+  final BytesBuilder _pcm = BytesBuilder(copy: false);
+  HearingSession? _hearing;
+  IndicTranslator? _indicToEnglish;
   StreamSubscription<PlayerState>? _playerState;
   DateTime? _started;
   DateTime _lastProgressPaint = DateTime.fromMillisecondsSinceEpoch(0);
   DateTime _lastAskPaint = DateTime.fromMillisecondsSinceEpoch(0);
   bool _recording = false;
+  bool _streamLive = false;
+  bool _decodeBusy = false;
+  bool _decodeAgain = false;
+  bool _finalRequested = false;
   bool _stopInFlight = false;
   bool _busy = false;
   bool _speaking = false;
@@ -70,6 +94,10 @@ class _HomePageState extends State<HomePage> {
   bool _downloading = false;
   bool _askDownloading = false;
   String _status = '';
+  String _liveHeard = '';
+  String _liveEnglish = '';
+  int? _liveHearMs;
+  int? _liveTranslateMs;
   String? _downloadError;
   String? _askError;
   int _elapsedSeconds = 0;
@@ -81,6 +109,7 @@ class _HomePageState extends State<HomePage> {
   static const _maxSeconds = 25;
 
   SettingsStore get settings => widget.settings;
+  List<IndicLanguage> get _languages => widget.availableLanguages ?? indicLanguages;
 
   @override
   void initState() {
@@ -96,6 +125,9 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _ticker?.cancel();
+    _liveTimer?.cancel();
+    unawaited(_pcmSub?.cancel());
+    _closeHearStack();
     unawaited(_levels?.cancel());
     unawaited(_playerState?.cancel());
     _typed.dispose();
@@ -115,11 +147,13 @@ class _HomePageState extends State<HomePage> {
       _ready = ready;
       _preparing = false;
     });
-    if (!ready) {
+    if (!ready && widget.autoDownloadMissingModels) {
       await _downloadModels();
       return;
     }
-    if (settings.askInEnglish) unawaited(_ensureAsk());
+    if (ready && settings.askInEnglish && widget.allowSecondaryDownloads) {
+      unawaited(_ensureAsk());
+    }
   }
 
   Future<void> _downloadModels() async {
@@ -147,7 +181,9 @@ class _HomePageState extends State<HomePage> {
         _ready = true;
         _downloadError = null;
       });
-      if (settings.askInEnglish) unawaited(_ensureAsk());
+      if (settings.askInEnglish && widget.allowSecondaryDownloads) {
+        unawaited(_ensureAsk());
+      }
     } on SocketException {
       if (!mounted) return;
       setState(() {
@@ -219,7 +255,30 @@ class _HomePageState extends State<HomePage> {
   Future<void> _setMode(bool ask) async {
     if (settings.askInEnglish == ask || _busy || _recording) return;
     await settings.setAskInEnglish(ask);
-    if (ask) unawaited(_ensureAsk());
+    if (ask && widget.allowSecondaryDownloads) {
+      _closeHearStack();
+      unawaited(_ensureAsk());
+    }
+  }
+
+  void _closeHearStack() {
+    _indicToEnglish?.close();
+    _indicToEnglish = null;
+    _hearing?.close();
+    _hearing = null;
+  }
+
+  Future<void> _openHearStack() async {
+    final store = _models;
+    if (store == null || !store.isReady) return;
+    if (_hearing != null && _indicToEnglish != null) return;
+    if (mounted) setState(() => _status = 'Preparing Hindi and Marathi hearing');
+    _hearing ??= HearingSession.open(
+      modelPath: store.asrModelPath,
+      tokensPath: store.asrTokensPath,
+    );
+    _indicToEnglish ??= await IndicTranslator.open(store.mtDirectory);
+    if (mounted) setState(() => _status = '');
   }
 
   Future<void> _toggleRecording() async {
@@ -240,20 +299,41 @@ class _HomePageState extends State<HomePage> {
       _showMessage('Allow the microphone so the phone can hear you.');
       return;
     }
-    final dir = await getTemporaryDirectory();
-    final wav = File('${dir.path}/speech.wav');
+    _streamLive = false;
     try {
-      await _recorder.start(
+      await _openHearStack();
+      final stream = await _recorder.startStream(
         const RecordConfig(
-          encoder: AudioEncoder.wav,
+          encoder: AudioEncoder.pcm16bits,
           sampleRate: 16000,
           numChannels: 1,
         ),
-        path: wav.path,
       );
+      _pcm.clear();
+      _liveHeard = '';
+      _liveEnglish = '';
+      _liveHearMs = null;
+      _liveTranslateMs = null;
+      await _pcmSub?.cancel();
+      _pcmSub = stream.listen(_pcm.add);
+      _streamLive = true;
     } catch (error) {
-      _showMessage('Could not start the microphone. $error');
-      return;
+      _streamLive = false;
+      final dir = await getTemporaryDirectory();
+      final wav = File('${dir.path}/speech.wav');
+      try {
+        await _recorder.start(
+          const RecordConfig(
+            encoder: AudioEncoder.wav,
+            sampleRate: 16000,
+            numChannels: 1,
+          ),
+          path: wav.path,
+        );
+      } catch (startError) {
+        _showMessage('Could not start the microphone. $startError');
+        return;
+      }
     }
     await _levels?.cancel();
     _levels = _recorder.onAmplitudeChanged(const Duration(milliseconds: 80)).listen((amp) {
@@ -267,6 +347,12 @@ class _HomePageState extends State<HomePage> {
       _status = 'Listening';
       _started = DateTime.now();
     });
+    _liveTimer?.cancel();
+    if (_streamLive) {
+      _liveTimer = Timer.periodic(const Duration(milliseconds: 1200), (_) {
+        unawaited(_decodeLive(finalPass: false));
+      });
+    }
     _ticker?.cancel();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       final start = _started;
@@ -287,7 +373,23 @@ class _HomePageState extends State<HomePage> {
     if (!_recording || _stopInFlight) return;
     _stopInFlight = true;
     _ticker?.cancel();
+    _liveTimer?.cancel();
     _stopLevels();
+    if (_streamLive) {
+      await _pcmSub?.cancel();
+      _pcmSub = null;
+      try {
+        await _recorder.stop();
+      } catch (error) {
+        if (mounted) _showMessage('Could not stop the microphone. $error');
+      } finally {
+        _stopInFlight = false;
+      }
+      if (!mounted) return;
+      setState(() => _recording = false);
+      await _decodeLive(finalPass: true);
+      return;
+    }
     String? path;
     try {
       path = await _recorder.stop();
@@ -314,6 +416,129 @@ class _HomePageState extends State<HomePage> {
     await _translate(audio: file);
   }
 
+  Future<void> _decodeLive({required bool finalPass}) async {
+    if (finalPass) _finalRequested = true;
+    if (_decodeBusy) {
+      _decodeAgain = true;
+      return;
+    }
+    final hearing = _hearing;
+    final translator = _indicToEnglish;
+    if (hearing == null || translator == null) {
+      if (finalPass && mounted) {
+        _showMessage('The hearing model is not ready.');
+      }
+      return;
+    }
+    _decodeBusy = true;
+    try {
+      while (mounted) {
+        final isFinal = _finalRequested;
+        _decodeAgain = false;
+        final bytes = _pcm.toBytes();
+        if (bytes.length < 16000) {
+          if (isFinal && mounted) {
+            _showMessage('That was too short. Speak for a full sentence.');
+            setState(() {
+              _liveEnglish = '';
+              _liveHeard = '';
+            });
+          }
+          if (isFinal) _finalRequested = false;
+          break;
+        }
+        final language = settings.source;
+        final hearWatch = Stopwatch()..start();
+        final raw = hearing.transcribe(pcm16ToFloat(Uint8List.fromList(bytes)), 16000);
+        final hearMs = hearWatch.elapsedMilliseconds;
+        final heard = prepareHeardForTranslation(raw, language.iso);
+        if (heard.isEmpty) {
+          if (isFinal && mounted) {
+            _showMessage('I did not catch that. Speak a full sentence, closer to the phone.');
+          }
+          if (isFinal) _finalRequested = false;
+          break;
+        }
+        if (!isFinal && heard == _liveHeard) {
+          if (!_decodeAgain && !_finalRequested) break;
+          continue;
+        }
+        final translateWatch = Stopwatch()..start();
+        final english = translator.translate(heard, language);
+        final translateMs = translateWatch.elapsedMilliseconds;
+        if (!mounted) break;
+        if (english.trim().isEmpty) {
+          if (isFinal) {
+            _showMessage('The translation came back empty. Try a shorter sentence.');
+            _finalRequested = false;
+          }
+          break;
+        }
+        setState(() {
+          _liveHeard = heard;
+          _liveEnglish = english.trim();
+          _liveHearMs = hearMs;
+          _liveTranslateMs = translateMs;
+        });
+        if (!isFinal) {
+          if (_decodeAgain || _finalRequested) continue;
+          break;
+        }
+        _finalRequested = false;
+        final turn = _Turn(
+          languageCode: language.code,
+          heard: heard,
+          translation: english.trim(),
+          fromEnglish: false,
+        )
+          ..hearMs = hearMs
+          ..translateMs = translateMs;
+        setState(() {
+          _turns.insert(0, turn);
+          _liveHeard = '';
+          _liveEnglish = '';
+          _status = '';
+        });
+        if (settings.autoSpeak) {
+          await _speakEnglish(turn);
+        }
+        break;
+      }
+    } on SpeechException catch (error) {
+      _showMessage(error.message);
+    } catch (error) {
+      _showMessage('Something went wrong. $error');
+    } finally {
+      _decodeBusy = false;
+      if (_finalRequested) unawaited(_decodeLive(finalPass: true));
+    }
+  }
+
+  Future<void> _speakEnglish(_Turn turn) async {
+    final store = _models;
+    if (store == null || !store.isReady) return;
+    try {
+      if (mounted) setState(() => _status = 'Speaking the English');
+      final dir = await getTemporaryDirectory();
+      final spoken = File('${dir.path}/reply-${DateTime.now().millisecondsSinceEpoch}.wav');
+      SpeechEngine.speakToFile(
+        text: _speechText(turn.translation),
+        modelPath: store.ttsModelPath,
+        tokensPath: store.ttsTokensPath,
+        dataDir: store.espeakDirectory,
+        destPath: spoken.path,
+      );
+      turn.audioPath = spoken.path;
+      await _player.stop();
+      await _player.play(DeviceFileSource(spoken.path));
+      if (mounted) setState(() {});
+    } on SpeechException catch (error) {
+      _showMessage(error.message);
+    } catch (error) {
+      _showMessage('Something went wrong. $error');
+    }
+  }
+
   Future<void> _submitTyped() async {
     if (settings.askInEnglish) {
       await _onAskPressed();
@@ -334,6 +559,10 @@ class _HomePageState extends State<HomePage> {
     }
     FocusManager.instance.primaryFocus?.unfocus();
     final language = settings.source;
+    if (!widget.allowSecondaryDownloads) {
+      _showMessage('Install the ask-back interpreter pack in Offline packs first.');
+      return;
+    }
     final ready = await _ensureAsk();
     if (!mounted) return;
     if (!ready) {
@@ -363,12 +592,16 @@ class _HomePageState extends State<HomePage> {
     await Future<void>.delayed(Duration.zero);
     try {
       final String heard;
+      int? hearMs;
       if (audio != null) {
-        heard = SpeechEngine.transcribe(
+        final watch = Stopwatch()..start();
+        final raw = SpeechEngine.transcribe(
           wavPath: audio.path,
           modelPath: store.asrModelPath,
           tokensPath: store.asrTokensPath,
         );
+        hearMs = watch.elapsedMilliseconds;
+        heard = prepareHeardForTranslation(raw, source.iso);
         if (heard.isEmpty) {
           _showMessage('I did not catch that. Speak a full sentence, closer to the phone.');
           return;
@@ -379,17 +612,21 @@ class _HomePageState extends State<HomePage> {
         heard = typedText;
       }
 
+      final translateWatch = Stopwatch()..start();
       final translation = fromEnglish
           ? await translateEnglishOnPhone(
               modelDirectory: store.enMtDirectory.path,
               text: heard,
               languageCode: source.code,
             )
-          : await translateOnPhone(
-              modelDirectory: store.mtDirectory.path,
-              text: heard,
-              languageCode: source.code,
-            );
+          : _indicToEnglish != null
+              ? _indicToEnglish!.translate(heard, source)
+              : await translateOnPhone(
+                  modelDirectory: store.mtDirectory.path,
+                  text: heard,
+                  languageCode: source.code,
+                );
+      final translateMs = translateWatch.elapsedMilliseconds;
       if (translation.trim().isEmpty) {
         _showMessage('The translation came back empty. Try a shorter sentence.');
         return;
@@ -400,12 +637,14 @@ class _HomePageState extends State<HomePage> {
         heard: heard,
         translation: translation,
         fromEnglish: fromEnglish,
-      );
+      )
+        ..hearMs = hearMs
+        ..translateMs = translateMs;
       final speakHindi = fromEnglish && settings.autoSpeak && source.iso == 'hi';
       final speakEnglish = !fromEnglish && settings.autoSpeak;
       if (speakHindi || speakEnglish) {
         try {
-          if (speakHindi && !store.hindiVoiceReady) {
+          if (speakHindi && !store.hindiVoiceReady && widget.allowSecondaryDownloads) {
             await _downloadHindiVoice(store);
           }
           if (speakHindi && !store.hindiVoiceReady) {
@@ -505,7 +744,7 @@ class _HomePageState extends State<HomePage> {
         return SafeArea(
           child: ListView(
             children: [
-              for (final language in indicLanguages)
+              for (final language in _languages)
                 ListTile(
                   title: Text(language.nativeName),
                   subtitle: Text(
@@ -685,6 +924,17 @@ class _HomePageState extends State<HomePage> {
                           ],
                         ),
                       ),
+                      if (!ask && (_recording || _liveEnglish.isNotEmpty))
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                          child: _LiveEnglish(
+                            english: _liveEnglish,
+                            heard: _liveHeard,
+                            hearMs: _liveHearMs,
+                            translateMs: _liveTranslateMs,
+                            tuned: from.iso == 'hi' || from.iso == 'mr',
+                          ),
+                        ),
                       Expanded(
                         child: _turns.isEmpty
                             ? LayoutBuilder(
@@ -1072,6 +1322,61 @@ class _EmptyHint extends StatelessWidget {
   }
 }
 
+class _LiveEnglish extends StatelessWidget {
+  const _LiveEnglish({
+    required this.english,
+    required this.heard,
+    required this.hearMs,
+    required this.translateMs,
+    required this.tuned,
+  });
+
+  final String english;
+  final String heard;
+  final int? hearMs;
+  final int? translateMs;
+  final bool tuned;
+
+  @override
+  Widget build(BuildContext context) {
+    final timing = [
+      if (hearMs != null) 'Heard $hearMs ms',
+      if (translateMs != null) 'translated $translateMs ms',
+    ].join(' · ');
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F7F4),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF0F6E56)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            tuned ? 'English · Hindi or Marathi' : 'English, as they speak',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF0F6E56)),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            english.isEmpty ? 'Listening…' : english,
+            style: const TextStyle(fontSize: 22, height: 1.3, fontWeight: FontWeight.w700),
+          ),
+          if (heard.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(heard, style: const TextStyle(fontSize: 14, height: 1.3, color: Color(0xFF5C564C))),
+          ],
+          if (timing.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(timing, style: const TextStyle(fontSize: 12, color: Color(0xFF5C564C))),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _TurnCard extends StatelessWidget {
   const _TurnCard({required this.turn, required this.onReplay});
 
@@ -1115,6 +1420,16 @@ class _TurnCard extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
+            if (turn.hearMs != null || turn.translateMs != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                [
+                  if (turn.hearMs != null) 'Heard ${turn.hearMs} ms',
+                  if (turn.translateMs != null) 'translated ${turn.translateMs} ms',
+                ].join(' · '),
+                style: const TextStyle(fontSize: 12, color: Color(0xFF5C564C)),
+              ),
+            ],
             if (showHoldUp) ...[
               const SizedBox(height: 6),
               Text(

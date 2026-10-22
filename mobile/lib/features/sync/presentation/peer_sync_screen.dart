@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../../app/theme/app_theme.dart';
 import '../../../core/l10n/language_provider.dart';
 import '../../../core/sync/nearby_peer_transport.dart';
 import '../../../core/sync/peer_sync_service.dart';
@@ -87,15 +88,63 @@ class _PeerSyncScreenState extends ConsumerState<PeerSyncScreen> {
   Widget build(BuildContext context) {
     final lang = ref.watch(languageProvider).languageCode;
     return Scaffold(
-      appBar: AppBar(title: Text(shellText(lang, 'peerSyncTitle'))),
+      backgroundColor: AshaColors.screenBg,
+      appBar: AppBar(
+        title: Text(shellText(lang, 'peerSyncTitle')),
+        backgroundColor: AshaColors.cardSurface,
+        foregroundColor: AshaColors.textPrimary,
+        elevation: 0,
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.people_alt_outlined),
-              title: Text(shellText(lang, 'peerSyncHeader')),
-              subtitle: Text(shellText(lang, 'peerSyncSub')),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AshaColors.cardSurface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AshaColors.borderSubtle),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDCFCE7),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.people_alt_outlined,
+                    color: Color(0xFF15803D),
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        shellText(lang, 'peerSyncHeader'),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AshaColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        shellText(lang, 'peerSyncSub'),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AshaColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 12),

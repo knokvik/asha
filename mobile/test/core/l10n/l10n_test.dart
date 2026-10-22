@@ -7,6 +7,7 @@ import 'package:asha_platform/app/app.dart';
 import 'package:asha_platform/core/l10n/app_localizations.dart';
 import 'package:asha_platform/core/l10n/language_provider.dart';
 import 'package:asha_platform/core/l10n/language_selector_dialog.dart';
+import 'package:asha_platform/core/packs/pack_manager.dart';
 import 'package:asha_platform/shared/shell/shell_copy.dart';
 
 class FakeSecureStorage extends Fake implements FlutterSecureStorage {
@@ -248,7 +249,9 @@ void main() {
                   builder: (context) => ElevatedButton(
                     onPressed: () => showDialog(
                       context: context,
-                      builder: (_) => const LanguageSelectorDialog(),
+                      builder: (_) => const LanguageSelectorDialog(
+                        availableLanguages: supportedLanguages,
+                      ),
                     ),
                     child: const Text('Open Picker'),
                   ),
@@ -276,6 +279,43 @@ void main() {
         expect(find.byType(LanguageSelectorDialog), findsNothing);
         expect(container.read(languageProvider), const Locale('hi'));
         expect(await fakeStorage.read(key: LanguageNotifier.storageKey), 'hi');
+      },
+    );
+
+    testWidgets(
+      'LanguageSelectorDialog hides language packs that are not installed',
+      (tester) async {
+        final storage = FakeSecureStorage();
+        final container = ProviderContainer(
+          overrides: [
+            offlinePackProvider.overrideWith(
+              () => OfflinePackNotifier(storage: storage),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              home: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () => showDialog<void>(
+                    context: context,
+                    builder: (_) => const LanguageSelectorDialog(),
+                  ),
+                  child: const Text('Open Picker'),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.text('Open Picker'));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('lang_option_en')), findsOneWidget);
+        expect(find.byKey(const Key('lang_option_hi')), findsNothing);
       },
     );
   });
