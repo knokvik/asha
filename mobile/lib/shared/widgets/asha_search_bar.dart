@@ -31,17 +31,35 @@ class AshaSearchBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 56,
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       decoration: BoxDecoration(
         color: AshaColors.cardSurface,
         borderRadius: AshaShapes.searchRadius,
-        border: Border.all(color: const Color(0xFFD1D5DB), width: 1.0),
+        border: Border.all(color: const Color(0xFF86EFAC), width: 1.2),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          const SizedBox(width: 6),
-          const _AnimatedAshaSearchMark(),
-          const SizedBox(width: 8),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0xFFDCFCE7),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.search_rounded,
+              color: Color(0xFF15803D),
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 10),
           Expanded(
             child: TextField(
               controller: controller,
@@ -53,13 +71,14 @@ class AshaSearchBar extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 15,
                 color: AshaColors.textPrimary,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
               decoration: InputDecoration(
                 hintText: hintText,
                 hintStyle: const TextStyle(
-                  color: Color(0xFF374151),
+                  color: Color(0xFF6B7280),
                   fontSize: 14,
+                  fontWeight: FontWeight.w400,
                 ),
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
@@ -115,128 +134,15 @@ class AshaSearchBar extends StatelessWidget {
   }
 }
 
-class _AnimatedAshaSearchMark extends StatefulWidget {
+class _AnimatedAshaSearchMark extends StatelessWidget {
   const _AnimatedAshaSearchMark();
 
   @override
-  State<_AnimatedAshaSearchMark> createState() =>
-      _AnimatedAshaSearchMarkState();
-}
-
-class _AnimatedAshaSearchMarkState extends State<_AnimatedAshaSearchMark>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(seconds: 7),
-  )..repeat();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      key: const Key('animated_search_logo'),
-      animation: _controller,
-      builder: (context, child) => SizedBox(
-        width: 30,
-        height: 30,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            CustomPaint(
-              size: const Size.square(30),
-              painter: _SearchOrbitPainter(progress: _controller.value),
-            ),
-            Transform.rotate(
-              angle: _controller.value * 2 * 3.14159265359,
-              child: child,
-            ),
-          ],
-        ),
-      ),
-      child: const _AshaSymbolIcon(),
+    return const SizedBox(
+      key: Key('animated_search_logo'),
+      width: 0,
+      height: 0,
     );
   }
-}
-
-class _AshaSymbolIcon extends StatelessWidget {
-  const _AshaSymbolIcon();
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      size: const Size.square(22),
-      painter: _AshaSymbolPainter(),
-    );
-  }
-}
-
-/// The compact green ASHA cross/sun symbol used in the original search bar.
-class _AshaSymbolPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = const Color(0xFF39B37D);
-    final center = size.center(Offset.zero);
-    final unit = size.width / 22;
-    final path = Path()
-      ..moveTo(center.dx - 2.4 * unit, center.dy - 10 * unit)
-      ..lineTo(center.dx + 2.4 * unit, center.dy - 10 * unit)
-      ..lineTo(center.dx + 2.4 * unit, center.dy - 3.2 * unit)
-      ..lineTo(center.dx + 8.5 * unit, center.dy - 6.7 * unit)
-      ..lineTo(center.dx + 10.7 * unit, center.dy - 2.8 * unit)
-      ..lineTo(center.dx + 4.4 * unit, center.dy + 0.8 * unit)
-      ..lineTo(center.dx + 10.7 * unit, center.dy + 4.2 * unit)
-      ..lineTo(center.dx + 8.5 * unit, center.dy + 8.2 * unit)
-      ..lineTo(center.dx + 2.4 * unit, center.dy + 4.7 * unit)
-      ..lineTo(center.dx + 2.4 * unit, center.dy + 10 * unit)
-      ..lineTo(center.dx - 2.4 * unit, center.dy + 10 * unit)
-      ..lineTo(center.dx - 2.4 * unit, center.dy + 4.7 * unit)
-      ..lineTo(center.dx - 8.5 * unit, center.dy + 8.2 * unit)
-      ..lineTo(center.dx - 10.7 * unit, center.dy + 4.2 * unit)
-      ..lineTo(center.dx - 4.4 * unit, center.dy + 0.8 * unit)
-      ..lineTo(center.dx - 10.7 * unit, center.dy - 2.8 * unit)
-      ..lineTo(center.dx - 8.5 * unit, center.dy - 6.7 * unit)
-      ..lineTo(center.dx - 2.4 * unit, center.dy - 3.2 * unit)
-      ..close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _SearchOrbitPainter extends CustomPainter {
-  const _SearchOrbitPainter({required this.progress});
-
-  final double progress;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final basePaint = Paint()
-      ..color = const Color(0xFFD1D5DB)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-    final orbitPaint = Paint()
-      ..color = const Color(0xFF2D5F47)
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = 1.8;
-    canvas.drawCircle(size.center(Offset.zero), 13, basePaint);
-    canvas.drawArc(
-      rect.deflate(2),
-      progress * 2 * 3.14159265359,
-      1.5,
-      false,
-      orbitPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _SearchOrbitPainter oldDelegate) =>
-      oldDelegate.progress != progress;
 }

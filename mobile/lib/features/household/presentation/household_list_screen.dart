@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/theme/app_theme.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/l10n/language_selector_dialog.dart';
@@ -57,9 +58,16 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
     final groupedAsync = ref.watch(householdsGroupedByHamletProvider);
 
     return Scaffold(
+      backgroundColor: AshaColors.screenBg,
       drawer: const AppDrawer(),
       appBar: AppBar(
-        title: Text(l10n?.households ?? 'Households'),
+        title: Text(
+          l10n?.households ?? 'Households',
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+        ),
+        backgroundColor: AshaColors.cardSurface,
+        foregroundColor: AshaColors.textPrimary,
+        elevation: 0,
         actions: [
           IconButton(
             key: const Key('household_list_language_button'),
@@ -289,6 +297,8 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         key: const Key('register_household_fab'),
+        backgroundColor: AshaColors.primary,
+        foregroundColor: Colors.white,
         onPressed: () async {
           final result = await Navigator.of(context).push<Household?>(
             MaterialPageRoute(builder: (_) => const HouseholdFormScreen()),

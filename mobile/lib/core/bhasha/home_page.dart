@@ -21,6 +21,9 @@ class HomePage extends StatefulWidget {
     required this.settings,
     this.title = 'Bhasha',
     this.notice,
+    this.availableLanguages,
+    this.autoDownloadMissingModels = true,
+    this.allowSecondaryDownloads = true,
   });
 
   final SettingsStore settings;
@@ -29,6 +32,14 @@ class HomePage extends StatefulWidget {
   /// Shown under the mode switch. The triage screen uses this to say that
   /// speech does not choose the colour.
   final String? notice;
+
+  /// Only languages whose interpreter packs are installed on this phone.
+  final List<IndicLanguage>? availableLanguages;
+
+  /// The ASHA application delegates downloads to its Pack Manager. Standalone
+  /// use keeps the previous opt-in download behaviour for backwards use.
+  final bool autoDownloadMissingModels;
+  final bool allowSecondaryDownloads;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -98,6 +109,7 @@ class _HomePageState extends State<HomePage> {
   static const _maxSeconds = 25;
 
   SettingsStore get settings => widget.settings;
+  List<IndicLanguage> get _languages => widget.availableLanguages ?? indicLanguages;
 
   @override
   void initState() {
@@ -135,11 +147,13 @@ class _HomePageState extends State<HomePage> {
       _ready = ready;
       _preparing = false;
     });
-    if (!ready) {
+    if (!ready && widget.autoDownloadMissingModels) {
       await _downloadModels();
       return;
     }
-    if (settings.askInEnglish) unawaited(_ensureAsk());
+    if (ready && settings.askInEnglish && widget.allowSecondaryDownloads) {
+      unawaited(_ensureAsk());
+    }
   }
 
   Future<void> _downloadModels() async {
@@ -167,7 +181,9 @@ class _HomePageState extends State<HomePage> {
         _ready = true;
         _downloadError = null;
       });
-      if (settings.askInEnglish) unawaited(_ensureAsk());
+      if (settings.askInEnglish && widget.allowSecondaryDownloads) {
+        unawaited(_ensureAsk());
+      }
     } on SocketException {
       if (!mounted) return;
       setState(() {
@@ -239,7 +255,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _setMode(bool ask) async {
     if (settings.askInEnglish == ask || _busy || _recording) return;
     await settings.setAskInEnglish(ask);
-    if (ask) {
+    if (ask && widget.allowSecondaryDownloads) {
       _closeHearStack();
       unawaited(_ensureAsk());
     }
@@ -543,6 +559,10 @@ class _HomePageState extends State<HomePage> {
     }
     FocusManager.instance.primaryFocus?.unfocus();
     final language = settings.source;
+    if (!widget.allowSecondaryDownloads) {
+      _showMessage('Install the ask-back interpreter pack in Offline packs first.');
+      return;
+    }
     final ready = await _ensureAsk();
     if (!mounted) return;
     if (!ready) {
@@ -624,7 +644,7 @@ class _HomePageState extends State<HomePage> {
       final speakEnglish = !fromEnglish && settings.autoSpeak;
       if (speakHindi || speakEnglish) {
         try {
-          if (speakHindi && !store.hindiVoiceReady) {
+          if (speakHindi && !store.hindiVoiceReady && widget.allowSecondaryDownloads) {
             await _downloadHindiVoice(store);
           }
           if (speakHindi && !store.hindiVoiceReady) {
@@ -724,7 +744,7 @@ class _HomePageState extends State<HomePage> {
         return SafeArea(
           child: ListView(
             children: [
-              for (final language in indicLanguages)
+              for (final language in _languages)
                 ListTile(
                   title: Text(language.nativeName),
                   subtitle: Text(

@@ -978,10 +978,17 @@ The `canonicalise(term)` function is a pure lookup: applying it twice to the sam
 
 #### Model Management Strategy
 
-- Base App includes no Vosk model; Hindi model (~40 MB) is downloaded on first launch over any connection if the ASHA selects Hindi, or deferred to Wi-Fi if data-cost control mode is enabled
+- Base App includes no interpreter, ASR, or voice model. The worker explicitly installs the required interpreter language from Offline Packs; merely opening an interpreter screen never starts a large download.
 - Each language model is an independently downloadable `.zip` bundle, verified by SHA-256 before extraction
 - Models stored in app-private storage (`getApplicationSupportDirectory()`), excluded from cloud backup
 - RAM check on startup: if device RAM < 1.5 GB, the large (40 MB) model is replaced with the small (~15 MB) compressed model; if RAM < 1 GB, voice input falls back to tap-only with a user notification
+
+#### Optional Content Pack Delivery
+
+- The base APK contains no geo map payload. A server build creates an allowlisted `map-india.zip` archive from reviewed geo source files, and the app installs it only after explicit worker action.
+- Non-English UI language bundles are served as individually versioned `ui-<language>.zip` archives. English remains the base fallback; a non-English option is not shown in the picker until its verified pack is installed.
+- The API publishes a pack manifest and immutable downloads carrying a SHA-256 header. The app verifies the archive, rejects paths and files outside the pack allowlist, extracts to app-private `content-packs/<pack-id>` storage, and installs atomically from a staging directory.
+- Pack removal deletes only that pack's downloaded files. It must never remove clinical records, credentials, or queued sync packets.
 
 ---
 
@@ -1806,11 +1813,11 @@ If FCM is unavailable, the App detects refresh-token revocation on its next sync
 |---|---|---|
 | Flutter engine (arm64-v8a) | ~10 MB | Split APK; armeabi-v7a separate |
 | App Dart code + assets | ~5 MB | Includes WHO growth tables, CBAC scoring |
-| ARB localisation (12 languages) | ~1 MB | Text strings only |
+| Base English UI strings | <1 MB | Non-English strings are pack-gated and may be refreshed OTA |
 | Icons, illustrations | ~3 MB | WebP format, 1× and 2× |
-| Embedded offline maps (base tiles) | ~8 MB | District-level; block tiles deferred download |
+| Embedded offline maps | 0 MB | India map data is an on-demand verified content pack |
 | flutter_tts + language packs | ~2 MB bundled | Additional language packs: 5–15 MB each, OTA |
-| **Base APK total** | **~29 MB** | Well under 50 MB limit |
+| **Base APK total** | **~21 MB** | Estimate before architecture/native-plugin variation; release CI measures the actual split APK |
 | Hindi Vosk model (optional) | ~40 MB | Downloaded post-install; not in base APK |
 | Additional language Vosk models | ~15–40 MB each | Optional OTA download |
 

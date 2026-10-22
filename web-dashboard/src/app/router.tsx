@@ -14,6 +14,7 @@ import { LoginPage } from '@/features/auth/LoginPage';
 import { ClinicalProgramsPage } from '@/features/clinical-programs/ClinicalProgramsPage';
 import { NotificationsPage } from '@/features/notifications/NotificationsPage';
 import { AshaWorkerDetailPage } from '@/features/af-supervision/AshaWorkerDetailPage';
+import { SystemLogsPage } from '@/features/system-logs/SystemLogsPage';
 
 export const router = createBrowserRouter([
   {
@@ -75,6 +76,14 @@ export const router = createBrowserRouter([
       {
         path: 'af/worker/:name',
         element: <AshaWorkerDetailPage />,
+      },
+      {
+        path: 'logs',
+        element: <SystemLogsPage />,
+      },
+      {
+        path: 'system-logs',
+        element: <SystemLogsPage />,
       },
       {
         path: 'supervisor',

@@ -31,12 +31,16 @@ class _TbTreatmentCardScreenState extends ConsumerState<TbTreatmentCardScreen> {
     final p = widget.patient;
 
     return Scaffold(
+      backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
+        backgroundColor: AshaColors.cardSurface,
+        foregroundColor: AshaColors.textPrimary,
+        elevation: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_t('TB Treatment Card (DOTS)'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            Text('${p.beneficiaryName} | ${_t(p.regimen.label)}', style: const TextStyle(fontSize: 12, color: Colors.white70)),
+            Text(_t('TB Treatment Card (DOTS)'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+            Text('${p.beneficiaryName} | ${_t(p.regimen.label)}', style: const TextStyle(fontSize: 12, color: AshaColors.textMuted)),
           ],
         ),
         actions: [
@@ -47,7 +51,7 @@ class _TbTreatmentCardScreenState extends ConsumerState<TbTreatmentCardScreen> {
                 : 'Switch to ASHA Private Clinical View',
             icon: Icon(
               _privacyMode == TbPrivacyMode.sharedSupervisorView ? Icons.visibility_off : Icons.visibility,
-              color: Colors.amberAccent,
+              color: AshaColors.primary,
             ),
             onPressed: () {
               setState(() {
@@ -99,6 +103,12 @@ class _TbTreatmentCardScreenState extends ConsumerState<TbTreatmentCardScreen> {
 
           // Treatment Summary Card
           Card(
+            color: AshaColors.cardSurface,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: AshaColors.borderSubtle),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -107,7 +117,7 @@ class _TbTreatmentCardScreenState extends ConsumerState<TbTreatmentCardScreen> {
                   Row(
                     children: [
                       const CircleAvatar(
-                        backgroundColor: Colors.teal,
+                        backgroundColor: AshaColors.primary,
                         child: Icon(Icons.medication, color: Colors.white),
                       ),
                       const SizedBox(width: 12),
@@ -117,7 +127,7 @@ class _TbTreatmentCardScreenState extends ConsumerState<TbTreatmentCardScreen> {
                           children: [
                             Text(p.beneficiaryName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                             if (p.nikshayId != null)
-                              Text('${_t("Ni-kshay ID")}: ${p.nikshayId}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                              Text('${_t("Ni-kshay ID")}: ${p.nikshayId}', style: const TextStyle(fontSize: 12, color: AshaColors.textMuted)),
                           ],
                         ),
                       ),
@@ -137,22 +147,27 @@ class _TbTreatmentCardScreenState extends ConsumerState<TbTreatmentCardScreen> {
 
           // Daily Dose Action Card
           Card(
-            color: Colors.teal.shade50,
+            color: const Color(0xFFF0FDF4),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: Color(0xFF86EFAC)),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(_t('Record Today\'s Dose Observation (Req 20.4)'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text(_t('Record Today\'s Dose Observation'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.teal,
+                            backgroundColor: AshaColors.primary,
                             foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
                           icon: const Icon(Icons.check),
                           label: Text(_t('Observed Taken')),
@@ -165,7 +180,7 @@ class _TbTreatmentCardScreenState extends ConsumerState<TbTreatmentCardScreen> {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.red.shade800,
                             side: BorderSide(color: Colors.red.shade400),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
                           icon: const Icon(Icons.close),
                           label: Text(_t('Missed Dose')),
@@ -182,17 +197,17 @@ class _TbTreatmentCardScreenState extends ConsumerState<TbTreatmentCardScreen> {
 
           // Contact Tracing & TPT Quick Action (Requirement 20.5)
           ListTile(
-            tileColor: Colors.white,
+            tileColor: AshaColors.cardSurface,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(14),
+              side: const BorderSide(color: AshaColors.borderSubtle),
             ),
             leading: const CircleAvatar(
-              backgroundColor: Colors.indigo,
+              backgroundColor: Color(0xFF4F46E5),
               child: Icon(Icons.people, color: Colors.white),
             ),
             title: Text(_t('Household Contact Tracing & TPT'), style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text(_t('Screen household members and enrol in preventive therapy (Req 20.5)')),
+            subtitle: Text(_t('Screen household members and enrol in preventive therapy')),
             trailing: const Icon(Icons.chevron_right),
             onTap: _showContactTracingDialog,
           ),

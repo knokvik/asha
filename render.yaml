@@ -3,7 +3,7 @@ services:
     name: asha-backend
     runtime: python
     rootDir: backend
-    buildCommand: pip install -r requirements.txt
+    buildCommand: python scripts/build_content_packs.py --source ../mobile/assets/geo --language-source ../mobile/lib/core/l10n/arb --output content_packs/map-india.zip && pip install -r requirements.txt
     # entrypoint.sh runs migrations, then starts the real API; no demo seed data.
     startCommand: sh entrypoint.sh
     plan: free

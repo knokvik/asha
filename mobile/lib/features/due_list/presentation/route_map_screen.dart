@@ -1,15 +1,12 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart' as sql;
 
 import '../domain/due_list_models.dart';
 import '../domain/route_models.dart';
 import '../../map/data/mbtiles_tile_provider.dart';
+import '../../../core/packs/map_content_pack_store.dart';
 
 /// Screen displaying the computed offline visit route on a bundled MBTiles canvas
 /// or a landmark sketch map fallback (Requirements 25.1, 25.2, 25.3).
@@ -54,12 +51,8 @@ class _RouteMapScreenState extends State<RouteMapScreen>
 
   Future<void> _loadOfflineTiles() async {
     try {
-      final bytes = await rootBundle.load('assets/geo/pcmc.mbtiles');
-      final dir = await getApplicationSupportDirectory();
-      final file = File('${dir.path}/pcmc.mbtiles');
-      if (!await file.exists()) {
-        await file.writeAsBytes(bytes.buffer.asUint8List(), flush: true);
-      }
+      final file = await MapContentPackStore().file('pcmc.mbtiles');
+      if (!await file.exists()) return;
       final database = sql.sqlite3.open(file.path, mode: sql.OpenMode.readOnly);
       final provider = MbTilesTileProvider(database);
       if (!mounted) {

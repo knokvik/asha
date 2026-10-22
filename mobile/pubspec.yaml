@@ -118,7 +118,6 @@ flutter:
   assets:
     - assets/branding/
     - assets/svg/
-    - assets/geo/
     - assets/lexicon/
     - assets/incentives/
     - assets/search/

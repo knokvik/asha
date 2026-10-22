@@ -75,6 +75,7 @@ apk/
 mobile/android/.gradle/
 mobile/android/local.properties
 mobile/android/app/build/
+backend/content_packs/*.zip
 mobile/android/app/src/main/java/
 
 # iOS

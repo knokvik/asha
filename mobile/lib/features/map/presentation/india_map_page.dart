@@ -1,13 +1,13 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../shared/widgets/asha_bottom_nav.dart';
 import '../data/mbtiles_tile_provider.dart';
 import '../data/offline_state_tiles.dart';
+import '../../../core/packs/map_content_pack_store.dart';
 
 /// Full-page map. Packs are chosen in Profile, not on this screen.
 class IndiaMapPage extends StatefulWidget {
@@ -42,9 +42,8 @@ class _IndiaMapPageState extends State<IndiaMapPage> {
 
   Future<void> _load() async {
     try {
-      final raw = await rootBundle.loadString(
-        'assets/geo/india_states.geojson',
-      );
+      final raw = await (await MapContentPackStore().file('india_states.geojson'))
+          .readAsString();
       final store = await OfflineStateTiles.open();
       final shapes = _StateShape.parse(raw);
       for (final shape in shapes) {

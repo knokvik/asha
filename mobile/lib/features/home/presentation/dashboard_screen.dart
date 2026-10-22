@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../../core/l10n/language_provider.dart';
+import '../../../core/packs/pack_manager.dart';
 import '../../../core/sync/sync_coordinator.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/user_profile_provider.dart';
@@ -156,10 +157,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             _buildMetricStrip(context),
             const SizedBox(height: 16),
 
-            // 4. Quick actions Section: first four actions
+            // 4. Quick actions Section:
             Text(
               shellText(_lang, 'quick'),
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
                 color: Color(0xFF111827),
@@ -168,9 +169,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
             const SizedBox(height: 12),
             _buildQuickActionsGrid(context),
-            const SizedBox(height: 10),
-            // Actions 5 and 6: Revenue and Reports
-            _buildRevenueReportsActions(context),
             const SizedBox(height: 24),
           ],
         ),
@@ -179,28 +177,107 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _buildSharedSignalCard(BuildContext context) {
-    return Card(
-      color: const Color(0xFFF1F8F4),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      child: ListTile(
-        leading: const CircleAvatar(
-          backgroundColor: Color(0xFFD7EFE0),
-          child: Icon(Icons.radar_rounded, color: Color(0xFF1E4231)),
+    final hasSignals = _sharedSignalCount > 0;
+    return Container(
+      decoration: BoxDecoration(
+        color: hasSignals ? const Color(0xFFFFFBEB) : const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: hasSignals ? const Color(0xFFFDE68A) : const Color(0xFFBBF7D0),
+          width: 1.2,
         ),
-        title: Text(
-          _sharedSignalCount == 0
-              ? shellText(_lang, 'sharedAreaSignals')
-              : '$_sharedSignalCount ${_sharedSignalCount == 1 ? shellText(_lang, 'activeAreaSignalSingular') : shellText(_lang, 'activeAreaSignals')}',
-          style: const TextStyle(fontWeight: FontWeight.w800),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () async {
+            await context.push('/peer-sync');
+            _loadSharedSignals();
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: hasSignals ? const Color(0xFFFEF3C7) : const Color(0xFFDCFCE7),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.radar_rounded,
+                    color: hasSignals ? const Color(0xFFD97706) : const Color(0xFF15803D),
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _sharedSignalCount == 0
+                                  ? shellText(_lang, 'sharedAreaSignals')
+                                  : '$_sharedSignalCount ${_sharedSignalCount == 1 ? shellText(_lang, 'activeAreaSignalSingular') : shellText(_lang, 'activeAreaSignals')}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                                color: Color(0xFF111827),
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: hasSignals ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              hasSignals ? 'ALERT ACTIVE' : 'BEAT SYNCED',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _getSharedSignalSubtitle(_lang),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: hasSignals ? const Color(0xFF92400E) : const Color(0xFF166534),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 14,
+                  color: Color(0xFF9CA3AF),
+                ),
+              ],
+            ),
+          ),
         ),
-        subtitle: Text(
-          '${_getSharedSignalSubtitle(_lang)}. ${shellText(_lang, 'sharedSignalsSub')}',
-        ),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: () async {
-          await context.push('/peer-sync');
-          _loadSharedSignals();
-        },
       ),
     );
   }
@@ -532,42 +609,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _buildRevenueReportsActions(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildQuickActionCard(
-            key: const Key('home_revenue_button'),
-            title: shellText(_lang, 'revenue'),
-            iconWidget: _quickActionIcon(
-              Icons.payments_outlined,
-              const Color(0xFF15803D),
-            ),
-            onTap: () => context.push('/incentives'),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _buildQuickActionCard(
-            key: const Key('home_reports_button'),
-            title: shellText(_lang, 'reports'),
-            iconWidget: _quickActionIcon(
-              Icons.assessment_outlined,
-              const Color(0xFF2563EB),
-            ),
-            onTap: () => context.push('/reports'),
-          ),
-        ),
-      ],
-    );
-  }
-
   /// Quick Actions 2x2 Grid matching Screen 1:
   /// - Add Household (green group icon)
   /// - Triage Assessment (red emergency square)
   /// - Speak / Interpreter (green translation icon)
   /// - Clinical Programs (blue medical bag)
   Widget _buildQuickActionsGrid(BuildContext context) {
+    final hasInterpreter = ref
+        .watch(offlinePackProvider)
+        .interpreterLanguageCodes
+        .isNotEmpty;
     return Column(
       children: [
         Row(
@@ -601,12 +652,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           children: [
             Expanded(
               child: _buildQuickActionCard(
-                title: shellText(_lang, 'interpreter'),
+                title: hasInterpreter ? shellText(_lang, 'interpreter') : 'Offline packs',
                 iconWidget: _quickActionIcon(
-                  Icons.translate_rounded,
+                  hasInterpreter ? Icons.translate_rounded : Icons.download_rounded,
                   const Color(0xFF2563EB),
                 ),
-                onTap: () => context.push('/interpreter'),
+                onTap: () => context.push(hasInterpreter ? '/interpreter' : '/packs'),
               ),
             ),
             const SizedBox(width: 10),
@@ -623,13 +674,41 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ],
         ),
         const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _buildQuickActionCard(
+                title: 'Tracking',
+                iconWidget: _quickActionIcon(
+                  Icons.track_changes_rounded,
+                  const Color(0xFF0F766E),
+                ),
+                onTap: () => context.push('/tracking'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildQuickActionCard(
+                key: const Key('home_revenue_button'),
+                title: shellText(_lang, 'revenue'),
+                iconWidget: _quickActionIcon(
+                  Icons.payments_outlined,
+                  const Color(0xFF15803D),
+                ),
+                onTap: () => context.push('/incentives'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
         _buildQuickActionCard(
-          title: 'Tracking',
+          key: const Key('home_reports_button'),
+          title: shellText(_lang, 'reports'),
           iconWidget: _quickActionIcon(
-            Icons.track_changes_rounded,
-            const Color(0xFF0F766E),
+            Icons.assessment_outlined,
+            const Color(0xFF2563EB),
           ),
-          onTap: () => context.push('/tracking'),
+          onTap: () => context.push('/reports'),
         ),
       ],
     );

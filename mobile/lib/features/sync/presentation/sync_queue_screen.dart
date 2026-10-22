@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/theme/app_theme.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/l10n/language_provider.dart';
 import '../../../core/sync/sync_coordinator.dart';
@@ -39,8 +40,15 @@ class SyncQueueScreen extends ConsumerWidget {
   ) {
     final snapshot = coordinator.snapshot;
     return Scaffold(
+      backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
-        title: Text(shellText(lang, 'syncQueueTitle')),
+        title: Text(
+          shellText(lang, 'syncQueueTitle'),
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+        ),
+        backgroundColor: AshaColors.cardSurface,
+        foregroundColor: AshaColors.textPrimary,
+        elevation: 0,
         actions: [
           IconButton(
             key: const Key('sync_refresh_button'),
@@ -64,12 +72,32 @@ class SyncQueueScreen extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
             _SyncSummaryCard(snapshot: snapshot, lang: lang),
-            Card(
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                color: AshaColors.cardSurface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AshaColors.borderSubtle),
+              ),
               child: ListTile(
-                leading: const Icon(Icons.people_alt_outlined),
-                title: Text(shellText(lang, 'peerSyncTitle')),
-                subtitle: Text(shellText(lang, 'peerSyncSub')),
-                trailing: const Icon(Icons.chevron_right),
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDCFCE7),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.people_alt_outlined, color: Color(0xFF15803D)),
+                ),
+                title: Text(
+                  shellText(lang, 'peerSyncTitle'),
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                ),
+                subtitle: Text(
+                  shellText(lang, 'peerSyncSub'),
+                  style: const TextStyle(fontSize: 12, color: AshaColors.textSecondary),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => context.push('/peer-sync'),
               ),
             ),
@@ -128,7 +156,11 @@ class _SyncSummaryCard extends StatelessWidget {
     return Card(
       margin: EdgeInsets.zero,
       color: color.withValues(alpha: 0.08),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: color.withValues(alpha: 0.25)),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(

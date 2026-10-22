@@ -9,6 +9,7 @@ import {
   fetchAbdmHiuRecords,
   startConsult,
 } from '@/shared/api/referralApi';
+import { HOTSPOT_REFERRAL_TICKET } from '@/shared/api/mockData';
 import { useSync } from '@/shared/context/SyncContext';
 import { slaLabel, unseenRedIds } from '@/features/clinical-desk/logic';
 import { ReferralItem } from '@/types';
@@ -54,7 +55,14 @@ import { OsmAndMapPage } from '@/features/map/OsmAndMapPage';
 
 export function PHCDashboardPage() {
   const queryClient = useQueryClient();
-  const { triggerManualSync, isSyncing, lastSyncTime, recordDoctorOutcomeSync } = useSync();
+  const {
+    triggerManualSync,
+    isSyncing,
+    lastSyncTime,
+    recordDoctorOutcomeSync,
+    activeHotspot,
+    clearHotspot,
+  } = useSync();
   const [activeTab, setActiveTab] = useState<'referrals' | 'area_lists' | 'planning' | 'ipd_ward' | 'sms_feed' | 'catchment_map'>('referrals');
   const [triageView, setTriageView] = useState<'table' | 'cards'>('table');
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
@@ -298,6 +306,54 @@ export function PHCDashboardPage() {
           </div>
         )}
 
+        {/* Active Hotspot Outbreak Surveillance Banner */}
+        {activeHotspot && (
+          <div className="relative overflow-hidden rounded-2xl border-2 border-red-500 bg-gradient-to-r from-red-500/10 via-rose-500/15 to-amber-500/10 p-4 shadow-md dark:border-red-500/60 dark:from-red-950/40 dark:to-rose-950/30">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-600 text-white shadow-lg ring-4 ring-red-500/20">
+                  <AlertTriangle className="h-5 w-5 animate-bounce" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white">
+                      <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
+                      Active Hotspot Outbreak Mapped
+                    </span>
+                    <span className="text-xs font-bold text-red-700 dark:text-red-300">
+                      Indira Airport, Delhi (28.5562° N, 77.1000° E)
+                    </span>
+                    <span className="rounded bg-red-100 dark:bg-red-900/50 px-2 py-0.5 text-[10px] font-bold text-red-800 dark:text-red-200">
+                      Radius: 1.8 km · 14 Cases · Dengue / AFI
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-700 dark:text-slate-300">
+                    <strong className="text-red-600 dark:text-red-400">Clinical Triage Rule Enforced:</strong> All acute fever cases presenting from Mahipalpur / Aerocity / Rangpuri catchment are auto-elevated to <strong>RED Emergency Triage</strong>. 4 nearby ASHA workers are live-synced to this beat.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 self-end lg:self-center">
+                <Button
+                  size="sm"
+                  onClick={() => setActiveTab('catchment_map')}
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs gap-1.5 shadow-sm"
+                >
+                  <MapPin className="w-3.5 h-3.5" />
+                  View on Field Map
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => clearHotspot()}
+                  className="border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-100/50 text-xs"
+                >
+                  Clear Hotspot
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Clinical KPI Metric Cards (User Palette Swatches) */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
           <Card className="border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] p-4">
@@ -478,6 +534,82 @@ export function PHCDashboardPage() {
               </div>
             </div>
           </div>
+
+          {/* Active Hotspot Triage Consideration Card */}
+          {activeHotspot && (
+            <div className="relative overflow-hidden rounded-2xl border-2 border-rose-500 bg-rose-50/60 dark:bg-rose-950/20 dark:border-rose-500/70 p-4 shadow-sm">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-600 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white">
+                      <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
+                      Priority Outbreak Triage Alert
+                    </span>
+                    <span className="text-xs font-black text-rose-700 dark:text-rose-300">
+                      Nearby Case for Triage Consideration · Sunita Devi (29y F)
+                    </span>
+                    <span className="rounded-full bg-rose-200/80 dark:bg-rose-900/60 px-2 py-0.5 text-[10px] font-bold text-rose-800 dark:text-rose-200">
+                      0.8 km from Indira Airport Epicentre
+                    </span>
+                    <span className="rounded-full bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-200">
+                      ABHA: 91-7710-0014-9921
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                    <strong className="text-rose-700 dark:text-rose-400">Clinical Presentation:</strong> High fever 103.4°F (Day 4), severe petechial rash, persistent vomiting × 3, platelets ~42,000/μL. Rapid NS1 Ag positive at field level.
+                    <span className="ml-1 text-slate-600 dark:text-slate-400">
+                      Reported by ASHA <strong>Meena Sharma</strong> (+91 98765 43210) from Mahipalpur Extn beat.
+                    </span>
+                  </p>
+
+                  <div className="flex items-center gap-3 text-[11px] font-medium text-slate-600 dark:text-slate-400 flex-wrap">
+                    <span className="flex items-center gap-1">
+                      <Heart className="w-3.5 h-3.5 text-rose-500" />
+                      Pulse: 114 bpm
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Activity className="w-3.5 h-3.5 text-blue-500" />
+                      BP: 94/62 mmHg
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Droplet className="w-3.5 h-3.5 text-rose-600" />
+                      Platelets: 42,000/μL
+                    </span>
+                    <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400 font-bold">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      Triage rule: Outbreak proximity auto-escalated to RED
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                  <Button
+                    size="sm"
+                    onClick={() => setSelectedReferral(HOTSPOT_REFERRAL_TICKET)}
+                    className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs gap-1.5 shadow-sm"
+                  >
+                    <Stethoscope className="w-3.5 h-3.5" />
+                    Review & Triage Case
+                  </Button>
+                  <NavLink
+                    to={`/ticket/${HOTSPOT_REFERRAL_TICKET.id}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-white dark:bg-[#1E1E1E] px-3 py-1.5 text-xs font-bold text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    Open Ticket
+                  </NavLink>
+                  <a
+                    href="tel:+919876543210"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#1E1E1E] px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                    Call ASHA
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Referral Queue View */}
           {filteredReferrals.length === 0 ? (

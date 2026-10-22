@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.v1 import (
     auth,
+    content_packs,
     facilities,
     incentives,
     integrations,
@@ -64,6 +65,7 @@ def create_app() -> FastAPI:
 
     # ── Routers ────────────────────────────────────────────────────────────────
     app.include_router(auth.router, prefix="/api/v1")
+    app.include_router(content_packs.router, prefix="/api/v1")
     app.include_router(sync.router, prefix="/api/v1")
     app.include_router(triage_desk.router, prefix="/api/v1")
     app.include_router(facilities.router, prefix="/api/v1")
