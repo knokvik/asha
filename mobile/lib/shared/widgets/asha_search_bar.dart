@@ -35,7 +35,7 @@ class AshaSearchBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: AshaColors.cardSurface,
         borderRadius: AshaShapes.searchRadius,
-        border: Border.all(color: const Color(0xFF86EFAC), width: 1.2),
+        border: Border.all(color: const Color(0xFFE5E7EB), width: 1.2),
         boxShadow: const [
           BoxShadow(
             color: Color(0x0A000000),

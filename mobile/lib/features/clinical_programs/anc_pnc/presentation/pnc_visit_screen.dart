@@ -5,6 +5,7 @@ import '../../../../app/theme/app_theme.dart';
 import '../../../referral/presentation/referral_slip_screen.dart';
 import '../data/pnc_repository.dart';
 import '../domain/pnc_models.dart';
+import '../../presentation/clinical_form_feedback.dart';
 
 /// Guided postpartum maternal visit checklist screen (Requirements 15.1 – 15.6).
 class PncVisitScreen extends ConsumerStatefulWidget {
@@ -225,7 +226,7 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
             content: Text(
               _claimDeliveryIncentive
                   ? 'PNC Visit recorded and Institutional Delivery Escort incentive claimed!'
-                  : 'PNC Visit recorded successfully.',
+                  : 'PNC visit saved on this phone.',
             ),
             backgroundColor: AshaColors.primary,
           ),
@@ -235,8 +236,11 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving PNC visit: $e'), backgroundColor: Colors.red),
+        showClinicalSaveError(
+          context,
+          program: 'PNC visit',
+          error: e,
+          onRetry: _submitVisit,
         );
       }
     }
@@ -255,14 +259,7 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'PNC Day ${widget.visitDay} Visit',
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
-            ),
-            Text(
-              widget.motherName,
-              style: const TextStyle(fontSize: 12, color: AshaColors.textMuted),
-            ),
+            const Text('PNC visit', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
           ],
         ),
         backgroundColor: AshaColors.cardSurface,
@@ -272,6 +269,12 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          ClinicalPatientContextCard(
+            name: widget.motherName,
+            details: 'Postpartum day ${widget.visitDay} · maternal follow-up',
+            contextLabel: 'Patient selected from the local register',
+          ),
+          const SizedBox(height: 12),
           // ── Red Danger Signs Alert Banner (Requirement 15.4) ───────────────
           if (hasRed)
             Card(
