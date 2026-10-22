@@ -133,16 +133,3 @@ class AshaSearchBar extends StatelessWidget {
     );
   }
 }
-
-class _AnimatedAshaSearchMark extends StatelessWidget {
-  const _AnimatedAshaSearchMark();
-
-  @override
-  Widget build(BuildContext context) {
-    return const SizedBox(
-      key: Key('animated_search_logo'),
-      width: 0,
-      height: 0,
-    );
-  }
-}

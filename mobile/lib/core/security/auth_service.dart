@@ -11,6 +11,11 @@ const defaultAshaApiBaseUrl = String.fromEnvironment(
   defaultValue: 'http://localhost:8000',
 );
 
+const defaultAshaPackBaseUrl = String.fromEnvironment(
+  'ASHA_PACK_API_BASE_URL',
+  defaultValue: 'https://asha-pack-server.onrender.com',
+);
+
 /// Resolves the optimal API base URL (stored setting, local server probe, or cloud default).
 Future<String> resolveAshaApiBaseUrl({FlutterSecureStorage? storage}) async {
   final s = storage ?? const FlutterSecureStorage();
@@ -34,6 +39,19 @@ Future<String> resolveAshaApiBaseUrl({FlutterSecureStorage? storage}) async {
     } catch (_) {}
   }
   return 'https://asha-setu.onrender.com';
+}
+
+/// Resolves the independent static content-pack service.
+///
+/// Pack downloads remain separate from the sync/auth API because this service
+/// has no database connection and stores no patient data.
+Future<String> resolveAshaPackBaseUrl({FlutterSecureStorage? storage}) async {
+  final s = storage ?? const FlutterSecureStorage();
+  final configured = await s.read(key: 'pack_api_base_url');
+  if (configured != null && configured.trim().isNotEmpty) {
+    return configured.trim();
+  }
+  return defaultAshaPackBaseUrl;
 }
 
 /// Result returned by the first-run server sign-in.

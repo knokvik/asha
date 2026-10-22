@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/theme/app_theme.dart';
 import '../data/tb_repository.dart';
 import '../domain/tb_models.dart';
 
@@ -40,7 +41,7 @@ class _TbTreatmentCardScreenState extends ConsumerState<TbTreatmentCardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(_t('TB Treatment Card (DOTS)'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
-            Text('${p.beneficiaryName} | ${_t(p.regimen.label)}', style: const TextStyle(fontSize: 12, color: AshaColors.textMuted)),
+            Text('${p.beneficiaryName} | ${_t(p.regimen.label)}', style: TextStyle(fontSize: 12, color: AshaColors.textMuted)),
           ],
         ),
         actions: [

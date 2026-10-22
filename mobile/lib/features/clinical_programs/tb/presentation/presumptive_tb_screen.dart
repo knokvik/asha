@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/theme/app_theme.dart';
 import '../../../../core/l10n/language_provider.dart';
 import '../../../../core/triage/models/models.dart';
 import '../../../../shared/shell/shell_copy.dart';
@@ -76,7 +77,7 @@ class _PresumptiveTbScreenState extends ConsumerState<PresumptiveTbScreen> {
                       : shellText(lang, 'presumptiveTbTitle')),
               style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
             ),
-            Text(widget.beneficiaryName, style: const TextStyle(fontSize: 12, color: AshaColors.textMuted)),
+            Text(widget.beneficiaryName, style: TextStyle(fontSize: 12, color: AshaColors.textMuted)),
           ],
         ),
         actions: [

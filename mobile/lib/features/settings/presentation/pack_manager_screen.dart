@@ -75,7 +75,7 @@ class _PackManagerScreenState extends ConsumerState<PackManagerScreen> {
   }
 
   Future<void> _installMap() => _run(() async {
-        final baseUrl = await resolveAshaApiBaseUrl();
+        final baseUrl = await resolveAshaPackBaseUrl();
         await _mapStore.install(
           apiBaseUrl: baseUrl,
           onProgress: (received, total) {
@@ -158,7 +158,7 @@ class _PackManagerScreenState extends ConsumerState<PackManagerScreen> {
                         base: language.code == 'en',
                         busy: _busy,
                         onInstall: () => _run(() async {
-                          final baseUrl = await resolveAshaApiBaseUrl();
+                          final baseUrl = await resolveAshaPackBaseUrl();
                           await _languageStore.install(
                             languageCode: language.code,
                             apiBaseUrl: baseUrl,

@@ -1,5 +1,14 @@
 services:
   - type: web
+    name: asha-pack-server
+    runtime: python
+    rootDir: pack-server
+    buildCommand: python build_packs.py --source ../mobile/assets/geo --language-source ../mobile/lib/core/l10n/arb --output content_packs && pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    plan: free
+    autoDeploy: true
+
+  - type: web
     name: asha-backend
     runtime: python
     rootDir: backend

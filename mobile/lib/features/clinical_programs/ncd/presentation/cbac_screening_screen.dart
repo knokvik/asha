@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/theme/app_theme.dart';
 import '../../../../core/triage/models/models.dart';
 import '../data/ncd_repository.dart';
 import '../domain/cbac_calculator.dart';
@@ -132,24 +133,38 @@ class _CbacScreeningScreenState extends ConsumerState<CbacScreeningScreen> with 
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final score = _liveCbacScore;
     final isFemale = widget.sex.toUpperCase() == 'F';
 
     return Scaffold(
+      backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
+        backgroundColor: AshaColors.cardSurface,
+        foregroundColor: AshaColors.textPrimary,
+        elevation: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('CBAC NCD Screening', style: theme.textTheme.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
-            Text('${widget.beneficiaryName} (${widget.ageYears}y, ${widget.sex})', style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70)),
+            Text(
+              'CBAC NCD Screening',
+              style: TextStyle(
+                color: AshaColors.textPrimary,
+                fontWeight: FontWeight.w800,
+                fontSize: 17,
+              ),
+            ),
+            Text(
+              '${widget.beneficiaryName} (${widget.ageYears}y, ${widget.sex})',
+              style: TextStyle(color: AshaColors.textMuted, fontSize: 12),
+            ),
           ],
         ),
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white60,
-          indicatorColor: Colors.white,
+          labelColor: AshaColors.primary,
+          unselectedLabelColor: AshaColors.textMuted,
+          indicatorColor: AshaColors.primary,
+          labelStyle: const TextStyle(fontWeight: FontWeight.w700),
           tabs: const [
             Tab(icon: Icon(Icons.assessment), text: 'Part A: Risk'),
             Tab(icon: Icon(Icons.warning_amber), text: 'Part B: Cancer Signs'),
@@ -159,7 +174,7 @@ class _CbacScreeningScreenState extends ConsumerState<CbacScreeningScreen> with 
         actions: [
           IconButton(
             tooltip: 'Lifestyle Counselling',
-            icon: const Icon(Icons.health_and_safety),
+            icon: const Icon(Icons.health_and_safety, color: AshaColors.primary),
             onPressed: _showLifestyleCounsellingDialog,
           ),
         ],
@@ -186,10 +201,11 @@ class _CbacScreeningScreenState extends ConsumerState<CbacScreeningScreen> with 
           padding: const EdgeInsets.all(16.0),
           child: ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-              backgroundColor: _isScoreHighRisk ? Colors.amber.shade900 : theme.colorScheme.primary,
+              backgroundColor: _isScoreHighRisk ? const Color(0xFFD97706) : AshaColors.primary,
               foregroundColor: Colors.white,
               minimumSize: const Size.fromHeight(52),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              elevation: 0,
             ),
             icon: _isSaving
                 ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))

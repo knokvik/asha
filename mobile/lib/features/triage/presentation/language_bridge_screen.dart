@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_theme.dart';
-import '../../../core/l10n/language_provider.dart';
 import '../../../core/voice/tts_service.dart';
 
 /// Interactive Medical Interpreter & Dual-Mic Clinical Translation Bridge.
@@ -185,7 +184,7 @@ class _LanguageBridgeScreenState extends ConsumerState<LanguageBridgeScreen>
   }
 
   void _speak(String text, String langCode) {
-    ref.read(ttsServiceProvider).speakText(text, languageCode: langCode);
+    ref.read(ttsServiceProvider).speak(text: text, language: langCode);
   }
 
   void _sendMessage({required bool isAsha, String? presetText}) {
