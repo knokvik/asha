@@ -38,7 +38,7 @@ Future<String> resolveAshaApiBaseUrl({FlutterSecureStorage? storage}) async {
       }
     } catch (_) {}
   }
-  return 'https://asha-setu.onrender.com';
+  return 'https://asha-backend-1akc.onrender.com';
 }
 
 /// Resolves the independent static content-pack service.

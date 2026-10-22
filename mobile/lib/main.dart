@@ -21,9 +21,9 @@ void main() async {
   preloadOnnxRuntime();
   await sherpa.initBindingsAsync();
   setupSqliteForPlatform();
-  const apiBaseUrl = String.fromEnvironment(
+const apiBaseUrl = String.fromEnvironment(
     'ASHA_API_BASE_URL',
-    defaultValue: 'https://asha-setu.onrender.com',
+    defaultValue: 'https://asha-backend-1akc.onrender.com',
   );
   const pins = String.fromEnvironment('ASHA_API_SHA256_PINS');
   // The hosted HTTPS endpoint can use the platform trust store when no

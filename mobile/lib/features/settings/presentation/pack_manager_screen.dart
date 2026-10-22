@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
 import '../../../app/theme/app_theme.dart';
@@ -12,6 +14,12 @@ import '../../../core/packs/language_content_pack_store.dart';
 import '../../../core/packs/map_content_pack_store.dart';
 import '../../../core/packs/pack_manager.dart';
 import '../../../core/security/auth_service.dart';
+
+String _formatPackBytes(int bytes) {
+  if (bytes < 1024) return '$bytes B';
+  if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+  return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+}
 
 /// Explicit installer for optional offline capabilities.
 ///
@@ -33,6 +41,7 @@ class _PackManagerScreenState extends ConsumerState<PackManagerScreen> {
   double? _mapProgress;
   String? _error;
   int _mapBytes = 0;
+  Map<String, int> _remotePackBytes = const {};
 
   @override
   void initState() {
@@ -46,11 +55,31 @@ class _PackManagerScreenState extends ConsumerState<PackManagerScreen> {
       final interpreter = ModelStore(Directory('${support.path}/bhasha-models'));
       final installed = await _mapStore.isInstalled();
       final bytes = installed ? await _mapStore.installedBytes() : 0;
+      Map<String, int> remoteBytes = const {};
+      try {
+        final baseUrl = await resolveAshaPackBaseUrl();
+        final response = await http
+            .get(Uri.parse('$baseUrl/api/v1/packs'))
+            .timeout(const Duration(seconds: 12));
+        if (response.statusCode == 200) {
+          final body = jsonDecode(response.body) as Map<String, dynamic>;
+          remoteBytes = {
+            for (final item in (body['packs'] as List<dynamic>? ?? const []))
+              if (item is Map<String, dynamic> &&
+                  item['id'] is String &&
+                  item['size_bytes'] is num)
+                item['id'] as String: (item['size_bytes'] as num).toInt(),
+          };
+        }
+      } catch (_) {
+        // Local pack management remains usable when the manifest is offline.
+      }
       if (!mounted) return;
       ref.read(offlinePackProvider.notifier).setMapInstalled(installed);
       setState(() {
         _interpreterStore = interpreter;
         _mapBytes = bytes;
+        _remotePackBytes = remoteBytes;
         _loading = false;
       });
     } catch (_) {
@@ -143,7 +172,9 @@ class _PackManagerScreenState extends ConsumerState<PackManagerScreen> {
                 _InfoCard(
                   icon: Icons.inventory_2_outlined,
                   text:
-                      'Install only what this phone needs. Removing a pack deletes its downloaded files; local health records are never removed.',
+                      _remotePackBytes.isEmpty
+                          ? 'Install only what this phone needs. The hosted pack catalogue is currently unavailable; try again when connected.'
+                          : '${_remotePackBytes.length} hosted packs available. Install only what this phone needs; removing a pack deletes only its downloaded files.',
                 ),
                 const SizedBox(height: 14),
                 _PackExpansion(
@@ -156,6 +187,7 @@ class _PackManagerScreenState extends ConsumerState<PackManagerScreen> {
                         language: language,
                         installed: packState.hasAppLanguage(language.code),
                         base: language.code == 'en',
+                        remoteBytes: _remotePackBytes['ui-${language.code}'],
                         busy: _busy,
                         onInstall: () => _run(() async {
                           final baseUrl = await resolveAshaPackBaseUrl();
@@ -198,7 +230,7 @@ class _PackManagerScreenState extends ConsumerState<PackManagerScreen> {
                       title: 'India facility and street map',
                       detail: mapInstalled
                           ? 'Saved for offline use'
-                          : 'About 4.3 MB. Includes facilities, roads, household and district reference data.',
+                          : '${_formatBytes(_remotePackBytes['map-india'] ?? 0)} download. Includes facilities, roads, household and district reference data.',
                       installed: mapInstalled,
                       busy: _busy,
                       onInstall: _installMap,
@@ -314,6 +346,7 @@ class _LanguageRow extends StatelessWidget {
     required this.language,
     required this.installed,
     required this.base,
+    required this.remoteBytes,
     required this.busy,
     required this.onInstall,
     required this.onRemove,
@@ -322,6 +355,7 @@ class _LanguageRow extends StatelessWidget {
   final AppLanguage language;
   final bool installed;
   final bool base;
+  final int? remoteBytes;
   final bool busy;
   final VoidCallback onInstall;
   final VoidCallback onRemove;
@@ -330,7 +364,11 @@ class _LanguageRow extends StatelessWidget {
   Widget build(BuildContext context) => ListTile(
         contentPadding: EdgeInsets.zero,
         title: Text(language.nativeName),
-        subtitle: Text(base ? '${language.englishName} · included with the app' : language.englishName),
+        subtitle: Text(
+          base
+              ? '${language.englishName} · included with the app'
+              : '${language.englishName}${remoteBytes == null ? '' : ' · ${_formatPackBytes(remoteBytes!)} download'}',
+        ),
         trailing: base || installed
             ? Row(
                 mainAxisSize: MainAxisSize.min,

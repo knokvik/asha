@@ -7,7 +7,7 @@
   "rewrites": [
     {
       "source": "/api/v1/(.*)",
-      "destination": "https://asha-setu.onrender.com/api/v1/$1"
+      "destination": "https://asha-backend-1akc.onrender.com/api/v1/$1"
     },
     {
       "source": "/(.*)",
