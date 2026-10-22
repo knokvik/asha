@@ -50,6 +50,8 @@ import '../features/clinical_programs/tb/domain/tb_models.dart';
 
 // Operations, Ledger & Inventory
 import '../features/learning/presentation/learning_screen.dart';
+import '../features/reminders/presentation/reminders_screen.dart';
+import '../features/sync_status/presentation/sync_status_screen.dart';
 import '../features/incentives/data/earnings_repository.dart';
 import '../features/incentives/domain/incentive_service.dart';
 import '../features/incentives/presentation/earnings_screen.dart';
@@ -78,7 +80,7 @@ import '../shared/providers/user_profile_provider.dart';
 String _workerId(Ref? ref) {
   if (ref == null) return 'asha-01';
   final profile = ref.read(userProfileProvider);
-  return profile.valueOrNull?.ashaId ?? 'asha-01';
+  return profile.maybeWhen(data: (p) => p.ashaId, orElse: () => 'asha-01');
 }
 
 /// Notifier holding current authenticated worker role ('asha', 'af', 'admin', etc.).
@@ -457,7 +459,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
         ),
         GoRoute(
           path: 'vhsnd',
-          builder: (context, state) => const VhsndSessionScreen(
+          builder: (context, state) => VhsndSessionScreen(
             villageName: 'Rampur',
             hamlet: 'Ward 1 (Main Village)',
             anganwadiCenterName: 'Rampur Anganwadi Center 1',
@@ -555,7 +557,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
     // ── Bluetooth Medical Device Capture ───────────────────────────────────
     GoRoute(
       path: '/bluetooth',
-      builder: (context, state) => const MeasurementCaptureScreen(
+      builder: (context, state) => MeasurementCaptureScreen(
         profile: DeviceProfileConfig(
           id: 'bp_omron_01',
           deviceName: 'Digital Blood Pressure Monitor',
@@ -753,6 +755,31 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
           _buildSlidePage(state: state, child: const PackManagerScreen()),
     ),
     GoRoute(path: '/af', builder: (context, state) => const DueListScreen()),
+
+    // ── Reminders & Notifications ──────────────────────────────────────────
+    GoRoute(
+      path: '/reminders',
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const RemindersScreen()),
+    ),
+
+    // ── Beneficiary Registry ───────────────────────────────────────────────
+    // The registry feature re-exports the household screens. Route to the
+    // household list so deep links to /registry land on a working screen.
+    GoRoute(
+      path: '/registry',
+      redirect: (context, state) {
+        final q = state.uri.queryParameters['q'];
+        return q != null ? '/households?q=$q' : '/households';
+      },
+    ),
+
+    // ── Sync Status Summary ────────────────────────────────────────────────
+    GoRoute(
+      path: '/sync-status',
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const SyncStatusScreen()),
+    ),
   ];
 }
 

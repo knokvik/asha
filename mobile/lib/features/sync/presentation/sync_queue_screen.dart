@@ -73,6 +73,8 @@ class SyncQueueScreen extends ConsumerWidget {
           children: [
             _SyncSummaryCard(snapshot: snapshot, lang: lang),
             const SizedBox(height: 12),
+            _ConflictSummarySection(snapshot: snapshot),
+            const SizedBox(height: 12),
             Container(
               decoration: BoxDecoration(
                 color: AshaColors.cardSurface,
@@ -536,6 +538,147 @@ class _EmptyQueue extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// Surfaces any failed sync packets that need human review — either because
+/// the server returned a conflict it could not auto-merge (duplicate_identity)
+/// or because the packet has failed its maximum retry attempts.
+///
+/// This section is intentionally read-only: it shows what happened and what
+/// value was kept, so the ASHA or supervisor can make an informed decision.
+/// Silent auto-merges on clinical data are a patient-safety risk — the worker
+/// must always know when a conflict occurred.
+class _ConflictSummarySection extends StatelessWidget {
+  const _ConflictSummarySection({required this.snapshot});
+
+  final SyncSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final conflicts = snapshot.records
+        .where(
+          (r) =>
+              r.syncStatus == 'failed' &&
+              r.errorMessage != null &&
+              r.errorMessage!.isNotEmpty,
+        )
+        .toList();
+
+    if (conflicts.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(
+              Icons.warning_amber_rounded,
+              color: Color(0xFFB45309),
+              size: 18,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Needs review (${conflicts.length})',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFFB45309),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'These packets failed to sync. Review each one before retrying to '
+          'avoid overwriting newer data on the server.',
+          style: TextStyle(fontSize: 11, color: AshaColors.textSecondary),
+        ),
+        const SizedBox(height: 8),
+        for (final record in conflicts)
+          _ConflictTile(record: record),
+      ],
+    );
+  }
+}
+
+class _ConflictTile extends StatelessWidget {
+  const _ConflictTile({required this.record});
+
+  final SyncQueueData record;
+
+  @override
+  Widget build(BuildContext context) {
+    final table = record.targetTable.replaceAll('_', ' ');
+    final errorMsg = record.errorMessage ?? 'Unknown error';
+    final isDuplicate = errorMsg.contains('duplicate_identity');
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 6),
+      color: const Color(0xFFFFFBEB),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFFCD34D)),
+      ),
+      elevation: 0,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  isDuplicate
+                      ? Icons.people_alt_outlined
+                      : Icons.sync_problem_rounded,
+                  size: 15,
+                  color: const Color(0xFFB45309),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    isDuplicate
+                        ? 'Duplicate identity — $table'
+                        : 'Sync failed — $table',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF92400E),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Text(
+                  'Attempt ${record.attemptCount}',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AshaColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Record: ${record.recordId}',
+              style: const TextStyle(
+                fontSize: 10,
+                color: AshaColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              isDuplicate
+                  ? 'A beneficiary with matching identity already exists on '
+                    'the server. This cannot be auto-merged. Please contact '
+                    'your supervisor to resolve the duplicate manually.'
+                  : errorMsg,
+              style: const TextStyle(fontSize: 11, color: Color(0xFF78350F)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 String _formatTime(DateTime value) {

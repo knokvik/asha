@@ -322,6 +322,9 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   double _liveAccuracy = 10.0;
   String _liveProvider = 'gps';
   Timer? _liveLocationTimer;
+  Timer? _facilityBatchTimer;
+  var _facilityRenderLimit = 80;
+  var _facilityBatchScheduled = false;
   List<LatLng> _dayRoute = const [];
   static const _secureStorage = FlutterSecureStorage();
   static const _locationChannel = MethodChannel('asha_platform/location');
@@ -488,6 +491,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   @override
   void dispose() {
     _liveLocationTimer?.cancel();
+    _facilityBatchTimer?.cancel();
     _mapController.dispose();
     super.dispose();
   }
@@ -526,6 +530,9 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                 ),
                 onPositionChanged: (camera, _) {
                   if ((camera.zoom - _zoomLevel).abs() < 0.05) return;
+                  _facilityBatchTimer?.cancel();
+                  _facilityBatchScheduled = false;
+                  _facilityRenderLimit = 80;
                   setState(() => _zoomLevel = camera.zoom);
                 },
                 onTap: (_, _) {
@@ -972,22 +979,21 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
         visiblePool = facilities;
       }
 
-      // A state tap moves the camera to roughly zoom 8.5. At that level a
-      // Maharashtra-sized viewport can still contain thousands of facilities;
-      // creating one Flutter widget per POI blocks the UI thread and makes the
-      // map appear frozen. Keep the overview bounded with geographic clusters
-      // until the worker zooms into a smaller area.
-      if (visiblePool.length > 120) {
-        return [
-          ...markers,
-          ..._facilityClusterMarkers(visiblePool),
-        ];
+      // Keep the original facility pin design at every zoom. State-level
+      // viewports can contain thousands of POIs, so materialise them in small
+      // batches instead of replacing them with count circles or building all
+      // markers in one frame.
+      final renderPool = visiblePool.length > 120
+          ? visiblePool.take(_facilityRenderLimit).toList()
+          : visiblePool;
+      if (renderPool.length < visiblePool.length) {
+        _scheduleFacilityBatch(visiblePool.length);
       }
 
-      for (final poi in visiblePool) {
+      for (final poi in renderPool) {
         final chosen = _selected?.id == poi.id;
         final showLabel =
-            _zoomLevel >= 12 || chosen || visiblePool.length <= 40;
+            _zoomLevel >= 12 || chosen || renderPool.length <= 40;
         markers.add(
           Marker(
             key: Key('poi-${poi.id}'),
@@ -1023,10 +1029,13 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
             : !household.dueToday,
       );
       final pins = _routeMode ? route : scoped.toList();
-      if (_zoomLevel < 8) {
-        return [...markers, ..._householdClusterMarkers(pins)];
+      final renderPins = pins.length > 120
+          ? pins.take(_facilityRenderLimit).toList()
+          : pins.toList();
+      if (renderPins.length < pins.length) {
+        _scheduleFacilityBatch(pins.length);
       }
-      for (final household in pins) {
+      for (final household in renderPins) {
         final routeIndex = route.indexWhere((pin) => pin.id == household.id);
         markers.add(
           Marker(
@@ -1129,53 +1138,19 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
     return markers;
   }
 
-  List<Marker> _facilityClusterMarkers(List<FacilityPoi> facilities) {
-    final cellSize = (1.0 / math.pow(2, (_zoomLevel - 7) / 2))
-        .clamp(0.025, 1.0)
-        .toDouble();
-    final groups = <String, List<FacilityPoi>>{};
-    for (final facility in facilities) {
-      final latCell = (facility.latitude / cellSize).floor();
-      final lngCell = (facility.longitude / cellSize).floor();
-      groups.putIfAbsent('$latCell:$lngCell', () => []).add(facility);
-    }
-
-    return [
-      for (final group in groups.values)
-        if (group.isNotEmpty)
-          () {
-            final latitude = group
-                    .map((item) => item.latitude)
-                    .reduce((a, b) => a + b) /
-                group.length;
-            final longitude = group
-                    .map((item) => item.longitude)
-                    .reduce((a, b) => a + b) /
-                group.length;
-            final category = group.any((item) => item.category == 'hospital')
-                ? 'hospital'
-                : group.any((item) => item.category == 'blood_bank')
-                    ? 'blood_bank'
-                    : group.first.category;
-            return Marker(
-              key: Key('facility-cluster-${group.first.id}'),
-              point: LatLng(latitude, longitude),
-              width: 52,
-              height: 52,
-              child: _ClusterMarker(
-                count: group.length,
-                color: _facilityColor(category),
-                onTap: () {
-                  _ateMarkerTap = true;
-                  _mapController.move(
-                    LatLng(latitude, longitude),
-                    math.min(_zoomLevel + 2, 18),
-                  );
-                },
-              ),
-            );
-          }(),
-    ];
+  void _scheduleFacilityBatch(int target) {
+    if (_facilityRenderLimit >= target || _facilityBatchScheduled) return;
+    _facilityBatchScheduled = true;
+    _facilityBatchTimer = Timer(const Duration(milliseconds: 120), () {
+      _facilityBatchScheduled = false;
+      if (!mounted) return;
+      setState(() {
+        _facilityRenderLimit = math.min(_facilityRenderLimit + 80, target);
+      });
+      if (_facilityRenderLimit < target) {
+        _scheduleFacilityBatch(target);
+      }
+    });
   }
 
   List<CircleMarker> _liveLocationCircles() {
@@ -1191,42 +1166,6 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
         borderColor: const Color(0x662563EB),
         borderStrokeWidth: 1.5,
       ),
-    ];
-  }
-
-  List<Marker> _householdClusterMarkers(List<HouseholdPin> pins) {
-    final clusters = <String, List<HouseholdPin>>{};
-    for (final household in pins) {
-      final key =
-          '${(household.latitude * 2).floor()}:${(household.longitude * 2).floor()}';
-      clusters.putIfAbsent(key, () => []).add(household);
-    }
-    return [
-      for (final group in clusters.values)
-        Marker(
-          key: Key('household-cluster-${group.first.id}'),
-          point: LatLng(
-            group.map((item) => item.latitude).reduce((a, b) => a + b) /
-                group.length,
-            group.map((item) => item.longitude).reduce((a, b) => a + b) /
-                group.length,
-          ),
-          width: 50,
-          height: 50,
-          child: _ClusterMarker(
-            count: group.length,
-            color: const Color(0xFF2563EB),
-            onTap: () => _mapController.move(
-              LatLng(
-                group.map((item) => item.latitude).reduce((a, b) => a + b) /
-                    group.length,
-                group.map((item) => item.longitude).reduce((a, b) => a + b) /
-                    group.length,
-              ),
-              math.min(_zoomLevel + 2, 14),
-            ),
-          ),
-        ),
     ];
   }
 
@@ -1525,7 +1464,9 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  // Point me button
+                  // 'Nearest household' button — shows bearing/distance to the nearest
+                  // due household. Does NOT use a magnetometer and is not turn-by-turn
+                  // navigation. Tapping toggles directional guidance mode on/off.
                   Expanded(
                     child: SizedBox(
                       height: 34,
@@ -2620,13 +2561,17 @@ String _callLabel(String lang) {
 }
 
 String _pointMeLabel(String lang) {
-  if (lang == 'en') return 'Point me';
+  // Relabelled from "Point me" to "Nearest household" because the feature
+  // shows directional guidance to the nearest due household — not a compass
+  // bearing. The old label implied magnetometer/turn-by-turn navigation which
+  // this module does not provide (no magnetometer dependency).
+  if (lang == 'en') return 'Nearest household';
   const map = {
-    'mr': 'दिशा दाखवा', 'hi': 'दिशा दिखाएं', 'bn': 'দিকনির্দেশ', 'te': 'దిశ చూపించు',
-    'ta': 'திசையைக் காட்டு', 'kn': 'ದಿಕ್ಕು ತೋರಿಸಿ', 'ml': 'ദിശ കാണിക്കുക', 'gu': 'દિશા બતાવો',
-    'pa': 'ਦਿਸ਼ਾ ਦਿਖਾਓ', 'or': 'ଦିଗ ଦେଖାନ୍ତୁ', 'as': 'দিশ দেখুৱাওক',
+    'mr': 'जवळचे घर', 'hi': 'निकटतम घर', 'bn': 'নিকটতম পরিবার', 'te': 'సమీప గృహం',
+    'ta': 'அருகில் உள்ள குடும்பம்', 'kn': 'ಹತ್ತಿರದ ಮನೆ', 'ml': 'ഏറ്റവും അടുത്ത കുടുംബം', 'gu': 'નજીકનું ઘર',
+    'pa': 'ਨਜ਼ਦੀਕੀ ਘਰ', 'or': 'ନିକଟ ଗୃହ', 'as': 'নিকটতম পৰিয়াল',
   };
-  return map[lang] ?? 'Point me';
+  return map[lang] ?? 'Nearest household';
 }
 
 String _todaysRouteLabel(String lang) {
@@ -2950,43 +2895,6 @@ class _LiveLocationMarker extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ClusterMarker extends StatelessWidget {
-  const _ClusterMarker({
-    required this.count,
-    required this.color,
-    required this.onTap,
-  });
-
-  final int count;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 3),
-          boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 5)],
-        ),
-        child: Center(
-          child: Text(
-            '$count',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
       ),
     );
   }

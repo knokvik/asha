@@ -35,6 +35,19 @@ class FlowState {
   }
 
   /// Worker answer. `true` / `false` is Yes / No. Null is Unknown and stores nothing.
+  ///
+  /// ⚠️  INVERSION WARNING — drink / breastfeed question:
+  /// The question asked to the ASHA is positively framed:
+  ///   "Can the child drink or breastfeed?"   → Yes means the child CAN drink
+  /// But the IMCI engine field is negatively framed:
+  ///   `symptoms.unable_to_drink`             → true means the child CANNOT drink
+  ///
+  /// The inversion is controlled by `BankQuestion.invertYes = true` (set in the
+  /// JSON pack via `"invert_yes": true` on the DS-DRINK question). When you add
+  /// any new question whose UI answer polarity differs from the stored field
+  /// polarity, you MUST set `"invert_yes": true` in the pack JSON — otherwise
+  /// the IMCI classifier will silently store the wrong value and may misclassify
+  /// a danger sign.
   void answer(String questionId, Object? raw) {
     final question = questionById(questionId);
     if (question == null) return;
@@ -124,6 +137,9 @@ class FlowState {
         pulseRate: measure('vitals.pulse_rate'),
       ),
       symptoms: Symptoms(
+        // NOTE: The 'unable_to_drink' field is stored with polarity already
+        // inverted by answer() via BankQuestion.invertYes. A `true` value here
+        // means the child genuinely CANNOT drink (a danger sign). Do not invert again.
         unableToDrink: flag('symptoms.unable_to_drink'),
         vomitsEverything: flag('symptoms.vomits_everything'),
         convulsions: flag('symptoms.convulsions'),
