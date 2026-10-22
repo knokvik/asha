@@ -46,11 +46,22 @@ class ServerLoginResult {
   final bool isSuccess;
 }
 
+class PasswordResetRequestResult {
+  const PasswordResetRequestResult({
+    required this.isSuccess,
+    required this.message,
+  });
+
+  final bool isSuccess;
+  final String message;
+}
+
 /// Authentication state for the current session.
 enum AuthState { unauthenticated, authenticated, lockedOut, requiresOtp }
 
 class AuthService {
   static const _pinHashKey = 'asha_pin_hash_v1';
+  static const _pinLengthKey = 'asha_pin_length_v1';
   static const _failedAttemptsKey = 'asha_pin_fails_v1';
   static const _lockoutUntilKey = 'asha_lockout_until_v1';
   static const _offlineCredKey = 'asha_offline_cred_v1';
@@ -79,6 +90,7 @@ class AuthService {
     _validatePinFormat(pin);
     final hash = BCrypt.hashpw(pin, BCrypt.gensalt(logRounds: 12));
     await _storage.write(key: _pinHashKey, value: hash);
+    await _storage.write(key: _pinLengthKey, value: pin.length.toString());
     await _resetLockout();
     await _refreshOfflineCredential(pin);
   }
@@ -87,6 +99,14 @@ class AuthService {
   Future<bool> get isPinConfigured async {
     final hash = await _storage.read(key: _pinHashKey);
     return hash != null;
+  }
+
+  /// Returns the configured PIN length. Older installs used a four-digit PIN
+  /// before the length was persisted, so they safely fall back to four.
+  Future<int> get configuredPinLength async {
+    final stored = await _storage.read(key: _pinLengthKey);
+    final length = int.tryParse(stored ?? '') ?? 4;
+    return length.clamp(4, 8);
   }
 
   /// Returns whether the device can currently perform biometric auth.
@@ -243,6 +263,39 @@ class AuthService {
     } catch (_) {
       return const ServerLoginResult.failure(
         'Could not reach the server. Check the internet connection and try again.',
+      );
+    }
+  }
+
+  /// Requests a server-generated, short-lived reset code. The code is sent by
+  /// the backend and is never returned to the mobile client.
+  Future<PasswordResetRequestResult> requestPasswordReset({
+    required String apiBaseUrl,
+    required String identifier,
+  }) async {
+    final endpoint = Uri.parse(
+      '${apiBaseUrl.replaceFirst(RegExp(r'/+$'), '')}/api/v1/auth/password-reset/request',
+    );
+    try {
+      final response = await http
+          .post(
+            endpoint,
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({'identifier': identifier}),
+          )
+          .timeout(const Duration(seconds: 15));
+      final payload = response.body.isEmpty
+          ? const <String, dynamic>{}
+          : jsonDecode(response.body) as Map<String, dynamic>;
+      return PasswordResetRequestResult(
+        isSuccess: response.statusCode == 202,
+        message: payload['message']?.toString() ?? 'If the account exists, a reset code has been sent to its registered email.',
+      );
+    } catch (_) {
+      return const PasswordResetRequestResult(
+        isSuccess: false,
+        message:
+            'Could not reach the server. Try again when internet is available.',
       );
     }
   }

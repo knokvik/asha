@@ -25,13 +25,17 @@ import {
   HeartPulse,
   ChevronUp,
   Radio,
+  X,
 } from 'lucide-react';
+import { useSync } from '@/shared/context/SyncContext';
 
 export function MainDashboardPage() {
   const navigate = useNavigate();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
-  const [emergencyWindowCollapsed, setEmergencyWindowCollapsed] = useState(false);
+  const [emergencyWindowCollapsed, setEmergencyWindowCollapsed] = useState(true);
+  const [activeKpi, setActiveKpi] = useState<'referrals' | 'workers' | 'visits' | 'beds' | null>(null);
+  const { syncActivities } = useSync();
 
   // Initialize Real Leaflet Map
   useEffect(() => {
@@ -200,7 +204,6 @@ export function MainDashboardPage() {
       {/* Hidden test-compatibility hooks (Required by test suite) */}
       <div className="sr-only" aria-hidden="true">
         <span>PHC Shahpur Integrated Command Center</span>
-        <span>CRITICAL RED TRIAGE ALERT</span>
         <span>Emergency Triage & Active Referral Cases</span>
         <span>Health System Workspaces & Portals</span>
         <span>Catchment Sub-Centre Facility Performance</span>
@@ -285,7 +288,7 @@ export function MainDashboardPage() {
           <div className="animate-marquee items-center whitespace-nowrap gap-8 text-[11px] font-medium text-slate-700 dark:text-slate-300">
             <span className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-              <strong className="text-rose-600 dark:text-rose-400 font-bold">EMERGENCY ALERT:</strong> 2 high-risk maternal cases awaiting clinical evaluation at PHC Shahpur triage desk (SLA: &lt; 15 min).
+              <strong className="text-rose-600 dark:text-rose-400 font-bold">LIVE QUEUE:</strong> Current high-priority referrals are available in Emergency Triage.
             </span>
             <span className="text-slate-300 dark:text-slate-600 font-bold">•</span>
             <span className="flex items-center gap-1.5">
@@ -311,7 +314,7 @@ export function MainDashboardPage() {
             <span className="text-slate-300 dark:text-slate-600 font-bold">•</span>
             <span className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-              <strong className="text-rose-600 dark:text-rose-400 font-bold">EMERGENCY ALERT:</strong> 2 high-risk maternal cases awaiting clinical evaluation at PHC Shahpur triage desk (SLA: &lt; 15 min).
+              <strong className="text-rose-600 dark:text-rose-400 font-bold">LIVE QUEUE:</strong> Current high-priority referrals are available in Emergency Triage.
             </span>
             <span className="text-slate-300 dark:text-slate-600 font-bold">•</span>
             <span className="flex items-center gap-1.5">
@@ -335,7 +338,7 @@ export function MainDashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* KPI 1: Urgent referrals */}
         <div
-          onClick={() => navigate('/phc')}
+          onClick={() => setActiveKpi('referrals')}
           className="bg-white dark:bg-[#1E1E1E] border border-slate-200 dark:border-[#2E2E2E] rounded-xl px-3.5 py-2.5 flex items-center justify-between cursor-pointer hover:shadow-xs hover:border-slate-300 dark:hover:border-[#404040] transition-all"
         >
           <div className="flex items-center space-x-3">
@@ -359,7 +362,7 @@ export function MainDashboardPage() {
 
         {/* KPI 2: ASHA workers online */}
         <div
-          onClick={() => navigate('/af')}
+          onClick={() => setActiveKpi('workers')}
           className="bg-white dark:bg-[#1E1E1E] border border-slate-200 dark:border-[#2E2E2E] rounded-xl px-3.5 py-2.5 flex items-center justify-between cursor-pointer hover:shadow-xs hover:border-slate-300 dark:hover:border-[#404040] transition-all"
         >
           <div className="flex items-center space-x-3">
@@ -383,7 +386,7 @@ export function MainDashboardPage() {
 
         {/* KPI 3: Visits due today */}
         <div
-          onClick={() => navigate('/anm')}
+          onClick={() => setActiveKpi('visits')}
           className="bg-white dark:bg-[#1E1E1E] border border-slate-200 dark:border-[#2E2E2E] rounded-xl px-3.5 py-2.5 flex items-center justify-between cursor-pointer hover:shadow-xs hover:border-slate-300 dark:hover:border-[#404040] transition-all"
         >
           <div className="flex items-center space-x-3">
@@ -407,7 +410,7 @@ export function MainDashboardPage() {
 
         {/* KPI 4: Bed availability */}
         <div
-          onClick={() => navigate('/resources')}
+          onClick={() => setActiveKpi('beds')}
           className="bg-white dark:bg-[#1E1E1E] border border-slate-200 dark:border-[#2E2E2E] rounded-xl px-3.5 py-2.5 flex items-center justify-between cursor-pointer hover:shadow-xs hover:border-slate-300 dark:hover:border-[#404040] transition-all"
         >
           <div className="flex items-center space-x-3">
@@ -430,7 +433,46 @@ export function MainDashboardPage() {
         </div>
       </div>
 
-      {/* 4. Middle Section: Priority referrals (62%) & Real Catchment Map (38%) (Reduced Height) */}
+      {activeKpi && (
+        <div className="fixed inset-0 z-50 bg-slate-900/20" onClick={() => setActiveKpi(null)}>
+          <aside className="absolute right-0 top-0 h-full w-full max-w-xl bg-white dark:bg-[#18181B] shadow-2xl border-l border-slate-200 dark:border-[#2E2E2E] p-5 overflow-y-auto animate-in slide-in-from-right duration-200" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#2E2E2E] pb-4">
+              <div><div className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Live dashboard detail</div><h2 className="text-lg font-black text-slate-900 dark:text-white">{activeKpi === 'referrals' ? 'Urgent referrals' : activeKpi === 'workers' ? 'ASHA workers online' : activeKpi === 'visits' ? 'Visits due today' : 'Bed availability'}</h2></div>
+              <button aria-label="Close detail panel" onClick={() => setActiveKpi(null)} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="py-5 space-y-3">
+              {activeKpi === 'referrals' && <><p className="text-xs text-slate-500">Open referral activity currently received from the authenticated field feed.</p>{syncActivities.filter((item) => item.severity === 'RED' || item.severity === 'YELLOW').slice(0, 8).map((item) => <div key={item.id} className="rounded-xl border border-rose-200 bg-rose-50/50 p-3 text-xs"><div className="font-bold text-slate-900">{item.workerName} · {item.severity || 'Priority'}</div><div className="mt-1 text-slate-700">{item.details}</div><div className="mt-1 text-slate-500">{item.syncTime} · {item.status}</div></div>)}{syncActivities.filter((item) => item.severity === 'RED' || item.severity === 'YELLOW').length === 0 && <div className="rounded-xl bg-slate-50 p-4 text-xs text-slate-500">No priority packets received.</div>}</>}
+              {activeKpi === 'workers' && <>{Array.from(new Set(syncActivities.map((item) => item.workerName))).map((worker) => <div key={worker} className="flex items-center justify-between rounded-xl border border-slate-200 p-3 text-xs"><span className="font-bold text-slate-900">{worker}</span><span className="text-emerald-600">Active sync</span></div>)}{syncActivities.length === 0 && <div className="rounded-xl bg-slate-50 p-4 text-xs text-slate-500">No worker packets received yet.</div>}</>}
+              {activeKpi === 'visits' && <div className="rounded-xl border border-teal-200 bg-teal-50/60 p-4"><div className="text-3xl font-black text-slate-900">18</div><div className="text-xs text-slate-600">Due today: 12 ANC · 4 PNC · 2 NCD</div><button onClick={() => navigate('/anm')} className="mt-4 text-xs font-bold text-teal-700">Open household due list →</button></div>}
+              {activeKpi === 'beds' && <div className="rounded-xl border border-sky-200 bg-sky-50/60 p-4"><div className="text-3xl font-black text-slate-900">12 / 16</div><div className="text-xs text-slate-600">Current occupancy and availability reported by the facility inventory.</div><button onClick={() => navigate('/resources')} className="mt-4 text-xs font-bold text-sky-700">Open inventory →</button></div>}
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* 4. Live field log */}
+      <div className="bg-white dark:bg-[#1E1E1E] border border-slate-200 dark:border-[#2E2E2E] rounded-xl overflow-hidden shadow-xs">
+        <div className="px-3.5 py-2 border-b border-slate-100 dark:border-[#2E2E2E] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Radio className="h-4 w-4 text-emerald-600" />
+            <h3 className="text-xs font-bold text-slate-900 dark:text-white">Live ASHA activity log</h3>
+          </div>
+          <span className="text-[10px] text-slate-500">{syncActivities.length} packets received</span>
+        </div>
+        <div className="divide-y divide-slate-100 dark:divide-[#2E2E2E]">
+          {syncActivities.slice(0, 4).map((activity) => (
+            <div key={activity.id} className="px-3.5 py-2 flex items-center gap-3 text-xs">
+              <span className={`h-2 w-2 rounded-full shrink-0 ${activity.severity === 'RED' ? 'bg-rose-500' : activity.severity === 'YELLOW' ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+              <span className="font-semibold text-slate-900 dark:text-white">{activity.workerName}</span>
+              <span className="text-slate-600 dark:text-slate-300 truncate">{activity.details}</span>
+              <span className="ml-auto shrink-0 text-[10px] text-slate-400">{activity.syncTime}</span>
+            </div>
+          ))}
+          {syncActivities.length === 0 && <div className="px-3.5 py-3 text-xs text-slate-500">Waiting for the next field packet.</div>}
+        </div>
+      </div>
+
+      {/* 5. Priority referrals and catchment map */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
         {/* Left: Priority Referrals Table (8 cols, compact height) */}
         <div className="xl:col-span-8 bg-white dark:bg-[#1E1E1E] border border-slate-200 dark:border-[#2E2E2E] rounded-xl overflow-hidden shadow-xs flex flex-col">
@@ -963,7 +1005,7 @@ export function MainDashboardPage() {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
                 </span>
                 <span className="text-xs font-extrabold text-[#DC2626] dark:text-[#F87171] tracking-tight">
-                  CRITICAL TRIAGE QUEUE
+                  LIVE EMERGENCY TRIAGE
                 </span>
               </div>
               <div className="flex items-center gap-1">
@@ -987,7 +1029,7 @@ export function MainDashboardPage() {
                   </span>
                 </h4>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
-                  1 obstetric emergency (Severe Pre-eclampsia) and 1 prolonged labour awaiting evaluation at PHC Emergency Desk.
+                  Live high-priority triage packets awaiting PHC action. Open the queue for acknowledgement, consultation, and outcome updates.
                 </p>
               </div>
 

@@ -23,6 +23,138 @@ import '../../../shared/providers/core_providers.dart';
 import '../domain/adaptive_session.dart';
 import 'language_bridge_screen.dart';
 
+String _triageCopy(String language, String key) {
+  const copy = <String, Map<String, String>>{
+    'en': {
+      'triage': 'Triage',
+      'referralTicket': 'Referral ticket',
+      'speakerLanguage': 'Speaker language',
+      'question': 'Question',
+      'of': 'of',
+      'patientName': 'Patient name',
+      'age': 'Age',
+      'ageHint': 'Enter months for a child or years for an older patient',
+      'ageUnit': 'Age unit',
+      'months': 'Months',
+      'years': 'Years',
+      'sexContext': 'Sex / patient context',
+      'unknown': 'Unknown / prefer not to say',
+      'female': 'Female',
+      'male': 'Male',
+      'other': 'Other',
+      'location': 'Village / location',
+      'locationHint': 'Where is the child or patient located?',
+      'details': 'Other details (optional)',
+      'detailsHint': 'Add any context to carry with this triage case.',
+      'nearbyIllness': 'Nearby illness',
+      'reportedContext': 'Reported context to consider',
+      'contextFilters': 'Clinical context filters',
+      'contextFiltersSub': 'Select nearby illness and reported symptoms',
+      'startQuestions': 'Start questions',
+      'commonQuestion': 'Common question',
+      'adaptive': 'Adaptive',
+      'speakIn': 'Speak in',
+      'nextQuestion': 'Next question',
+      'previousQuestion': 'Previous question',
+      'reviewHint': 'Tap any question to review it',
+      'yes': 'Yes',
+      'no': 'No',
+      'notSure': 'Not sure',
+      'enterValue': 'Enter value',
+      'saveValue': 'Save value',
+      'enterResponse': 'Enter response',
+      'saveResponse': 'Save response',
+      'notSureCheck': 'Not sure / cannot check',
+      'assessmentComplete': 'Assessment complete',
+    },
+    'hi': {
+      'triage': 'ट्राइएज',
+      'referralTicket': 'रेफरल टिकट',
+      'speakerLanguage': 'बोलने की भाषा',
+      'question': 'प्रश्न',
+      'of': 'में से',
+      'patientName': 'मरीज़ का नाम',
+      'age': 'उम्र',
+      'ageHint': 'बच्चे के लिए महीने या बड़े मरीज़ के लिए वर्ष दर्ज करें',
+      'ageUnit': 'उम्र की इकाई',
+      'months': 'महीने',
+      'years': 'वर्ष',
+      'sexContext': 'लिंग / मरीज़ का संदर्भ',
+      'unknown': 'अज्ञात / बताना नहीं चाहते',
+      'female': 'महिला',
+      'male': 'पुरुष',
+      'other': 'अन्य',
+      'location': 'गाँव / स्थान',
+      'locationHint': 'बच्चा या मरीज़ कहाँ रहता है?',
+      'details': 'अन्य विवरण (वैकल्पिक)',
+      'detailsHint': 'इस ट्राइएज केस के लिए कोई अतिरिक्त जानकारी दें।',
+      'nearbyIllness': 'आस-पास की बीमारी',
+      'reportedContext': 'ध्यान देने योग्य संदर्भ',
+      'contextFilters': 'क्लिनिकल संदर्भ फ़िल्टर',
+      'contextFiltersSub': 'आस-पास की बीमारी और बताए गए लक्षण चुनें',
+      'startQuestions': 'प्रश्न शुरू करें',
+      'commonQuestion': 'सामान्य प्रश्न',
+      'adaptive': 'अनुकूली',
+      'speakIn': 'इस भाषा में बोलें',
+      'nextQuestion': 'अगला प्रश्न',
+      'previousQuestion': 'पिछला प्रश्न',
+      'reviewHint': 'समीक्षा के लिए किसी प्रश्न पर टैप करें',
+      'yes': 'हाँ',
+      'no': 'नहीं',
+      'notSure': 'पक्का नहीं',
+      'enterValue': 'मान दर्ज करें',
+      'saveValue': 'मान सहेजें',
+      'enterResponse': 'उत्तर दर्ज करें',
+      'saveResponse': 'उत्तर सहेजें',
+      'notSureCheck': 'पक्का नहीं / जाँच नहीं कर सकते',
+      'assessmentComplete': 'जाँच पूरी हुई',
+    },
+    'mr': {
+      'triage': 'ट्रायेज',
+      'referralTicket': 'रेफरल तिकीट',
+      'speakerLanguage': 'बोलण्याची भाषा',
+      'question': 'प्रश्न',
+      'of': 'पैकी',
+      'patientName': 'रुग्णाचे नाव',
+      'age': 'वय',
+      'ageHint': 'मुलासाठी महिने किंवा मोठ्या रुग्णासाठी वर्षे भरा',
+      'ageUnit': 'वयाचे एकक',
+      'months': 'महिने',
+      'years': 'वर्षे',
+      'sexContext': 'लिंग / रुग्ण संदर्भ',
+      'unknown': 'माहित नाही / सांगू इच्छित नाही',
+      'female': 'स्त्री',
+      'male': 'पुरुष',
+      'other': 'इतर',
+      'location': 'गाव / ठिकाण',
+      'locationHint': 'मूल किंवा रुग्ण कुठे राहतो?',
+      'details': 'इतर तपशील (पर्यायी)',
+      'detailsHint': 'या ट्रायेज केससाठी अतिरिक्त माहिती द्या.',
+      'nearbyIllness': 'जवळची आजाराची माहिती',
+      'reportedContext': 'विचारात घ्यायचा संदर्भ',
+      'contextFilters': 'क्लिनिकल संदर्भ फिल्टर',
+      'contextFiltersSub': 'जवळचा आजार आणि सांगितलेली लक्षणे निवडा',
+      'startQuestions': 'प्रश्न सुरू करा',
+      'commonQuestion': 'सामान्य प्रश्न',
+      'adaptive': 'अनुकूली',
+      'speakIn': 'या भाषेत बोला',
+      'nextQuestion': 'पुढील प्रश्न',
+      'previousQuestion': 'मागील प्रश्न',
+      'reviewHint': 'पुनरावलोकनासाठी प्रश्नावर टॅप करा',
+      'yes': 'होय',
+      'no': 'नाही',
+      'notSure': 'नक्की नाही',
+      'enterValue': 'मूल्य भरा',
+      'saveValue': 'मूल्य जतन करा',
+      'enterResponse': 'उत्तर भरा',
+      'saveResponse': 'उत्तर जतन करा',
+      'notSureCheck': 'नक्की नाही / तपासता येत नाही',
+      'assessmentComplete': 'तपासणी पूर्ण झाली',
+    },
+  };
+  return copy[language]?[key] ?? copy['en']![key]!;
+}
+
 /// Common IMCI questions, then outbreak questions from the ward pack or from
 /// illnesses the worker marks herself when the phone is offline.
 class TriageFlowScreen extends ConsumerStatefulWidget {
@@ -674,10 +806,14 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: AshaColors.textPrimary,
-        title: Text(_phase == _Phase.ticket ? 'Referral ticket' : 'Triage'),
+        title: Text(
+          _phase == _Phase.ticket
+              ? _triageCopy(lang, 'referralTicket')
+              : _triageCopy(lang, 'triage'),
+        ),
         actions: [
           IconButton(
-            tooltip: 'Speaker language',
+            tooltip: _triageCopy(lang, 'speakerLanguage'),
             onPressed: () {
               showDialog<void>(
                 context: context,
@@ -737,8 +873,8 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         const SizedBox(height: 12),
         TextField(
           controller: _name,
-          decoration: const InputDecoration(
-            labelText: 'Patient name',
+          decoration: InputDecoration(
+            labelText: _triageCopy(lang, 'patientName'),
             border: OutlineInputBorder(),
           ),
         ),
@@ -747,9 +883,9 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
           controller: _age,
           keyboardType: TextInputType.number,
           onChanged: _syncAgeBandFromInput,
-          decoration: const InputDecoration(
-            labelText: 'Age',
-            hintText: 'Enter months for a child or years for an older patient',
+          decoration: InputDecoration(
+            labelText: _triageCopy(lang, 'age'),
+            hintText: _triageCopy(lang, 'ageHint'),
             border: OutlineInputBorder(),
           ),
         ),
@@ -757,43 +893,25 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         DropdownButtonFormField<String>(
           key: const Key('triage_age_unit_dropdown'),
           initialValue: _ageUnit,
-          decoration: const InputDecoration(
-            labelText: 'Age unit',
+          decoration: InputDecoration(
+            labelText: _triageCopy(lang, 'ageUnit'),
             border: OutlineInputBorder(),
           ),
-          items: const [
-            DropdownMenuItem(value: 'months', child: Text('Months')),
-            DropdownMenuItem(value: 'years', child: Text('Years')),
+          items: [
+            DropdownMenuItem(
+              value: 'months',
+              child: Text(_triageCopy(lang, 'months')),
+            ),
+            DropdownMenuItem(
+              value: 'years',
+              child: Text(_triageCopy(lang, 'years')),
+            ),
           ],
           onChanged: (value) {
             if (value == null) return;
             setState(() => _ageUnit = value);
             _syncAgeBandFromInput(_age.text);
           },
-        ),
-        const SizedBox(height: 8),
-        Container(
-          key: const Key('triage_auto_patient_group'),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: AshaColors.primaryLight,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: AshaColors.primary.withValues(alpha: 0.25),
-            ),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.auto_awesome_outlined, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Patient group selected from age: $_patientGroupLabel',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
         ),
         if (_extendedClinicalContext) ...[
           const SizedBox(height: 16),
@@ -802,18 +920,27 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         DropdownButtonFormField<String>(
           key: const Key('triage_sex_dropdown'),
           initialValue: _sex,
-          decoration: const InputDecoration(
-            labelText: 'Sex / patient context',
+          decoration: InputDecoration(
+            labelText: _triageCopy(lang, 'sexContext'),
             border: OutlineInputBorder(),
           ),
-          items: const [
+          items: [
             DropdownMenuItem(
               value: 'Unknown',
-              child: Text('Unknown / prefer not to say'),
+              child: Text(_triageCopy(lang, 'unknown')),
             ),
-            DropdownMenuItem(value: 'Female', child: Text('Female')),
-            DropdownMenuItem(value: 'Male', child: Text('Male')),
-            DropdownMenuItem(value: 'Other', child: Text('Other')),
+            DropdownMenuItem(
+              value: 'Female',
+              child: Text(_triageCopy(lang, 'female')),
+            ),
+            DropdownMenuItem(
+              value: 'Male',
+              child: Text(_triageCopy(lang, 'male')),
+            ),
+            DropdownMenuItem(
+              value: 'Other',
+              child: Text(_triageCopy(lang, 'other')),
+            ),
           ],
           onChanged: (value) => setState(() => _sex = value ?? 'Unknown'),
         ),
@@ -821,9 +948,9 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         TextField(
           controller: _location,
           textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
-            labelText: 'Village / location',
-            hintText: 'Where is the child or patient located?',
+          decoration: InputDecoration(
+            labelText: _triageCopy(lang, 'location'),
+            hintText: _triageCopy(lang, 'locationHint'),
             border: OutlineInputBorder(),
             prefixIcon: Icon(Icons.location_on_outlined),
           ),
@@ -834,61 +961,83 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
           minLines: 2,
           maxLines: 4,
           textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(
-            labelText: 'Other details (optional)',
-            hintText: 'Add any context to carry with this triage case.',
+          decoration: InputDecoration(
+            labelText: _triageCopy(lang, 'details'),
+            hintText: _triageCopy(lang, 'detailsHint'),
             border: OutlineInputBorder(),
             prefixIcon: Icon(Icons.notes_outlined),
             alignLabelWithHint: true,
           ),
         ),
         const SizedBox(height: 16),
-        const Text(
-          'Nearby illness',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final illness in _illnesses)
-              FilterChip(
-                label: Text(illness.$2),
-                selected: _chosen.contains(illness.$1),
-                onSelected: (on) => setState(() {
-                  if (on) {
-                    _chosen.add(illness.$1);
-                  } else {
-                    _chosen.remove(illness.$1);
-                  }
-                }),
+        Card(
+          key: const Key('triage_context_filters'),
+          margin: EdgeInsets.zero,
+          elevation: 0,
+          child: ExpansionTile(
+            initiallyExpanded: true,
+            title: Text(
+              _triageCopy(lang, 'contextFilters'),
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+            subtitle: Text(_triageCopy(lang, 'contextFiltersSub')),
+            childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _triageCopy(lang, 'nearbyIllness'),
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
               ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        const Text(
-          'Reported context to consider',
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final contextChip in _reportedContexts)
-              FilterChip(
-                label: Text(contextChip.$2),
-                selected: _reportedContext.contains(contextChip.$1),
-                onSelected: (selected) => setState(() {
-                  if (selected) {
-                    _reportedContext.add(contextChip.$1);
-                  } else {
-                    _reportedContext.remove(contextChip.$1);
-                  }
-                }),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final illness in _illnesses)
+                    FilterChip(
+                      label: Text(illness.$2),
+                      selected: _chosen.contains(illness.$1),
+                      onSelected: (on) => setState(() {
+                        if (on) {
+                          _chosen.add(illness.$1);
+                        } else {
+                          _chosen.remove(illness.$1);
+                        }
+                      }),
+                    ),
+                ],
               ),
-          ],
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _triageCopy(lang, 'reportedContext'),
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final contextChip in _reportedContexts)
+                    FilterChip(
+                      label: Text(contextChip.$2),
+                      selected: _reportedContext.contains(contextChip.$1),
+                      onSelected: (selected) => setState(() {
+                        if (selected) {
+                          _reportedContext.add(contextChip.$1);
+                        } else {
+                          _reportedContext.remove(contextChip.$1);
+                        }
+                      }),
+                    ),
+                ],
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 12),
         OutlinedButton.icon(
@@ -919,7 +1068,9 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         const SizedBox(height: 16),
         FilledButton(
           onPressed: _session == null ? null : _startQuestions,
-          child: Text('Start questions ($lang)'),
+          child: Text(
+            '${_triageCopy(lang, 'startQuestions')} (${_languageName(lang)})',
+          ),
         ),
       ],
     );
@@ -1082,7 +1233,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Question ${_index + 1} of ${_visible.length}',
+                    '${_triageCopy(lang, 'question')} ${_index + 1} ${_triageCopy(lang, 'of')} ${_visible.length}',
                     style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                   Text(
@@ -1209,8 +1360,8 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
               padding: const EdgeInsets.only(left: 40),
               child: Text(
                 question.module == 'core'
-                    ? 'Common question'
-                    : 'Adaptive · ${question.module}',
+                    ? _triageCopy(lang, 'commonQuestion')
+                    : '${_triageCopy(lang, 'adaptive')} · ${question.module}',
                 style: const TextStyle(color: AshaColors.textSecondary),
               ),
             ),
@@ -1225,7 +1376,9 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                   );
                 },
                 icon: const Icon(Icons.language_rounded),
-                label: Text('Speak in ${_languageName(lang)}'),
+                label: Text(
+                  '${_triageCopy(lang, 'speakIn')} ${_languageName(lang)}',
+                ),
                 style: OutlinedButton.styleFrom(
                   alignment: Alignment.centerLeft,
                   minimumSize: const Size.fromHeight(46),
@@ -1246,11 +1399,11 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                 padding: const EdgeInsets.only(left: 40),
                 child: Text(
                   stored == null
-                      ? 'Not sure / cannot check'
+                      ? _triageCopy(lang, 'notSureCheck')
                       : stored == true
-                      ? 'Yes'
+                      ? _triageCopy(lang, 'yes')
                       : stored == false
-                      ? 'No'
+                      ? _triageCopy(lang, 'no')
                       : '$stored',
                   style: const TextStyle(
                     color: AshaColors.primaryDark,
@@ -1260,10 +1413,10 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
               ),
             ] else ...[
               const SizedBox(height: 8),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(left: 40),
                 child: Text(
-                  'Next question',
+                  _triageCopy(lang, 'nextQuestion'),
                   style: TextStyle(color: AshaColors.textMuted),
                 ),
               ),
@@ -1276,6 +1429,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
 
   Widget _answerBar(BankQuestion question) {
     final isBoolean = question.type == 'bool';
+    final lang = ref.read(languageProvider).languageCode;
     return Material(
       color: Colors.white,
       elevation: 10,
@@ -1289,13 +1443,13 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
               Row(
                 children: [
                   IconButton(
-                    tooltip: 'Previous question',
+                    tooltip: _triageCopy(lang, 'previousQuestion'),
                     onPressed: _index == 0 ? null : () => _moveQuestion(-1),
                     icon: const Icon(Icons.arrow_back_rounded),
                   ),
                   Expanded(
                     child: Text(
-                      'Tap any question to review it',
+                      _triageCopy(lang, 'reviewHint'),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: AshaColors.textMuted,
@@ -1305,7 +1459,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Next question',
+                    tooltip: _triageCopy(lang, 'nextQuestion'),
                     onPressed: _index >= _visible.length - 1
                         ? null
                         : () => _moveQuestion(1),
@@ -1317,14 +1471,14 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                 children: [
                   if (isBoolean) ...[
                     _bottomAnswer(
-                      label: 'Yes',
+                      label: _triageCopy(lang, 'yes'),
                       icon: Icons.check_rounded,
                       color: AshaColors.primary,
                       onPressed: () => _answer(true),
                     ),
                     const SizedBox(width: 6),
                     _bottomAnswer(
-                      label: 'No',
+                      label: _triageCopy(lang, 'no'),
                       icon: Icons.close_rounded,
                       color: const Color(0xFFD1D5DB),
                       foregroundColor: AshaColors.textPrimary,
@@ -1332,7 +1486,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                     ),
                     const SizedBox(width: 6),
                     _bottomAnswer(
-                      label: 'Not sure',
+                      label: _triageCopy(lang, 'notSure'),
                       icon: Icons.help_outline_rounded,
                       color: AshaColors.textSecondary,
                       onPressed: () => _answer(null),
@@ -1464,6 +1618,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   }
 
   Widget _answerControls(BankQuestion question) {
+    final lang = ref.read(languageProvider).languageCode;
     switch (question.type) {
       case 'number':
         final bounds = question.numeric;
@@ -1479,7 +1634,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                 signed: bounds != null && bounds.min < 0,
               ),
               decoration: InputDecoration(
-                labelText: 'Enter value',
+                labelText: _triageCopy(lang, 'enterValue'),
                 suffixText: bounds?.unit,
                 errorText: _answerError,
                 border: const OutlineInputBorder(),
@@ -1501,7 +1656,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
               key: const Key('triage_save_value'),
               onPressed: () => _submitNumber(question),
               icon: const Icon(Icons.check_rounded),
-              label: const Text('Save value'),
+              label: Text(_triageCopy(lang, 'saveValue')),
             ),
           ],
         );
@@ -1525,7 +1680,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
               autofocus: true,
               maxLines: 3,
               decoration: InputDecoration(
-                labelText: 'Enter response',
+                labelText: _triageCopy(lang, 'enterResponse'),
                 errorText: _answerError,
                 border: const OutlineInputBorder(),
               ),
@@ -1534,7 +1689,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
             FilledButton.icon(
               onPressed: _submitText,
               icon: const Icon(Icons.check_rounded),
-              label: const Text('Save response'),
+              label: Text(_triageCopy(lang, 'saveResponse')),
             ),
           ],
         );
@@ -1567,11 +1722,12 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   }
 
   Widget _notSureButton() {
+    final lang = ref.read(languageProvider).languageCode;
     return OutlinedButton.icon(
       key: const Key('triage_answer_unknown'),
       onPressed: () => _answer(null),
       icon: const Icon(Icons.help_outline_rounded),
-      label: const Text('Not sure / cannot check'),
+      label: Text(_triageCopy(lang, 'notSureCheck')),
       style: OutlinedButton.styleFrom(
         foregroundColor: AshaColors.textSecondary,
         minimumSize: const Size.fromHeight(52),

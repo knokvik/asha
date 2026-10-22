@@ -1,8 +1,17 @@
+import 'dart:convert';
+
+import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/l10n/app_localizations.dart';
+import '../../../core/database/app_database.dart';
+import '../../../core/sync/sync_engine.dart';
+import '../../../shared/providers/core_providers.dart';
 import '../domain/duplicate_detector.dart';
 import '../data/household_repository.dart';
 import 'household_providers.dart';
@@ -23,10 +32,10 @@ class MemberFormData {
     String abha = '',
     this.sex = 'F',
     this.relationship = 'Spouse',
-  })  : nameController = TextEditingController(text: name),
-        ageController = TextEditingController(text: age),
-        phoneController = TextEditingController(text: phone),
-        abhaController = TextEditingController(text: abha);
+  }) : nameController = TextEditingController(text: name),
+       ageController = TextEditingController(text: age),
+       phoneController = TextEditingController(text: phone),
+       abhaController = TextEditingController(text: abha);
 
   void dispose() {
     nameController.dispose;
@@ -35,6 +44,8 @@ class MemberFormData {
     abhaController.dispose;
   }
 }
+
+enum _ExistingNameResolution { useExisting, createSeparate, cancel }
 
 /// Screen for registering a new household and its members offline.
 ///
@@ -46,7 +57,8 @@ class HouseholdFormScreen extends ConsumerStatefulWidget {
   const HouseholdFormScreen({super.key});
 
   @override
-  ConsumerState<HouseholdFormScreen> createState() => _HouseholdFormScreenState();
+  ConsumerState<HouseholdFormScreen> createState() =>
+      _HouseholdFormScreenState();
 }
 
 class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
@@ -62,6 +74,12 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
   String? _selectedSocialCategory;
   bool _isBpl = false;
   bool _isSaving = false;
+  Position? _workerPosition;
+  XFile? _proofImage;
+  String? _locationMessage;
+  String? _proofMessage;
+  final _imagePicker = ImagePicker();
+  static const _secureStorage = FlutterSecureStorage();
 
   final List<String> _socialCategories = const ['General', 'OBC', 'SC', 'ST'];
   final List<String> _relationships = const [
@@ -125,6 +143,105 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
     });
   }
 
+  String _canonicalName(String value) => DuplicateDetector.normaliseName(value);
+
+  Future<_ExistingNameResolution> _askAboutExistingHousehold(
+    Household existing,
+  ) async {
+    final result = await showDialog<_ExistingNameResolution>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.person_search, color: Colors.orange),
+            SizedBox(width: 8),
+            Expanded(child: Text('Existing person found')),
+          ],
+        ),
+        content: Text(
+          '“${existing.headName}” already exists in ${existing.village}. '
+          'Is this the same person or a different person with the same name? '
+          'Existing data will not be overwritten.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(_ExistingNameResolution.cancel),
+            child: const Text('Cancel'),
+          ),
+          OutlinedButton(
+            onPressed: () =>
+                Navigator.of(dialogContext)
+                    .pop(_ExistingNameResolution.createSeparate),
+            child: const Text('Different person'),
+          ),
+          ElevatedButton(
+            onPressed: () =>
+                Navigator.of(dialogContext)
+                    .pop(_ExistingNameResolution.useExisting),
+            child: const Text('Use existing record'),
+          ),
+        ],
+      ),
+    );
+    return result ?? _ExistingNameResolution.cancel;
+  }
+
+  Future<void> _captureWorkerLocation() async {
+    setState(() => _locationMessage = 'Reading current location…');
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        throw StateError('Location services are turned off on this phone.');
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        throw StateError(
+          'Location permission is required to record this stamp.',
+        );
+      }
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 15),
+        ),
+      );
+      if (!mounted) return;
+      setState(() {
+        _workerPosition = position;
+        _locationMessage =
+            'Recorded ${position.latitude.toStringAsFixed(6)}, '
+            '${position.longitude.toStringAsFixed(6)}';
+      });
+    } catch (error) {
+      if (mounted) setState(() => _locationMessage = error.toString());
+    }
+  }
+
+  Future<void> _captureHouseholdProof() async {
+    try {
+      final image = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 72,
+      );
+      if (!mounted || image == null) return;
+      setState(() {
+        _proofImage = image;
+        _proofMessage = 'Proof photo captured and will be encrypted for sync.';
+      });
+    } catch (error) {
+      if (mounted) {
+        setState(() => _proofMessage = 'Could not capture proof: $error');
+      }
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -133,14 +250,62 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
     setState(() => _isSaving = true);
 
     try {
+      // A registered household must carry the worker's actual capture point.
+      // Capture it at submit time as a fallback when the optional location
+      // button was not used, then keep the exact timestamp in the sync packet.
+      if (_workerPosition == null) {
+        await _captureWorkerLocation();
+        if (_workerPosition == null) {
+          throw StateError(
+            'Current GPS location is required before registering this household.',
+          );
+        }
+      }
       final repo = ref.read(householdRepositoryProvider);
+
+      final normalizedHeadName = _canonicalName(_headNameController.text);
+      final existingHouseholds = await repo.householdDao.db
+          .select(repo.householdDao.db.households)
+          .get();
+      final sameHead = existingHouseholds.where(
+        (household) => _canonicalName(household.headName) == normalizedHeadName,
+      );
+      var headConfirmedDifferent = false;
+      for (final existing in sameHead) {
+        final resolution = await _askAboutExistingHousehold(existing);
+        if (resolution == _ExistingNameResolution.useExisting) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Existing record kept. Nothing was overwritten.'),
+              ),
+            );
+            setState(() => _isSaving = false);
+          }
+          return;
+        }
+        if (resolution == _ExistingNameResolution.cancel) {
+          if (mounted) setState(() => _isSaving = false);
+          return;
+        }
+        headConfirmedDifferent = true;
+      }
 
       // Check for potential duplicate beneficiaries before proceeding
       const detector = DuplicateDetector();
-      final existingMembers = await repo.memberDao.db.select(repo.memberDao.db.members).get();
+      final existingMembers = await repo.memberDao.db
+          .select(repo.memberDao.db.members)
+          .get();
+      final skipMemberIndexes = <int>{};
 
       if (existingMembers.isNotEmpty) {
-        for (final member in _members) {
+        for (
+          var memberIndex = 0;
+          memberIndex < _members.length;
+          memberIndex++
+        ) {
+          final member = _members[memberIndex];
+          if (memberIndex == 0 && headConfirmedDifferent) continue;
           final memberName = member.nameController.text.trim();
           if (memberName.isEmpty) continue;
 
@@ -150,7 +315,11 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
             final ageYears = int.tryParse(ageText);
             if (ageYears != null && ageYears > 0) {
               final now = DateTime.now();
-              approxDob = DateTime(now.year - ageYears, 1, 1).millisecondsSinceEpoch;
+              approxDob = DateTime(
+                now.year - ageYears,
+                1,
+                1,
+              ).millisecondsSinceEpoch;
             }
           }
 
@@ -169,24 +338,36 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
             final resolution = await showDialog<DuplicateResolution>(
               context: context,
               barrierDismissible: false,
-              builder: (_) => DuplicateConfirmationDialog(candidates: duplicates),
+              builder: (_) =>
+                  DuplicateConfirmationDialog(candidates: duplicates),
             );
 
-            if (resolution == DuplicateResolution.cancel || resolution == null) {
+            if (resolution == DuplicateResolution.cancel ||
+                resolution == null) {
               setState(() => _isSaving = false);
               return;
+            }
+            if (resolution == DuplicateResolution.merge) {
+              // “Use existing” is intentionally non-destructive. Do not add
+              // another row and never update the existing patient's details.
+              skipMemberIndexes.add(memberIndex);
             }
           }
         }
       }
 
       // 1. Create household offline with UUID v4
+      final workerId =
+          await _secureStorage.read(key: 'worker_id') ?? 'offline-worker';
       final household = await repo.createHousehold(
         village: _villageController.text.trim(),
         hamlet: _hamletController.text.trim().isEmpty
             ? null
             : _hamletController.text.trim(),
-        headName: _headNameController.text.trim(),
+        headName: _headNameController.text.trim().replaceAll(
+          RegExp(r'\s+'),
+          ' ',
+        ),
         socialCategory: _selectedSocialCategory,
         isBpl: _isBpl,
         contactPhone: _phoneController.text.trim().isEmpty
@@ -195,12 +376,48 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
         landmarkNotes: _landmarkController.text.trim().isEmpty
             ? null
             : _landmarkController.text.trim(),
+        latitude: _workerPosition?.latitude.toString(),
+        longitude: _workerPosition?.longitude.toString(),
+        locationCapturedAt:
+            _workerPosition?.timestamp.millisecondsSinceEpoch ??
+            DateTime.now().millisecondsSinceEpoch,
+        createdBy: workerId,
       );
+
+      final proof = _proofImage;
+      if (proof != null) {
+        final raw = await proof.readAsBytes();
+        final compressed = GZipEncoder().encode(raw) ?? const <int>[];
+        await ref
+            .read(syncEngineProvider)
+            .enqueue(
+              table: 'household_proofs',
+              recordId: '${household.id}:proof',
+              operation: 'insert',
+              priority: SyncPriority.metadata,
+              payload: {
+                'household_id': household.id,
+                'type': 'photo_proof',
+                'mime_type': 'image/jpeg',
+                'encoding': 'gzip+base64',
+                'data_base64': base64Encode(compressed),
+                'captured_at': DateTime.now().millisecondsSinceEpoch,
+                'latitude': _workerPosition?.latitude,
+                'longitude': _workerPosition?.longitude,
+                'recorded_by': workerId,
+              },
+            );
+      }
 
       // 2. Add family members offline with UUID v4
       String? firstMemberId;
-      for (final member in _members) {
-        final memberName = member.nameController.text.trim();
+      for (var memberIndex = 0; memberIndex < _members.length; memberIndex++) {
+        if (skipMemberIndexes.contains(memberIndex)) continue;
+        final member = _members[memberIndex];
+        final memberName = member.nameController.text.trim().replaceAll(
+          RegExp(r'\s+'),
+          ' ',
+        );
         if (memberName.isEmpty) continue;
 
         int? approxDob;
@@ -248,7 +465,7 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
               children: [
                 Icon(Icons.check_circle, color: Colors.white),
                 SizedBox(width: 8),
-                Text('Household registered offline'),
+                Text('Saved locally. It will sync when connected.'),
               ],
             ),
             backgroundColor: Colors.green,
@@ -406,7 +623,8 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
                   ActionChip(
                     avatar: const Icon(Icons.close, size: 16),
                     label: const Text('Clear'),
-                    onPressed: () => setState(() => _selectedSocialCategory = null),
+                    onPressed: () =>
+                        setState(() => _selectedSocialCategory = null),
                   ),
               ],
             ),
@@ -459,6 +677,67 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
             ),
             const SizedBox(height: 24),
 
+            Card(
+              margin: EdgeInsets.zero,
+              elevation: 0,
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Proof & worker location',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Capture a household proof photo and record your current GPS position. Both are added to the offline sync queue.',
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          key: const Key('capture_household_proof_button'),
+                          onPressed: _isSaving ? null : _captureHouseholdProof,
+                          icon: Icon(
+                            _proofImage == null
+                                ? Icons.camera_alt_outlined
+                                : Icons.check_circle_outline,
+                          ),
+                          label: Text(
+                            _proofImage == null
+                                ? 'Capture proof'
+                                : 'Proof captured',
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          key: const Key('record_worker_location_button'),
+                          onPressed: _isSaving ? null : _captureWorkerLocation,
+                          icon: const Icon(Icons.my_location_rounded),
+                          label: Text(
+                            _workerPosition == null
+                                ? 'Record current location'
+                                : 'Location recorded',
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_proofMessage != null) ...[
+                      const SizedBox(height: 8),
+                      Text(_proofMessage!),
+                    ],
+                    if (_locationMessage != null) ...[
+                      const SizedBox(height: 4),
+                      Text(_locationMessage!),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
             // ── Section 3: Family Members ───────────────────────────────────
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -504,7 +783,10 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
                   _isSaving
                       ? 'Saving to Local Store...'
                       : (l10n?.registerHousehold ?? 'Register Household'),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size.fromHeight(52),
@@ -558,9 +840,7 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  isHead
-                      ? 'Member 1: Household Head'
-                      : 'Member ${index + 1}',
+                  isHead ? 'Member 1: Household Head' : 'Member ${index + 1}',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: isHead ? Theme.of(context).primaryColor : null,

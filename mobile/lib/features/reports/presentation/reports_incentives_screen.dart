@@ -143,7 +143,9 @@ class _ReportsIncentivesScreenState extends State<ReportsIncentivesScreen> {
               iconBgColor: const Color(0xFFE0F2FE),
               title: 'Monthly Summary',
               subtitle: 'Visit reports, coverage',
-              onTap: () => context.push('/coverage'),
+              onTap: () => context.push(
+                '/reports/registers?register=monthly_report&view=pdf',
+              ),
             ),
 
             const SizedBox(height: 12),

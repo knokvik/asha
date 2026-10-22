@@ -15,13 +15,11 @@ import {
   Building2,
   CheckCircle2,
   RotateCw,
-  PhoneCall,
   Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 
 const ROLE_ICONS: Record<UserRole, any> = {
   PHC_MO: Stethoscope,
@@ -55,6 +53,7 @@ export function LoginPage() {
   const [username, setUsername] = useState('doctor');
   const [password, setPassword] = useState('doctor123');
   const [selectedRole, setSelectedRole] = useState<UserRole>('PHC_MO');
+  const [selectedCatchment, setSelectedCatchment] = useState('delhi-aerocity');
   const [captchaCode, setCaptchaCode] = useState('8K4X2');
   const [captchaInput, setCaptchaInput] = useState('8K4X2');
   const [error, setError] = useState<string | null>(null);
@@ -97,6 +96,7 @@ export function LoginPage() {
     try {
       const result = await loginWithCredentials(username, password, selectedRole);
       if (result.success) {
+        localStorage.setItem('asha_catchment', selectedCatchment);
         navigate('/dashboard');
       } else {
         setError(result.error || 'Authentication failed. Please verify credentials.');
@@ -133,55 +133,7 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[#F8FAF9] dark:bg-[#121214] text-slate-900 dark:text-slate-100 font-sans antialiased">
-      {/* 1. Official Government of India Top Banner */}
-      <div>
-        {/* Tricolor Ribbon */}
-        <div className="h-1.5 w-full flex">
-          <div className="h-full w-1/3 bg-[#FF9933]" />
-          <div className="h-full w-1/3 bg-white" />
-          <div className="h-full w-1/3 bg-[#138808]" />
-        </div>
-
-        {/* Government Header Bar */}
-        <header className="flex h-18 shrink-0 items-center justify-between border-b border-[#E5EAE7] dark:border-[#26262A] bg-white dark:bg-[#18181B] px-6 lg:px-12">
-          {/* Left: National Emblem & NHM / ABDM Info */}
-          <div className="flex items-center space-x-3.5">
-            {/* National Emblem SVG Representation */}
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#F0FAF5] dark:bg-[#132A20] border border-[#D1EFE2] dark:border-[#1E4334] text-[#0C5A3E] dark:text-[#34D399]">
-              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="currentColor">
-                <path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm1 14.93V18h-2v-1.07A6.99 6.99 0 0 1 6.07 13H7v-2H5.07A7.008 7.008 0 0 1 11 5.07V6h2v-.93A7.008 7.008 0 0 1 18.93 11H17v2h1.93A6.99 6.99 0 0 1 13 16.93zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />
-              </svg>
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
-                  राष्ट्रीय स्वास्थ्य मिशन • National Health Mission
-                </span>
-                <Badge variant="outline" className="text-[10px] text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800">
-                  Govt. of India
-                </Badge>
-              </div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                Ministry of Health & Family Welfare • Government of Uttar Pradesh Catchment
-              </div>
-            </div>
-          </div>
-
-          {/* Right: Security & Helpdesk Pill */}
-          <div className="hidden sm:flex items-center space-x-4">
-            <div className="flex items-center space-x-2 text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-[#202024] px-3 py-1.5 rounded-full border border-slate-200 dark:border-[#2E2E34]">
-              <PhoneCall className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" />
-              <span>National Toll Free: <strong>104 / 14477</strong></span>
-            </div>
-            <div className="flex items-center space-x-1 text-xs text-slate-500 dark:text-slate-400">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              <span>SSL Secure (TLS 1.3)</span>
-            </div>
-          </div>
-        </header>
-      </div>
-
-      {/* 2. Main Login Body */}
+      {/* Main Login Body */}
       <main className="flex-1 flex items-center justify-center p-4 lg:p-8">
         <div className="w-full max-w-md">
           {/* Official Credential Card */}
@@ -192,14 +144,14 @@ export function LoginPage() {
               <div className="mb-3 flex items-center justify-center">
                 <img
                   src="/asha_logo.jpg"
-                  alt="ASHA Logo"
+                  alt="Asha Logo"
                   className="h-16 w-auto object-contain rounded-lg shadow-xs"
                 />
               </div>
 
               {/* Title & Subtitle */}
               <CardTitle className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-                ASHA Setu Portal Login
+                Asha Portal Login
               </CardTitle>
               <CardDescription className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
                 National Health Mission (NHM) • Single Sign-On & Healthcare Command Center
@@ -234,6 +186,21 @@ export function LoginPage() {
                         {tab.label} ({tab.short})
                       </option>
                     ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <Building2 className="h-3.5 w-3.5 text-slate-500" />
+                    <span>Service catchment</span>
+                  </label>
+                  <select
+                    value={selectedCatchment}
+                    onChange={(e) => setSelectedCatchment(e.target.value)}
+                    className="w-full h-10 px-3 text-xs bg-[#FBFDFB] dark:bg-[#17171A] border border-slate-300 dark:border-[#2E2E2E] rounded-md text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0C5A3E] cursor-pointer"
+                  >
+                    <option value="delhi-aerocity">Delhi • IGI Airport / Aerocity catchment</option>
+                    <option value="varanasi-shahpur">Varanasi • Shahpur catchment</option>
                   </select>
                 </div>
 

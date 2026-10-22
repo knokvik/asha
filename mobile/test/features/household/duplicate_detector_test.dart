@@ -52,14 +52,20 @@ void main() {
 
   group('DuplicateDetector - Levenshtein Distance & Similarity', () {
     test('computes exact distance for standard operations', () {
-      expect(DuplicateDetector.levenshteinDistance('kitten', 'sitting'), equals(3));
+      expect(
+        DuplicateDetector.levenshteinDistance('kitten', 'sitting'),
+        equals(3),
+      );
       expect(DuplicateDetector.levenshteinDistance('same', 'same'), equals(0));
       expect(DuplicateDetector.levenshteinDistance('', 'test'), equals(4));
       expect(DuplicateDetector.levenshteinDistance('test', ''), equals(4));
     });
 
     test('computes normalised similarity between 0.0 and 1.0', () {
-      expect(DuplicateDetector.levenshteinSimilarity('Anita', 'Anita'), equals(1.0));
+      expect(
+        DuplicateDetector.levenshteinSimilarity('Anita', 'Anita'),
+        equals(1.0),
+      );
       expect(DuplicateDetector.levenshteinSimilarity('', ''), equals(1.0));
       expect(DuplicateDetector.levenshteinSimilarity('Anita', ''), equals(0.0));
 
@@ -109,7 +115,10 @@ void main() {
         phone2: '9111111111',
       );
       expect(scoreWithMismatchedPhone, closeTo(0.85, 1e-6));
-      expect(scoreWithMismatchedPhone, greaterThanOrEqualTo(detector.threshold));
+      expect(
+        scoreWithMismatchedPhone,
+        greaterThanOrEqualTo(detector.threshold),
+      );
     });
 
     test('filters and orders duplicate candidates above threshold', () {
@@ -171,10 +180,40 @@ void main() {
       expect(matches.first.score, greaterThanOrEqualTo(0.75));
       expect(matches.any((c) => c.existingMember.id == 'm3'), isFalse);
     });
+
+    test(
+      'always surfaces an exact normalized name even without other details',
+      () {
+        const existing = Member(
+          id: 'm-exact',
+          householdId: 'hh-existing',
+          name: '  Meena   Devi ',
+          sex: 'F',
+          isDobApprox: false,
+          lifecycleStatus: 'active',
+          consentStatus: 'granted',
+          createdAt: 1000,
+          updatedAt: 1000,
+          createdBy: 'user',
+          syncStatus: 'pending',
+          serverVersion: 1,
+        );
+
+        final matches = detector.filterDuplicates(
+          existingMembers: [existing],
+          targetName: 'meena devi',
+        );
+
+        expect(matches.single.existingMember.id, equals('m-exact'));
+        expect(matches.single.nameScore, equals(1.0));
+      },
+    );
   });
 
   group('DuplicateConfirmationDialog', () {
-    testWidgets('renders match details and returns user resolution', (tester) async {
+    testWidgets('renders match details and returns user resolution', (
+      tester,
+    ) async {
       const candidateMember = Member(
         id: 'm1',
         householdId: 'hh-001',
@@ -230,7 +269,9 @@ void main() {
       expect(find.textContaining('92% match'), findsOneWidget);
 
       // Tap Merge / Link
-      final mergeButton = find.byKey(const Key('duplicate_dialog_merge_button'));
+      final mergeButton = find.byKey(
+        const Key('duplicate_dialog_merge_button'),
+      );
       expect(mergeButton, findsOneWidget);
       await tester.tap(mergeButton);
       await tester.pumpAndSettle();

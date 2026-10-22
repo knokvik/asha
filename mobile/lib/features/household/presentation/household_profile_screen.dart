@@ -37,6 +37,7 @@ class HouseholdProfileScreen extends StatefulWidget {
 class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  int _selectedTab = 0;
 
   @override
   void initState() {
@@ -189,6 +190,7 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
                     indicatorColor: AshaColors.primary,
                     indicatorWeight: 3,
                     indicatorSize: TabBarIndicatorSize.label,
+                    onTap: (index) => setState(() => _selectedTab = index),
                     labelStyle: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -202,6 +204,8 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
                   ),
 
                   const SizedBox(height: 20),
+
+                  if (_selectedTab != 0) _buildSecondaryPanel(),
 
                   // Key Information Card
                   Container(
@@ -398,7 +402,7 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
                     icon: Icons.shortcut_rounded,
                     label: 'Referral',
                     color: AshaColors.teleConsultBlue,
-                    onTap: () => context.push('/referral/new'),
+                    onTap: () => context.push('/referral/unregistered_patient'),
                   ),
                   _buildBottomAction(
                     icon: Icons.phone_outlined,
@@ -412,6 +416,151 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSecondaryPanel() {
+    final panels = <int, Widget>{
+      1: _buildPanel(
+        icon: Icons.event_note_outlined,
+        title: 'Visits',
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildTimelineRow(widget.lastVisit, 'ANC follow-up', 'Completed'),
+            const Divider(height: 20),
+            _buildTimelineRow('Next due', 'Routine home visit', 'Pending'),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const Key('household_profile_add_visit_button'),
+                onPressed: () => _showAddVisitSheet(context),
+                icon: const Icon(Icons.add),
+                label: const Text('Add visit record'),
+              ),
+            ),
+          ],
+        ),
+      ),
+      2: _buildPanel(
+        icon: Icons.health_and_safety_outlined,
+        title: 'Triage history',
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildTimelineRow(
+              widget.lastVisit,
+              'Routine screening',
+              widget.riskLevel,
+            ),
+            const Divider(height: 20),
+            const Text(
+              'Start an assessment to record current symptoms and vitals for this person.',
+              style: TextStyle(fontSize: 13, color: AshaColors.textSecondary),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                key: const Key('household_profile_start_triage_button'),
+                onPressed: () => context.push('/triage'),
+                icon: const Icon(Icons.play_arrow_rounded),
+                label: const Text('Start assessment'),
+              ),
+            ),
+          ],
+        ),
+      ),
+      3: _buildPanel(
+        icon: Icons.groups_outlined,
+        title: 'Family',
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Open the household register to view and update linked family members.',
+              style: TextStyle(fontSize: 13, color: AshaColors.textSecondary),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const Key('household_profile_family_button'),
+                onPressed: () => context.go('/households'),
+                icon: const Icon(Icons.home_work_outlined),
+                label: const Text('Open household records'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    };
+    return panels[_selectedTab] ?? const SizedBox.shrink();
+  }
+
+  Widget _buildPanel({
+    required IconData icon,
+    required String title,
+    required Widget body,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      margin: const EdgeInsets.only(bottom: 18),
+      decoration: BoxDecoration(
+        color: AshaColors.cardSurface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AshaColors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: AshaColors.primary),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: AshaColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          body,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimelineRow(String date, String title, String status) {
+    return Row(
+      children: [
+        const Icon(Icons.circle, size: 8, color: AshaColors.primary),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+              Text(
+                date,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AshaColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Text(
+          status,
+          style: const TextStyle(fontSize: 12, color: AshaColors.vitalNormal),
+        ),
+      ],
     );
   }
 
@@ -480,20 +629,34 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
               ListTile(
                 leading: const Icon(Icons.qr_code_rounded),
                 title: const Text('View ABHA Health ID QR Card'),
-                onTap: () => Navigator.pop(ctx),
-              ),
-              ListTile(
-                leading: const Icon(Icons.history_rounded),
-                title: const Text('Beneficiary Health Timeline'),
                 onTap: () {
                   Navigator.pop(ctx);
-                  context.push('/beneficiary-timeline');
+                  _showIdDialog(context);
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.edit_outlined),
-                title: const Text('Edit Household Details'),
-                onTap: () => Navigator.pop(ctx),
+                leading: const Icon(Icons.event_note_outlined),
+                title: const Text('Open visits'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  setState(() => _selectedTab = 1);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.health_and_safety_outlined),
+                title: const Text('Start triage'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.push('/triage');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.groups_outlined),
+                title: const Text('Open family'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  setState(() => _selectedTab = 3);
+                },
               ),
             ],
           ),
@@ -503,9 +666,51 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
   }
 
   void _showAddVisitSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Wrap(
+          children: [
+            const ListTile(
+              title: Text('Add visit record'),
+              subtitle: Text('Choose the visit type to save locally.'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.home_outlined),
+              title: const Text('Home visit'),
+              onTap: () => _saveVisit(sheetContext, 'Home visit'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.medical_services_outlined),
+              title: const Text('ANC follow-up'),
+              onTap: () => _saveVisit(sheetContext, 'ANC follow-up'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _saveVisit(BuildContext sheetContext, String type) {
+    Navigator.pop(sheetContext);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Scheduled ANC follow-up recorded for Savitri Devi.'),
+      SnackBar(content: Text('$type saved locally for ${widget.name}.')),
+    );
+  }
+
+  void _showIdDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('ABHA Health ID'),
+        content: Text('${widget.name}\nABHA ID is linked to this profile.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }
@@ -513,7 +718,7 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
   void _callFamily(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Dialing beneficiary guardian: +91 98765 43210'),
+        content: Text('No family phone number is recorded for this profile.'),
       ),
     );
   }

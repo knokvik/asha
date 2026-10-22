@@ -10,7 +10,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'ASHA Platform';
+  String get appTitle => 'Asha';
 
   @override
   String get settingUp => 'Setting up encrypted storage...';

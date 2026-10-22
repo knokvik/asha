@@ -23,6 +23,7 @@ import '../features/reports/presentation/reports_incentives_screen.dart';
 import '../shared/shell/main_shell.dart';
 import '../shared/shell/shell_tab.dart';
 import '../features/sync/presentation/sync_queue_screen.dart';
+import '../features/tracking/presentation/tracking_screen.dart';
 
 // Triage & Referral
 import '../features/referral/presentation/referral_slip_screen.dart';
@@ -57,6 +58,7 @@ import '../features/devices/presentation/breath_counter_screen.dart';
 import '../features/devices/presentation/measurement_capture_screen.dart';
 import '../features/devices/domain/ble_models.dart';
 import '../features/reports/presentation/register_viewer_screen.dart';
+import '../core/pdf/register_models.dart';
 import '../features/vhsnd/presentation/health_education_library_screen.dart';
 import '../features/vhsnd/domain/vhsnd_models.dart';
 import '../features/due_list/presentation/route_map_screen.dart';
@@ -130,6 +132,25 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
       path: '/tools',
       pageBuilder: (context, state) =>
           _buildSlidePage(state: state, child: const ToolsScreen()),
+    ),
+    GoRoute(
+      path: '/tracking',
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const TrackingScreen()),
+      routes: [
+        GoRoute(
+          path: 'detail',
+          pageBuilder: (context, state) {
+            final record = state.extra;
+            return _buildSlidePage(
+              state: state,
+              child: record is TrackingRecord
+                  ? TrackingDetailScreen(record: record)
+                  : const TrackingScreen(),
+            );
+          },
+        ),
+      ],
     ),
     GoRoute(
       path: '/profile',
@@ -486,6 +507,11 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
             workerId: 'asha-01',
             ashaName: 'Sunita Sharma',
             villageName: 'Rampur Gram Panchayat',
+            initialRegister:
+                state.uri.queryParameters['register'] == 'monthly_report'
+                ? RegisterType.monthlyReport
+                : RegisterType.rch,
+            startInPdfMode: state.uri.queryParameters['view'] == 'pdf',
           );
         }
         return const _FallbackContainer(title: 'Registers & Reports');

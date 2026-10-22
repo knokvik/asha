@@ -70,7 +70,7 @@ const NAV_ITEMS = [
   },
   {
     label: 'Clinical Programs',
-    path: '/queue',
+    path: '/clinical-programs',
     icon: FileCheck2,
   },
   {
@@ -99,6 +99,11 @@ export function RootLayout() {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [clinicalToolsOpen, setClinicalToolsOpen] = useState(false);
+  const catchment = localStorage.getItem('asha_catchment') || 'delhi-aerocity';
+  const isDelhiCatchment = catchment === 'delhi-aerocity';
+  const facilityName = isDelhiCatchment ? 'PHC Aerocity' : 'PHC Shahpur';
+  const facilityId = isDelhiCatchment ? 'PHC-AERO-01' : 'PHC-SHP-04';
+  const districtName = isDelhiCatchment ? 'Delhi South-West' : 'Varanasi';
 
   if (!user) return <Navigate to="/login" replace />;
 
@@ -174,7 +179,7 @@ export function RootLayout() {
           {sidebarCollapsed ? (
             <div
               className="w-10 h-10 flex items-center justify-center rounded-xl bg-[#EBF7F2] dark:bg-[#132A20] text-[#0C5A3E] dark:text-[#34D399] border border-[#D1EFE2] dark:border-[#1E4334] cursor-pointer"
-              title="PHC Shahpur (PHC-SHP-04)"
+              title={`${facilityName} (${facilityId})`}
               onClick={() => navigate('/dashboard')}
             >
               <Landmark className="h-5 w-5" />
@@ -183,16 +188,16 @@ export function RootLayout() {
             <div className="flex items-center rounded-xl px-2 py-1.5 space-x-2.5">
               <div
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EBF7F2] dark:bg-[#132A20] text-[#0C5A3E] dark:text-[#34D399] border border-[#D1EFE2] dark:border-[#1E4334]"
-                title="PHC Shahpur (PHC-SHP-04)"
+                title={`${facilityName} (${facilityId})`}
               >
                 <Landmark className="h-5 w-5" />
               </div>
               <div className="flex flex-col truncate">
                 <span className="text-sm font-bold text-slate-900 dark:text-white truncate">
-                  PHC Shahpur
+                  {facilityName}
                 </span>
                 <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Facility ID: PHC-SHP-04
+                  Facility ID: {facilityId}
                 </span>
               </div>
             </div>
@@ -205,7 +210,7 @@ export function RootLayout() {
             <div
               onClick={() => navigate('/admin')}
               className="w-10 h-10 flex items-center justify-center rounded-xl bg-[#EBF7F2] dark:bg-[#132A20] border border-[#CDEEE0] dark:border-[#1E4334] text-[#0C5A3E] dark:text-[#34D399] hover:bg-[#E2F4EC] dark:hover:bg-[#19372A] transition-colors cursor-pointer"
-              title="ABHA Verified - NHM Varanasi"
+              title={`ABHA Verified - NHM ${districtName}`}
             >
               <ShieldCheck className="h-5 w-5 text-[#0C5A3E] dark:text-[#34D399]" />
             </div>
@@ -213,7 +218,7 @@ export function RootLayout() {
             <div
               onClick={() => navigate('/admin')}
               className="rounded-xl bg-[#EBF7F2] dark:bg-[#132A20] border border-[#CDEEE0] dark:border-[#1E4334] p-2 flex items-center justify-between cursor-pointer hover:bg-[#E2F4EC] dark:hover:bg-[#19372A] transition-colors"
-              title="ABHA Verified - NHM Varanasi"
+              title={`ABHA Verified - NHM ${districtName}`}
             >
               <div className="flex items-center space-x-2">
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#0C5A3E] text-white">
@@ -224,7 +229,7 @@ export function RootLayout() {
                     ABHA Verified
                   </span>
                   <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                    NHM • Varanasi
+                    NHM • {districtName}
                   </span>
                 </div>
               </div>
@@ -454,7 +459,7 @@ export function RootLayout() {
               >
                 <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
                   <p className="text-xs font-bold text-slate-900 dark:text-white">{user?.name || 'Dr. Alok Verma'}</p>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400">Facility MO • Shahpur</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">Facility MO • {facilityName.replace('PHC ', '')}</p>
                 </div>
                 <button
                   onClick={() => {
@@ -513,7 +518,7 @@ export function RootLayout() {
               <Home className="h-4 w-4 text-slate-400 shrink-0" />
               <span className="font-medium text-slate-600 dark:text-slate-300">National Health Mission</span>
               <span className="text-slate-300 dark:text-slate-600">|</span>
-              <span className="font-semibold text-slate-700 dark:text-slate-200">Varanasi District</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-200">{districtName} District</span>
             </div>
           </div>
 
@@ -578,7 +583,7 @@ export function RootLayout() {
             {/* Notification Bell with red badge */}
             <div className="relative">
               <button
-                onClick={() => navigate('/phc')}
+                onClick={() => navigate('/notifications')}
                 className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors relative cursor-pointer"
                 title="Notifications"
               >

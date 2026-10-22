@@ -40,9 +40,7 @@ export function AFSupervisionPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const urlSearch = searchParams.get('search') || searchParams.get('worker') || '';
-  const urlTab = searchParams.get('tab');
   const [searchTerm, setSearchTerm] = useState(urlSearch);
-  const [activeTab, setActiveTab] = useState<'supervision' | 'sync_feed'>(urlTab === 'sync' ? 'sync_feed' : 'supervision');
 
   const { syncActivities, triggerManualSync, isSyncing, lastSyncTime } = useSync();
   const [syncSearch, setSyncSearch] = useState('');
@@ -53,10 +51,7 @@ export function AFSupervisionPage() {
     if (urlSearch) {
       setSearchTerm(urlSearch);
     }
-    if (urlTab === 'sync') {
-      setActiveTab('sync_feed');
-    }
-  }, [urlSearch, urlTab]);
+  }, [urlSearch]);
   const [selectedAsha, setSelectedAsha] = useState<AshaPerformanceCard | null>(null);
   const [checklistOpen, setChecklistOpen] = useState(false);
   const [badgeModalOpen, setBadgeModalOpen] = useState(false);
@@ -175,44 +170,8 @@ export function AFSupervisionPage() {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-[#26262A] pb-1">
-        <button
-          onClick={() => setActiveTab('supervision')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === 'supervision'
-              ? 'bg-[#0C5A3E] text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#222226]'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          <span>ASHA Team Supervision & Performance ({ashas.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('sync_feed')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeTab === 'sync_feed'
-              ? 'bg-[#0C5A3E] text-white shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#222226]'
-          }`}
-        >
-          <div className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-          </div>
-          <Activity className="w-4 h-4 text-emerald-500" />
-          <span>Live Frontline Data Sync Feed ({syncActivities.length})</span>
-          {urgentCount > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-500 text-white font-bold">
-              {urgentCount} RED
-            </span>
-          )}
-        </button>
-      </div>
-
-      {activeTab === 'supervision' ? (
-        /* TAB 1: ASHA Team Supervision & Performance */
+      <>
+        {/* ASHA Team Supervision & Performance */}
         <div className="space-y-6">
           <ImciAshaTable />
 
@@ -231,10 +190,20 @@ export function AFSupervisionPage() {
           {/* ASHA Performance Cards Grid (Req 39.1) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {filteredAshas.map((asha) => {
+              const recentTasks = syncActivities
+                .filter((activity) => activity.workerName === asha.ashaName)
+                .slice(0, 4);
               return (
-                <Card
+                <details
                   key={asha.ashaId}
-                  className="p-6 border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] hover:border-slate-300 dark:hover:border-[#404040] transition-all space-y-4 shadow-xs"
+                  className="group rounded-xl border border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] shadow-xs"
+                >
+                  <summary className="cursor-pointer list-none px-5 py-4 text-sm font-bold text-slate-900 dark:text-white flex items-center justify-between">
+                    <span>{asha.ashaName} <span className="font-normal text-slate-500">· {asha.village}</span></span>
+                    <span className="text-[11px] text-emerald-600">Last sync {new Date(asha.lastSyncAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  </summary>
+                <Card
+                  className="border-0 border-t border-[#E5E7EB] dark:border-[#2E2E2E] rounded-none rounded-b-xl p-6 bg-transparent space-y-4"
                 >
                   {/* Card Top: Name, Village, Sync Time */}
                   <div className="flex items-start justify-between gap-3">
@@ -320,8 +289,28 @@ export function AFSupervisionPage() {
                     </div>
                   )}
 
+                  <div className="rounded-xl border border-slate-200 dark:border-[#2E2E2E] bg-slate-50/70 dark:bg-[#1E1E1E] p-3 space-y-2">
+                    <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Recent field tasks</div>
+                    {recentTasks.length > 0 ? recentTasks.map((task) => (
+                      <div key={task.id} className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        <span className="truncate">{task.details}</span>
+                        <span className="ml-auto text-[10px] text-slate-400">{task.syncTime}</span>
+                      </div>
+                    )) : <div className="text-xs text-slate-500">No recent field packets for this worker.</div>}
+                  </div>
+
                   {/* Card Actions: Checklist & Recognition */}
                   <div className="flex items-center gap-2 pt-2 border-t border-[#E5E7EB] dark:border-[#2E2E2E]">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/af/worker/${encodeURIComponent(asha.ashaName)}`)}
+                      className="gap-1.5"
+                    >
+                      <ArrowRight className="w-3.5 h-3.5" />
+                      <span>More details</span>
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -347,12 +336,13 @@ export function AFSupervisionPage() {
                     </Button>
                   </div>
                 </Card>
+                </details>
               );
             })}
           </div>
         </div>
-      ) : (
-        /* TAB 2: Live Frontline Data Sync Feed (What Was Received & When) */
+
+        {/* Live Frontline Data Sync Feed (What Was Received & When) */}
         <div className="space-y-4">
           {/* Real-time Ingest Status Strip */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -614,7 +604,6 @@ export function AFSupervisionPage() {
                             <button
                               onClick={() => {
                                 setSearchTerm(act.workerName);
-                                setActiveTab('supervision');
                               }}
                               className="w-full py-1.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                             >
@@ -631,7 +620,7 @@ export function AFSupervisionPage() {
             )}
           </div>
         </div>
-      )}
+      </>
 
       {/* Digital Field Supervision Checklist Modal (Req 39.2) */}
       {checklistOpen && selectedAsha && (

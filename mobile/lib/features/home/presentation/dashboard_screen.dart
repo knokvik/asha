@@ -622,6 +622,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           ],
         ),
+        const SizedBox(height: 10),
+        _buildQuickActionCard(
+          title: 'Tracking',
+          iconWidget: _quickActionIcon(
+            Icons.track_changes_rounded,
+            const Color(0xFF0F766E),
+          ),
+          onTap: () => context.push('/tracking'),
+        ),
       ],
     );
   }
@@ -733,7 +742,8 @@ class AshaNavigationDrawer extends ConsumerWidget {
     final isConnected = syncCoordinator?.snapshot.isConnectedToServer ?? false;
 
     final rawName = profile?.name ?? '';
-    final isDefaultName = rawName.isEmpty ||
+    final isDefaultName =
+        rawName.isEmpty ||
         rawName == 'Sunita Devi' ||
         rawName == 'Sunita Sharma' ||
         rawName == 'ASHA Worker';
@@ -998,7 +1008,9 @@ class AshaNavigationDrawer extends ConsumerWidget {
                           builder: (dialogCtx) => AlertDialog(
                             title: Text(
                               shellText(lang, 'signOutConfirm'),
-                              style: const TextStyle(fontWeight: FontWeight.w800),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                             content: Text(
                               shellText(lang, 'signOutConfirmDesc'),

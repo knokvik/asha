@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     OFFLINE_CREDENTIAL_EXPIRE_DAYS: int = 7
+    RESEND_API_KEY: str | None = None
+    RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
 
     # ── Rate limiting ─────────────────────────────────────────────────────────
     LOGIN_MAX_ATTEMPTS: int = 5

@@ -182,6 +182,71 @@ class DemoDataSeeder {
           ),
         );
 
+    // Household 4: Rural Farming Family with Toddler (Immunization & Nutrition tracking)
+    await db.into(db.households).insert(
+          HouseholdsCompanion.insert(
+            id: 'hh_04',
+            village: 'Rampur',
+            headName: 'Sunil Yadav',
+            hamlet: const Value('Ward 2 (Purwa Tola)'),
+            createdAt: nowMs - (30 * dayMs),
+            updatedAt: nowMs,
+            createdBy: workerId,
+          ),
+        );
+
+    await db.into(db.members).insert(
+          MembersCompanion.insert(
+            id: 'mem_priya_04',
+            householdId: 'hh_04',
+            name: 'Priya Yadav',
+            sex: 'F',
+            dobApprox: Value(nowMs - (16 * 30 * dayMs)),
+            relationshipToHead: const Value('Daughter'),
+            phone: const Value('9876543210'),
+            abhaId: const Value('14-7711-2244-9988'),
+            rchId: const Value('RCH-2025-44551'),
+            lifecycleStatus: const Value('active'),
+            consentStatus: const Value('given'),
+            createdAt: nowMs - (30 * dayMs),
+            updatedAt: nowMs,
+            createdBy: workerId,
+          ),
+        );
+
+    // Household 5: Elderly Citizen (Presumptive TB Screening & Nikshay Follow-up)
+    await db.into(db.households).insert(
+          HouseholdsCompanion.insert(
+            id: 'hh_05',
+            village: 'Rampur',
+            headName: 'Shanti Devi',
+            hamlet: const Value('Ward 3 (Basti)'),
+            createdAt: nowMs - (45 * dayMs),
+            updatedAt: nowMs,
+            createdBy: workerId,
+          ),
+        );
+
+    await db.into(db.members).insert(
+          MembersCompanion.insert(
+            id: 'mem_shanti_05',
+            householdId: 'hh_05',
+            name: 'Shanti Devi',
+            sex: 'F',
+            dobApprox: Value(nowMs - (58 * 365 * dayMs)),
+            relationshipToHead: const Value('Self'),
+            phone: const Value('9833445566'),
+            abhaId: const Value('14-6655-4433-2211'),
+            isBpl: const Value(true),
+            socialCategory: const Value('SC'),
+            lifecycleStatus: const Value('active'),
+            consentStatus: const Value('given'),
+            createdAt: nowMs - (45 * dayMs),
+            updatedAt: nowMs,
+            createdBy: workerId,
+          ),
+        );
+
     // 4. Clinical Encounter, Triage & RED Referral
     final poojaEncId = 'enc_pooja_$nowMs';
     await db.into(db.clinicalEncounters).insert(
@@ -299,6 +364,39 @@ class DemoDataSeeder {
           ),
         );
 
+    // 4c. Presumptive TB Screening Encounter & Triage
+    final tbEncId = 'enc_tb_shanti_$nowMs';
+    await db.into(db.clinicalEncounters).insert(
+          ClinicalEncountersCompanion.insert(
+            id: tbEncId,
+            memberId: 'mem_shanti_05',
+            encounterType: 'tb_screening',
+            programCode: 'tb',
+            encounterDate: nowMs - (2 * dayMs),
+            ashaId: workerId,
+            status: const Value('completed'),
+            visitNotes: const Value('Persistent cough >2 weeks, low-grade evening fever, loss of appetite. Sputum container given for PHC testing.'),
+            createdAt: nowMs - (2 * dayMs),
+            updatedAt: nowMs - (2 * dayMs),
+            syncStatus: const Value('pending'),
+          ),
+        );
+
+    await db.into(db.triageResults).insert(
+          TriageResultsCompanion.insert(
+            id: 'triage_tb_$nowMs',
+            encounterId: tbEncId,
+            flag: 'YELLOW',
+            ruleVersionId: 'v1.0-mohfw',
+            findingsJson: jsonEncode([
+              {'finding': 'Chronic productive cough (>14 days)', 'severity': 'warning'},
+              {'finding': 'Intermittent evening low-grade fever', 'severity': 'warning'},
+              {'finding': 'Unintentional weight loss & loss of appetite', 'severity': 'warning'},
+            ]),
+            evaluatedAt: nowMs - (2 * dayMs),
+          ),
+        );
+
     // 5. Scheduled Due List Tasks
     await db.into(db.visitSchedules).insert(
           VisitSchedulesCompanion.insert(
@@ -307,6 +405,8 @@ class DemoDataSeeder {
             programCode: 'anc',
             visitType: 'RED Emergency Referral Follow-up (PHC)',
             dueDate: nowMs,
+            dueWindowStart: Value(nowMs - (1 * dayMs)),
+            dueWindowEnd: Value(nowMs + (1 * dayMs)),
             status: const Value('due'),
             createdAt: nowMs,
           ),
@@ -319,6 +419,8 @@ class DemoDataSeeder {
             programCode: 'hbnc',
             visitType: 'HBNC Day 7 Newborn Check & Temperature',
             dueDate: nowMs,
+            dueWindowStart: Value(nowMs - (1 * dayMs)),
+            dueWindowEnd: Value(nowMs + (2 * dayMs)),
             status: const Value('due'),
             createdAt: nowMs - (7 * dayMs),
           ),
@@ -331,6 +433,8 @@ class DemoDataSeeder {
             programCode: 'ncd',
             visitType: 'NCD CBAC Checklist & Blood Pressure Check',
             dueDate: nowMs - (2 * dayMs),
+            dueWindowStart: Value(nowMs - (5 * dayMs)),
+            dueWindowEnd: Value(nowMs - (1 * dayMs)),
             status: const Value('overdue'),
             createdAt: nowMs - (10 * dayMs),
           ),
@@ -343,6 +447,64 @@ class DemoDataSeeder {
             programCode: 'vhsnd',
             visitType: 'VHSND Village Health, Sanitation & Nutrition Day',
             dueDate: nowMs + (3 * dayMs),
+            dueWindowStart: Value(nowMs + (1 * dayMs)),
+            dueWindowEnd: Value(nowMs + (5 * dayMs)),
+            status: const Value('pending'),
+            createdAt: nowMs,
+          ),
+        );
+
+    await db.into(db.visitSchedules).insert(
+          VisitSchedulesCompanion.insert(
+            id: 'task_due_05',
+            memberId: 'mem_priya_04',
+            programCode: 'immunization',
+            visitType: 'Routine Immunization: MR-1 & DPT Booster-1',
+            dueDate: nowMs,
+            dueWindowStart: Value(nowMs - (7 * dayMs)),
+            dueWindowEnd: Value(nowMs + (7 * dayMs)),
+            status: const Value('due'),
+            createdAt: nowMs - (14 * dayMs),
+          ),
+        );
+
+    await db.into(db.visitSchedules).insert(
+          VisitSchedulesCompanion.insert(
+            id: 'task_due_06',
+            memberId: 'mem_shanti_05',
+            programCode: 'tb',
+            visitType: 'Presumptive TB Sputum Collection & Nikshay Registration',
+            dueDate: nowMs - (1 * dayMs),
+            dueWindowStart: Value(nowMs - (3 * dayMs)),
+            dueWindowEnd: Value(nowMs - (1 * dayMs)),
+            status: const Value('overdue'),
+            createdAt: nowMs - (4 * dayMs),
+          ),
+        );
+
+    await db.into(db.visitSchedules).insert(
+          VisitSchedulesCompanion.insert(
+            id: 'task_due_07',
+            memberId: 'mem_kavita_02',
+            programCode: 'pnc',
+            visitType: 'PNC Day 14 Maternal Health & Postpartum Recovery',
+            dueDate: nowMs + (7 * dayMs),
+            dueWindowStart: Value(nowMs + (5 * dayMs)),
+            dueWindowEnd: Value(nowMs + (9 * dayMs)),
+            status: const Value('pending'),
+            createdAt: nowMs - (7 * dayMs),
+          ),
+        );
+
+    await db.into(db.visitSchedules).insert(
+          VisitSchedulesCompanion.insert(
+            id: 'task_due_08',
+            memberId: 'mem_priya_04',
+            programCode: 'nutrition',
+            visitType: 'SAM/MAM Screening: MUAC Tape & Growth Faltering Check',
+            dueDate: nowMs + (2 * dayMs),
+            dueWindowStart: Value(nowMs),
+            dueWindowEnd: Value(nowMs + (5 * dayMs)),
             status: const Value('pending'),
             createdAt: nowMs,
           ),

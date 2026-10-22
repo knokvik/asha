@@ -18,6 +18,20 @@ class LoginRequest(BaseModel):
     otp: str | None = Field(None, description="OTP for account recovery")
 
 
+class PasswordResetRequest(BaseModel):
+    identifier: str = Field(..., min_length=3, max_length=320)
+
+
+class PasswordResetConfirmRequest(BaseModel):
+    identifier: str = Field(..., min_length=3, max_length=320)
+    code: str = Field(..., min_length=6, max_length=6)
+    new_password: str = Field(..., min_length=4, max_length=50)
+
+
+class PasswordResetResponse(BaseModel):
+    message: str
+
+
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str

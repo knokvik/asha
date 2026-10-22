@@ -9,10 +9,7 @@ class EarningsRepository {
   final AppDatabase db;
   final IncentiveService incentiveService;
 
-  EarningsRepository({
-    required this.db,
-    required this.incentiveService,
-  });
+  EarningsRepository({required this.db, required this.incentiveService});
 
   /// Computes monthly breakdown totals categorized by status (Req 55.1).
   Future<EarningsStatusTotals> getStatusTotals(String period) async {
@@ -20,9 +17,13 @@ class EarningsRepository {
     final startMs = range.$1.millisecondsSinceEpoch;
     final endMs = range.$2.millisecondsSinceEpoch;
 
-    final events = await (db.select(db.incentiveEvents)
-          ..where((t) => t.eventDate.isBiggerOrEqualValue(startMs) & t.eventDate.isSmallerOrEqualValue(endMs)))
-        .get();
+    final events =
+        await (db.select(db.incentiveEvents)..where(
+              (t) =>
+                  t.eventDate.isBiggerOrEqualValue(startMs) &
+                  t.eventDate.isSmallerOrEqualValue(endMs),
+            ))
+            .get();
 
     double eligibleAmt = 0.0;
     int eligibleCnt = 0;
@@ -99,9 +100,13 @@ class EarningsRepository {
     final startMs = range.$1.millisecondsSinceEpoch;
     final endMs = range.$2.millisecondsSinceEpoch;
 
-    final events = await (db.select(db.incentiveEvents)
-          ..where((t) => t.eventDate.isBiggerOrEqualValue(startMs) & t.eventDate.isSmallerOrEqualValue(endMs)))
-        .get();
+    final events =
+        await (db.select(db.incentiveEvents)..where(
+              (t) =>
+                  t.eventDate.isBiggerOrEqualValue(startMs) &
+                  t.eventDate.isSmallerOrEqualValue(endMs),
+            ))
+            .get();
 
     final items = <EarningsLineItem>[];
 
@@ -111,6 +116,14 @@ class EarningsRepository {
       final item = cat?.getItem(ev.activityCode);
       final amt = item?.rates.totalRate ?? 0.0;
       final name = item?.activityName ?? ev.activityCode;
+      final member = await (db.select(
+        db.members,
+      )..where((t) => t.id.equals(ev.memberId))).getSingleOrNull();
+      final household = member == null
+          ? null
+          : await (db.select(
+              db.households,
+            )..where((t) => t.id.equals(member.householdId))).getSingleOrNull();
 
       // De-identify member reference (Req 56.1, 56.7)
       final memberHash = ev.memberId.length > 6
@@ -125,6 +138,15 @@ class EarningsRepository {
           activityCode: ev.activityCode,
           activityName: name,
           memberCodedId: memberHash,
+          memberId: member?.id ?? ev.memberId,
+          memberName: member?.name,
+          householdId: household?.id,
+          householdArea: household == null
+              ? null
+              : [
+                  household.village,
+                  if ((household.hamlet ?? '').isNotEmpty) household.hamlet!,
+                ].join(' • '),
           serviceDate: date,
           amount: amt,
           status: ev.status,
@@ -143,8 +165,12 @@ class EarningsRepository {
   }
 
   /// Reconciles received payment against approved claim amounts and flags discrepancies (Req 55.3).
-  Future<List<PaymentReconciliation>> getReconciliations(String workerId, {String? period}) async {
-    var query = db.select(db.incentiveClaims)..where((t) => t.workerId.equals(workerId));
+  Future<List<PaymentReconciliation>> getReconciliations(
+    String workerId, {
+    String? period,
+  }) async {
+    var query = db.select(db.incentiveClaims)
+      ..where((t) => t.workerId.equals(workerId));
     if (period != null) {
       query = query..where((t) => t.claimPeriod.equals(period));
     }
@@ -163,10 +189,13 @@ class EarningsRepository {
           PaymentReconciliation(
             claimPeriod: claim.claimPeriod,
             approvedAmount: claim.totalAmount,
-            paidAmount: claim.totalAmount, // Default matches unless discrepancy set
+            paidAmount:
+                claim.totalAmount, // Default matches unless discrepancy set
             bankReference: ref,
             paymentDate: paidDate,
-            note: claim.status == 'paid' ? 'Disbursed via DBT/PFMS' : 'Under clearing',
+            note: claim.status == 'paid'
+                ? 'Disbursed via DBT/PFMS'
+                : 'Under clearing',
           ),
         );
       }
@@ -176,19 +205,24 @@ class EarningsRepository {
   }
 
   /// Computes projected earnings from in-progress eligible tasks (Req 55.4).
-  Future<EarningsProjection> getEarningsProjection(String workerId, String period) async {
+  Future<EarningsProjection> getEarningsProjection(
+    String workerId,
+    String period,
+  ) async {
     final totals = await getStatusTotals(period);
     final range = _getPeriodDateRange(period);
     final startMs = range.$1.millisecondsSinceEpoch;
     final endMs = range.$2.millisecondsSinceEpoch;
 
     // Look for deferred events in this period
-    final deferredEvents = await (db.select(db.incentiveEvents)
-          ..where((t) =>
-              t.eventDate.isBiggerOrEqualValue(startMs) &
-              t.eventDate.isSmallerOrEqualValue(endMs) &
-              t.status.equals(IncentiveStatus.deferred)))
-        .get();
+    final deferredEvents =
+        await (db.select(db.incentiveEvents)..where(
+              (t) =>
+                  t.eventDate.isBiggerOrEqualValue(startMs) &
+                  t.eventDate.isSmallerOrEqualValue(endMs) &
+                  t.status.equals(IncentiveStatus.deferred),
+            ))
+            .get();
 
     final pendingTasks = <ProjectedTask>[];
     double additionalAmount = 0.0;
@@ -209,7 +243,9 @@ class EarningsRepository {
           activityName: item?.activityName ?? ev.activityCode,
           memberCodedId: memberHash,
           currentProgress: 0.5,
-          remainingDescription: ev.ineligibilityReason ?? 'Pending completion of remaining visit schedule',
+          remainingDescription:
+              ev.ineligibilityReason ??
+              'Pending completion of remaining visit schedule',
           potentialAmount: potentialAmt,
         ),
       );
@@ -225,8 +261,13 @@ class EarningsRepository {
   }
 
   /// Assembles an official earnings statement for export or print (Req 55.5).
-  Future<EarningsStatement> generateStatement(String workerId, String period) async {
-    final user = await (db.select(db.users)..where((t) => t.id.equals(workerId))).getSingleOrNull();
+  Future<EarningsStatement> generateStatement(
+    String workerId,
+    String period,
+  ) async {
+    final user = await (db.select(
+      db.users,
+    )..where((t) => t.id.equals(workerId))).getSingleOrNull();
     final totals = await getStatusTotals(period);
     final lineItems = await getLineItems(period);
     final reconciliations = await getReconciliations(workerId, period: period);
@@ -277,7 +318,9 @@ class EarningsRepository {
     final month = parts.length > 1 ? (int.tryParse(parts[1]) ?? 1) : 1;
 
     final start = DateTime(year, month, 1);
-    final nextMonth = month == 12 ? DateTime(year + 1, 1, 1) : DateTime(year, month + 1, 1);
+    final nextMonth = month == 12
+        ? DateTime(year + 1, 1, 1)
+        : DateTime(year, month + 1, 1);
     final end = nextMonth.subtract(const Duration(milliseconds: 1));
 
     return (start, end);

@@ -96,7 +96,8 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
                       loading: () =>
                           const Center(child: CircularProgressIndicator()),
                       error: (error, _) => _errorState(error),
-                      data: (index) => _buildSearchResults(index, peopleAsync, lang),
+                      data: (index) =>
+                          _buildSearchResults(index, peopleAsync, lang),
                     ),
             ),
             _bottomSearchBar(context, lang),
@@ -949,9 +950,7 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
                   color: AshaColors.textPrimary,
                 ),
                 decoration: InputDecoration(
-                  hintText: lang == 'en'
-                      ? 'Search fever, medicines, guides, signs...'
-                      : '${shellText(lang, 'categoryDiseases')}, ${shellText(lang, 'categoryMedicines')}, ${shellText(lang, 'categoryGuides')}...',
+                  hintText: shellText(lang, 'searchHint'),
                   hintStyle: const TextStyle(
                     fontSize: 13.5,
                     color: AshaColors.textMuted,

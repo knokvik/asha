@@ -31,10 +31,7 @@ class HouseholdWithMembers {
   final Household household;
   final List<Member> members;
 
-  const HouseholdWithMembers({
-    required this.household,
-    required this.members,
-  });
+  const HouseholdWithMembers({required this.household, required this.members});
 }
 
 /// Repository coordinating offline-first household and member lifecycle.
@@ -71,6 +68,7 @@ class HouseholdRepository {
     String? contactPhone,
     String? latitude,
     String? longitude,
+    int? locationCapturedAt,
     String? landmarkNotes,
     String createdBy = 'offline_user',
   }) async {
@@ -125,6 +123,7 @@ class HouseholdRepository {
           'contact_phone': contactPhone,
           'latitude': latitude,
           'longitude': longitude,
+          'location_captured_at': locationCapturedAt,
           'landmark_notes': landmarkNotes,
           'member_count': 0,
           'created_at': now,
@@ -293,7 +292,9 @@ class HouseholdRepository {
       memberDao.getByHousehold(householdId);
 
   /// Retrieves a combined [HouseholdWithMembers] object.
-  Future<HouseholdWithMembers?> getHouseholdWithMembers(String householdId) async {
+  Future<HouseholdWithMembers?> getHouseholdWithMembers(
+    String householdId,
+  ) async {
     final household = await householdDao.getById(householdId);
     if (household == null) return null;
 

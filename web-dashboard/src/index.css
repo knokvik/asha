@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+@keyframes queue-marquee {
+  from { transform: translateX(100%); }
+  to { transform: translateX(-100%); }
+}
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {

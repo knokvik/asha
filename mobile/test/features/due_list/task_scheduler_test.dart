@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:asha_platform/core/database/app_database.dart';
@@ -8,6 +9,18 @@ import 'package:asha_platform/features/due_list/domain/due_list_models.dart';
 import 'package:asha_platform/features/due_list/domain/task_scheduler.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUpAll(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+      (MethodCall methodCall) async {
+        return null;
+      },
+    );
+  });
+
   group('Task 9.5: Due List & Task Scheduler Tests (Requirements 24.1 – 24.7)', () {
     late AppDatabase db;
     late SyncEngine syncEngine;

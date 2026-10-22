@@ -29,8 +29,7 @@ class FakeSecureStorage extends Fake implements FlutterSecureStorage {
     AppleOptions? mOptions,
     WebOptions? webOptions,
     WindowsOptions? wOptions,
-  }) async =>
-      _store[key];
+  }) async => _store[key];
 
   @override
   Future<void> write({
@@ -55,8 +54,7 @@ class FakeSecureStorage extends Fake implements FlutterSecureStorage {
     AppleOptions? mOptions,
     WebOptions? webOptions,
     WindowsOptions? wOptions,
-  }) async =>
-      _store.remove(key);
+  }) async => _store.remove(key);
 }
 
 void main() {
@@ -90,104 +88,129 @@ void main() {
 
   group('Task 3 Checkpoint: PIN Setup and App Integration', () {
     testWidgets(
-        'Launch app -> presents PIN setup screen -> enter PIN -> creates DB -> reaches home screen',
-        (tester) async {
-      final container = ProviderContainer(
-        overrides: [
-          authServiceProvider.overrideWithValue(authServiceInstance),
-          appDatabaseProvider.overrideWithValue(db),
-          keyManagerProvider.overrideWithValue(KeyManager(secureStorage: storage)),
-        ],
-      );
-      addTearDown(container.dispose);
+      'Launch app -> presents PIN setup screen -> enter PIN -> creates DB -> reaches home screen',
+      (tester) async {
+        final container = ProviderContainer(
+          overrides: [
+            authServiceProvider.overrideWithValue(authServiceInstance),
+            appDatabaseProvider.overrideWithValue(db),
+            keyManagerProvider.overrideWithValue(
+              KeyManager(secureStorage: storage),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
 
-      await tester.pumpWidget(createTestApp(container));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(createTestApp(container));
+        await tester.pumpAndSettle();
 
-      // 1. Should present PIN setup screen initially
-      expect(find.byType(PinSetupScreen), findsOneWidget);
-      expect(find.text('Security Setup'), findsOneWidget);
-      expect(find.byKey(const Key('pin_input_field')), findsOneWidget);
-      expect(find.byKey(const Key('confirm_pin_input_field')), findsOneWidget);
-      expect(find.byKey(const Key('submit_pin_button')), findsOneWidget);
+        // 1. Should present PIN setup screen initially
+        expect(find.byType(PinSetupScreen), findsOneWidget);
+        expect(find.text('Security Setup'), findsOneWidget);
+        expect(find.byKey(const Key('pin_input_field')), findsOneWidget);
+        expect(
+          find.byKey(const Key('confirm_pin_input_field')),
+          findsOneWidget,
+        );
+        expect(find.byKey(const Key('submit_pin_button')), findsOneWidget);
 
-      // 2. Enter PIN and matching confirm PIN
-      await tester.enterText(find.byKey(const Key('pin_input_field')), '1234');
-      await tester.enterText(
-          find.byKey(const Key('confirm_pin_input_field')), '1234');
-      await tester.pumpAndSettle();
+        // 2. Enter PIN and matching confirm PIN
+        await tester.enterText(
+          find.byKey(const Key('pin_input_field')),
+          '1234',
+        );
+        await tester.enterText(
+          find.byKey(const Key('confirm_pin_input_field')),
+          '1234',
+        );
+        await tester.pumpAndSettle();
 
-      // 3. Tap "Set PIN & Initialize"
-      await tester.tap(find.byKey(const Key('submit_pin_button')));
-      await tester.pumpAndSettle();
+        // 3. Tap "Set PIN & Initialize"
+        await tester.tap(find.byKey(const Key('submit_pin_button')));
+        await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('dashboard_screen')), findsOneWidget);
+        expect(find.byKey(const Key('dashboard_screen')), findsOneWidget);
 
-      // 5. Verify database is alive and can execute queries
-      final users = await db.select(db.users).get();
-      expect(users, isEmpty);
-    });
-
-    testWidgets(
-        'PIN mismatch displays validation error and stays on setup screen',
-        (tester) async {
-      final container = ProviderContainer(
-        overrides: [
-          authServiceProvider.overrideWithValue(authServiceInstance),
-          appDatabaseProvider.overrideWithValue(db),
-          keyManagerProvider.overrideWithValue(KeyManager(secureStorage: storage)),
-        ],
-      );
-      addTearDown(container.dispose);
-
-      await tester.pumpWidget(createTestApp(container));
-      await tester.pumpAndSettle();
-
-      // Enter mismatched PINs
-      await tester.enterText(find.byKey(const Key('pin_input_field')), '1234');
-      await tester.enterText(
-          find.byKey(const Key('confirm_pin_input_field')), '5678');
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const Key('submit_pin_button')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('PINs do not match. Please re-enter.'), findsOneWidget);
-      expect(find.byType(DueListScreen), findsNothing);
-    });
+        // 5. Verify database is alive and can execute queries
+        final users = await db.select(db.users).get();
+        expect(users, isEmpty);
+      },
+    );
 
     testWidgets(
-        'When PIN already configured -> presents unlock screen -> enter PIN -> reaches home screen',
-        (tester) async {
-      // Pre-configure PIN
-      await authServiceInstance.setupPin('4321');
+      'PIN mismatch displays validation error and stays on setup screen',
+      (tester) async {
+        final container = ProviderContainer(
+          overrides: [
+            authServiceProvider.overrideWithValue(authServiceInstance),
+            appDatabaseProvider.overrideWithValue(db),
+            keyManagerProvider.overrideWithValue(
+              KeyManager(secureStorage: storage),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
 
-      final container = ProviderContainer(
-        overrides: [
-          authServiceProvider.overrideWithValue(authServiceInstance),
-          appDatabaseProvider.overrideWithValue(db),
-          keyManagerProvider.overrideWithValue(KeyManager(secureStorage: storage)),
-        ],
-      );
-      addTearDown(container.dispose);
+        await tester.pumpWidget(createTestApp(container));
+        await tester.pumpAndSettle();
 
-      await tester.pumpWidget(createTestApp(container));
-      await tester.pumpAndSettle();
+        // Enter mismatched PINs
+        await tester.enterText(
+          find.byKey(const Key('pin_input_field')),
+          '1234',
+        );
+        await tester.enterText(
+          find.byKey(const Key('confirm_pin_input_field')),
+          '5678',
+        );
+        await tester.pumpAndSettle();
 
-      // Should show unlock mode
-      expect(find.text('Welcome Back'), findsOneWidget);
-      expect(find.byKey(const Key('confirm_pin_input_field')), findsNothing);
-      expect(find.text('Unlock Database'), findsOneWidget);
+        await tester.tap(find.byKey(const Key('submit_pin_button')));
+        await tester.pumpAndSettle();
 
-      // Enter correct PIN
-      await tester.enterText(find.byKey(const Key('pin_input_field')), '4321');
-      await tester.pumpAndSettle();
+        expect(
+          find.text('PINs do not match. Please re-enter.'),
+          findsOneWidget,
+        );
+        expect(find.byType(DueListScreen), findsNothing);
+      },
+    );
 
-      await tester.tap(find.byKey(const Key('submit_pin_button')));
-      await tester.pumpAndSettle();
+    testWidgets(
+      'When PIN already configured -> presents unlock screen -> enter PIN -> reaches home screen',
+      (tester) async {
+        // Pre-configure PIN
+        await authServiceInstance.setupPin('4321');
 
-      // Should reach home screen
-      expect(find.byKey(const Key('dashboard_screen')), findsOneWidget);
-    });
+        final container = ProviderContainer(
+          overrides: [
+            authServiceProvider.overrideWithValue(authServiceInstance),
+            appDatabaseProvider.overrideWithValue(db),
+            keyManagerProvider.overrideWithValue(
+              KeyManager(secureStorage: storage),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await tester.pumpWidget(createTestApp(container));
+        await tester.pumpAndSettle();
+
+        // Should show unlock mode
+        expect(find.text('Welcome Back'), findsOneWidget);
+        expect(find.byKey(const Key('confirm_pin_input_field')), findsNothing);
+        expect(find.byKey(const Key('biometric_unlock_button')), findsNothing);
+        expect(find.byKey(const Key('submit_pin_button')), findsNothing);
+
+        // Enter correct PIN using the four-digit keypad; verification is automatic.
+        for (final digit in ['4', '3', '2', '1']) {
+          await tester.tap(find.byKey(Key('pin_key_$digit')));
+        }
+        await tester.pumpAndSettle();
+
+        // Should reach home screen
+        expect(find.byKey(const Key('dashboard_screen')), findsOneWidget);
+      },
+    );
   });
 }

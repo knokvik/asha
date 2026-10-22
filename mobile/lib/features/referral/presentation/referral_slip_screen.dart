@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:printing/printing.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/database/app_database.dart' hide TriageResult;
 import '../../../core/pdf/pdf_generator.dart';
@@ -166,6 +167,7 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
 
   Future<void> _saveReferral() async {
     if (_note == null) return;
+    if (_savedRecord != null) return;
     setState(() => _isSaving = true);
     try {
       final repo = ref.read(referralRepositoryProvider);
@@ -183,15 +185,20 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
         pdfPath: pdfFile.path,
         transportArranged: _selectedTransport,
       );
+      await repo.updateStatus(
+        referralId: record.id,
+        newStatus: ReferralStatus.enRoute,
+      );
+      final dispatched = await repo.getReferral(record.id) ?? record;
 
       if (mounted) {
         setState(() {
-          _savedRecord = record;
+          _savedRecord = dispatched;
           _isSaving = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Referral recorded and enqueued for sync'),
+            content: Text('Referral confirmed and dispatched. Sync queued.'),
           ),
         );
       }
@@ -203,6 +210,27 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
         ).showSnackBar(SnackBar(content: Text('Failed to save referral: $e')));
       }
     }
+  }
+
+  Future<void> _launchPhone(String number, String label) async {
+    final uri = Uri.parse('tel:${number.replaceAll(RegExp(r'[^0-9+]'), '')}');
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open phone dialler for $label.')),
+      );
+    }
+  }
+
+  Future<void> _sendSms() async {
+    if (_note == null) return;
+    final smsText = SmsFallbackFormatter.formatSms(_note!);
+    final uri = Uri(
+      scheme: 'sms',
+      queryParameters: <String, String>{'body': smsText},
+    );
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) _showSmsDialog();
   }
 
   void _showQrDialog() {
@@ -564,13 +592,7 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
                             backgroundColor: Colors.red.shade700,
                             foregroundColor: Colors.white,
                           ),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Dialling 108 Ambulance...'),
-                              ),
-                            );
-                          },
+                          onPressed: () => _launchPhone('108', '108 Ambulance'),
                           icon: const Icon(Icons.emergency),
                           label: const Text('Call 108'),
                         ),
@@ -580,30 +602,18 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
                             backgroundColor: Colors.teal.shade700,
                             foregroundColor: Colors.white,
                           ),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Dialling 102 Janani Shishu Vahan...',
-                                ),
-                              ),
-                            );
-                          },
+                          onPressed: () =>
+                              _launchPhone('102', '102 Janani Shishu Vahan'),
                           icon: const Icon(Icons.local_hospital),
                           label: const Text('Call 102'),
                         ),
                         if (_selectedFacility?.contactPhone != null)
                           OutlinedButton.icon(
                             key: const Key('dial_facility_button'),
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Dialling facility: ${_selectedFacility!.contactPhone}',
-                                  ),
-                                ),
-                              );
-                            },
+                            onPressed: () => _launchPhone(
+                              _selectedFacility!.contactPhone!,
+                              'the receiving facility',
+                            ),
                             icon: const Icon(Icons.phone),
                             label: const Text('Call Facility'),
                           ),
@@ -653,35 +663,43 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
             const SizedBox(height: 16),
 
             // 6. Share & Print Output Actions (Requirement 10.2)
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    key: const Key('sms_share_button'),
-                    onPressed: _showSmsDialog,
-                    icon: const Icon(Icons.sms),
-                    label: const Text('SMS (≤160c)'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    key: const Key('thermal_print_button'),
-                    onPressed: () => _printPdf(thermal: true),
-                    icon: const Icon(Icons.receipt_long),
-                    label: const Text('Thermal 80mm'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    key: const Key('standard_pdf_button'),
-                    onPressed: () => _printPdf(thermal: false),
-                    icon: const Icon(Icons.picture_as_pdf),
-                    label: const Text('Standard A4'),
-                  ),
-                ),
-              ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final buttonWidth = (constraints.maxWidth - 16) / 3;
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    SizedBox(
+                      width: buttonWidth,
+                      child: OutlinedButton.icon(
+                        key: const Key('sms_share_button'),
+                        onPressed: _sendSms,
+                        icon: const Icon(Icons.sms),
+                        label: const Text('SMS'),
+                      ),
+                    ),
+                    SizedBox(
+                      width: buttonWidth,
+                      child: OutlinedButton.icon(
+                        key: const Key('thermal_print_button'),
+                        onPressed: () => _printPdf(thermal: true),
+                        icon: const Icon(Icons.receipt_long),
+                        label: const Text('Thermal'),
+                      ),
+                    ),
+                    SizedBox(
+                      width: buttonWidth,
+                      child: OutlinedButton.icon(
+                        key: const Key('standard_pdf_button'),
+                        onPressed: () => _printPdf(thermal: false),
+                        icon: const Icon(Icons.picture_as_pdf),
+                        label: const Text('A4 PDF'),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 20),
 
@@ -693,7 +711,9 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
-              onPressed: _isSaving ? null : _saveReferral,
+              onPressed: _isSaving || _savedRecord != null
+                  ? null
+                  : _saveReferral,
               child: _isSaving
                   ? const SizedBox(
                       height: 20,
@@ -705,7 +725,7 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
                     )
                   : Text(
                       _savedRecord != null
-                          ? 'Referral Saved (ID: ${_savedRecord!.id})'
+                          ? 'Referral Dispatched (ID: ${_savedRecord!.id})'
                           : 'Confirm & Dispatch Referral',
                       style: const TextStyle(
                         fontSize: 16,

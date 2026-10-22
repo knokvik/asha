@@ -307,7 +307,15 @@ Language choices from the design document:
     - Keep compressed image/audio evidence visible at the final ticket step and display synced PHC follow-up schedules and triage history in-app. Create the encrypted outbox packet only after the worker explicitly selects “Send ticket with attachments”; show ticket IDs, evidence previews, and audio playback in the app’s sync history and authenticated web sync feed.
     - Progress: authenticated block-level hotspot aggregation now combines reports from multiple ASHA workers; mobile sync caches the privacy-preserving context for offline adaptive triage, and the web map panel reads the live aggregate feed.
     - Progress: hotspot recommendations are persisted as `area_notifications`, pulled with the hotspot context, shown in mobile Updates & triage history, and rendered as live map circles with ward-centroid fallback.
+    - Progress: unified triage intake, question controls, answer actions, and due-list task creation labels now react to the selected offline language pack (English, Hindi, or Marathi) instead of remaining fixed in English.
+    - Progress: ad-hoc task creation now uses a beneficiary name field, resolves the active local record at save time, and routes each scheduled or newly created task to its own beneficiary profile.
+    - Progress: household registration now captures the worker's submit-time GPS coordinates and timestamp before writing the record, preserving the existing encrypted sync-queue handoff.
+    - Progress: incentive history now resolves member and household details and provides a direct beneficiary detail action; monthly summary opens the register PDF preview; task notes are grouped under a collapsible additional-details section.
+    - Progress: triage nearby-illness and reported-context chips are combined into one collapsible clinical-context filter, and shared task, search, drawer, sync, and peer-sync labels use the active language pack.
+    - Progress: persisted PIN length now drives the unlock dots and automatic verification threshold; PIN verification displays a processing indicator while the encrypted database and server session are being opened.
     - Remaining: run migration `20261021_05` in the deployed environment and connect an external push provider if background FCM delivery is required; offline/in-app delivery is implemented.
+    - Progress: unlock dots now match the persisted PIN length; lock-screen recovery calls a backend-only reset-email endpoint. Backend authentication accepts ASHA ID, registered phone, or email, with a short-lived reset code and Resend delivery configured only through environment variables.
+    - Remaining: run migration `20261022_07_auth_recovery` in the deployed environment and set `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, plus registered user email/phone values before testing recovery end-to-end.
     - _Requirements: 8.1, 8.2, 24.1, 26.1, 31.1_
 
   - [-] 6.9 Harden triage model audit and future retraining
@@ -701,6 +709,12 @@ Language choices from the design document:
     - **Property 16: Conflict Merge Confluence**
     - For any two independent offline edit sets A and B on the same base record, assert `merge(A, merge(B, base)) == merge(B, merge(A, base))` for all non-conflicting fields
     - **Validates: Requirements 32.2**
+
+- Web dashboard progress: critical triage defaults to compact mode; the overview now places live authenticated ASHA activity ahead of priority referrals; ASHA supervision and frontline sync are consolidated into one expandable worker page with recent packets and last-sync details; analytics surfaces the authenticated sync snapshot; and login stores the selected Delhi IGI Airport/Aerocity catchment for the dashboard shell.
+- Web dashboard progress: notifications now have a dedicated live activity route, Clinical Programs has a separate hub matching the mobile ANC/PNC/immunization/NCD/HBNC/TB program set, and the PHC referral alert is a data-driven live ticker without hardcoded diagnoses.
+- Web dashboard progress: the four overview KPIs now open a right-side detail panel, the corner emergency triage control starts minimized, the overview keeps live ASHA logs above priority referrals, and ASHA workers have a dedicated detail route with recent synced activity.
+- Web dashboard progress: Drug & Bed Discovery now uses the authenticated supply-forecast API with live loading/empty states instead of PCMC/demo alert data.
+- Mobile progress: Quick Actions now include a local-first Tracking page with filter chips for people, triage tickets, households and other field work; selecting an item slides to a dedicated detail screen with record metadata, sync state and referral outcome/status. The summary activity card was removed to keep the page focused.
 
 - [x] 16. Final checkpoint — full system validation
   - Run the complete property test suite (all 18 properties, 500 iterations each). Run all integration tests. Build the APK and verify size < 50 MB. Verify Docker Compose stack starts cleanly. Walk through the end-to-end flow (registration → triage → referral → incentive → claim) against a staging backend. Ensure all tests pass, ask the user if questions arise.

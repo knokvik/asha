@@ -23,9 +23,7 @@ class SyncQueueScreen extends ConsumerWidget {
     if (coordinator == null) {
       return Scaffold(
         appBar: AppBar(title: Text(shellText(lang, 'syncQueueTitle'))),
-        body: Center(
-          child: Text(shellText(lang, 'syncUnlockMsg')),
-        ),
+        body: Center(child: Text(shellText(lang, 'syncUnlockMsg'))),
       );
     }
     return ListenableBuilder(
@@ -69,8 +67,8 @@ class SyncQueueScreen extends ConsumerWidget {
             Card(
               child: ListTile(
                 leading: const Icon(Icons.people_alt_outlined),
-                title: const Text('Peer area sync'),
-                subtitle: const Text('Exchange aggregate disease signals with another ASHA when you meet offline.'),
+                title: Text(shellText(lang, 'peerSyncTitle')),
+                subtitle: Text(shellText(lang, 'peerSyncSub')),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => context.push('/peer-sync'),
               ),

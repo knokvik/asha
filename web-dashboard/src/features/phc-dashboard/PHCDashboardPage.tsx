@@ -275,20 +275,13 @@ export function PHCDashboardPage() {
           </div>
         </div>
 
-        {/* Urgent Alert Banner (Pops if any RED is waiting) */}
+        {/* Live queue ticker: concise, dynamic and free of hardcoded clinical diagnoses. */}
         {redCount > 0 && (
-          <div className="flex items-center justify-between p-4 rounded-xl bg-white dark:bg-[#222224] border-l-4 border-l-rose-500 border border-[#E5E7EB] dark:border-[#2E2E2E] text-[#0F172A] dark:text-[#F8FAFC] text-xs shadow-xs">
-            <div className="flex items-center space-x-3">
-              <div className="relative flex h-2.5 w-2.5 shrink-0">
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
-              </div>
-              <div>
-                <span className="font-bold text-[#0F172A] dark:text-[#F8FAFC] text-sm">
-                  CRITICAL TRIAGE ALERT: {redCount} High-Risk Beneficiar{redCount > 1 ? 'ies' : 'y'} Pending Immediate Doctor Attention!
-                </span>
-                <p className="text-[#525252] dark:text-[#94A3B8] text-[11px] mt-0.5">
-                  Pre-eclampsia, neonatal chest indrawing, or hypertensive emergency detected in field. Standard clinical SLA: &lt; 30 minutes.
-                </p>
+          <div className="flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50/70 dark:bg-rose-950/20 dark:border-rose-900 px-3 py-2 text-xs shadow-xs overflow-hidden">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-rose-500 animate-pulse" />
+            <div className="min-w-0 flex-1 overflow-hidden whitespace-nowrap">
+              <div className="inline-block animate-[queue-marquee_20s_linear_infinite] font-semibold text-rose-800 dark:text-rose-200">
+                Live clinical queue · {redCount} RED referral{redCount === 1 ? '' : 's'} awaiting review · updates are sent back to the originating ASHA device after PHC action
               </div>
             </div>
             <Button
@@ -300,7 +293,7 @@ export function PHCDashboardPage() {
               }}
               className="hidden sm:inline-flex"
             >
-              View Urgent Queue &rarr;
+              Open RED queue &rarr;
             </Button>
           </div>
         )}

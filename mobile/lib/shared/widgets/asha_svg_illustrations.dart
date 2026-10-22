@@ -266,7 +266,7 @@ class AshaLogo extends StatelessWidget {
       width: height * 2.56,
       fit: BoxFit.contain,
       filterQuality: FilterQuality.high,
-      semanticLabel: 'ASHA',
+      semanticLabel: 'Asha',
     );
   }
 }

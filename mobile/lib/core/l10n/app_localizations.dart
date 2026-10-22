@@ -121,7 +121,7 @@ abstract class AppLocalizations {
   /// Application title shown in the app bar
   ///
   /// In en, this message translates to:
-  /// **'ASHA Platform'**
+  /// **'Asha'**
   String get appTitle;
 
   /// Shown on the PIN setup screen during initial setup

@@ -95,9 +95,7 @@ class _PeerSyncScreenState extends ConsumerState<PeerSyncScreen> {
             child: ListTile(
               leading: const Icon(Icons.people_alt_outlined),
               title: Text(shellText(lang, 'peerSyncHeader')),
-              subtitle: Text(
-                shellText(lang, 'peerSyncSub'),
-              ),
+              subtitle: Text(shellText(lang, 'peerSyncSub')),
             ),
           ),
           const SizedBox(height: 12),
@@ -113,22 +111,22 @@ class _PeerSyncScreenState extends ConsumerState<PeerSyncScreen> {
               OutlinedButton.icon(
                 onPressed: () => _startNearby(advertise: true),
                 icon: const Icon(Icons.wifi_tethering),
-                label: const Text('Wait for ASHA'),
+                label: Text(shellText(lang, 'peerWait')),
               ),
               OutlinedButton.icon(
                 onPressed: () => _startNearby(advertise: false),
                 icon: const Icon(Icons.radar),
-                label: const Text('Find nearby ASHAs'),
+                label: Text(shellText(lang, 'peerFind')),
               ),
               OutlinedButton.icon(
                 onPressed: () async {
                   await _nearby.stop();
                   if (mounted) {
-                    setState(() => _message = 'Nearby exchange stopped.');
+                    setState(() => _message = shellText(lang, 'peerStop'));
                   }
                 },
                 icon: const Icon(Icons.stop_circle_outlined),
-                label: const Text('Stop'),
+                label: Text(shellText(lang, 'peerStop')),
               ),
             ],
           ),
@@ -139,7 +137,7 @@ class _PeerSyncScreenState extends ConsumerState<PeerSyncScreen> {
                 child: ListTile(
                   leading: const Icon(Icons.phone_android),
                   title: Text(endpoint.value),
-                  subtitle: const Text('Nearby phone found'),
+                  subtitle: Text(shellText(lang, 'peerNearbyFound')),
                   trailing: FilledButton(
                     onPressed: () => _nearby.requestConnection(
                       endpoint.key,
@@ -147,7 +145,7 @@ class _PeerSyncScreenState extends ConsumerState<PeerSyncScreen> {
                         if (mounted) setState(() => _message = message);
                       },
                     ),
-                    child: const Text('Connect'),
+                    child: Text(shellText(lang, 'peerConnect')),
                   ),
                 ),
               ),
@@ -163,7 +161,9 @@ class _PeerSyncScreenState extends ConsumerState<PeerSyncScreen> {
                   },
                 ),
                 icon: const Icon(Icons.send),
-                label: Text('Send signals to ${endpoint.value.endpointName}'),
+                label: Text(
+                  '${shellText(lang, 'peerSendSignals')} ${endpoint.value.endpointName}',
+                ),
               ),
           ],
           const SizedBox(height: 12),
@@ -175,18 +175,18 @@ class _PeerSyncScreenState extends ConsumerState<PeerSyncScreen> {
           if (_packet != null) ...[
             const SizedBox(height: 12),
             Center(child: QrImageView(data: _packet!, size: 260)),
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 8),
               child: Text(
-                'This QR shares only aggregated area signals. It does not contain patient records.',
+                shellText(lang, 'peerQrPrivacy'),
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 12, color: Colors.black54),
               ),
             ),
           ],
           const SizedBox(height: 20),
-          const Text(
-            'Receive from another ASHA',
+          Text(
+            shellText(lang, 'peerReceive'),
             style: TextStyle(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 8),
@@ -198,21 +198,19 @@ class _PeerSyncScreenState extends ConsumerState<PeerSyncScreen> {
           const SizedBox(height: 8),
           ExpansionTile(
             tilePadding: EdgeInsets.zero,
-            title: const Text(
-              'Advanced fallback',
+            title: Text(
+              shellText(lang, 'peerAdvanced'),
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
-            subtitle: const Text(
-              'Use only if the camera or Nearby exchange is unavailable.',
-            ),
+            subtitle: Text(shellText(lang, 'peerAdvancedSub')),
             children: [
               TextField(
                 controller: _packetController,
                 minLines: 3,
                 maxLines: 6,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   border: OutlineInputBorder(),
-                  hintText: 'Paste the private peer packet token here',
+                  hintText: shellText(lang, 'peerPasteHint'),
                 ),
               ),
               const SizedBox(height: 8),
@@ -221,7 +219,7 @@ class _PeerSyncScreenState extends ConsumerState<PeerSyncScreen> {
                 child: OutlinedButton.icon(
                   onPressed: _importPacket,
                   icon: const Icon(Icons.download_done_outlined),
-                  label: const Text('Import pasted token'),
+                  label: Text(shellText(lang, 'peerImport')),
                 ),
               ),
             ],

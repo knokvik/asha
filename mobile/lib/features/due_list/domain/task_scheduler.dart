@@ -44,7 +44,7 @@ class TaskScheduler {
       innerJoin(_db.members, _db.members.id.equalsExp(_db.visitSchedules.memberId)),
       innerJoin(_db.households, _db.households.id.equalsExp(_db.members.householdId)),
     ])
-      ..where(_db.visitSchedules.status.isIn(['pending', 'overdue', 'rescheduled']))
+      ..where(_db.visitSchedules.status.isIn(['pending', 'overdue', 'rescheduled', 'due']))
       ..where(_db.members.lifecycleStatus.equals('active'));
 
     if (hamletFilter != null && hamletFilter.isNotEmpty && hamletFilter != 'All') {
@@ -450,6 +450,9 @@ class TaskScheduler {
       'hbyc': 'Home Based Care for Young Child (HBYC)',
       'immunization': 'Routine Immunization',
       'ncd': 'NCD & CBAC Screening',
+      'nutrition': 'Child Nutrition & SAM/MAM',
+      'tb': 'TB & Nikshay Follow-up',
+      'vhsnd': 'VHSND Village Health Day',
       'ad_hoc': 'Ad-hoc Home Visits',
     };
 
@@ -483,7 +486,18 @@ class TaskScheduler {
     }
 
     // Sort with primary core programs first
-    final order = ['anc', 'pnc', 'hbnc', 'hbyc', 'immunization', 'ncd', 'ad_hoc'];
+    final order = [
+      'anc',
+      'pnc',
+      'hbnc',
+      'hbyc',
+      'immunization',
+      'ncd',
+      'nutrition',
+      'tb',
+      'vhsnd',
+      'ad_hoc'
+    ];
     coverages.sort((a, b) {
       final idxA = order.indexOf(a.programCode);
       final idxB = order.indexOf(b.programCode);

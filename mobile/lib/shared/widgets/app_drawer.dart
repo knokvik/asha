@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/theme/app_theme.dart';
+import '../../core/l10n/language_provider.dart';
+import '../shell/shell_copy.dart';
 
 /// Screen 2: Side Menu (Drawer) matching the exact Asha Platform mobile design.
 ///
@@ -13,6 +15,7 @@ class AppDrawer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final lang = ref.watch(languageProvider).languageCode;
     return Drawer(
       backgroundColor: const Color(0xFF1E4231),
       child: SafeArea(
@@ -47,9 +50,9 @@ class AppDrawer extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
-                              children: const [
+                              children: [
                                 Text(
-                                  'Sunita Sharma',
+                                  shellText(lang, 'workerName'),
                                   style: TextStyle(
                                     fontWeight: FontWeight.w800,
                                     fontSize: 16,
@@ -65,8 +68,8 @@ class AppDrawer extends ConsumerWidget {
                               ],
                             ),
                             const SizedBox(height: 2),
-                            const Text(
-                              'ASHA Worker • Rampur PHC',
+                            Text(
+                              shellText(lang, 'worker'),
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Color(0xFFB7D5C6),
@@ -102,7 +105,7 @@ class AppDrawer extends ConsumerWidget {
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: const [
+                      children: [
                         Icon(
                           Icons.lock_rounded,
                           size: 12,
@@ -110,7 +113,7 @@ class AppDrawer extends ConsumerWidget {
                         ),
                         SizedBox(width: 6),
                         Text(
-                          'Offline • Data Encrypted',
+                          shellText(lang, 'encrypted'),
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 11,
@@ -138,8 +141,8 @@ class AppDrawer extends ConsumerWidget {
                   _buildMenuItem(
                     context: context,
                     icon: Icons.home_rounded,
-                    title: 'Home',
-                    subtitle: 'Dashboard, map, and field desk',
+                    title: shellText(lang, 'drawerHome'),
+                    subtitle: shellText(lang, 'drawerHomeSub'),
                     route: '/home',
                     isSelected: true,
                   ),
@@ -149,8 +152,8 @@ class AppDrawer extends ConsumerWidget {
                   _buildMenuItem(
                     context: context,
                     icon: Icons.checklist_rtl_rounded,
-                    title: "Today's Due List",
-                    subtitle: 'Overdue, upcoming visits',
+                    title: shellText(lang, 'drawerDue'),
+                    subtitle: shellText(lang, 'drawerDueSub'),
                     route: '/due-list',
                     trailingBadge: '3',
                     badgeColor: AshaColors.alertHighRisk,
@@ -161,8 +164,8 @@ class AppDrawer extends ConsumerWidget {
                   _buildMenuItem(
                     context: context,
                     icon: Icons.people_alt_outlined,
-                    title: 'Household Registry',
-                    subtitle: 'Census, ABHA IDs',
+                    title: shellText(lang, 'drawerHomes'),
+                    subtitle: shellText(lang, 'drawerHomesSub'),
                     route: '/households',
                   ),
                   const SizedBox(height: 6),
@@ -171,8 +174,8 @@ class AppDrawer extends ConsumerWidget {
                   _buildMenuItem(
                     context: context,
                     icon: Icons.medical_services_outlined,
-                    title: 'Clinical Programs',
-                    subtitle: 'ANC, PNC, Immunization',
+                    title: shellText(lang, 'drawerPrograms'),
+                    subtitle: shellText(lang, 'drawerProgramsSub'),
                     route: '/clinical-programs',
                   ),
                   const SizedBox(height: 6),
@@ -181,8 +184,8 @@ class AppDrawer extends ConsumerWidget {
                   _buildMenuItem(
                     context: context,
                     icon: Icons.emergency_rounded,
-                    title: 'Emergency Triage',
-                    subtitle: 'Maternal & child danger signs',
+                    title: shellText(lang, 'drawerTriage'),
+                    subtitle: shellText(lang, 'drawerTriageSub'),
                     route: '/triage',
                     iconColor: AshaColors.alertHighRisk,
                     showRedChevron: true,
@@ -193,8 +196,8 @@ class AppDrawer extends ConsumerWidget {
                   _buildMenuItem(
                     context: context,
                     icon: Icons.translate_rounded,
-                    title: 'Interpreter',
-                    subtitle: 'They speak / I ask',
+                    title: shellText(lang, 'drawerInterp'),
+                    subtitle: shellText(lang, 'drawerInterpSub'),
                     route: '/interpreter',
                   ),
                   const SizedBox(height: 6),
@@ -203,8 +206,8 @@ class AppDrawer extends ConsumerWidget {
                   _buildMenuItem(
                     context: context,
                     icon: Icons.receipt_long_outlined,
-                    title: 'Reports & Incentives',
-                    subtitle: 'Earnings, monthly reports',
+                    title: shellText(lang, 'drawerReports'),
+                    subtitle: shellText(lang, 'drawerReportsSub'),
                     route: '/reports',
                   ),
                   const SizedBox(height: 6),
@@ -213,8 +216,8 @@ class AppDrawer extends ConsumerWidget {
                   _buildMenuItem(
                     context: context,
                     icon: Icons.settings_outlined,
-                    title: 'Settings',
-                    subtitle: 'App settings, language, help',
+                    title: shellText(lang, 'drawerSettings'),
+                    subtitle: shellText(lang, 'drawerSettingsSub'),
                     route: '/profile',
                   ),
                 ],

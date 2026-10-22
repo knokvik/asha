@@ -11,6 +11,9 @@ import { IndiaPhcMapPage } from '@/features/map/IndiaPhcMapPage';
 import { TicketPage } from '@/features/phc-dashboard/TicketPage';
 import { ResourcesPage } from '@/features/phc-dashboard/ResourcesPage';
 import { LoginPage } from '@/features/auth/LoginPage';
+import { ClinicalProgramsPage } from '@/features/clinical-programs/ClinicalProgramsPage';
+import { NotificationsPage } from '@/features/notifications/NotificationsPage';
+import { AshaWorkerDetailPage } from '@/features/af-supervision/AshaWorkerDetailPage';
 
 export const router = createBrowserRouter([
   {
@@ -38,6 +41,14 @@ export const router = createBrowserRouter([
         element: <PHCDashboardPage />,
       },
       {
+        path: 'clinical-programs',
+        element: <ClinicalProgramsPage />,
+      },
+      {
+        path: 'notifications',
+        element: <NotificationsPage />,
+      },
+      {
         path: 'ticket/:id',
         element: <TicketPage />,
       },
@@ -60,6 +71,10 @@ export const router = createBrowserRouter([
       {
         path: 'af',
         element: <AFSupervisionPage />,
+      },
+      {
+        path: 'af/worker/:name',
+        element: <AshaWorkerDetailPage />,
       },
       {
         path: 'supervisor',

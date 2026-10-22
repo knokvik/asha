@@ -27,9 +27,11 @@ import {
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useSync } from '@/shared/context/SyncContext';
 
 export function DistrictAnalyticsPage() {
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'maternal' | 'child' | 'ncd' | 'tb'>('all');
+  const { syncActivities } = useSync();
 
   const { data: indicators = [] } = useQuery({
     queryKey: ['district-indicators'],
@@ -88,6 +90,26 @@ export function DistrictAnalyticsPage() {
           </div>
         </div>
       </div>
+
+      <Card className="p-4 border-[#E5E7EB] dark:border-[#2E2E2E] bg-white dark:bg-[#222224] shadow-xs">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white">Live field data snapshot</h2>
+            <p className="text-xs text-slate-500">Mapped from authenticated ASHA sync packets</p>
+          </div>
+          <span className="text-xs font-semibold text-emerald-600">{syncActivities.length} packets</span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+          <div className="rounded-lg bg-slate-50 dark:bg-[#1E1E1E] p-3"><div className="text-[10px] text-slate-500">Workers reporting</div><div className="text-lg font-black text-slate-900 dark:text-white">{new Set(syncActivities.map((item) => item.workerName)).size}</div></div>
+          <div className="rounded-lg bg-rose-50 dark:bg-rose-950/20 p-3"><div className="text-[10px] text-rose-600">Red signals</div><div className="text-lg font-black text-rose-700">{syncActivities.filter((item) => item.severity === 'RED').length}</div></div>
+          <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 p-3"><div className="text-[10px] text-amber-600">Yellow signals</div><div className="text-lg font-black text-amber-700">{syncActivities.filter((item) => item.severity === 'YELLOW').length}</div></div>
+          <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 p-3"><div className="text-[10px] text-emerald-600">Latest updates</div><div className="text-lg font-black text-emerald-700">{syncActivities.slice(0, 4).length}</div></div>
+        </div>
+        <div className="space-y-1.5">
+          {syncActivities.slice(0, 4).map((item) => <div key={item.id} className="flex gap-2 text-xs text-slate-700 dark:text-slate-300"><span className="font-semibold">{item.workerName}</span><span className="truncate">{item.details}</span><span className="ml-auto text-slate-400">{item.syncTime}</span></div>)}
+          {syncActivities.length === 0 && <div className="text-xs text-slate-500">No authenticated field packets received yet.</div>}
+        </div>
+      </Card>
 
       {/* Outbreak Detection Signals Banner (Req 42.3) */}
       {outbreakAlerts.length > 0 && (

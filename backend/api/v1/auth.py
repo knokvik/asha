@@ -7,22 +7,35 @@ Endpoints:
 """
 from __future__ import annotations
 
+import hashlib
+import secrets
 import time
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
+import httpx
 from jose import JWTError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.config import get_settings
 from core.security import (
     create_offline_credential_hash,
     create_token,
     decode_token,
+    hash_password,
     verify_password,
 )
 from db.session import get_db
 from models.db.models import User
-from models.schemas.schemas import LoginRequest, RefreshRequest, RevokeRequest, TokenResponse
+from models.schemas.schemas import (
+    LoginRequest,
+    PasswordResetRequest,
+    PasswordResetConfirmRequest,
+    PasswordResetResponse,
+    RefreshRequest,
+    RevokeRequest,
+    TokenResponse,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -71,7 +84,13 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> Token
         )
 
     # Lookup user by asha_id or username (case-insensitive)
-    stmt = select(User).where(func.lower(User.asha_id) == identifier.lower())
+    normalized_phone = "".join(character for character in identifier if character.isdigit())
+    phone_values = {normalized_phone, normalized_phone[-10:]}
+    stmt = select(User).where(
+        (func.lower(User.asha_id) == identifier.lower())
+        | (func.lower(User.email) == identifier.lower())
+        | User.phone.in_(phone_values)
+    )
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
 
@@ -123,8 +142,6 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> Token
     )
 
     # ── Offline credential (7-day, device-bound) ──────────────────────────────
-    from core.config import get_settings  # local import avoids circular
-
     settings = get_settings()
     offline_expires = now_epoch + settings.OFFLINE_CREDENTIAL_EXPIRE_DAYS * 86400
     offline_hash = create_offline_credential_hash(
@@ -149,6 +166,102 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> Token
         role=user.role,
         name=user.name,
     )
+
+
+def _hash_reset_code(code: str) -> str:
+    return hashlib.sha256(code.encode("utf-8")).hexdigest()
+
+
+@router.post(
+    "/password-reset/request",
+    response_model=PasswordResetResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def request_password_reset(
+    body: PasswordResetRequest,
+    db: AsyncSession = Depends(get_db),
+) -> PasswordResetResponse:
+    """Send a short-lived reset code without revealing whether an account exists."""
+    identifier = body.identifier.strip()
+    normalized_phone = "".join(character for character in identifier if character.isdigit())
+    phone_values = {normalized_phone, normalized_phone[-10:]}
+    result = await db.execute(
+        select(User).where(
+            (func.lower(User.asha_id) == identifier.lower())
+            | (func.lower(User.email) == identifier.lower())
+            | User.phone.in_(phone_values)
+        )
+    )
+    user = result.scalar_one_or_none()
+    generic_message = "If the account exists, a reset code has been sent to its registered email."
+    if user is None or not user.is_active or not user.email:
+        return PasswordResetResponse(message=generic_message)
+
+    settings = get_settings()
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    user.password_reset_token_hash = _hash_reset_code(code)
+    user.password_reset_expires_at = int(time.time()) + 600
+    await db.commit()
+
+    if not settings.RESEND_API_KEY:
+        # Do not expose the code to clients. Deployment must configure Resend.
+        return PasswordResetResponse(message=generic_message)
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {settings.RESEND_API_KEY}"},
+                json={
+                    "from": settings.RESEND_FROM_EMAIL,
+                    "to": [user.email],
+                    "subject": "ASHA Setu password reset code",
+                    "html": (
+                        f"<p>Your ASHA Setu reset code is <strong>{code}</strong>.</p>"
+                        "<p>It expires in 10 minutes. If you did not request this, ignore this email.</p>"
+                    ),
+                },
+            )
+            response.raise_for_status()
+    except httpx.HTTPError:
+        # Keep the response generic and avoid leaking provider details.
+        return PasswordResetResponse(message=generic_message)
+    return PasswordResetResponse(message=generic_message)
+
+
+@router.post("/password-reset/confirm", response_model=PasswordResetResponse)
+async def confirm_password_reset(
+    body: PasswordResetConfirmRequest,
+    db: AsyncSession = Depends(get_db),
+) -> PasswordResetResponse:
+    """Apply a reset code sent by the backend provider to the server credential."""
+    identifier = body.identifier.strip()
+    normalized_phone = "".join(character for character in identifier if character.isdigit())
+    result = await db.execute(
+        select(User).where(
+            (func.lower(User.asha_id) == identifier.lower())
+            | (func.lower(User.email) == identifier.lower())
+            | User.phone.in_({normalized_phone, normalized_phone[-10:]})
+        )
+    )
+    user = result.scalar_one_or_none()
+    valid = (
+        user is not None
+        and user.is_active
+        and user.password_reset_token_hash == _hash_reset_code(body.code)
+        and (user.password_reset_expires_at or 0) >= int(time.time())
+    )
+    if not valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The reset code is invalid or expired.",
+        )
+    user.hashed_pin = hash_password(body.new_password)
+    user.password_reset_token_hash = None
+    user.password_reset_expires_at = None
+    user.jwt_refresh_token = None
+    await db.commit()
+    return PasswordResetResponse(message="Password reset successfully. Sign in with the new credential.")
 
 
 @router.get("/me", status_code=status.HTTP_200_OK)

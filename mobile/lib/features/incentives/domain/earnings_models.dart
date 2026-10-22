@@ -41,10 +41,19 @@ class EarningsStatusTotals {
 
   /// Total pipeline including eligible not-yet-claimed and under verification.
   double get totalPipeline =>
-      eligibleAmount + claimedAmount + verifiedAmount + approvedAmount + paidAmount;
+      eligibleAmount +
+      claimedAmount +
+      verifiedAmount +
+      approvedAmount +
+      paidAmount;
 
   int get totalTasksCount =>
-      eligibleCount + claimedCount + verifiedCount + approvedCount + paidCount + rejectedCount;
+      eligibleCount +
+      claimedCount +
+      verifiedCount +
+      approvedCount +
+      paidCount +
+      rejectedCount;
 }
 
 class EarningsLineItem {
@@ -52,6 +61,10 @@ class EarningsLineItem {
   final String activityCode;
   final String activityName;
   final String memberCodedId;
+  final String? memberId;
+  final String? memberName;
+  final String? householdId;
+  final String? householdArea;
   final DateTime serviceDate;
   final double amount;
   final String status; // eligible, claimed, verified, approved, paid, rejected
@@ -68,6 +81,10 @@ class EarningsLineItem {
     required this.activityCode,
     required this.activityName,
     required this.memberCodedId,
+    this.memberId,
+    this.memberName,
+    this.householdId,
+    this.householdArea,
     required this.serviceDate,
     required this.amount,
     required this.status,
@@ -82,8 +99,10 @@ class EarningsLineItem {
 
   bool get isDelayedOrRejected =>
       status == 'rejected' ||
-      (status == 'claimed' && DateTime.now().difference(serviceDate).inDays > 30) ||
-      (status == 'verified' && DateTime.now().difference(serviceDate).inDays > 45);
+      (status == 'claimed' &&
+          DateTime.now().difference(serviceDate).inDays > 30) ||
+      (status == 'verified' &&
+          DateTime.now().difference(serviceDate).inDays > 45);
 }
 
 class PaymentReconciliation {
@@ -110,7 +129,9 @@ class PaymentReconciliation {
 
   String get reconciliationStatus {
     if (!hasDiscrepancy) return 'Fully Reconciled';
-    if (isShortfall) return 'Shortfall of ₹${(-discrepancy).toStringAsFixed(2)}';
+    if (isShortfall) {
+      return 'Shortfall of ₹${(-discrepancy).toStringAsFixed(2)}';
+    }
     return 'Excess Payment of ₹${discrepancy.toStringAsFixed(2)}';
   }
 }

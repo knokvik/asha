@@ -39,8 +39,8 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
   final _captchaController = TextEditingController();
   bool _isPinConfigured = false;
   bool _statusChecked = false;
-  bool _biometricAvailable = false;
   bool _isSubmitting = false;
+  int _pinLength = 4;
   String? _errorMessage;
   String _captchaCode = '';
 
@@ -80,68 +80,16 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
         onTimeout: () => false,
       );
       if (mounted) {
+        final pinLength = configured ? await auth.configuredPinLength : 4;
         setState(() {
           _isPinConfigured = configured;
+          _pinLength = pinLength;
           _statusChecked = true;
         });
-        if (configured) {
-          final biometricAvailable = await auth.isBiometricAvailable;
-          if (mounted) {
-            setState(() => _biometricAvailable = biometricAvailable);
-          }
-        }
       }
     } catch (_) {
       // Default to false in testing or uninitialized environments
       if (mounted) setState(() => _statusChecked = true);
-    }
-  }
-
-  Future<void> _handleBiometric() async {
-    if (_isSubmitting) return;
-    setState(() {
-      _isSubmitting = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final auth = ref.read(authServiceProvider);
-      final authenticated = await auth.authenticateWithBiometric(
-        localizedReason: 'Use fingerprint or face unlock to open ASHA records',
-      );
-      if (!authenticated) {
-        if (mounted) {
-          setState(() {
-            _isSubmitting = false;
-            _errorMessage = auth.shouldFallBackToPin
-                ? 'Biometric unlock failed three times. Please use your PIN.'
-                : 'Biometric unlock was not completed. You can use your PIN instead.';
-          });
-        }
-        return;
-      }
-
-      final key = await auth.readCachedDatabaseKey();
-      if (key == null) {
-        if (mounted) {
-          setState(() {
-            _isSubmitting = false;
-            _errorMessage = 'Enter your PIN once to enable biometric unlock on this device.';
-          });
-        }
-        return;
-      }
-
-      ref.read(databaseKeyProvider.notifier).unlock(key);
-      await ref.read(appDatabaseProvider).customSelect('SELECT 1').get();
-      if (mounted) context.go('/home');
-    } catch (_) {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-          _errorMessage = 'Biometric unlock could not open the encrypted database. Use your PIN.';
-        });
-      }
     }
   }
 
@@ -150,11 +98,14 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
 
     final l10n = AppLocalizations.of(context);
     final pin = _pinController.text.trim();
-    if (pin.length < 4 || pin.length > 8 || !RegExp(r'^\d+$').hasMatch(pin)) {
+    final invalidLength = _isPinConfigured
+        ? pin.length != _pinLength
+        : pin.length < 4 || pin.length > 8;
+    if (invalidLength || !RegExp(r'^\d+$').hasMatch(pin)) {
       setState(() {
-        _errorMessage =
-            l10n?.pinLengthError ??
-            'PIN must be between 4 and 8 numeric digits.';
+        _errorMessage = _isPinConfigured
+            ? 'PIN must be exactly $_pinLength numeric digits.'
+            : 'PIN must be 4–8 numeric digits.';
       });
       return;
     }
@@ -174,6 +125,7 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
       setState(() {
         _isSubmitting = true;
         _errorMessage = null;
+        _pinLength = pin.length;
       });
 
       try {
@@ -295,11 +247,14 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
   }
 
   void _appendPinDigit(String digit) {
-    if (_isSubmitting || _pinController.text.length >= 8) return;
+    if (_isSubmitting || _pinController.text.length >= _pinLength) return;
     setState(() {
       _errorMessage = null;
       _pinController.text += digit;
     });
+    if (_isPinConfigured && _pinController.text.length == _pinLength) {
+      Future<void>.microtask(_handleSubmit);
+    }
   }
 
   void _removePinDigit() {
@@ -319,7 +274,7 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(8, (index) {
+          children: List.generate(_pinLength, (index) {
             final filled = index < _pinController.text.length;
             return Container(
               width: 12,
@@ -361,6 +316,7 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
 
   Widget _pinKey(String label, VoidCallback onPressed) {
     return OutlinedButton(
+      key: Key('pin_key_$label'),
       onPressed: _isSubmitting ? null : onPressed,
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(0, 52),
@@ -484,8 +440,8 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                   const SizedBox(height: 8),
                   Text(
                     _isPinConfigured
-                        ? 'Enter your security PIN to unlock patient records'
-                        : 'Set a 4 to 8 digit PIN to encrypt your local database',
+                        ? 'Enter your $_pinLength-digit PIN to unlock patient records'
+                        : 'Set a 4–8 digit PIN to encrypt your local database',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium
                         ?.copyWith(color: Colors.grey.shade600),
@@ -498,8 +454,8 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                       textInputAction: TextInputAction.next,
                       onChanged: (_) => setState(() {}),
                       decoration: const InputDecoration(
-                        labelText: 'ASHA ID (for online sync)',
-                        hintText: 'Required to load your worker profile',
+                        labelText: 'ASHA ID or registered mobile number',
+                        hintText: 'Use your ASHA ID or mobile number',
                         prefixIcon: Icon(Icons.badge_outlined),
                       ),
                     ),
@@ -557,6 +513,13 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                     const Icon(Icons.lock_outline, size: 28),
                     const SizedBox(height: 10),
                     _buildUnlockPad(),
+                    const SizedBox(height: 14),
+                    TextButton.icon(
+                      key: const Key('forgot_password_button'),
+                      onPressed: _isSubmitting ? null : _requestPasswordReset,
+                      icon: const Icon(Icons.mail_outline),
+                      label: const Text('Forgot PIN or password?'),
+                    ),
                   ] else ...[
                     const SizedBox(height: 18),
                     TextField(
@@ -566,7 +529,7 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                       obscureText: true,
                       maxLength: 8,
                       decoration: InputDecoration(
-                        labelText: l10n?.createPin ?? 'Create PIN (4–8 digits)',
+                        labelText: l10n?.createPin ?? 'Create 4–8 digit PIN',
                         prefixIcon: const Icon(Icons.lock_outline),
                         border: const OutlineInputBorder(),
                         counterText: '',
@@ -620,53 +583,37 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                     ),
                   ],
                   const SizedBox(height: 28),
-                  if (_isPinConfigured && _biometricAvailable) ...[
-                    OutlinedButton.icon(
-                      key: const Key('biometric_unlock_button'),
-                      onPressed: _isSubmitting ? null : _handleBiometric,
-                      icon: const Icon(Icons.fingerprint_rounded),
-                      label: const Text('Unlock with fingerprint / face'),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  ElevatedButton(
-                    key: const Key('submit_pin_button'),
-                    onPressed: _isSubmitting ? null : _handleSubmit,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
+                  if (_isSubmitting) ...[
+                    const SizedBox(height: 18),
+                    const Center(
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2.5),
                       ),
                     ),
-                    child: Text(
-                      _isSubmitting
-                          ? 'Processing...'
-                          : (_isPinConfigured
-                                ? (l10n?.unlockDatabase ?? 'Unlock Database')
-                                : (l10n?.setPinAndInitialize ??
-                                      'Set PIN & Initialize')),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                  ],
+                  if (!_isPinConfigured)
+                    ElevatedButton(
+                      key: const Key('submit_pin_button'),
+                      onPressed: _isSubmitting ? null : _handleSubmit,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                      child: Text(
+                        _isSubmitting
+                            ? 'Processing...'
+                            : (l10n?.setPinAndInitialize ??
+                                  'Set PIN & Initialize'),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
-                  if (_isPinConfigured) ...[
-                    const SizedBox(height: 10),
-                    TextButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _isPinConfigured = false;
-                          _errorMessage = null;
-                          _pinController.clear();
-                          _confirmPinController.clear();
-                          _refreshCaptcha();
-                        });
-                      },
-                      icon: const Icon(Icons.switch_account_outlined, size: 18),
-                      label: const Text('Sign in with a different ASHA ID'),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -674,5 +621,74 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _requestPasswordReset() async {
+    final identifier = _ashaIdController.text.trim();
+    final enteredIdentifier = identifier.isNotEmpty
+        ? identifier
+        : await _askForResetIdentifier();
+    if (enteredIdentifier == null ||
+        enteredIdentifier.trim().isEmpty ||
+        !mounted) {
+      return;
+    }
+    setState(() {
+      _isSubmitting = true;
+      _errorMessage = null;
+    });
+    final result = await ref
+        .read(authServiceProvider)
+        .requestPasswordReset(
+          apiBaseUrl: await resolveAshaApiBaseUrl(),
+          identifier: enteredIdentifier.trim(),
+        );
+    if (!mounted) return;
+    setState(() => _isSubmitting = false);
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          result.isSuccess ? 'Reset email sent' : 'Reset unavailable',
+        ),
+        content: Text(result.message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<String?> _askForResetIdentifier() async {
+    final controller = TextEditingController();
+    final value = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset PIN or password'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(
+            labelText: 'ASHA ID, mobile number, or email',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(controller.text),
+            child: const Text('Send email'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return value;
   }
 }

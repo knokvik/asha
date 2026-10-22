@@ -1,51 +1,27 @@
-import { useState } from 'react';
-import { INITIAL_OUTBREAK_ALERTS, PCMC_WARDS } from '@/shared/api/mockData';
-import { resourceCards, type WardWeek } from '@/features/clinical-desk/logic';
+import { useQuery } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
+import { getSupplyForecasts } from '@/shared/api/analyticsApi';
 
 export function ResourcesPage() {
-  const [week, setWeek] = useState(11);
-  const cards = resourceCards(PCMC_WARDS as WardWeek[], week);
+  const { data: supplies = [], isLoading } = useQuery({ queryKey: ['resources', 'supply-forecasts', 'phc-shahpur'], queryFn: () => getSupplyForecasts('phc-shahpur') });
 
   return (
     <div className="p-4 lg:p-8 max-w-5xl mx-auto space-y-6">
       <div>
         <h1 className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-          Early-warning resources
+          Drug & bed discovery
         </h1>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-          PCMC child flags sit next to the existing Shahpur outbreak alerts. Week {week + 1} of 12.
+          Live facility inventory and supply forecasts from the authenticated server.
         </p>
       </div>
-      <label className="text-xs font-semibold block">
-        Week
-        <input
-          aria-label="Resource week"
-          type="range"
-          min={0}
-          max={11}
-          value={week}
-          onChange={(event) => setWeek(Number(event.target.value))}
-          className="block w-full max-w-sm"
-        />
-      </label>
       <div className="grid gap-3">
-        {cards.length === 0 && (
-          <Card className="p-4 text-sm">No ward is over the dengue or diarrhoea threshold this week.</Card>
-        )}
-        {cards.map((card) => (
-          <Card key={card.id} className="p-4 border-rose-200 space-y-1">
-            <h2 className="text-sm font-bold">{card.title}</h2>
-            <p className="text-xs">{card.detail}</p>
-          </Card>
-        ))}
-      </div>
-      <h2 className="text-sm font-bold pt-2">Existing block alerts</h2>
-      <div className="grid gap-3">
-        {INITIAL_OUTBREAK_ALERTS.map((alert) => (
-          <Card key={alert.id} className="p-4 text-xs space-y-1">
-            <div className="font-bold">{alert.disease} · {alert.affectedVillage}</div>
-            <div>{alert.caseCount} cases in {alert.timeframeDays} days · {alert.block} · {alert.status}</div>
+        {isLoading && <Card className="p-4 text-sm">Loading live facility inventory…</Card>}
+        {!isLoading && supplies.length === 0 && <Card className="p-4 text-sm">No live inventory records are available for this facility.</Card>}
+        {supplies.map((supply) => (
+          <Card key={supply.itemCode} className="p-4 border-slate-200 space-y-1">
+            <div className="flex items-center justify-between"><h2 className="text-sm font-bold">{supply.itemName}</h2><span className={`text-[10px] font-bold uppercase ${supply.status === 'critical_stockout' ? 'text-rose-600' : supply.status === 'warning' ? 'text-amber-600' : 'text-emerald-600'}`}>{supply.status.replace('_', ' ')}</span></div>
+            <p className="text-xs">{supply.currentStock} units available · approximately {supply.estimatedDaysRemaining} days remaining · reorder at {supply.reorderLevel}</p>
           </Card>
         ))}
       </div>

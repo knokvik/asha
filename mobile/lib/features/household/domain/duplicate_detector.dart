@@ -1,5 +1,7 @@
 import 'dart:math';
+
 import 'package:flutter/material.dart';
+
 import '../../../core/database/app_database.dart';
 
 /// Represents a potential duplicate beneficiary match with similarity scoring.
@@ -57,6 +59,14 @@ class DuplicateDetector {
   static const double wPhone = 0.15;
 
   const DuplicateDetector({this.threshold = 0.75});
+
+  /// Canonical form used for safe identity comparisons.
+  ///
+  /// This deliberately does not transliterate or discard characters: two
+  /// people with the same visible name must still be confirmed by the worker
+  /// instead of being silently merged.
+  static String normaliseName(String value) =>
+      value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 
   // ── Phonetic Soundex Normalisation ────────────────────────────────────────
 
@@ -191,8 +201,8 @@ class DuplicateDetector {
 
   /// Computes fuzzy name similarity combining exact equality, Levenshtein, and Soundex.
   double computeNameScore(String name1, String name2) {
-    final n1 = name1.trim().toLowerCase();
-    final n2 = name2.trim().toLowerCase();
+    final n1 = normaliseName(name1);
+    final n2 = normaliseName(name2);
 
     if (n1 == n2) return 1.0;
     if (n1.isEmpty || n2.isEmpty) return 0.0;
@@ -203,8 +213,9 @@ class DuplicateDetector {
 
     final sndxWords1 = soundexWords(n1).split(' ').toSet();
     final sndxWords2 = soundexWords(n2).split(' ').toSet();
-    final hasSharedWordSoundex =
-        sndxWords1.intersection(sndxWords2).any((c) => c != '0000');
+    final hasSharedWordSoundex = sndxWords1
+        .intersection(sndxWords2)
+        .any((c) => c != '0000');
 
     if ((sndx1 == sndx2 && sndx1 != '0000') || hasSharedWordSoundex) {
       return max(0.85, lev);
@@ -287,7 +298,10 @@ class DuplicateDetector {
     String? phone2,
   }) {
     final nameScore = computeNameScore(name1, name2);
-    final dobScore = computeDobScore(dobApprox1: dobApprox1, dobApprox2: dobApprox2);
+    final dobScore = computeDobScore(
+      dobApprox1: dobApprox1,
+      dobApprox2: dobApprox2,
+    );
     final householdScore = computeHouseholdScore(householdId1, householdId2);
     final phoneScore = computePhoneScore(phone1, phone2);
 
@@ -316,7 +330,8 @@ class DuplicateDetector {
     );
     final phoneScore = computePhoneScore(targetPhone, existingMember.phone);
 
-    final score = (nameScore * wName) +
+    final score =
+        (nameScore * wName) +
         (dobScore * wDob) +
         (householdScore * wHousehold) +
         (phoneScore * wPhone);
@@ -350,7 +365,10 @@ class DuplicateDetector {
         targetPhone: targetPhone,
       );
 
-      if (candidate.score >= threshold) {
+      // An exact normalized name is always surfaced for human confirmation.
+      // A name alone is not proof of identity, so this must never auto-merge.
+      final exactName = normaliseName(targetName) == normaliseName(member.name);
+      if (exactName || candidate.score >= threshold) {
         matches.add(candidate);
       }
     }
@@ -367,10 +385,7 @@ class DuplicateDetector {
 class DuplicateConfirmationDialog extends StatelessWidget {
   final List<DuplicateCandidate> candidates;
 
-  const DuplicateConfirmationDialog({
-    super.key,
-    required this.candidates,
-  });
+  const DuplicateConfirmationDialog({super.key, required this.candidates});
 
   @override
   Widget build(BuildContext context) {
@@ -380,7 +395,11 @@ class DuplicateConfirmationDialog extends StatelessWidget {
     return AlertDialog(
       title: Row(
         children: [
-          const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+          const Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.orange,
+            size: 28,
+          ),
           const SizedBox(width: 8),
           const Expanded(
             child: Text(
@@ -419,7 +438,9 @@ class DuplicateConfirmationDialog extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   if (member.sex.isNotEmpty)
-                    Text('Sex: ${member.sex} • Relationship: ${member.relationshipToHead ?? "N/A"}'),
+                    Text(
+                      'Sex: ${member.sex} • Relationship: ${member.relationshipToHead ?? "N/A"}',
+                    ),
                   if (member.phone != null && member.phone!.isNotEmpty)
                     Text('Phone: ${member.phone}'),
                   if (member.abhaId != null && member.abhaId!.isNotEmpty)
@@ -429,7 +450,7 @@ class DuplicateConfirmationDialog extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             const Text(
-              'Would you like to link to this existing record or continue creating a new beneficiary?',
+              'Is this the same person, or a different person with the same name? Existing data will never be overwritten.',
               style: TextStyle(fontSize: 13, color: Colors.grey),
             ),
           ],
@@ -438,18 +459,20 @@ class DuplicateConfirmationDialog extends StatelessWidget {
       actions: [
         TextButton(
           key: const Key('duplicate_dialog_cancel_button'),
-          onPressed: () => Navigator.of(context).pop(DuplicateResolution.cancel),
+          onPressed: () =>
+              Navigator.of(context).pop(DuplicateResolution.cancel),
           child: const Text('Cancel'),
         ),
         OutlinedButton(
           key: const Key('duplicate_dialog_continue_button'),
-          onPressed: () => Navigator.of(context).pop(DuplicateResolution.continueAnyway),
-          child: const Text('Create New Anyway'),
+          onPressed: () =>
+              Navigator.of(context).pop(DuplicateResolution.continueAnyway),
+          child: const Text('Different person'),
         ),
         ElevatedButton(
           key: const Key('duplicate_dialog_merge_button'),
           onPressed: () => Navigator.of(context).pop(DuplicateResolution.merge),
-          child: const Text('Link / Merge'),
+          child: const Text('Use existing record'),
         ),
       ],
     );

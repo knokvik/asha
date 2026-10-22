@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../core/pdf/pdf_generator.dart';
@@ -43,11 +44,9 @@ class _EarningsScreenState extends State<EarningsScreen> {
   late String _selectedLanguage;
   bool _isPrivacyShieldEnabled = false;
   bool _isLoading = true;
-  String? _selectedStatusFilter;
 
   EarningsStatusTotals _totals = const EarningsStatusTotals();
   List<EarningsLineItem> _lineItems = [];
-  List<PaymentReconciliation> _reconciliations = [];
   EarningsProjection? _projection;
   List<String> _availablePeriods = [];
 
@@ -70,10 +69,6 @@ class _EarningsScreenState extends State<EarningsScreen> {
 
       final totals = await widget.repository.getStatusTotals(_selectedPeriod);
       final items = await widget.repository.getLineItems(_selectedPeriod);
-      final recs = await widget.repository.getReconciliations(
-        widget.workerId,
-        period: _selectedPeriod,
-      );
       final proj = await widget.repository.getEarningsProjection(
         widget.workerId,
         _selectedPeriod,
@@ -84,7 +79,6 @@ class _EarningsScreenState extends State<EarningsScreen> {
           _availablePeriods = periods;
           _totals = totals;
           _lineItems = items;
-          _reconciliations = recs;
           _projection = proj;
           _isLoading = false;
         });
@@ -217,16 +211,6 @@ class _EarningsScreenState extends State<EarningsScreen> {
                     const SizedBox(height: 16),
                   ],
 
-                  // Status Breakdown Chips / Badges (Req 55.1)
-                  _buildStatusBreakdownSection(),
-                  const SizedBox(height: 16),
-
-                  // Bank Reconciliation & UTR Section (Req 55.3)
-                  if (_reconciliations.isNotEmpty) ...[
-                    _buildReconciliationSection(),
-                    const SizedBox(height: 16),
-                  ],
-
                   // Line Items Detailed Ledger (Req 55.1, 55.2)
                   _buildLineItemsSection(),
                 ],
@@ -351,7 +335,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Total Earned (Paid + Approved)',
+                'Total earnings',
                 style: TextStyle(color: Colors.white70, fontSize: 13),
               ),
               if (_isPrivacyShieldEnabled)
@@ -387,52 +371,9 @@ class _EarningsScreenState extends State<EarningsScreen> {
               letterSpacing: 0.5,
             ),
           ),
-          const SizedBox(height: 12),
-          const Divider(color: Colors.white24),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildHeroSubStat(
-                'Directly Paid (DBT)',
-                _totals.paidAmount,
-                Colors.greenAccent.shade100,
-              ),
-              _buildHeroSubStat(
-                'Approved (Pending Transfer)',
-                _totals.approvedAmount,
-                Colors.lightBlueAccent.shade100,
-              ),
-              _buildHeroSubStat(
-                'Under Review',
-                _totals.claimedAmount,
-                Colors.amberAccent.shade100,
-              ),
-            ],
-          ),
+          const SizedBox(height: 4),
         ],
       ),
-    );
-  }
-
-  Widget _buildHeroSubStat(String label, double amount, Color valColor) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(color: Colors.white60, fontSize: 10),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          _formatAmount(amount),
-          style: TextStyle(
-            color: valColor,
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
     );
   }
 
@@ -505,255 +446,8 @@ class _EarningsScreenState extends State<EarningsScreen> {
     );
   }
 
-  Widget _buildStatusBreakdownSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Current Month Pipeline by Status (Requirement 55.1)',
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            _buildStatusChip(
-              'paid',
-              'Paid',
-              _totals.paidAmount,
-              _totals.paidCount,
-              Colors.green,
-            ),
-            _buildStatusChip(
-              'approved',
-              'Approved',
-              _totals.approvedAmount,
-              _totals.approvedCount,
-              Colors.blue,
-            ),
-            _buildStatusChip(
-              'verified',
-              'Verified',
-              _totals.verifiedAmount,
-              _totals.verifiedCount,
-              Colors.purple,
-            ),
-            _buildStatusChip(
-              'claimed',
-              'Claimed',
-              _totals.claimedAmount,
-              _totals.claimedCount,
-              Colors.orange,
-            ),
-            _buildStatusChip(
-              'eligible',
-              'Eligible',
-              _totals.eligibleAmount,
-              _totals.eligibleCount,
-              Colors.teal,
-            ),
-            _buildStatusChip(
-              'rejected',
-              'Rejected',
-              _totals.rejectedAmount,
-              _totals.rejectedCount,
-              Colors.red,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatusChip(
-    String statusKey,
-    String label,
-    double amount,
-    int count,
-    MaterialColor color,
-  ) {
-    final isSelected = _selectedStatusFilter == statusKey;
-
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _selectedStatusFilter = isSelected ? null : statusKey;
-        });
-      },
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? color.shade700 : color.shade50,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? color.shade800 : color.shade200,
-            width: 1.2,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(
-                  radius: 4,
-                  backgroundColor: isSelected ? Colors.white : color.shade700,
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: isSelected ? Colors.white : color.shade900,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '($count)',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: isSelected ? Colors.white70 : color.shade700,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 3),
-            Text(
-              _formatAmount(amount),
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: isSelected ? Colors.white : color.shade900,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildReconciliationSection() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.blue.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.account_balance,
-                color: Colors.blue.shade800,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Bank Disbursement & Reconciliation (Requirement 55.3)',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  color: Colors.blue.shade900,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ..._reconciliations.map((rec) {
-            final dateStr = rec.paymentDate.toIso8601String().substring(0, 10);
-            return Container(
-              margin: const EdgeInsets.only(bottom: 6),
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: rec.hasDiscrepancy
-                      ? Colors.red.shade300
-                      : Colors.blue.shade100,
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Ref: ${rec.bankReference}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11.5,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Paid on: $dateStr',
-                        style: const TextStyle(
-                          fontSize: 10.5,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        _formatAmount(rec.paidAmount),
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green.shade800,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: rec.hasDiscrepancy
-                              ? Colors.red.shade50
-                              : Colors.green.shade50,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          rec.reconciliationStatus,
-                          style: TextStyle(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.bold,
-                            color: rec.hasDiscrepancy
-                                ? Colors.red.shade800
-                                : Colors.green.shade800,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
   Widget _buildLineItemsSection() {
-    final filteredItems = _selectedStatusFilter == null
-        ? _lineItems
-        : _lineItems
-              .where((i) => i.status.toLowerCase() == _selectedStatusFilter)
-              .toList();
+    final filteredItems = _lineItems;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -765,11 +459,6 @@ class _EarningsScreenState extends State<EarningsScreen> {
               'Itemized Deliveries (${filteredItems.length})',
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
             ),
-            if (_selectedStatusFilter != null)
-              TextButton(
-                onPressed: () => setState(() => _selectedStatusFilter = null),
-                child: const Text('Show All', style: TextStyle(fontSize: 11.5)),
-              ),
           ],
         ),
         const SizedBox(height: 8),
@@ -790,7 +479,6 @@ class _EarningsScreenState extends State<EarningsScreen> {
 
   Widget _buildLineItemCard(EarningsLineItem item) {
     final dateStr = item.serviceDate.toIso8601String().substring(0, 10);
-    final statusColor = _getStatusColor(item.status);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -831,25 +519,8 @@ class _EarningsScreenState extends State<EarningsScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                '• ${item.memberCodedId}',
+                '• ${item.memberName ?? item.memberCodedId}',
                 style: const TextStyle(fontSize: 11, color: Colors.grey),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: statusColor.shade50,
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: statusColor.shade300, width: 0.8),
-                ),
-                child: Text(
-                  item.status.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.bold,
-                    color: statusColor.shade900,
-                  ),
-                ),
               ),
             ],
           ),
@@ -875,6 +546,18 @@ class _EarningsScreenState extends State<EarningsScreen> {
                   ),
                 if (item.evidenceRecordId != null)
                   _buildDetailRow('Evidence Link', item.evidenceRecordId!),
+                if (item.householdArea != null)
+                  _buildDetailRow('Household area', item.householdArea!),
+                if (item.memberId != null)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () =>
+                          context.push('/beneficiary/${item.memberId}'),
+                      icon: const Icon(Icons.person_outline),
+                      label: Text(item.memberName ?? 'Open person'),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -918,23 +601,5 @@ class _EarningsScreenState extends State<EarningsScreen> {
   String _formatAmount(double amount) {
     if (_isPrivacyShieldEnabled) return '₹****';
     return '₹${amount.toStringAsFixed(2)}';
-  }
-
-  MaterialColor _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'paid':
-        return Colors.green;
-      case 'approved':
-        return Colors.blue;
-      case 'verified':
-        return Colors.purple;
-      case 'claimed':
-        return Colors.orange;
-      case 'rejected':
-        return Colors.red;
-      case 'eligible':
-      default:
-        return Colors.teal;
-    }
   }
 }

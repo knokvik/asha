@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:asha_platform/core/database/app_database.dart';
@@ -11,6 +12,16 @@ import 'package:asha_platform/features/due_list/domain/route_planner.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUpAll(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('plugins.it_nomads.com/flutter_secure_storage'),
+      (MethodCall methodCall) async {
+        return null;
+      },
+    );
+  });
 
   group('Task 12.2: Route Planning, Offline Maps & Hamlet Accessibility (Requirements 25.1 – 25.5)', () {
     // ── 1. GeoCoordinate & Haversine Distance ────────────────────────────────

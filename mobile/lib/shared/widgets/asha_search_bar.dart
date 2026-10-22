@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/app_theme.dart';
 
-/// Tactile Search Pill with an animated ASHA mark, Voice, and Clear shortcuts.
+/// Tactile Search Pill with the original animated ASHA symbol, Voice, and Clear shortcuts.
 class AshaSearchBar extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String>? onChanged;
@@ -158,14 +158,55 @@ class _AnimatedAshaSearchMarkState extends State<_AnimatedAshaSearchMark>
           ],
         ),
       ),
-      child: const Image(
-        image: AssetImage('assets/branding/favicon.png'),
-        width: 22,
-        height: 22,
-        fit: BoxFit.contain,
-      ),
+      child: const _AshaSymbolIcon(),
     );
   }
+}
+
+class _AshaSymbolIcon extends StatelessWidget {
+  const _AshaSymbolIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: const Size.square(22),
+      painter: _AshaSymbolPainter(),
+    );
+  }
+}
+
+/// The compact green ASHA cross/sun symbol used in the original search bar.
+class _AshaSymbolPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = const Color(0xFF39B37D);
+    final center = size.center(Offset.zero);
+    final unit = size.width / 22;
+    final path = Path()
+      ..moveTo(center.dx - 2.4 * unit, center.dy - 10 * unit)
+      ..lineTo(center.dx + 2.4 * unit, center.dy - 10 * unit)
+      ..lineTo(center.dx + 2.4 * unit, center.dy - 3.2 * unit)
+      ..lineTo(center.dx + 8.5 * unit, center.dy - 6.7 * unit)
+      ..lineTo(center.dx + 10.7 * unit, center.dy - 2.8 * unit)
+      ..lineTo(center.dx + 4.4 * unit, center.dy + 0.8 * unit)
+      ..lineTo(center.dx + 10.7 * unit, center.dy + 4.2 * unit)
+      ..lineTo(center.dx + 8.5 * unit, center.dy + 8.2 * unit)
+      ..lineTo(center.dx + 2.4 * unit, center.dy + 4.7 * unit)
+      ..lineTo(center.dx + 2.4 * unit, center.dy + 10 * unit)
+      ..lineTo(center.dx - 2.4 * unit, center.dy + 10 * unit)
+      ..lineTo(center.dx - 2.4 * unit, center.dy + 4.7 * unit)
+      ..lineTo(center.dx - 8.5 * unit, center.dy + 8.2 * unit)
+      ..lineTo(center.dx - 10.7 * unit, center.dy + 4.2 * unit)
+      ..lineTo(center.dx - 4.4 * unit, center.dy + 0.8 * unit)
+      ..lineTo(center.dx - 10.7 * unit, center.dy - 2.8 * unit)
+      ..lineTo(center.dx - 8.5 * unit, center.dy - 6.7 * unit)
+      ..lineTo(center.dx - 2.4 * unit, center.dy - 3.2 * unit)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _SearchOrbitPainter extends CustomPainter {

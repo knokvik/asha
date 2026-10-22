@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 
@@ -16,6 +17,8 @@ class RegisterViewerScreen extends StatefulWidget {
   final String workerId;
   final String ashaName;
   final String villageName;
+  final RegisterType initialRegister;
+  final bool startInPdfMode;
 
   const RegisterViewerScreen({
     super.key,
@@ -23,6 +26,8 @@ class RegisterViewerScreen extends StatefulWidget {
     required this.workerId,
     this.ashaName = 'Sunita Devi',
     this.villageName = 'Devpur Gram Panchayat',
+    this.initialRegister = RegisterType.rch,
+    this.startInPdfMode = false,
   });
 
   @override
@@ -44,6 +49,8 @@ class _RegisterViewerScreenState extends State<RegisterViewerScreen> {
   void initState() {
     super.initState();
     _dataService = RegisterDataService(widget.db);
+    _selectedRegister = widget.initialRegister;
+    _isPdfMode = widget.startInPdfMode;
     _loadRegisterData();
   }
 
@@ -80,16 +87,23 @@ class _RegisterViewerScreenState extends State<RegisterViewerScreen> {
   Future<void> _shareCurrentRegister() async {
     if (_cachedPdfBytes == null && _currentPageData != null) {
       if (_selectedRegister == RegisterType.monthlyReport) {
-        _cachedPdfBytes = await PdfGenerator.generateMonthlyReportPdf(_currentPageData!);
+        _cachedPdfBytes = await PdfGenerator.generateMonthlyReportPdf(
+          _currentPageData!,
+        );
       } else {
-        _cachedPdfBytes = await PdfGenerator.generateRegisterPdf(_currentPageData!);
+        _cachedPdfBytes = await PdfGenerator.generateRegisterPdf(
+          _currentPageData!,
+        );
       }
     }
 
     if (_cachedPdfBytes != null) {
       await Printing.sharePdf(
         bytes: _cachedPdfBytes!,
-        filename: '${_selectedRegister.code}_$_reportingPeriod.pdf'.replaceAll(' ', '_'),
+        filename: '${_selectedRegister.code}_$_reportingPeriod.pdf'.replaceAll(
+          ' ',
+          '_',
+        ),
       );
     }
   }
@@ -115,7 +129,8 @@ class _RegisterViewerScreenState extends State<RegisterViewerScreen> {
     final lang = Localizations.maybeLocaleOf(context)?.languageCode ?? 'en';
     final theme = Theme.of(context);
     final template = TemplateManager().getTemplate(_selectedRegister);
-    final isDefaultWorker = widget.ashaName.isEmpty ||
+    final isDefaultWorker =
+        widget.ashaName.isEmpty ||
         widget.ashaName == 'Sunita Devi' ||
         widget.ashaName == 'Sunita Sharma';
     final ashaNameDisplay = (lang != 'en' && isDefaultWorker)
@@ -171,8 +186,8 @@ class _RegisterViewerScreenState extends State<RegisterViewerScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _isPdfMode
-                    ? _buildPdfPreview()
-                    : _buildInteractiveGrid(template),
+                ? _buildPdfPreview()
+                : _buildInteractiveGrid(template),
           ),
         ],
       ),
@@ -194,7 +209,10 @@ class _RegisterViewerScreenState extends State<RegisterViewerScreen> {
                   isExpanded: true,
                   decoration: InputDecoration(
                     labelText: shellText(lang, 'selectRegisterLabel'),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     border: const OutlineInputBorder(),
                   ),
                   items: RegisterType.values.map((r) {
@@ -223,14 +241,29 @@ class _RegisterViewerScreenState extends State<RegisterViewerScreen> {
                   isExpanded: true,
                   decoration: InputDecoration(
                     labelText: shellText(lang, 'periodLabel'),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     border: const OutlineInputBorder(),
                   ),
                   items: const [
-                    DropdownMenuItem(value: 'October 2026', child: Text('Oct 2026', style: TextStyle(fontSize: 13))),
-                    DropdownMenuItem(value: 'September 2026', child: Text('Sep 2026', style: TextStyle(fontSize: 13))),
-                    DropdownMenuItem(value: 'August 2026', child: Text('Aug 2026', style: TextStyle(fontSize: 13))),
-                    DropdownMenuItem(value: 'FY 2026-27', child: Text('FY 26-27', style: TextStyle(fontSize: 13))),
+                    DropdownMenuItem(
+                      value: 'October 2026',
+                      child: Text('Oct 2026', style: TextStyle(fontSize: 13)),
+                    ),
+                    DropdownMenuItem(
+                      value: 'September 2026',
+                      child: Text('Sep 2026', style: TextStyle(fontSize: 13)),
+                    ),
+                    DropdownMenuItem(
+                      value: 'August 2026',
+                      child: Text('Aug 2026', style: TextStyle(fontSize: 13)),
+                    ),
+                    DropdownMenuItem(
+                      value: 'FY 2026-27',
+                      child: Text('FY 26-27', style: TextStyle(fontSize: 13)),
+                    ),
                   ],
                   onChanged: (p) {
                     if (p != null && p != _reportingPeriod) {
@@ -248,7 +281,10 @@ class _RegisterViewerScreenState extends State<RegisterViewerScreen> {
               decoration: const InputDecoration(
                 hintText: 'Search beneficiary or hamlet...',
                 prefixIcon: Icon(Icons.search, size: 20),
-                contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 10),
+                contentPadding: EdgeInsets.symmetric(
+                  vertical: 0,
+                  horizontal: 10,
+                ),
                 border: OutlineInputBorder(),
               ),
               onChanged: (val) {
@@ -265,7 +301,9 @@ class _RegisterViewerScreenState extends State<RegisterViewerScreen> {
 
   Widget _buildInteractiveGrid(RegisterTemplateConfig template) {
     if (_currentPageData == null || _currentPageData!.rows.isEmpty) {
-      return const Center(child: Text('No records recorded for this register period.'));
+      return const Center(
+        child: Text('No records recorded for this register period.'),
+      );
     }
 
     final filteredRows = _currentPageData!.rows.where((row) {
@@ -300,17 +338,24 @@ class _RegisterViewerScreenState extends State<RegisterViewerScreen> {
               final isEven = idx % 2 == 0;
 
               return DataRow(
-                color: WidgetStateProperty.all(isEven ? Colors.white : Colors.grey.shade100),
+                color: WidgetStateProperty.all(
+                  isEven ? Colors.white : Colors.grey.shade100,
+                ),
                 cells: template.columns.map((col) {
                   final text = row[col.key]?.toString() ?? '-';
-                  final isAlert = text.contains('HIGH RISK') || text.contains('DUE') || text.contains('Positive');
+                  final isAlert =
+                      text.contains('HIGH RISK') ||
+                      text.contains('DUE') ||
+                      text.contains('Positive');
 
                   return DataCell(
                     Text(
                       text,
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: isAlert ? FontWeight.bold : FontWeight.normal,
+                        fontWeight: isAlert
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                         color: isAlert ? Colors.red.shade800 : Colors.black87,
                       ),
                     ),
@@ -371,8 +416,17 @@ class _RegisterViewerScreenState extends State<RegisterViewerScreen> {
                   text: TextSpan(
                     style: const TextStyle(color: Colors.black87, fontSize: 12),
                     children: [
-                      TextSpan(text: '${e.key}: ', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      TextSpan(text: '${e.value}', style: TextStyle(color: Colors.blueGrey.shade900, fontWeight: FontWeight.bold)),
+                      TextSpan(
+                        text: '${e.key}: ',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      TextSpan(
+                        text: '${e.value}',
+                        style: TextStyle(
+                          color: Colors.blueGrey.shade900,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -402,7 +456,8 @@ class _FamilyCardSelectorSheet extends StatefulWidget {
   });
 
   @override
-  State<_FamilyCardSelectorSheet> createState() => _FamilyCardSelectorSheetState();
+  State<_FamilyCardSelectorSheet> createState() =>
+      _FamilyCardSelectorSheetState();
 }
 
 class _FamilyCardSelectorSheetState extends State<_FamilyCardSelectorSheet> {
@@ -427,7 +482,8 @@ class _FamilyCardSelectorSheetState extends State<_FamilyCardSelectorSheet> {
       Navigator.pop(context);
       await Printing.sharePdf(
         bytes: bytes,
-        filename: '${_cardType.code}_${_beneficiaryName.replaceAll(' ', '_')}.pdf',
+        filename:
+            '${_cardType.code}_${_beneficiaryName.replaceAll(' ', '_')}.pdf',
       );
     }
   }
@@ -452,13 +508,19 @@ class _FamilyCardSelectorSheetState extends State<_FamilyCardSelectorSheet> {
                 'Generate Family Health Card',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
             ],
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<FamilyCardType>(
             value: _cardType,
-            decoration: const InputDecoration(labelText: 'Card Format', border: OutlineInputBorder()),
+            decoration: const InputDecoration(
+              labelText: 'Card Format',
+              border: OutlineInputBorder(),
+            ),
             items: FamilyCardType.values.map((t) {
               return DropdownMenuItem(value: t, child: Text(t.title));
             }).toList(),
@@ -476,7 +538,10 @@ class _FamilyCardSelectorSheetState extends State<_FamilyCardSelectorSheet> {
           const SizedBox(height: 12),
           Row(
             children: [
-              const Text('Language: ', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                'Language: ',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               ChoiceChip(
                 label: const Text('Hindi (हिन्दी)'),
                 selected: _language == 'hi',
@@ -495,9 +560,20 @@ class _FamilyCardSelectorSheetState extends State<_FamilyCardSelectorSheet> {
             width: double.infinity,
             child: ElevatedButton.icon(
               icon: _isGenerating
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
                   : const Icon(Icons.share),
-              label: Text(_isGenerating ? 'Generating...' : 'Share Card to Family (WhatsApp)'),
+              label: Text(
+                _isGenerating
+                    ? 'Generating...'
+                    : 'Share Card to Family (WhatsApp)',
+              ),
               onPressed: _isGenerating ? null : _shareCard,
             ),
           ),
