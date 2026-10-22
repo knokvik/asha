@@ -5,6 +5,7 @@ import '../../../../app/theme/app_theme.dart';
 import '../../../referral/presentation/referral_slip_screen.dart';
 import '../data/anc_repository.dart';
 import '../domain/anc_models.dart';
+import '../../presentation/clinical_form_feedback.dart';
 
 /// Interactive guided checklist screen for ANC Contacts (Requirements 14.2, 14.3, 14.4, 14.5).
 class AncVisitScreen extends ConsumerStatefulWidget {
@@ -131,7 +132,7 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
             content: Text(
               result.isHighRisk
                   ? 'ANC Contact saved. High-risk alert registered for PMSMA follow-up.'
-                  : 'ANC Contact successfully completed.',
+                  : 'ANC contact saved on this phone.',
             ),
             backgroundColor: result.isHighRisk ? Colors.orange.shade800 : AshaColors.primary,
           ),
@@ -141,8 +142,11 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving ANC contact: $e'), backgroundColor: Colors.red),
+        showClinicalSaveError(
+          context,
+          program: 'ANC contact',
+          error: e,
+          onRetry: _submitVisit,
         );
       }
     }
@@ -163,14 +167,7 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'ANC Contact ${widget.contactNumber} (${widget.gestationWeeks}w)',
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
-            ),
-            Text(
-              widget.womanName,
-              style: const TextStyle(fontSize: 12, color: AshaColors.textMuted),
-            ),
+            const Text('ANC visit', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
           ],
         ),
         backgroundColor: AshaColors.cardSurface,
@@ -180,6 +177,12 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          ClinicalPatientContextCard(
+            name: widget.womanName,
+            details: 'Contact ${widget.contactNumber} · ${widget.gestationWeeks} weeks pregnant',
+            contextLabel: 'Patient selected from the local register',
+          ),
+          const SizedBox(height: 12),
           // ── Red Danger Signs Alert Banner (Requirement 14.3) ───────────────
           if (hasRed)
             Card(

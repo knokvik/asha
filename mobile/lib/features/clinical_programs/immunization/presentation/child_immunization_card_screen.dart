@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../data/immunization_repository.dart';
 import '../domain/immunization_models.dart';
+import '../../presentation/clinical_form_feedback.dart';
 import 'aefi_report_dialog.dart';
 
 /// Screen displaying the child's immunization card / MCP card matrix (Requirement 16.1, 16.2, 16.3).
@@ -237,14 +238,18 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
                       );
                       if (mounted) {
                         messenger.showSnackBar(
-                          SnackBar(content: Text('$selectedVaccineCode recorded successfully.')),
+                          clinicalSavedSnackBar(
+                            message: '$selectedVaccineCode saved on this phone.',
+                          ),
                         );
                         _loadImmunizationData();
                       }
                     } catch (e) {
                       if (mounted) {
-                        messenger.showSnackBar(
-                          SnackBar(content: Text('Error recording dose: $e')),
+                        showClinicalSaveErrorWithMessenger(
+                          messenger,
+                          program: 'immunization dose',
+                          error: e,
                         );
                       }
                     }
@@ -286,11 +291,7 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.childName, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-            Text(
-              'DOB: ${_dateFormat.format(widget.dateOfBirth)} (${_computeAge(widget.dateOfBirth)})',
-              style: const TextStyle(fontSize: 12),
-            ),
+            const Text('Immunization', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
           ],
         ),
         actions: [
@@ -312,6 +313,12 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
               : ListView(
                   padding: const EdgeInsets.all(12),
                   children: [
+                    ClinicalPatientContextCard(
+                      name: widget.childName,
+                      details: 'DOB: ${_dateFormat.format(widget.dateOfBirth)} · ${_computeAge(widget.dateOfBirth)}',
+                      contextLabel: 'Child immunization card',
+                    ),
+                    const SizedBox(height: 12),
                     // Coverage Progress Summary Card
                     Card(
                       elevation: 2,

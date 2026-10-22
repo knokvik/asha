@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -20,7 +21,9 @@ import '../../../core/sync/sync_engine.dart';
 import '../../../core/triage/models/age_band.dart';
 import '../../../core/voice/tts_service.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../clinical_programs/nutrition/domain/who_growth_calculator.dart';
 import '../domain/adaptive_session.dart';
+import '../domain/triage_input_validation.dart';
 import 'language_bridge_screen.dart';
 
 String _triageCopy(String language, String key) {
@@ -38,7 +41,7 @@ String _triageCopy(String language, String key) {
       'months': 'Months',
       'years': 'Years',
       'sexContext': 'Sex / patient context',
-      'unknown': 'Unknown / prefer not to say',
+      'unknown': 'Not told',
       'female': 'Female',
       'male': 'Male',
       'other': 'Other',
@@ -46,13 +49,16 @@ String _triageCopy(String language, String key) {
       'locationHint': 'Where is the child or patient located?',
       'details': 'Other details (optional)',
       'detailsHint': 'Add any context to carry with this triage case.',
-      'nearbyIllness': 'Nearby illness',
-      'reportedContext': 'Reported context to consider',
+      'nearbyIllness': 'Is this illness going around your village?',
+      'reportedContext': 'What is the patient complaining of?',
       'contextFilters': 'Clinical context filters',
       'contextFiltersSub': 'Select nearby illness and reported symptoms',
       'startQuestions': 'Start questions',
       'commonQuestion': 'Common question',
       'adaptive': 'Adaptive',
+      'childProtocol': 'Child flow: based on WHO IMCI',
+      'adultProtocol': 'Adult flow: pilot, needs clinical validation',
+      'addedAreaSignal': 'Added from your area disease signal',
       'speakIn': 'Speak in',
       'nextQuestion': 'Next question',
       'previousQuestion': 'Previous question',
@@ -80,7 +86,7 @@ String _triageCopy(String language, String key) {
       'months': 'महीने',
       'years': 'वर्ष',
       'sexContext': 'लिंग / मरीज़ का संदर्भ',
-      'unknown': 'अज्ञात / बताना नहीं चाहते',
+      'unknown': 'नहीं बताया',
       'female': 'महिला',
       'male': 'पुरुष',
       'other': 'अन्य',
@@ -88,13 +94,16 @@ String _triageCopy(String language, String key) {
       'locationHint': 'बच्चा या मरीज़ कहाँ रहता है?',
       'details': 'अन्य विवरण (वैकल्पिक)',
       'detailsHint': 'इस ट्राइएज केस के लिए कोई अतिरिक्त जानकारी दें।',
-      'nearbyIllness': 'आस-पास की बीमारी',
-      'reportedContext': 'ध्यान देने योग्य संदर्भ',
+      'nearbyIllness': 'क्या यह बीमारी आपके गाँव में फैल रही है?',
+      'reportedContext': 'मरीज़ को क्या शिकायत है?',
       'contextFilters': 'क्लिनिकल संदर्भ फ़िल्टर',
       'contextFiltersSub': 'आस-पास की बीमारी और बताए गए लक्षण चुनें',
       'startQuestions': 'प्रश्न शुरू करें',
       'commonQuestion': 'सामान्य प्रश्न',
       'adaptive': 'अनुकूली',
+      'childProtocol': 'बाल प्रवाह: WHO IMCI पर आधारित',
+      'adultProtocol': 'वयस्क प्रवाह: पायलट, चिकित्सकीय सत्यापन आवश्यक',
+      'addedAreaSignal': 'आपके क्षेत्र के रोग संकेत से जोड़ा गया',
       'speakIn': 'इस भाषा में बोलें',
       'nextQuestion': 'अगला प्रश्न',
       'previousQuestion': 'पिछला प्रश्न',
@@ -122,7 +131,7 @@ String _triageCopy(String language, String key) {
       'months': 'महिने',
       'years': 'वर्षे',
       'sexContext': 'लिंग / रुग्ण संदर्भ',
-      'unknown': 'माहित नाही / सांगू इच्छित नाही',
+      'unknown': 'सांगितले नाही',
       'female': 'स्त्री',
       'male': 'पुरुष',
       'other': 'इतर',
@@ -130,13 +139,16 @@ String _triageCopy(String language, String key) {
       'locationHint': 'मूल किंवा रुग्ण कुठे राहतो?',
       'details': 'इतर तपशील (पर्यायी)',
       'detailsHint': 'या ट्रायेज केससाठी अतिरिक्त माहिती द्या.',
-      'nearbyIllness': 'जवळची आजाराची माहिती',
-      'reportedContext': 'विचारात घ्यायचा संदर्भ',
+      'nearbyIllness': 'हा आजार तुमच्या गावात पसरत आहे का?',
+      'reportedContext': 'रुग्णाची तक्रार काय आहे?',
       'contextFilters': 'क्लिनिकल संदर्भ फिल्टर',
       'contextFiltersSub': 'जवळचा आजार आणि सांगितलेली लक्षणे निवडा',
       'startQuestions': 'प्रश्न सुरू करा',
       'commonQuestion': 'सामान्य प्रश्न',
       'adaptive': 'अनुकूली',
+      'childProtocol': 'बाल प्रवाह: WHO IMCI वर आधारित',
+      'adultProtocol': 'प्रौढ प्रवाह: पायलट, वैद्यकीय पडताळणी आवश्यक',
+      'addedAreaSignal': 'तुमच्या क्षेत्राच्या रोग संकेतावरून जोडले',
       'speakIn': 'या भाषेत बोला',
       'nextQuestion': 'पुढील प्रश्न',
       'previousQuestion': 'मागील प्रश्न',
@@ -205,7 +217,9 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   bool _ticketQueued = false;
   String? _attachmentMessage;
   List<Map<String, dynamic>> _queuedAttachments = const [];
-  String _sex = 'Unknown';
+  String _sex = '';
+  final _intakeSeededFields = <String>{};
+  final _derivedFields = <String>{};
   bool _adaptiveFromRadar = false;
   final _reportedContext = <String>{};
   AgeBandCode _ageBand = AgeBandCode.child2m5y;
@@ -213,11 +227,28 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   bool _chestIndrawing = false;
   bool _vomitingEverything = false;
   bool _convulsions = false;
+  List<TriageInputIssue> _intakeIssues = const [];
+  Timer? _breathTimer;
+  int _breathSecondsRemaining = 60;
+  int _breathCount = 0;
+  bool _breathCounting = false;
 
   String get _engineVersion =>
       'imci-engine/pack-${_session?.loop.pack.version ?? 'unknown'}';
 
   String get _modelVersion => _session?.model?.modelVersion ?? 'rules-only';
+
+  String get _normalizedPatientName {
+    final words = _name.text.trim().split(RegExp(r'\s+'));
+    return words
+        .where((word) => word.isNotEmpty)
+        .map(
+          (word) => word.length == 1
+              ? word.toUpperCase()
+              : '${word[0].toUpperCase()}${word.substring(1)}',
+        )
+        .join(' ');
+  }
 
   static const _illnesses = <(String, String)>[
     ('dengue', 'Dengue-like'),
@@ -229,7 +260,6 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   static const _reportedContexts = <(String, String)>[
     ('fever', 'Fever'),
     ('cough_breathing', 'Cough / breathing'),
-    ('diarrhoea', 'Diarrhoea'),
     ('rash', 'Rash'),
     ('weakness', 'Weakness / fall'),
     ('bp_diabetes', 'BP / diabetes'),
@@ -244,6 +274,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
 
   @override
   void dispose() {
+    _breathTimer?.cancel();
     _name.dispose();
     _age.dispose();
     _location.dispose();
@@ -381,7 +412,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   Map<String, dynamic> _ticketPayload(List<Map<String, dynamic>> attachments) =>
       {
         ..._wardCoordinates(),
-        'name': _name.text.trim(),
+        'name': _normalizedPatientName,
         'age_months': _ageMonths,
         'age_days': int.tryParse(_ageDays.text.trim()),
         'age_band': _ageBand.code,
@@ -527,11 +558,32 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
     final age = _ageMonthsValue();
     final name = _name.text.trim();
     final location = _location.text.trim();
-    if (session == null || age == null || name.isEmpty || location.isEmpty) {
+    if (session == null ||
+        age == null ||
+        name.isEmpty ||
+        location.isEmpty ||
+        _sex.isEmpty) {
       setState(
-        () => _error = 'Enter the name, age, and location before starting.',
+        () => _error = 'Enter the name, age, location, and patient context before starting.',
       );
       return;
+    }
+    final intakeIssues = _validateIntakeMeasurements();
+    if (intakeIssues.isNotEmpty) {
+      TriageInputIssue? blockingIssue;
+      for (final issue in intakeIssues) {
+        if (!issue.confirmable) {
+          blockingIssue = issue;
+          break;
+        }
+      }
+      setState(() {
+        _intakeIssues = intakeIssues;
+        _error = blockingIssue?.message;
+      });
+      if (blockingIssue != null) return;
+      final confirmed = await _confirmPlausibility(intakeIssues);
+      if (!confirmed || !mounted) return;
     }
     final exactAgeDays = int.tryParse(_ageDays.text.trim());
     if (exactAgeDays != null && exactAgeDays < 0) {
@@ -567,6 +619,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
       _phase = _Phase.questions;
       _error = null;
       _answerError = null;
+      _intakeIssues = const [];
       _ageMonths = age;
     });
     _questionKeys
@@ -576,7 +629,54 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
       );
   }
 
+  Map<String, num?> _intakeMeasurementValues() => {
+    'vitals.respiratory_rate': int.tryParse(_respiratoryRate.text.trim()),
+    'vitals.temp_c': num.tryParse(_temperature.text.trim()),
+    'vitals.systolic_bp': int.tryParse(_systolicBp.text.trim()),
+    'vitals.diastolic_bp': int.tryParse(_diastolicBp.text.trim()),
+    'vitals.pulse_rate': int.tryParse(_pulseRate.text.trim()),
+  };
+
+  List<TriageInputIssue> _validateIntakeMeasurements() =>
+      TriageInputValidation.validate(_intakeMeasurementValues());
+
+  TriageInputIssue? _intakeIssueFor(String fieldKey) {
+    for (final issue in _intakeIssues) {
+      if (issue.fieldKey == fieldKey) return issue;
+    }
+    return null;
+  }
+
+  Future<bool> _confirmPlausibility(List<TriageInputIssue> issues) async {
+    if (!mounted) return false;
+    final confirmable = issues.where((issue) => issue.confirmable).toList();
+    if (confirmable.isEmpty) return false;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Re-check measurement'),
+        content: Text(
+          '${confirmable.map((issue) => issue.message).join('\n')}\n\n'
+          'If this is a genuine reading, confirm it to continue. The triage rules will use the value exactly as entered.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Go back'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Confirm reading'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
   void _seedClinicalContext(FlowState flow) {
+    _intakeSeededFields.clear();
+    _derivedFields.clear();
     int? integer(TextEditingController controller) =>
         int.tryParse(controller.text.trim());
     num? decimal(TextEditingController controller) =>
@@ -593,7 +693,10 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
       'symptoms.convulsions': _convulsions ? true : null,
     };
     for (final entry in values.entries) {
-      if (entry.value != null) flow.seedInput(entry.key, entry.value);
+      if (entry.value != null) {
+        flow.seedInput(entry.key, entry.value);
+        _intakeSeededFields.add(entry.key);
+      }
     }
   }
 
@@ -639,22 +742,99 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
     final adaptive = <BankQuestion>[];
     for (final question in flow.questions) {
       if (!_show(flow, question)) continue;
-      final isCoreOrAdult = question.module == 'core' ||
+      final isCoreOrAdult =
+          question.module == 'core' ||
           question.module == 'adult' ||
           question.module == 'adult_vitals';
       (isCoreOrAdult ? common : adaptive).add(question);
     }
-    return [...common, ...adaptive];
+    final ordered = [...common, ...adaptive];
+    final weightIndex = ordered.indexWhere(
+      (question) => question.inputField == 'vitals.weight_kg',
+    );
+    final zScoreIndex = ordered.indexWhere(
+      (question) => question.inputField == 'vitals.weight_for_age_zscore',
+    );
+    if (weightIndex >= 0 && zScoreIndex >= 0 && weightIndex > zScoreIndex) {
+      // NEEDS CLINICIAN VALIDATION: keep the measured input before its
+      // derived value without changing the scoring rule or its threshold.
+      final zScoreQuestion = ordered.removeAt(zScoreIndex);
+      final adjustedWeightIndex = ordered.indexWhere(
+        (question) => question.inputField == 'vitals.weight_kg',
+      );
+      ordered.insert(adjustedWeightIndex + 1, zScoreQuestion);
+    }
+    return ordered;
   }
 
   Future<void> _speak(BankQuestion question) async {
     await _tts.speak(text: _questionPrompt(question, _lang), language: _lang);
   }
 
+  Future<void> _showHowToCheck(BankQuestion question, String language) async {
+    final guidance = switch (question.inputField) {
+      'symptoms.chest_indrawing' => (
+        'Look at the lower ribs while the patient is calm. The lower chest wall pulling inward with each breath is a danger sign.',
+        'Watch the lower ribs while the patient is calm. Do not count normal movement between the ribs.',
+      ),
+      'symptoms.palmar_pallor' => (
+        'Open the palm in good light and compare the palm colour with the caregiver’s. Very pale palms need referral review.',
+        'Check the palm in good light and compare the colour with the caregiver’s palm.',
+      ),
+      'symptoms.lethargic_or_unconscious' => (
+        'Call the patient’s name and gently touch the shoulder. Record yes if they are difficult to wake or do not respond normally.',
+        'Call the patient and gently touch the shoulder. Note whether they respond normally.',
+      ),
+      'symptoms.skin_pinch' => (
+        'Pinch the skin of the abdomen for one second, release, and watch how quickly it returns. Ask the caregiver before checking.',
+        'With consent, pinch abdominal skin for one second and observe how quickly it returns.',
+      ),
+      'symptoms.sunken_eyes' => (
+        'Ask the caregiver whether the eyes look deeper or more sunken than usual for this patient.',
+        'Ask whether the eyes look deeper or more sunken than usual.',
+      ),
+      _ => null,
+    };
+    if (guidance == null || !mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('How to check'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Icon(Icons.medical_information_outlined, size: 48),
+            const SizedBox(height: 12),
+            Text(guidance.$1),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => _tts.speak(
+                text: language == 'en' ? guidance.$1 : guidance.$2,
+                language: language,
+              ),
+              icon: const Icon(Icons.volume_up_outlined),
+              label: const Text('Read aloud'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _answer(Object? raw) {
     final flow = _flow;
     if (flow == null || _index >= _visible.length) return;
-    flow.answer(_visible[_index].id, raw);
+    final currentQuestion = _visible[_index];
+    flow.answer(currentQuestion.id, raw);
+    _deriveWeightForAgeScore(flow, currentQuestion, raw);
+    if (raw == null && currentQuestion.isRedFlag && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Not sure is treated as a possible danger sign.'),
+        ),
+      );
+    }
     final visible = _visibleQuestions(flow);
     final next = visible.indexWhere(
       (question) => !flow.answeredIds.contains(question.id),
@@ -686,19 +866,67 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
     });
   }
 
-  void _submitNumber(BankQuestion question) {
-    final bounds = question.numeric;
+  void _deriveWeightForAgeScore(
+    FlowState flow,
+    BankQuestion question,
+    Object? raw,
+  ) {
+    if (question.inputField != 'vitals.weight_kg' || raw is! num) return;
+    final age = _ageMonthsValue();
+    if (age == null || age > 60 || (_sex != 'Female' && _sex != 'Male')) {
+      return;
+    }
+    // NEEDS CLINICIAN VALIDATION: the bundled WHO LMS lookup is reused here
+    // only to replace an unmeasurable Z-score question with a derived value.
+    final zScore = WhoGrowthCalculator.calculateWaz(
+      weightKg: raw.toDouble(),
+      ageMonths: age.toDouble(),
+      sex: _sex == 'Male' ? 'M' : 'F',
+    );
+    flow.seedInput('vitals.weight_for_age_zscore', zScore);
+    _derivedFields.add('vitals.weight_for_age_zscore');
+  }
+
+  Future<void> _submitNumber(BankQuestion question) async {
+    final bounds = _numericBoundsFor(question);
     final value = num.tryParse(_answerController.text.trim());
     if (bounds == null || value == null) {
       setState(() => _answerError = 'Enter a number before saving.');
       return;
     }
-    if (value < bounds.min || value > bounds.max) {
+    final plausibility = TriageInputValidation.validateValue(
+      question.inputField,
+      value,
+      fallbackBounds: TriageInputValidation.boundsFor(question.inputField),
+    );
+    if (plausibility != null) {
+      final confirmed = await _confirmPlausibility([plausibility]);
+      if (!confirmed || !mounted) return;
+    } else if (value < bounds.min || value > bounds.max) {
       setState(
         () => _answerError =
             'Use a value from ${bounds.min} to ${bounds.max} ${bounds.unit}.',
       );
       return;
+    }
+
+    final flow = _flow;
+    if (flow != null &&
+        (question.inputField == 'vitals.systolic_bp' ||
+            question.inputField == 'vitals.diastolic_bp')) {
+      final systolic = question.inputField == 'vitals.systolic_bp'
+          ? value
+          : flow.answers['vitals.systolic_bp'] as num?;
+      final diastolic = question.inputField == 'vitals.diastolic_bp'
+          ? value
+          : flow.answers['vitals.diastolic_bp'] as num?;
+      if (systolic != null && diastolic != null && systolic <= diastolic) {
+        setState(
+          () => _answerError =
+              'Check blood pressure: systolic must be higher than diastolic.',
+        );
+        return;
+      }
     }
     _answer(bounds.decimals == 0 ? value.toInt() : value);
   }
@@ -759,7 +987,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
       PatientProfile(
         id: code,
         abhaId: '91-0000-0000-${age.toString().padLeft(4, '0')}',
-        name: _name.text.trim(),
+        name: _normalizedPatientName,
         ageMonths: age,
         sex: _sex,
         village: location,
@@ -934,6 +1162,19 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
             _syncAgeBandFromInput(_age.text);
           },
         ),
+        if ((_ageMonthsValue() ?? 999) < 24) ...[
+          const SizedBox(height: 12),
+          TextField(
+            key: const Key('triage_exact_age_days'),
+            controller: _ageDays,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Exact age in days (optional)',
+              helperText: 'Shown for infants and young children only.',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
         const SizedBox(height: 16),
         if (_extendedClinicalContext) ...[
           _extendedClinicalIntake(),
@@ -941,14 +1182,14 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         ],
         DropdownButtonFormField<String>(
           key: const Key('triage_sex_dropdown'),
-          initialValue: _sex,
+          initialValue: _sex.isEmpty ? null : _sex,
           decoration: InputDecoration(
             labelText: _triageCopy(lang, 'sexContext'),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
           ),
           items: [
             DropdownMenuItem(
-              value: 'Unknown',
+              value: 'Not told',
               child: Text(_triageCopy(lang, 'unknown')),
             ),
             DropdownMenuItem(
@@ -1128,22 +1369,13 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
               style: TextStyle(color: AshaColors.textSecondary, height: 1.3),
             ),
             const SizedBox(height: 12),
-            TextField(
-              key: const Key('triage_exact_age_days'),
-              controller: _ageDays,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Exact age in days (optional)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
                   child: _clinicalNumber(
                     key: const Key('triage_respiratory_rate'),
                     controller: _respiratoryRate,
+                    fieldKey: 'vitals.respiratory_rate',
                     label: 'Respiratory rate',
                     suffix: '/min',
                   ),
@@ -1153,6 +1385,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                   child: _clinicalNumber(
                     key: const Key('triage_temperature'),
                     controller: _temperature,
+                    fieldKey: 'vitals.temp_c',
                     label: 'Temperature',
                     suffix: '°C',
                     decimal: true,
@@ -1167,6 +1400,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                   child: _clinicalNumber(
                     key: const Key('triage_systolic_bp'),
                     controller: _systolicBp,
+                    fieldKey: 'vitals.systolic_bp',
                     label: 'Systolic BP',
                     suffix: 'mmHg',
                   ),
@@ -1176,6 +1410,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                   child: _clinicalNumber(
                     key: const Key('triage_diastolic_bp'),
                     controller: _diastolicBp,
+                    fieldKey: 'vitals.diastolic_bp',
                     label: 'Diastolic BP',
                     suffix: 'mmHg',
                   ),
@@ -1186,6 +1421,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
             _clinicalNumber(
               key: const Key('triage_pulse_rate'),
               controller: _pulseRate,
+              fieldKey: 'vitals.pulse_rate',
               label: 'Pulse rate',
               suffix: 'beats/min',
             ),
@@ -1225,19 +1461,34 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   Widget _clinicalNumber({
     required Key key,
     required TextEditingController controller,
+    required String fieldKey,
     required String label,
     required String suffix,
     bool decimal = false,
   }) {
-    return TextField(
-      key: key,
-      controller: controller,
-      keyboardType: TextInputType.numberWithOptions(decimal: decimal),
-      decoration: InputDecoration(
-        labelText: label,
-        suffixText: suffix,
-        border: const OutlineInputBorder(),
-      ),
+    final bounds = TriageInputValidation.boundsFor(fieldKey);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          key: key,
+          controller: controller,
+          keyboardType: TextInputType.numberWithOptions(decimal: decimal),
+          decoration: InputDecoration(
+            labelText: label,
+            suffixText: suffix,
+            helperText: bounds == null
+                ? null
+                : 'Plausible range: ${bounds.rangeLabel}',
+            errorText: _intakeIssueFor(fieldKey)?.message,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        if (fieldKey == 'vitals.respiratory_rate') ...[
+          const SizedBox(height: 6),
+          _breathTimerControls(controller),
+        ],
+      ],
     );
   }
 
@@ -1274,6 +1525,17 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                   valueColor: const AlwaysStoppedAnimation<Color>(
                     Color(0xFFD1D5DB),
                   ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _extendedClinicalContext
+                    ? _triageCopy(lang, 'adultProtocol')
+                    : _triageCopy(lang, 'childProtocol'),
+                style: const TextStyle(
+                  color: AshaColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -1377,16 +1639,46 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-            Padding(
-              padding: const EdgeInsets.only(left: 40),
-              child: Text(
-                question.module == 'core'
-                    ? _triageCopy(lang, 'commonQuestion')
-                    : '${_triageCopy(lang, 'adaptive')} · ${question.module}',
-                style: const TextStyle(color: AshaColors.textSecondary),
+            if (question.module != 'core' &&
+                question.module != 'adult' &&
+                question.module != 'adult_vitals') ...[
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.only(left: 40),
+                child: Text(
+                  '${_triageCopy(lang, 'addedAreaSignal')}: ${question.module}',
+                  style: const TextStyle(
+                    color: AshaColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
-            ),
+            ],
+            if (_intakeSeededFields.contains(question.inputField))
+              Padding(
+                padding: const EdgeInsets.only(left: 40, top: 6),
+                child: Text(
+                  'Answered from intake — tap to review',
+                  style: const TextStyle(
+                    color: AshaColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            if (_derivedFields.contains(question.inputField))
+              const Padding(
+                padding: EdgeInsets.only(left: 40, top: 6),
+                child: Text(
+                  'Calculated offline from measured weight and age',
+                  style: TextStyle(
+                    color: AshaColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             if (isFocused) ...[
               const SizedBox(height: 12),
               OutlinedButton.icon(
@@ -1415,6 +1707,20 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                 const SizedBox(height: 14),
                 _answerControls(question),
               ],
+              if (const {
+                'symptoms.chest_indrawing',
+                'symptoms.palmar_pallor',
+                'symptoms.lethargic_or_unconscious',
+                'symptoms.skin_pinch',
+                'symptoms.sunken_eyes',
+              }.contains(question.inputField)) ...[
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () => _showHowToCheck(question, lang),
+                  icon: const Icon(Icons.info_outline_rounded),
+                  label: const Text('How to check'),
+                ),
+              ],
             ] else if (answered) ...[
               const SizedBox(height: 10),
               Padding(
@@ -1431,15 +1737,6 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                     color: AshaColors.primaryDark,
                     fontWeight: FontWeight.w800,
                   ),
-                ),
-              ),
-            ] else ...[
-              const SizedBox(height: 8),
-              Padding(
-                padding: EdgeInsets.only(left: 40),
-                child: Text(
-                  _triageCopy(lang, 'nextQuestion'),
-                  style: TextStyle(color: AshaColors.textMuted),
                 ),
               ),
             ],
@@ -1496,7 +1793,8 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                     _bottomAnswer(
                       label: _triageCopy(lang, 'yes'),
                       icon: Icons.check_rounded,
-                      color: AshaColors.primary,
+                      color: const Color(0xFFE9F0EC),
+                      foregroundColor: AshaColors.textPrimary,
                       selected: stored == true,
                       onPressed: () => _answer(true),
                     ),
@@ -1504,7 +1802,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                     _bottomAnswer(
                       label: _triageCopy(lang, 'no'),
                       icon: Icons.close_rounded,
-                      color: const Color(0xFFD1D5DB),
+                      color: const Color(0xFFF2F4F3),
                       foregroundColor: AshaColors.textPrimary,
                       selected: stored == false,
                       onPressed: () => _answer(false),
@@ -1513,8 +1811,9 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                     _bottomAnswer(
                       label: _triageCopy(lang, 'notSure'),
                       icon: Icons.help_outline_rounded,
-                      color: AshaColors.textSecondary,
-                      selected: (_flow?.answeredIds.contains(question.id) ?? false) &&
+                      color: const Color(0xFFF2F4F3),
+                      selected:
+                          (_flow?.answeredIds.contains(question.id) ?? false) &&
                           stored == null,
                       onPressed: () => _answer(null),
                     ),
@@ -1636,9 +1935,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
     final value = int.tryParse(raw.trim());
     if (value == null || value < 0) return;
     final next = _ageBandForInput(value);
-    if (next != _ageBand) {
-      setState(() => _ageBand = next);
-    }
+    setState(() => _ageBand = next);
   }
 
   AgeBandCode _ageBandForInput(int value) {
@@ -1654,11 +1951,111 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
     return AgeBandCode.adult;
   }
 
+  void _toggleBreathTimer(TextEditingController controller) {
+    if (_breathCounting) {
+      _breathTimer?.cancel();
+      _breathTimer = null;
+      setState(() => _breathCounting = false);
+      return;
+    }
+    setState(() {
+      _breathSecondsRemaining = 60;
+      _breathCount = 0;
+      _breathCounting = true;
+    });
+    _breathTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_breathSecondsRemaining <= 1) {
+        timer.cancel();
+        _breathTimer = null;
+        controller.text = _breathCount.toString();
+        controller.selection = TextSelection.fromPosition(
+          TextPosition(offset: controller.text.length),
+        );
+        setState(() {
+          _breathSecondsRemaining = 0;
+          _breathCounting = false;
+        });
+        return;
+      }
+      setState(() => _breathSecondsRemaining--);
+    });
+  }
+
+  void _tapBreath() {
+    if (_breathCounting) setState(() => _breathCount++);
+  }
+
+  Widget _breathTimerControls(TextEditingController controller) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          _breathCounting
+              ? 'Count each chest rise: $_breathSecondsRemaining seconds left ($_breathCount counted)'
+              : _breathSecondsRemaining == 0
+              ? '60-second count complete: $_breathCount breaths/min'
+              : 'Use a full 60-second count while the patient is calm.',
+          style: const TextStyle(
+            color: AshaColors.textSecondary,
+            fontSize: 12,
+            height: 1.3,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          children: [
+            OutlinedButton.icon(
+              key: const Key('triage_breath_timer'),
+              onPressed: () => _toggleBreathTimer(controller),
+              icon: Icon(_breathCounting ? Icons.stop : Icons.timer_outlined),
+              label: Text(
+                _breathCounting ? 'Stop timer' : 'Start 60-second timer',
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: _breathCounting ? _tapBreath : null,
+              icon: const Icon(Icons.touch_app_outlined),
+              label: Text('Tap breath ($_breathCount)'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  ({String unit, num min, num max, int decimals})? _numericBoundsFor(
+    BankQuestion question,
+  ) {
+    final safety = TriageInputValidation.boundsFor(question.inputField);
+    if (safety != null) {
+      return (
+        unit: safety.unit,
+        min: safety.min,
+        max: safety.max,
+        decimals: safety.decimals,
+      );
+    }
+    final bounds = question.numeric;
+    if (bounds == null) return null;
+    return (
+      unit: bounds.unit,
+      min: bounds.min,
+      max: bounds.max,
+      decimals: bounds.decimals,
+    );
+  }
+
   Widget _answerControls(BankQuestion question) {
     final lang = ref.read(languageProvider).languageCode;
     switch (question.type) {
       case 'number':
-        final bounds = question.numeric;
+        final bounds = _numericBoundsFor(question);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1684,9 +2081,13 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
             if (bounds != null) ...[
               const SizedBox(height: 8),
               Text(
-                'Expected range: ${bounds.min}–${bounds.max} ${bounds.unit}',
+                'Plausible range: ${bounds.min}–${bounds.max} ${bounds.unit}',
                 style: const TextStyle(color: AshaColors.textSecondary),
               ),
+            ],
+            if (question.inputField == 'vitals.respiratory_rate') ...[
+              const SizedBox(height: 8),
+              _breathTimerControls(_answerController),
             ],
             const SizedBox(height: 12),
             FilledButton.icon(
@@ -1737,7 +2138,8 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   }
 
   Widget _choiceButton(ChoiceOption option) {
-    final selected = _flow?.answers[_visible[_index].inputField] == option.value;
+    final selected =
+        _flow?.answers[_visible[_index].inputField] == option.value;
     return SizedBox(
       height: 56,
       child: OutlinedButton.icon(

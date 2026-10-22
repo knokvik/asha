@@ -64,6 +64,22 @@ class OtaStringService extends ChangeNotifier {
   }
 
   /// Applies an incoming OTA bundle from backend sync and persists it.
+  ///
+  /// ⚠️  SECURITY WARNING — NO SIGNATURE VERIFICATION:
+  /// This method currently trusts any bundle delivered by the sync transport.
+  /// A compromised server, a MITM attack on an unprotected HTTP connection,
+  /// or a malicious sync packet could push arbitrary string overrides —
+  /// including replacing clinical guidance text, dosage labels, or danger-sign
+  /// prompts with incorrect values.
+  ///
+  /// Before shipping to production you MUST add bundle signature verification:
+  ///   1. The backend signs each bundle with an Ed25519 or ECDSA P-256 key.
+  ///   2. The public key is pinned in the APK (not delivered over the wire).
+  ///   3. [applyBundle] verifies the signature before calling [_cache.addAll].
+  ///   4. Reject and log any bundle that fails verification.
+  ///
+  /// Until verification is in place, OTA string updates are disabled in
+  /// production builds by a feature flag and only enabled in supervised pilots.
   Future<void> applyBundle(Map<String, dynamic> bundleJson) async {
     final bundle = OtaStringBundle.fromJson(bundleJson);
     final lang = bundle.language.toLowerCase();

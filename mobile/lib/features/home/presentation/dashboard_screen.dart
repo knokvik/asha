@@ -180,10 +180,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final hasSignals = _sharedSignalCount > 0;
     return Container(
       decoration: BoxDecoration(
-        color: hasSignals ? const Color(0xFFFFFBEB) : const Color(0xFFF0FDF4),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: hasSignals ? const Color(0xFFFDE68A) : const Color(0xFFBBF7D0),
+          color: const Color(0xFFE5E7EB),
           width: 1.2,
         ),
         boxShadow: const [
@@ -210,12 +210,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: hasSignals ? const Color(0xFFFEF3C7) : const Color(0xFFDCFCE7),
+                    color: hasSignals ? const Color(0xFFFEF3C7) : const Color(0xFFF3F4F6),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     Icons.radar_rounded,
-                    color: hasSignals ? const Color(0xFFD97706) : const Color(0xFF15803D),
+                    color: hasSignals ? const Color(0xFFD97706) : const Color(0xFF4B5563),
                     size: 24,
                   ),
                 ),
@@ -224,44 +224,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              _sharedSignalCount == 0
-                                  ? shellText(_lang, 'sharedAreaSignals')
-                                  : '$_sharedSignalCount ${_sharedSignalCount == 1 ? shellText(_lang, 'activeAreaSignalSingular') : shellText(_lang, 'activeAreaSignals')}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14,
-                                color: Color(0xFF111827),
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: hasSignals ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              hasSignals ? 'ALERT ACTIVE' : 'BEAT SYNCED',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                        ],
+                      Text(
+                        _sharedSignalCount == 0
+                            ? shellText(_lang, 'sharedAreaSignals')
+                            : '$_sharedSignalCount ${_sharedSignalCount == 1 ? shellText(_lang, 'activeAreaSignalSingular') : shellText(_lang, 'activeAreaSignals')}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          color: Color(0xFF111827),
+                        ),
                       ),
                       const SizedBox(height: 3),
                       Text(
                         _getSharedSignalSubtitle(_lang),
                         style: TextStyle(
                           fontSize: 12,
-                          color: hasSignals ? const Color(0xFF92400E) : const Color(0xFF166534),
+                          color: hasSignals ? const Color(0xFF92400E) : const Color(0xFF6B7280),
                           fontWeight: FontWeight.w500,
                         ),
                       ),

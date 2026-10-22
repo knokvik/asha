@@ -6,6 +6,7 @@ import '../../../../core/triage/models/models.dart';
 import '../data/ncd_repository.dart';
 import '../domain/cbac_calculator.dart';
 import '../domain/cbac_models.dart';
+import '../../presentation/clinical_form_feedback.dart';
 
 /// Screen guiding ASHA through the official Community Based Assessment Checklist (CBAC)
 /// for adults >= 30 years, evaluating risk score offline, checking cancer warning signs,
@@ -145,18 +146,7 @@ class _CbacScreeningScreenState extends ConsumerState<CbacScreeningScreen> with 
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'CBAC NCD Screening',
-              style: TextStyle(
-                color: AshaColors.textPrimary,
-                fontWeight: FontWeight.w800,
-                fontSize: 17,
-              ),
-            ),
-            Text(
-              '${widget.beneficiaryName} (${widget.ageYears}y, ${widget.sex})',
-              style: TextStyle(color: AshaColors.textMuted, fontSize: 12),
-            ),
+            const Text('NCD screening', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
           ],
         ),
         bottom: TabBar(
@@ -181,6 +171,14 @@ class _CbacScreeningScreenState extends ConsumerState<CbacScreeningScreen> with 
       ),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: ClinicalPatientContextCard(
+              name: widget.beneficiaryName,
+              details: '${widget.ageYears} years · ${widget.sex}',
+              contextLabel: 'CBAC risk assessment',
+            ),
+          ),
           // Live Score Badge Header
           _buildScoreBanner(score),
 
@@ -871,7 +869,12 @@ class _CbacScreeningScreenState extends ConsumerState<CbacScreeningScreen> with 
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error saving CBAC: $e'), backgroundColor: Colors.red));
+      showClinicalSaveError(
+        context,
+        program: 'CBAC screening',
+        error: e,
+        onRetry: _saveAndEvaluateCbac,
+      );
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

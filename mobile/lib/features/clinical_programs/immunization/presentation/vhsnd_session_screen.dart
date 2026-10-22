@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../data/immunization_repository.dart';
 import '../domain/immunization_models.dart';
+import '../../presentation/clinical_form_feedback.dart';
 
 /// Screen for planning, mobilizing beneficiaries, and recording attendance/services
 /// during a Village Health, Sanitation and Nutrition Day (VHSND) (Requirement 16.4, 27).
@@ -110,14 +111,17 @@ class _VhsndSessionScreenState extends ConsumerState<VhsndSessionScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('VHSND session outcomes successfully recorded and saved.')),
+          clinicalSavedSnackBar(message: 'VHSND outcomes saved on this phone.'),
         );
         _loadSessionData();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving VHSND outcomes: $e')),
+        showClinicalSaveError(
+          context,
+          program: 'VHSND outcomes',
+          error: e,
+          onRetry: _saveSessionOutcomes,
         );
         setState(() => _isLoading = false);
       }
