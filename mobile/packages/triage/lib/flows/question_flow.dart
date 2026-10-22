@@ -184,16 +184,33 @@ class FlowBuilder {
 
   FlowState build({
     required String wardId,
-    int? month,
+    int? calendarMonth,
+    int? ageMonths,
     Set<String> extraModules = const {},
   }) {
     final active = {
-      ...pack.activeModuleIds(wardId, month: month),
+      ...pack.activeModuleIds(wardId, month: calendarMonth),
       ...extraModules,
     }.toList();
     final activeSet = active.toSet();
-    final byField = <String, BankQuestion>{};
+
+    // --- age-aware question selection ---
+    final eligible = <BankQuestion>[];
     for (final question in pack.questions) {
+      // Module gate: core + adult are always eligible; others need active outbreak
+      if (question.module != 'core' &&
+          question.module != 'adult' &&
+          question.module != 'adult_vitals' &&
+          !activeSet.contains(question.module)) {
+        continue;
+      }
+      // Age gate: skip questions outside the patient's age range
+      if (ageMonths != null && !question.appliesTo(ageMonths)) continue;
+      eligible.add(question);
+    }
+
+    final byField = <String, BankQuestion>{};
+    for (final question in eligible) {
       byField.putIfAbsent(question.inputField, () => question);
     }
 
@@ -204,21 +221,27 @@ class FlowBuilder {
     }
 
     final outbreakFlags = _sorted([
-      for (final question in pack.questions)
+      for (final question in eligible)
         if (question.module != 'core' &&
+            question.module != 'adult' &&
+            question.module != 'adult_vitals' &&
             question.isRedFlag &&
             activeSet.contains(question.module))
           question,
     ]);
     final coreRest = _sorted([
-      for (final question in pack.questions)
-        if (question.module == 'core' &&
+      for (final question in eligible)
+        if ((question.module == 'core' ||
+                question.module == 'adult' ||
+                question.module == 'adult_vitals') &&
             !dangerFields.contains(question.inputField))
           question,
     ]);
     final outbreakRest = _sorted([
-      for (final question in pack.questions)
+      for (final question in eligible)
         if (question.module != 'core' &&
+            question.module != 'adult' &&
+            question.module != 'adult_vitals' &&
             !question.isRedFlag &&
             activeSet.contains(question.module))
           question,

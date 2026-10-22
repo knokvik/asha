@@ -42,11 +42,16 @@ class AdaptiveTriage {
 
   FlowState openAssessment({
     required String wardId,
-    int? month,
+    int? calendarMonth,
+    int? ageMonths,
     Set<String> extraModules = const {},
   }) {
-    _openFlow = FlowBuilder(_pack)
-        .build(wardId: wardId, month: month, extraModules: extraModules);
+    _openFlow = FlowBuilder(_pack).build(
+      wardId: wardId,
+      calendarMonth: calendarMonth,
+      ageMonths: ageMonths,
+      extraModules: extraModules,
+    );
     return _openFlow!;
   }
 

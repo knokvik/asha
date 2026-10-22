@@ -547,9 +547,12 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         : const <String>[];
     final contextModules = <String>{..._chosen, ...radarModules};
     if (_extendedClinicalContext) contextModules.add('adult_vitals');
+    // Always include adult module for patients >= 5 years
+    if (age >= 60) contextModules.add('adult');
     final flow = session.loop.openAssessment(
       wardId: _wardId,
-      month: age,
+      calendarMonth: DateTime.now().month,
+      ageMonths: age,
       extraModules: contextModules,
     );
     _seedClinicalContext(flow);
@@ -620,6 +623,9 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
       case 'core.mastoid':
       case 'core.ear_days':
         return yes('symptoms.ear_pain') || yes('symptoms.ear_discharge');
+      // Adult follow-up: pregnancy danger only for female / other patients
+      case 'adult.pregnancy_danger':
+        return _sex == 'Female' || _sex == 'Other';
       default:
         return true;
     }
@@ -633,7 +639,10 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
     final adaptive = <BankQuestion>[];
     for (final question in flow.questions) {
       if (!_show(flow, question)) continue;
-      (question.module == 'core' ? common : adaptive).add(question);
+      final isCoreOrAdult = question.module == 'core' ||
+          question.module == 'adult' ||
+          question.module == 'adult_vitals';
+      (isCoreOrAdult ? common : adaptive).add(question);
     }
     return [...common, ...adaptive];
   }
@@ -1585,6 +1594,10 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
 
   String _questionPrompt(BankQuestion question, String language) {
     final prompt = question.prompt(language);
+    // Adult-module questions already have patient-appropriate text
+    if (question.module == 'adult' || question.module == 'adult_vitals') {
+      return prompt;
+    }
     if (!_extendedClinicalContext) return prompt;
     return prompt
         .replaceAll('the child', 'the patient')
@@ -1593,7 +1606,9 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         .replaceAll('बच्चे', 'मरीज़')
         .replaceAll('बच्चा', 'मरीज़')
         .replaceAll('मुलाला', 'रुग्णाला')
-        .replaceAll('मुलाची', 'रुग्णाची');
+        .replaceAll('मुलाची', 'रुग्णाची')
+        .replaceAll('मूल ', 'रुग्ण ')
+        .replaceAll('मुलामध्ये', 'रुग्णामध्ये');
   }
 
   void _syncAgeBandFromInput(String raw) {

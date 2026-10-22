@@ -79,6 +79,8 @@ class BankQuestion {
     this.invertYes = false,
     this.options = const [],
     this.numeric,
+    this.minAgeMonths,
+    this.maxAgeMonths,
   });
 
   final String id;
@@ -92,7 +94,28 @@ class BankQuestion {
   final List<ChoiceOption> options;
   final NumericBounds? numeric;
 
-  String prompt(String language) => text[language] ?? text['en'] ?? id;
+  /// Minimum patient age in months (inclusive). Null means no lower bound.
+  final int? minAgeMonths;
+
+  /// Maximum patient age in months (inclusive). Null means no upper bound.
+  final int? maxAgeMonths;
+
+  String prompt(String language) {
+    final key = language.toLowerCase().replaceAll('_', '-').split('-').first;
+    return text[language] ?? text[key] ?? text['en'] ?? id;
+  }
+
+  bool hasPrompt(String language) {
+    final key = language.toLowerCase().replaceAll('_', '-').split('-').first;
+    return text.containsKey(language) || text.containsKey(key);
+  }
+
+  /// Whether this question applies to a patient of the given age.
+  bool appliesTo(int ageMonths) {
+    if (minAgeMonths != null && ageMonths < minAgeMonths!) return false;
+    if (maxAgeMonths != null && ageMonths > maxAgeMonths!) return false;
+    return true;
+  }
 }
 
 class PackFacility {
@@ -212,15 +235,11 @@ class ContextPack {
   LatLon? centerForWard(String wardId) {
     for (final ward in wards) {
       if (ward.wardId != wardId || ward.ring.isEmpty) continue;
-      final latitude = ward.ring.fold<double>(
-            0,
-            (sum, point) => sum + point.latitude,
-          ) /
+      final latitude =
+          ward.ring.fold<double>(0, (sum, point) => sum + point.latitude) /
           ward.ring.length;
-      final longitude = ward.ring.fold<double>(
-            0,
-            (sum, point) => sum + point.longitude,
-          ) /
+      final longitude =
+          ward.ring.fold<double>(0, (sum, point) => sum + point.longitude) /
           ward.ring.length;
       return LatLon(latitude, longitude);
     }
@@ -516,6 +535,8 @@ BankQuestion _question(Map<String, Object?> json) {
     isRedFlag: json['is_red_flag'] == true,
     inputField: json['input_field']! as String,
     invertYes: json['invert_yes'] == true,
+    minAgeMonths: (json['min_age_months'] as num?)?.toInt(),
+    maxAgeMonths: (json['max_age_months'] as num?)?.toInt(),
     numeric: numeric,
     options: [
       if (optionsRaw is List)

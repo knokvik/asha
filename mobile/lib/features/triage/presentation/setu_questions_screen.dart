@@ -134,7 +134,11 @@ class _SetuQuestionsScreenState extends State<SetuQuestionsScreen> {
         _showOutOfScope(months);
         return;
       }
-      final flow = session.loop.openAssessment(wardId: _wardId, month: months);
+      final flow = session.loop.openAssessment(
+        wardId: _wardId,
+        calendarMonth: DateTime.now().month,
+        ageMonths: months,
+      );
       final visible = _visible(flow);
       setState(() {
         _ageMonths = months;

@@ -108,7 +108,7 @@ void main() {
     test('adult context adds the unified adult vitals questions', () {
       final flow = FlowBuilder(
         pack,
-      ).build(wardId: 'W3', month: 840, extraModules: const {'adult_vitals'});
+      ).build(wardId: 'W3', calendarMonth: 8, ageMonths: 840, extraModules: const {'adult_vitals'});
       expect(
         flow.questions.map((question) => question.id),
         containsAll(['adult.systolic_bp', 'adult.diastolic_bp', 'adult.pulse']),
