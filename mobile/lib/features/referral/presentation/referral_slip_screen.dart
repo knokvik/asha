@@ -4,6 +4,7 @@ import 'package:printing/printing.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../app/theme/app_theme.dart';
 import '../../../core/database/app_database.dart' hide TriageResult;
 import '../../../core/pdf/pdf_generator.dart';
 import '../../../core/triage/models/models.dart';
@@ -42,7 +43,7 @@ class ReferralSlipScreen extends ConsumerStatefulWidget {
 }
 
 class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
-  bool _useEnglish = true;
+  final bool _useEnglish = true;
   bool _isLoading = true;
   List<FacilityInfo> _candidateFacilities = [];
   FacilityRoutePlan? _routingPlan;
@@ -330,7 +331,14 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
 
     if (_isLoading || _note == null || _activeTriageResult == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Emergency Referral')),
+        appBar: AppBar(
+          title: const Text(
+            'Referral ticket',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+          ),
+          backgroundColor: _flagColor,
+          foregroundColor: Colors.white,
+        ),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -340,28 +348,13 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Emergency Referral'),
+        title: const Text(
+          'Referral ticket',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+        ),
         backgroundColor: _flagColor,
         foregroundColor: Colors.white,
         actions: [
-          // Bilingual Language Toggle (Requirement 10.7)
-          Row(
-            children: [
-              const Text(
-                'EN',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-              ),
-              Switch(
-                key: const Key('referral_language_toggle'),
-                value: _useEnglish,
-                activeTrackColor: Colors.white70,
-                activeThumbColor: Colors.white,
-                onChanged: (val) {
-                  setState(() => _useEnglish = val);
-                },
-              ),
-            ],
-          ),
           IconButton(
             key: const Key('referral_qr_button'),
             icon: const Icon(Icons.qr_code_2),
@@ -375,32 +368,7 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 1. Critical Priority Banner
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: _flagColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    'PRIORITY: ${triageResult.flag.label}',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    note.primaryReason,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 14, color: Colors.white),
-                  ),
-                ],
-              ),
-            ),
+            _buildTicketCard(note, triageResult),
             const SizedBox(height: 16),
 
             // 2. Patient Demographics Summary Card
@@ -734,6 +702,158 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
                     ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTicketCard(
+    StructuredReferralNote note,
+    TriageResult triageResult,
+  ) {
+    final status = _savedRecord?.status ?? 'draft';
+    final statusLabel = switch (status) {
+      'en_route' => 'Dispatched · syncing with PHC',
+      'arrived' => 'Received at facility',
+      'outcome_recorded' => 'Outcome recorded',
+      'created' => 'Queued for PHC sync',
+      _ => 'Ready to send',
+    };
+    return Container(
+      key: const Key('referral_ticket_card'),
+      decoration: BoxDecoration(
+        color: AshaColors.cardSurface,
+        borderRadius: AshaShapes.cardRadius,
+        border: Border.all(color: _flagColor, width: 2),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: AshaShapes.cardRadius,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              color: _flagColor.withValues(alpha: 0.1),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: _flagColor,
+                    foregroundColor: Colors.white,
+                    child: Icon(
+                      triageResult.flag == TriageFlag.red
+                          ? Icons.priority_high_rounded
+                          : Icons.health_and_safety_rounded,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${triageResult.flag.label} referral',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: _flagColor,
+                            fontSize: 19,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        Text(
+                          statusLabel,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.verified_rounded, color: AshaColors.primary),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _ticketValue('PATIENT', note.patient.name),
+                      ),
+                      const SizedBox(width: 12),
+                      Flexible(
+                        child: _ticketValue(
+                          'TICKET ID',
+                          note.referralId,
+                          alignEnd: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _ticketChip('Age · ${note.patient.formattedAge}'),
+                      _ticketChip('Location · ${note.patient.village ?? 'Community'}'),
+                      _ticketChip('Sync · ${_savedRecord?.syncStatus ?? 'pending'}'),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(note.primaryReason, style: AshaTypography.bodyMedium),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _ticketValue(String label, String value, {bool alignEnd = false}) {
+    return Column(
+      crossAxisAlignment:
+          alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        Text(label, style: AshaTypography.subtitleSmall),
+        const SizedBox(height: 3),
+        Text(
+          value,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          textAlign: alignEnd ? TextAlign.end : TextAlign.start,
+          style: AshaTypography.cardTitle,
+        ),
+      ],
+    );
+  }
+
+  Widget _ticketChip(String text) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 230),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: AshaColors.surfaceMuted,
+        borderRadius: AshaShapes.chipBorderRadius,
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AshaTypography.subtitleSmall.copyWith(
+          color: AshaColors.primaryDark,
         ),
       ),
     );

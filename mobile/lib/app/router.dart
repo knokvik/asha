@@ -69,6 +69,17 @@ import '../features/due_list/domain/route_models.dart';
 import '../features/teleconsultation/presentation/teleconsultation_screen.dart';
 import '../features/map/presentation/india_map_page.dart';
 import '../shared/providers/core_providers.dart';
+import '../shared/providers/user_profile_provider.dart';
+
+/// Returns the authenticated ASHA worker's ID from [userProfileProvider] when
+/// a Riverpod [Ref] is available, otherwise falls back to the demo sentinel
+/// 'asha-01'. All clinical-program routes pass this value so that records are
+/// attributed to the correct worker rather than a hardcoded placeholder.
+String _workerId(Ref? ref) {
+  if (ref == null) return 'asha-01';
+  final profile = ref.read(userProfileProvider);
+  return profile.valueOrNull?.ashaId ?? 'asha-01';
+}
 
 /// Notifier holding current authenticated worker role ('asha', 'af', 'admin', etc.).
 /// Default is 'asha'.
@@ -317,7 +328,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
             womanId: state.uri.queryParameters['memberId'] ?? 'mem_pooja_01',
             womanName: state.uri.queryParameters['name'] ?? 'Pooja Devi',
             maternalAgeYears: 24,
-            ashaId: 'asha-01',
+            ashaId: _workerId(ref),
           ),
         ),
         GoRoute(
@@ -331,7 +342,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
                 int.tryParse(state.uri.queryParameters['contact'] ?? '3') ?? 3,
             gestationWeeks:
                 int.tryParse(state.uri.queryParameters['weeks'] ?? '28') ?? 28,
-            ashaId: 'asha-01',
+            ashaId: _workerId(ref),
           ),
         ),
         GoRoute(
@@ -344,7 +355,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
             visitDay:
                 int.tryParse(state.uri.queryParameters['day'] ?? '7') ?? 7,
             isInstitutionalDelivery: true,
-            ashaId: 'asha-01',
+            ashaId: _workerId(ref),
           ),
         ),
         GoRoute(
@@ -359,7 +370,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
             visitTitle: 'HBNC follow-up',
             birthWeightKg: 2.7,
             isPreterm: false,
-            ashaId: 'asha-01',
+            ashaId: _workerId(ref),
           ),
         ),
         GoRoute(
@@ -371,7 +382,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
             visitScheduleId:
                 state.uri.queryParameters['visitId'] ?? 'sched_hbyc_01',
             milestone: HbycMilestone.month3,
-            ashaId: 'asha-01',
+            ashaId: _workerId(ref),
           ),
         ),
         GoRoute(
@@ -384,13 +395,13 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
             ageYears:
                 int.tryParse(state.uri.queryParameters['age'] ?? '62') ?? 62,
             sex: state.uri.queryParameters['sex'] ?? 'M',
-            ashaId: 'asha-01',
+            ashaId: _workerId(ref),
           ),
         ),
         GoRoute(
           path: 'ncd-register',
           builder: (context, state) =>
-              const NcdRegisterScreen(ashaId: 'asha-01'),
+              NcdRegisterScreen(ashaId: _workerId(ref)),
         ),
         GoRoute(
           path: 'immunization',
@@ -398,7 +409,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
             memberId: state.uri.queryParameters['memberId'] ?? 'mem_aarav_02',
             childName: state.uri.queryParameters['name'] ?? 'Baby Aarav',
             dateOfBirth: DateTime.now().subtract(const Duration(days: 90)),
-            ashaId: 'asha-01',
+            ashaId: _workerId(ref),
           ),
         ),
         GoRoute(
@@ -408,7 +419,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
             childName: state.uri.queryParameters['name'] ?? 'Baby Aarav',
             dateOfBirth: DateTime.now().subtract(const Duration(days: 90)),
             sex: 'M',
-            ashaId: 'asha-01',
+            ashaId: _workerId(ref),
           ),
         ),
         GoRoute(
@@ -418,7 +429,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
                 state.uri.queryParameters['memberId'] ?? 'mem_ramprasad_03',
             beneficiaryName:
                 state.uri.queryParameters['name'] ?? 'Ramprasad Verma',
-            ashaId: 'asha-01',
+            ashaId: _workerId(ref),
           ),
         ),
         GoRoute(
@@ -439,9 +450,9 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
               dosesCompleted: 33,
               consecutiveMissedDoses: 0,
               nikshayPoshanStatus: NikshayPoshanStatus.installmentReceived,
-              ashaId: 'asha-01',
+              ashaId: _workerId(ref),
             ),
-            ashaId: 'asha-01',
+            ashaId: _workerId(ref),
           ),
         ),
         GoRoute(
@@ -450,7 +461,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
             villageName: 'Rampur',
             hamlet: 'Ward 1 (Main Village)',
             anganwadiCenterName: 'Rampur Anganwadi Center 1',
-            ashaId: 'asha-01',
+            ashaId: _workerId(ref),
           ),
         ),
       ],
@@ -479,7 +490,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
           );
           return EarningsScreen(
             repository: EarningsRepository(db: db, incentiveService: service),
-            workerId: 'asha-01',
+            workerId: _workerId(ref),
             language: ref.read(languageProvider).languageCode,
           );
         }
@@ -494,7 +505,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
         if (ref != null) {
           return StockManagementScreen(
             stockService: StockService(ref.read(appDatabaseProvider)),
-            workerId: 'asha-01',
+            workerId: _workerId(ref),
             workerName: 'Sunita Sharma (ASHA)',
           );
         }
@@ -514,7 +525,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
         if (ref != null) {
           return RegisterViewerScreen(
             db: ref.read(appDatabaseProvider),
-            workerId: 'asha-01',
+            workerId: _workerId(ref),
             ashaName: 'Sunita Sharma',
             villageName: 'Rampur Gram Panchayat',
             initialRegister:
@@ -557,7 +568,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
         ),
         patientId: 'mem_pooja_01',
         patientName: 'Pooja Devi',
-        workerId: 'asha-01',
+        workerId: _workerId(ref),
       ),
     ),
 
@@ -690,8 +701,11 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
     ),
 
     // ── Area Coverage Analysis ─────────────────────────────────────────────
+    // NOTE: '/coverage' (line ~185) redirects to the DueListScreen coverage tab.
+    // This standalone CoverageAnalysisScreen is registered under '/coverage-analysis'
+    // to avoid the duplicate route conflict in go_router.
     GoRoute(
-      path: '/coverage',
+      path: '/coverage-analysis',
       builder: (context, state) => const CoverageAnalysisScreen(
         report: CoverageAnalysisReport(
           village: 'Rampur Gram Panchayat',

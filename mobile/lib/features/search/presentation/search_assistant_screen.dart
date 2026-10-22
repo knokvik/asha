@@ -10,7 +10,7 @@ import '../data/clinical_dictionary.dart';
 import '../data/offline_search_index.dart';
 
 /// Unified offline search for beneficiaries and the ASHA field knowledge cards.
-/// Features a bottom-docked search bar with integrated back button, 4-section
+/// Features a title-led search bar with integrated back button, 4-section
 /// categorized search results, and a full clinical disease dictionary.
 class SearchAssistantScreen extends ConsumerStatefulWidget {
   const SearchAssistantScreen({super.key, this.initialQuery});
@@ -88,6 +88,7 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
         child: Column(
           children: [
             _topHeader(lang),
+            _bottomSearchBar(context, lang),
             _categoryBar(lang),
             Expanded(
               child: _query.isEmpty
@@ -100,7 +101,6 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
                           _buildSearchResults(index, peopleAsync, lang),
                     ),
             ),
-            _bottomSearchBar(context, lang),
           ],
         ),
       ),
@@ -135,42 +135,18 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
               children: [
                 Row(
                   children: [
-                    Text(
-                      shellText(lang, 'searchKnowledgeTitle'),
-                      style: const TextStyle(
+                    const Text(
+                      'Search',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: AshaColors.textPrimary,
                         letterSpacing: -0.3,
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 1.5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFDEF7EC),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        shellText(lang, 'offline'),
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF03543F),
-                        ),
-                      ),
-                    ),
                   ],
-                ),
-                Text(
-                  shellText(lang, 'searchKnowledgeSub'),
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AshaColors.textSecondary,
-                  ),
                 ),
               ],
             ),
@@ -483,35 +459,6 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: AshaColors.primaryLight,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(
-                      Icons.menu_book_rounded,
-                      size: 14,
-                      color: AshaColors.primaryDark,
-                    ),
-                    SizedBox(width: 6),
-                    Text(
-                      'Tap to view Clinical Dictionary, Counter-measures & Doses →',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AshaColors.primaryDark,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
         ),
@@ -878,7 +825,7 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
     );
   }
 
-  /// BOTTOM SEARCH BAR with integrated back button
+  /// Search bar placed directly below the compact title header.
   Widget _bottomSearchBar(BuildContext context, String lang) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
@@ -896,7 +843,7 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 10,
-            offset: const Offset(0, -3),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
