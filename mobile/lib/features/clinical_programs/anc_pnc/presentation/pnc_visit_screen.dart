@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/theme/app_theme.dart';
 import '../../../referral/presentation/referral_slip_screen.dart';
 import '../data/pnc_repository.dart';
 import '../domain/pnc_models.dart';
@@ -226,7 +227,7 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                   ? 'PNC Visit recorded and Institutional Delivery Escort incentive claimed!'
                   : 'PNC Visit recorded successfully.',
             ),
-            backgroundColor: Colors.teal.shade800,
+            backgroundColor: AshaColors.primary,
           ),
         );
         Navigator.pop(context, true);
@@ -249,12 +250,24 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
     final hasPpd = checklist.hasPpd;
 
     return Scaffold(
+      backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
-        title: Text('PNC Day ${widget.visitDay} Visit — ${widget.motherName}'),
-        backgroundColor: hasRed
-            ? Colors.red.shade800
-            : (hasPpd ? Colors.purple.shade800 : Colors.teal.shade800),
-        foregroundColor: Colors.white,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'PNC Day ${widget.visitDay} Visit',
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+            ),
+            Text(
+              widget.motherName,
+              style: const TextStyle(fontSize: 12, color: AshaColors.textMuted),
+            ),
+          ],
+        ),
+        backgroundColor: AshaColors.cardSurface,
+        foregroundColor: AshaColors.textPrimary,
+        elevation: 0,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -357,7 +370,7 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                       labelText: 'Temp (°C)',
                       helperText: '>=38.0°C RED',
                       suffixText: '°C',
-                      border: const OutlineInputBorder(),
+                      border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                       filled: true,
                       fillColor: (_temperatureC ?? 0) >= 38.0 ? Colors.red.shade50 : null,
                     ),
@@ -374,7 +387,7 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                       labelText: 'Systolic BP',
                       helperText: '>=160 RED',
                       suffixText: 'mmHg',
-                      border: const OutlineInputBorder(),
+                      border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                       filled: true,
                       fillColor: (_systolicBp ?? 0) >= 160 ? Colors.red.shade50 : null,
                     ),
@@ -391,7 +404,7 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                       labelText: 'Diastolic BP',
                       helperText: '>=110 RED',
                       suffixText: 'mmHg',
-                      border: const OutlineInputBorder(),
+                      border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                       filled: true,
                       fillColor: (_diastolicBp ?? 0) >= 110 ? Colors.red.shade50 : null,
                     ),
@@ -441,7 +454,7 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
               initialValue: _bleedingStatus,
               decoration: const InputDecoration(
                 labelText: 'Maternal Bleeding / Lochia Status',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
               ),
               items: PncBleedingStatus.values.map((s) {
                 return DropdownMenuItem(value: s, child: Text(s.label));
@@ -462,7 +475,7 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
               initialValue: _breastStatus,
               decoration: const InputDecoration(
                 labelText: 'Breast Condition',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
               ),
               items: PncBreastStatus.values.map((s) {
                 return DropdownMenuItem(value: s, child: Text(s.label));
@@ -479,7 +492,7 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
               initialValue: _woundStatus,
               decoration: const InputDecoration(
                 labelText: 'Episiotomy / Cesarean Wound Healing',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
               ),
               items: PncWoundStatus.values.map((s) {
                 return DropdownMenuItem(value: s, child: Text(s.label));
@@ -545,7 +558,7 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: DropdownButtonFormField<String>(
                 initialValue: _chosenContraception,
-                decoration: const InputDecoration(labelText: 'Method Discussed / Selected', border: OutlineInputBorder()),
+                decoration: const InputDecoration(labelText: 'Method Discussed / Selected', border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle))),
                 items: const [
                   DropdownMenuItem(value: 'LAM', child: Text('Lactational Amenorrhea Method (LAM)')),
                   DropdownMenuItem(value: 'PPIUCD', child: Text('Postpartum IUCD (PPIUCD / Cu-T)')),
@@ -578,9 +591,7 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
           ElevatedButton(
             key: const Key('submit_pnc_visit_button'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: hasRed
-                  ? Colors.red.shade800
-                  : (hasPpd ? Colors.purple.shade800 : Colors.teal.shade800),
+              backgroundColor: AshaColors.primary,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
@@ -609,7 +620,7 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(icon, color: Colors.teal.shade800, size: 22),
+          Icon(icon, color: AshaColors.primary, size: 22),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -617,7 +628,7 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.teal.shade900,
+                color: AshaColors.primaryDark,
               ),
             ),
           ),

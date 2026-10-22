@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../app/theme/app_theme.dart';
 import '../../../../core/triage/models/models.dart';
 import '../data/nutrition_repository.dart';
 import '../domain/growth_models.dart';
@@ -238,7 +239,7 @@ class _GrowthMonitoringScreenState extends ConsumerState<GrowthMonitoringScreen>
             children: [
               DropdownButtonFormField<SupplementType>(
                 initialValue: selectedType,
-                decoration: const InputDecoration(labelText: 'Supplement Type', border: OutlineInputBorder()),
+                decoration: const InputDecoration(labelText: 'Supplement Type', border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle))),
                 items: SupplementType.values
                     .map((s) => DropdownMenuItem(value: s, child: Text(s.displayName, style: const TextStyle(fontSize: 13))))
                     .toList(),
@@ -260,7 +261,7 @@ class _GrowthMonitoringScreenState extends ConsumerState<GrowthMonitoringScreen>
               const SizedBox(height: 12),
               TextField(
                 controller: doseController,
-                decoration: const InputDecoration(labelText: 'Dose Amount / Regimen', border: OutlineInputBorder()),
+                decoration: const InputDecoration(labelText: 'Dose Amount / Regimen', border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle))),
               ),
             ],
           ),
@@ -302,7 +303,11 @@ class _GrowthMonitoringScreenState extends ConsumerState<GrowthMonitoringScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
+        backgroundColor: AshaColors.cardSurface,
+        foregroundColor: AshaColors.textPrimary,
+        elevation: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -362,7 +367,7 @@ class _GrowthMonitoringScreenState extends ConsumerState<GrowthMonitoringScreen>
                                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                       decoration: const InputDecoration(
                                         labelText: 'Weight (kg)*',
-                                        border: OutlineInputBorder(),
+                                        border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                                         suffixText: 'kg',
                                       ),
                                       validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
@@ -375,7 +380,7 @@ class _GrowthMonitoringScreenState extends ConsumerState<GrowthMonitoringScreen>
                                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                       decoration: const InputDecoration(
                                         labelText: 'Height / Length',
-                                        border: OutlineInputBorder(),
+                                        border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                                         suffixText: 'cm',
                                       ),
                                     ),
@@ -393,7 +398,7 @@ class _GrowthMonitoringScreenState extends ConsumerState<GrowthMonitoringScreen>
                                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                       decoration: const InputDecoration(
                                         labelText: 'MUAC (cm)',
-                                        border: OutlineInputBorder(),
+                                        border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                                         suffixText: 'cm',
                                         hintText: 'e.g. 12.0',
                                       ),
@@ -406,7 +411,7 @@ class _GrowthMonitoringScreenState extends ConsumerState<GrowthMonitoringScreen>
                                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                       decoration: const InputDecoration(
                                         labelText: 'Haemoglobin (Hb)',
-                                        border: OutlineInputBorder(),
+                                        border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                                         suffixText: 'g/dL',
                                         hintText: 'e.g. 10.5',
                                       ),

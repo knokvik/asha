@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/theme/app_theme.dart';
 import '../data/ncd_repository.dart';
 import '../domain/cbac_models.dart';
 
@@ -30,8 +31,24 @@ class _NcdRegisterScreenState extends ConsumerState<NcdRegisterScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
-        title: const Text('NCD Chronic Care Register'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Text(
+              'NCD Chronic Care Register',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+            ),
+            Text(
+              'Hypertension, Diabetes & Chronic Care Monitoring',
+              style: TextStyle(fontSize: 12, color: AshaColors.textMuted),
+            ),
+          ],
+        ),
+        backgroundColor: AshaColors.cardSurface,
+        foregroundColor: AshaColors.textPrimary,
+        elevation: 0,
         actions: [
           IconButton(
             tooltip: 'Run Overdue Tracing',
@@ -237,7 +254,7 @@ class _NcdRegisterScreenState extends ConsumerState<NcdRegisterScreen> {
               children: [
                 TextField(
                   controller: memberIdController,
-                  decoration: const InputDecoration(labelText: 'Beneficiary Member ID', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(labelText: 'Beneficiary Member ID', border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle))),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -246,7 +263,7 @@ class _NcdRegisterScreenState extends ConsumerState<NcdRegisterScreen> {
                       child: TextField(
                         controller: sbpController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'SBP', hintText: '120', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(labelText: 'SBP', hintText: '120', border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle))),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -254,7 +271,7 @@ class _NcdRegisterScreenState extends ConsumerState<NcdRegisterScreen> {
                       child: TextField(
                         controller: dbpController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'DBP', hintText: '80', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(labelText: 'DBP', hintText: '80', border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle))),
                       ),
                     ),
                   ],
@@ -263,12 +280,12 @@ class _NcdRegisterScreenState extends ConsumerState<NcdRegisterScreen> {
                 TextField(
                   controller: glucoseController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Blood Glucose (mg/dL)', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(labelText: 'Blood Glucose (mg/dL)', border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle))),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<MedicationAdherence>(
                   initialValue: adherence,
-                  decoration: const InputDecoration(labelText: 'Medication Adherence', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(labelText: 'Medication Adherence', border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle))),
                   items: MedicationAdherence.values
                       .map((a) => DropdownMenuItem(value: a, child: Text(a.label)))
                       .toList(),

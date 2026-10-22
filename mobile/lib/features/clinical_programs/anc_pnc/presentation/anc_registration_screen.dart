@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/theme/app_theme.dart';
 import '../data/anc_repository.dart';
 import '../domain/anc_models.dart';
 
@@ -101,7 +102,7 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
           content: Text(
             'Pregnancy registered! Generated ${schedules.length} ANC schedule contacts and visits.',
           ),
-          backgroundColor: Colors.teal.shade800,
+          backgroundColor: AshaColors.primary,
         ),
       );
       Navigator.pop(context, true);
@@ -123,10 +124,24 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
     final isHighRisk = reg.isBaselineHighRisk;
 
     return Scaffold(
+      backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
-        title: Text('Register Pregnancy — ${widget.womanName}'),
-        backgroundColor: isHighRisk ? Colors.orange.shade800 : Colors.teal.shade800,
-        foregroundColor: Colors.white,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Register Pregnancy',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+            ),
+            Text(
+              widget.womanName,
+              style: const TextStyle(fontSize: 12, color: AshaColors.textMuted),
+            ),
+          ],
+        ),
+        backgroundColor: AshaColors.cardSurface,
+        foregroundColor: AshaColors.textPrimary,
+        elevation: 0,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -184,7 +199,7 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.calendar_month, color: Colors.teal.shade800),
+                      Icon(Icons.calendar_month, color: AshaColors.primary),
                       const SizedBox(width: 8),
                       const Expanded(
                         child: Text(
@@ -235,7 +250,7 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
                     labelText: 'Gravida (Total pregnancies)',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                   ),
                   onChanged: (v) => setState(() => _gravida = int.tryParse(v) ?? 1),
                 ),
@@ -247,7 +262,7 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
                     labelText: 'Para (Viable births)',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                   ),
                   onChanged: (v) => setState(() => _para = int.tryParse(v) ?? 0),
                 ),
@@ -263,7 +278,7 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
                     labelText: 'Living Children',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                   ),
                   onChanged: (v) => setState(() => _livingChildren = int.tryParse(v) ?? 0),
                 ),
@@ -275,7 +290,7 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
                     labelText: 'Previous Stillbirths',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                   ),
                   onChanged: (v) => setState(() => _stillbirths = int.tryParse(v) ?? 0),
                 ),
@@ -287,7 +302,7 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
                     labelText: 'Prior Abortions',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                   ),
                   onChanged: (v) => setState(() => _abortions = int.tryParse(v) ?? 0),
                 ),
@@ -311,7 +326,7 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
             controller: _mcpController,
             decoration: const InputDecoration(
               labelText: 'Mother & Child Protection (MCP) Card Number',
-              border: OutlineInputBorder(),
+              border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
             ),
           ),
           const SizedBox(height: 12),
@@ -319,7 +334,7 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
             controller: _rchController,
             decoration: const InputDecoration(
               labelText: 'RCH Portal ID / ABHA ID',
-              border: OutlineInputBorder(),
+              border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
             ),
           ),
           const SizedBox(height: 12),
@@ -327,7 +342,7 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
             initialValue: _bloodGroup,
             decoration: const InputDecoration(
               labelText: 'Maternal Blood Group & Rh Factor',
-              border: OutlineInputBorder(),
+              border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
             ),
             items: const [
               DropdownMenuItem(value: 'A+', child: Text('A Positive (A+)')),
@@ -347,7 +362,7 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
             decoration: const InputDecoration(
               labelText: 'Prior Complications (e.g. pre-eclampsia, PPH, GDM)',
               helperText: 'Separate multiple conditions with commas',
-              border: OutlineInputBorder(),
+              border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
             ),
           ),
 
@@ -357,7 +372,7 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
           ElevatedButton(
             key: const Key('submit_anc_registration_button'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: isHighRisk ? Colors.orange.shade800 : Colors.teal.shade800,
+              backgroundColor: AshaColors.primary,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
@@ -384,7 +399,7 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(icon, color: Colors.teal.shade800, size: 22),
+          Icon(icon, color: AshaColors.primary, size: 22),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -392,7 +407,7 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.teal.shade900,
+                color: AshaColors.primaryDark,
               ),
             ),
           ),

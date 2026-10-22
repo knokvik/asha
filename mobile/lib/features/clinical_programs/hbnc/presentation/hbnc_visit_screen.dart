@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/theme/app_theme.dart';
 import '../../../referral/presentation/referral_slip_screen.dart';
 import '../data/hbnc_repository.dart';
 import '../domain/hbnc_models.dart';
@@ -153,10 +154,24 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
     final hasDangers = dangerSigns.isNotEmpty || maternalDangers.isNotEmpty;
 
     return Scaffold(
+      backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
-        title: Text(widget.visitTitle),
-        backgroundColor: hasDangers ? Colors.red.shade800 : Colors.teal.shade800,
-        foregroundColor: Colors.white,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.visitTitle,
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+            ),
+            const Text(
+              'Home-Based Newborn Care (HBNC)',
+              style: TextStyle(fontSize: 12, color: AshaColors.textMuted),
+            ),
+          ],
+        ),
+        backgroundColor: AshaColors.cardSurface,
+        foregroundColor: AshaColors.textPrimary,
+        elevation: 0,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -273,7 +288,7 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
               decoration: InputDecoration(
                 labelText: 'Current Weight in kg (Birth Weight: ${widget.birthWeightKg} kg)',
                 suffixText: 'kg',
-                border: const OutlineInputBorder(),
+                border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
               ),
               onChanged: (val) {
                 final d = double.tryParse(val);
@@ -294,7 +309,7 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
               decoration: const InputDecoration(
                 labelText: 'Axillary Temperature (°C) [Normal: 36.5–37.4°C]',
                 suffixText: '°C',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
               ),
               onChanged: (val) {
                 final t = double.tryParse(val);
@@ -318,7 +333,7 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Breaths per minute',
                       suffixText: '/min',
-                      border: OutlineInputBorder(),
+                      border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                     ),
                     onChanged: (val) {
                       final rr = int.tryParse(val);
@@ -441,7 +456,7 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
                 decoration: const InputDecoration(
                   labelText: 'KMC Duration in Hours / Day',
                   suffixText: 'hours',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                 ),
                 onChanged: (v) => setState(() => _kmcHours = double.tryParse(v)),
               ),
@@ -474,7 +489,7 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
               initialValue: _maternalWound,
               decoration: const InputDecoration(
                 labelText: 'Maternal Wound / Episiotomy Healing',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
               ),
               items: const [
                 DropdownMenuItem(value: 'normal', child: Text('Normal Healing — Clean, No Infection')),
@@ -491,7 +506,7 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
           ElevatedButton(
             key: const Key('submit_hbnc_visit_button'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: hasDangers ? Colors.red.shade800 : Colors.teal.shade800,
+              backgroundColor: AshaColors.primary,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
@@ -518,7 +533,7 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(icon, color: Colors.teal.shade800, size: 22),
+          Icon(icon, color: AshaColors.primary, size: 22),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -526,7 +541,7 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.teal.shade900,
+                color: AshaColors.primaryDark,
               ),
             ),
           ),

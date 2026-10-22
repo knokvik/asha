@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/l10n/language_provider.dart';
+import '../../../core/voice/tts_service.dart';
 import '../../../shared/shell/shell_copy.dart';
 import '../data/learning_content_repository.dart';
 import '../domain/learning_service.dart';
@@ -53,18 +54,29 @@ class _LearningScreenState extends ConsumerState<LearningScreen>
   Widget build(BuildContext context) {
     final lang = ref.watch(languageProvider).languageCode;
     return Scaffold(
+      backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
-        title: Text(shellText(lang, 'microLearningTitle')),
+        title: Text(
+          shellText(lang, 'microLearningTitle'),
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+        ),
         backgroundColor: AshaColors.cardSurface,
         foregroundColor: AshaColors.textPrimary,
+        elevation: 0,
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
+          indicatorColor: AshaColors.primary,
+          labelColor: AshaColors.primary,
+          unselectedLabelColor: AshaColors.textMuted,
+          indicatorWeight: 3,
+          labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
           tabs: [
-            Tab(icon: const Icon(Icons.school), text: shellText(lang, 'lessonsQuiz')),
-            Tab(icon: const Icon(Icons.science), text: shellText(lang, 'simulatedPractice')),
-            Tab(icon: const Icon(Icons.library_books), text: shellText(lang, 'jobAidsLibrary')),
-            Tab(icon: const Icon(Icons.verified), text: shellText(lang, 'certificate')),
+            Tab(icon: const Icon(Icons.school_rounded), text: shellText(lang, 'lessonsQuiz')),
+            Tab(icon: const Icon(Icons.science_rounded), text: shellText(lang, 'simulatedPractice')),
+            Tab(icon: const Icon(Icons.library_books_rounded), text: shellText(lang, 'jobAidsLibrary')),
+            Tab(icon: const Icon(Icons.verified_rounded), text: shellText(lang, 'certificate')),
           ],
         ),
       ),
@@ -442,17 +454,17 @@ class _LearningScreenState extends ConsumerState<LearningScreen>
   }
 }
 
-class _LessonBottomSheet extends StatefulWidget {
+class _LessonBottomSheet extends ConsumerStatefulWidget {
   final MicroLesson lesson;
   final ValueChanged<int> onComplete;
 
   const _LessonBottomSheet({required this.lesson, required this.onComplete});
 
   @override
-  State<_LessonBottomSheet> createState() => _LessonBottomSheetState();
+  ConsumerState<_LessonBottomSheet> createState() => _LessonBottomSheetState();
 }
 
-class _LessonBottomSheetState extends State<_LessonBottomSheet> {
+class _LessonBottomSheetState extends ConsumerState<_LessonBottomSheet> {
   int _currentStep = 0; // 0 = Content, 1..N = Quiz Questions
   int _scorePoints = 0;
   int? _selectedAnswer;
@@ -514,90 +526,192 @@ class _LessonBottomSheetState extends State<_LessonBottomSheet> {
   }
 
   Widget _buildQuizView(QuizQuestion q, int totalQuestions) {
+    final lang = ref.watch(languageProvider).languageCode;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Question $_currentStep of $totalQuestions',
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          q.questionText,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-        ),
-        const SizedBox(height: 12),
-        ...List.generate(q.options.length, (idx) {
-          final isCorrect = idx == q.correctOptionIndex;
-          Color? tileColor;
-          if (_answered) {
-            if (isCorrect) {
-              tileColor = Colors.green.shade100;
-            }
-            if (_selectedAnswer == idx && !isCorrect) {
-              tileColor = Colors.red.shade100;
-            }
-          }
-
-          return Card(
-            color: tileColor,
-            child: RadioListTile<int>(
-              value: idx,
-              groupValue: _selectedAnswer,
-              title: Text(q.options[idx], style: const TextStyle(fontSize: 13)),
-              onChanged: _answered
-                  ? null
-                  : (val) => setState(() => _selectedAnswer = val),
-            ),
-          );
-        }),
-        if (_answered) ...[
-          const SizedBox(height: 8),
-          Text(
-            q.explanation,
-            style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
-          ),
-        ],
-        const Spacer(),
+        // Question Header with Step Badge and Audio Speak Button
         Row(
-          mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            if (!_answered)
-              ElevatedButton(
-                onPressed: _selectedAnswer == null
-                    ? null
-                    : () {
-                        setState(() {
-                          _answered = true;
-                          if (_selectedAnswer == q.correctOptionIndex) {
-                            _scorePoints++;
-                          }
-                        });
-                      },
-                child: const Text('Check Answer'),
-              )
-            else
-              ElevatedButton(
-                onPressed: () {
-                  if (_currentStep < totalQuestions) {
-                    setState(() {
-                      _currentStep++;
-                      _selectedAnswer = null;
-                      _answered = false;
-                    });
-                  } else {
-                    final finalPercent = ((_scorePoints / totalQuestions) * 100)
-                        .round();
-                    widget.onComplete(finalPercent);
-                  }
-                },
-                child: Text(
-                  _currentStep < totalQuestions
-                      ? 'Next Question'
-                      : 'Finish Lesson',
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: AshaColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                'QUESTION $_currentStep OF $totalQuestions',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: AshaColors.primaryDark,
+                  letterSpacing: 0.5,
                 ),
               ),
+            ),
+            const Spacer(),
+            SizedBox(
+              height: 38,
+              child: IconButton.filledTonal(
+                tooltip: 'Listen to Question',
+                icon: const Icon(Icons.volume_up_rounded, size: 18),
+                onPressed: () {
+                  ref.read(ttsServiceProvider).speak(
+                    text: '${q.questionText}. Options: ${q.options.join(", ")}',
+                    language: lang,
+                  );
+                },
+              ),
+            ),
           ],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          q.questionText,
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, height: 1.3),
+        ),
+        const SizedBox(height: 16),
+        // AI-styled Choice Option Cards
+        Expanded(
+          child: ListView.separated(
+            itemCount: q.options.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
+            itemBuilder: (context, idx) {
+              final isCorrect = idx == q.correctOptionIndex;
+              final isSelected = _selectedAnswer == idx;
+
+              Color bg = AshaColors.cardSurface;
+              Color border = AshaColors.borderSubtle;
+              Color textColor = AshaColors.textPrimary;
+              IconData icon = Icons.radio_button_unchecked_rounded;
+              Color iconColor = AshaColors.textMuted;
+
+              if (_answered) {
+                if (isCorrect) {
+                  bg = const Color(0xFFECFDF5);
+                  border = const Color(0xFF059669);
+                  textColor = const Color(0xFF065F46);
+                  icon = Icons.check_circle_rounded;
+                  iconColor = const Color(0xFF059669);
+                } else if (isSelected && !isCorrect) {
+                  bg = const Color(0xFFFEF2F2);
+                  border = const Color(0xFFDC2626);
+                  textColor = const Color(0xFF991B1B);
+                  icon = Icons.cancel_rounded;
+                  iconColor = const Color(0xFFDC2626);
+                }
+              } else if (isSelected) {
+                bg = AshaColors.primary.withValues(alpha: 0.08);
+                border = AshaColors.primary;
+                textColor = AshaColors.primaryDark;
+                icon = Icons.radio_button_checked_rounded;
+                iconColor = AshaColors.primary;
+              }
+
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: AshaShapes.cardRadius,
+                  onTap: _answered ? null : () => setState(() => _selectedAnswer = idx),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: bg,
+                      borderRadius: AshaShapes.cardRadius,
+                      border: Border.all(color: border, width: isSelected || (_answered && isCorrect) ? 1.5 : 1.0),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(icon, color: iconColor, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            q.options[idx],
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: isSelected || (_answered && isCorrect) ? FontWeight.w800 : FontWeight.w600,
+                              color: textColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        if (_answered) ...[
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFBFDBFE)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.lightbulb_rounded, color: Color(0xFF1D4ED8), size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    q.explanation,
+                    style: const TextStyle(fontSize: 12, height: 1.35, color: Color(0xFF1E3A8A)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: !_answered
+              ? FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AshaColors.primary,
+                    shape: RoundedRectangleBorder(borderRadius: AshaShapes.buttonRadius),
+                  ),
+                  icon: const Icon(Icons.check_rounded, size: 18),
+                  label: const Text('Check Answer', style: TextStyle(fontWeight: FontWeight.w800)),
+                  onPressed: _selectedAnswer == null
+                      ? null
+                      : () {
+                          setState(() {
+                            _answered = true;
+                            if (_selectedAnswer == q.correctOptionIndex) {
+                              _scorePoints++;
+                            }
+                          });
+                        },
+                )
+              : FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AshaColors.primary,
+                    shape: RoundedRectangleBorder(borderRadius: AshaShapes.buttonRadius),
+                  ),
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                  label: Text(
+                    _currentStep < totalQuestions ? 'Next Question' : 'Finish Lesson',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  onPressed: () {
+                    if (_currentStep < totalQuestions) {
+                      setState(() {
+                        _currentStep++;
+                        _selectedAnswer = null;
+                        _answered = false;
+                      });
+                    } else {
+                      final finalPercent = ((_scorePoints / totalQuestions) * 100).round();
+                      widget.onComplete(finalPercent);
+                    }
+                  },
+                ),
         ),
       ],
     );

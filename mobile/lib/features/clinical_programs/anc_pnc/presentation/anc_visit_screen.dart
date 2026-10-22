@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/theme/app_theme.dart';
 import '../../../referral/presentation/referral_slip_screen.dart';
 import '../data/anc_repository.dart';
 import '../domain/anc_models.dart';
@@ -132,7 +133,7 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
                   ? 'ANC Contact saved. High-risk alert registered for PMSMA follow-up.'
                   : 'ANC Contact successfully completed.',
             ),
-            backgroundColor: result.isHighRisk ? Colors.orange.shade800 : Colors.teal.shade800,
+            backgroundColor: result.isHighRisk ? Colors.orange.shade800 : AshaColors.primary,
           ),
         );
         Navigator.pop(context, true);
@@ -157,12 +158,24 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
     final isBirthPlanDue = widget.gestationWeeks >= 34;
 
     return Scaffold(
+      backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
-        title: Text('ANC Contact ${widget.contactNumber} (${widget.gestationWeeks}w) — ${widget.womanName}'),
-        backgroundColor: hasRed
-            ? Colors.red.shade800
-            : (hasYellow ? Colors.orange.shade800 : Colors.teal.shade800),
-        foregroundColor: Colors.white,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'ANC Contact ${widget.contactNumber} (${widget.gestationWeeks}w)',
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+            ),
+            Text(
+              widget.womanName,
+              style: const TextStyle(fontSize: 12, color: AshaColors.textMuted),
+            ),
+          ],
+        ),
+        backgroundColor: AshaColors.cardSurface,
+        foregroundColor: AshaColors.textPrimary,
+        elevation: 0,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -265,7 +278,7 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
                       labelText: 'Systolic BP (mmHg)',
                       helperText: '>= 140 = High | >= 160 = RED',
                       suffixText: 'mmHg',
-                      border: const OutlineInputBorder(),
+                      border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                       filled: true,
                       fillColor: (_systolicBp ?? 0) >= 160
                           ? Colors.red.shade50
@@ -284,7 +297,7 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
                       labelText: 'Diastolic BP (mmHg)',
                       helperText: '>= 90 = High | >= 110 = RED',
                       suffixText: 'mmHg',
-                      border: const OutlineInputBorder(),
+                      border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                       filled: true,
                       fillColor: (_diastolicBp ?? 0) >= 110
                           ? Colors.red.shade50
@@ -310,7 +323,7 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
                       labelText: 'Haemoglobin (Hb in g/dL)',
                       helperText: '< 11.0 = Anaemia | < 7.0 = Severe (RED)',
                       suffixText: 'g/dL',
-                      border: const OutlineInputBorder(),
+                      border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                       filled: true,
                       fillColor: (_haemoglobin ?? 12.0) < 7.0
                           ? Colors.red.shade50
@@ -327,7 +340,7 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Maternal Weight (kg)',
                       suffixText: 'kg',
-                      border: OutlineInputBorder(),
+                      border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                     ),
                     onChanged: (v) => setState(() => _weightKg = double.tryParse(v)),
                   ),
@@ -350,7 +363,7 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
                       labelText: 'Fundal Height (Weeks/cm)',
-                      border: OutlineInputBorder(),
+                      border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                     ),
                     onChanged: (v) => setState(() => _fundalHeightWeeks = int.tryParse(v)),
                   ),
@@ -364,7 +377,7 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
                       labelText: 'Fetal Heart Rate (bpm)',
                       helperText: 'Normal: 110–160 bpm',
                       suffixText: 'bpm',
-                      border: OutlineInputBorder(),
+                      border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                     ),
                     onChanged: (v) => setState(() => _fetalHeartRateBpm = int.tryParse(v)),
                   ),
@@ -421,7 +434,7 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: DropdownButtonFormField<String>(
                 initialValue: _tdDoseType ?? 'Td-1',
-                decoration: const InputDecoration(labelText: 'Dose Type', border: OutlineInputBorder()),
+                decoration: const InputDecoration(labelText: 'Dose Type', border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle))),
                 items: const [
                   DropdownMenuItem(value: 'Td-1', child: Text('Td-1 Dose')),
                   DropdownMenuItem(value: 'Td-2', child: Text('Td-2 Dose (4 weeks after Td-1)')),
@@ -472,9 +485,7 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
           ElevatedButton(
             key: const Key('submit_anc_visit_button'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: hasRed
-                  ? Colors.red.shade800
-                  : (hasYellow ? Colors.orange.shade800 : Colors.teal.shade800),
+              backgroundColor: AshaColors.primary,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
@@ -503,7 +514,7 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(icon, color: Colors.teal.shade800, size: 22),
+          Icon(icon, color: AshaColors.primary, size: 22),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -511,7 +522,7 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.teal.shade900,
+                color: AshaColors.primaryDark,
               ),
             ),
           ),

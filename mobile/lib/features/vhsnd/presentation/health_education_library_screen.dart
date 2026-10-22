@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/theme/app_theme.dart';
 import '../../../shared/shell/shell_copy.dart';
 import '../domain/vhsnd_models.dart';
 
@@ -59,18 +60,26 @@ class _HealthEducationLibraryScreenState extends State<HealthEducationLibraryScr
     final lang = Localizations.maybeLocaleOf(context)?.languageCode ?? 'en';
 
     return Scaffold(
+      backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
-        title: Text(shellText(lang, 'healthEducationTitle')),
-        backgroundColor: const Color(0xFF1B5E20),
-        foregroundColor: Colors.white,
+        title: Text(
+          shellText(lang, 'healthEducationTitle'),
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+        ),
+        backgroundColor: AshaColors.cardSurface,
+        foregroundColor: AshaColors.textPrimary,
+        elevation: 0,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
+          indicatorColor: AshaColors.primary,
+          labelColor: AshaColors.primary,
+          unselectedLabelColor: AshaColors.textMuted,
+          indicatorWeight: 3,
+          labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
           tabs: [
-            Tab(icon: const Icon(Icons.school), text: shellText(lang, 'educationLibraryTab')),
-            Tab(icon: const Icon(Icons.campaign), text: shellText(lang, 'activeCampaignsTab')),
+            Tab(icon: const Icon(Icons.school_rounded), text: shellText(lang, 'educationLibraryTab')),
+            Tab(icon: const Icon(Icons.campaign_rounded), text: shellText(lang, 'activeCampaignsTab')),
           ],
         ),
       ),

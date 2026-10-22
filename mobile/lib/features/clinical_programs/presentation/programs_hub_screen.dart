@@ -134,28 +134,35 @@ class _ClinicalCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top Vector SVG Illustration & Chevron
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              // Bundled clinical-program illustration and navigation affordance.
+              Stack(
                 children: [
-                  Container(
-                    width: 58,
-                    height: 58,
-                    alignment: Alignment.center,
+                  SizedBox(
+                    width: double.infinity,
+                    height: 112,
                     child: AshaClinicalProgramIllustrationWidget(
                       type: type,
-                      size: 54,
+                      size: 112,
                     ),
                   ),
-                  const Spacer(),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    size: 18,
-                    color: AshaColors.textMuted,
+                  Positioned(
+                    top: 5,
+                    right: 5,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.chevron_right_rounded,
+                        size: 22,
+                        color: AshaColors.textMuted,
+                      ),
+                    ),
                   ),
                 ],
               ),
-              const Spacer(),
+              const SizedBox(height: 10),
               // Title: ANC, PNC, etc.
               Text(
                 title,

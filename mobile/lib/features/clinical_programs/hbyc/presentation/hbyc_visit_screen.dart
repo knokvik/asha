@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../app/theme/app_theme.dart';
 import '../../../../core/voice/tts_service.dart';
 import '../../../referral/presentation/referral_slip_screen.dart';
 import '../data/hbyc_repository.dart';
@@ -293,12 +294,24 @@ class _HbycVisitScreenState extends ConsumerState<HbycVisitScreen> {
     final storyboardCard = HbycStoryboardsCatalog.forMilestone(widget.milestone);
 
     return Scaffold(
+      backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
-        title: Text('${widget.milestone.visitTitle} — ${widget.childName}'),
-        backgroundColor: isSam
-            ? Colors.red.shade800
-            : (hasMilestoneDelay ? Colors.orange.shade800 : Colors.teal.shade800),
-        foregroundColor: Colors.white,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.milestone.visitTitle,
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+            ),
+            Text(
+              widget.childName,
+              style: const TextStyle(fontSize: 12, color: AshaColors.textMuted),
+            ),
+          ],
+        ),
+        backgroundColor: AshaColors.cardSurface,
+        foregroundColor: AshaColors.textPrimary,
+        elevation: 0,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -396,7 +409,7 @@ class _HbycVisitScreenState extends ConsumerState<HbycVisitScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Weight (kg) *',
                       suffixText: 'kg',
-                      border: OutlineInputBorder(),
+                      border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                     ),
                     onChanged: (val) {
                       final w = double.tryParse(val);
@@ -412,7 +425,7 @@ class _HbycVisitScreenState extends ConsumerState<HbycVisitScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Length/Height (cm)',
                       suffixText: 'cm',
-                      border: OutlineInputBorder(),
+                      border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                     ),
                     onChanged: (val) {
                       final l = double.tryParse(val);
@@ -436,7 +449,7 @@ class _HbycVisitScreenState extends ConsumerState<HbycVisitScreen> {
                   labelText: 'Mid-Upper Arm Circumference (MUAC in cm)',
                   helperText: '< 11.5 cm = SAM (RED) | 11.5–12.4 cm = MAM (YELLOW) | >= 12.5 cm = Normal',
                   suffixText: 'cm',
-                  border: const OutlineInputBorder(),
+                  border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                   filled: true,
                   fillColor: isSam
                       ? Colors.red.shade50
@@ -483,7 +496,7 @@ class _HbycVisitScreenState extends ConsumerState<HbycVisitScreen> {
               initialValue: _feedingPractice,
               decoration: const InputDecoration(
                 labelText: 'Current Feeding Practice',
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
               ),
               items: FeedingPractice.values.map((f) {
                 return DropdownMenuItem(value: f, child: Text(f.label));
@@ -505,7 +518,7 @@ class _HbycVisitScreenState extends ConsumerState<HbycVisitScreen> {
                       initialValue: _mealsPerDay,
                       decoration: const InputDecoration(
                         labelText: 'Meals per day',
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                       ),
                       items: const [
                         DropdownMenuItem(value: 1, child: Text('1 time / day (Too low)')),
@@ -567,7 +580,7 @@ class _HbycVisitScreenState extends ConsumerState<HbycVisitScreen> {
                 controller: _missingVaccinesController,
                 decoration: const InputDecoration(
                   labelText: 'List missing vaccines or reason for delay',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                 ),
               ),
             ),
@@ -621,7 +634,7 @@ class _HbycVisitScreenState extends ConsumerState<HbycVisitScreen> {
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
                         labelText: 'Duration in days',
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                       ),
                       onChanged: (v) => setState(() => _diarrhoeaDays = int.tryParse(v) ?? 0),
                     ),
@@ -655,7 +668,7 @@ class _HbycVisitScreenState extends ConsumerState<HbycVisitScreen> {
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
                   labelText: 'Fever duration in days',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                 ),
                 onChanged: (v) => setState(() => _feverDays = int.tryParse(v) ?? 0),
               ),
@@ -685,7 +698,7 @@ class _HbycVisitScreenState extends ConsumerState<HbycVisitScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.palette, color: Colors.teal.shade800),
+                      Icon(Icons.palette, color: AshaColors.primary),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -739,7 +752,7 @@ class _HbycVisitScreenState extends ConsumerState<HbycVisitScreen> {
                       ElevatedButton.icon(
                         key: const Key('play_audio_counselling_hi_button'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.teal.shade800,
+                          backgroundColor: AshaColors.primary,
                           foregroundColor: Colors.white,
                         ),
                         onPressed: _isPlayingAudio
@@ -787,7 +800,7 @@ class _HbycVisitScreenState extends ConsumerState<HbycVisitScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: isSam
                   ? Colors.red.shade800
-                  : (hasMilestoneDelay ? Colors.orange.shade800 : Colors.teal.shade800),
+                  : (hasMilestoneDelay ? Colors.orange.shade800 : AshaColors.primary),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
@@ -835,7 +848,7 @@ class _HbycVisitScreenState extends ConsumerState<HbycVisitScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(icon, color: Colors.teal.shade800, size: 22),
+          Icon(icon, color: AshaColors.primary, size: 22),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -843,7 +856,7 @@ class _HbycVisitScreenState extends ConsumerState<HbycVisitScreen> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.teal.shade900,
+                color: AshaColors.primaryDark,
               ),
             ),
           ),

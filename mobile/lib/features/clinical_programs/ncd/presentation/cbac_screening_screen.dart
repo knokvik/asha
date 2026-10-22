@@ -347,7 +347,7 @@ class _CbacScreeningScreenState extends ConsumerState<CbacScreeningScreen> with 
                   decoration: const InputDecoration(
                     labelText: 'Waist Circumference',
                     suffixText: 'cm',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                   ),
                   onChanged: (_) => setState(() {}),
                 ),
@@ -600,7 +600,7 @@ class _CbacScreeningScreenState extends ConsumerState<CbacScreeningScreen> with 
                         decoration: const InputDecoration(
                           labelText: 'Systolic (SBP)',
                           hintText: 'e.g. 120',
-                          border: OutlineInputBorder(),
+                          border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                         ),
                         onChanged: (_) => setState(() {}),
                       ),
@@ -616,7 +616,7 @@ class _CbacScreeningScreenState extends ConsumerState<CbacScreeningScreen> with 
                         decoration: const InputDecoration(
                           labelText: 'Diastolic (DBP)',
                           hintText: 'e.g. 80',
-                          border: OutlineInputBorder(),
+                          border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                         ),
                         onChanged: (_) => setState(() {}),
                       ),
@@ -682,7 +682,7 @@ class _CbacScreeningScreenState extends ConsumerState<CbacScreeningScreen> with 
                 const SizedBox(height: 12),
                 DropdownButtonFormField<GlucoseType>(
                   initialValue: _glucoseType,
-                  decoration: const InputDecoration(labelText: 'Test Type', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(labelText: 'Test Type', border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle))),
                   items: GlucoseType.values
                       .map((t) => DropdownMenuItem(value: t, child: Text(t.label)))
                       .toList(),
@@ -698,7 +698,7 @@ class _CbacScreeningScreenState extends ConsumerState<CbacScreeningScreen> with 
                     labelText: 'Blood Glucose Reading',
                     suffixText: 'mg/dL',
                     hintText: 'e.g. 110',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                   ),
                   onChanged: (_) => setState(() {}),
                 ),

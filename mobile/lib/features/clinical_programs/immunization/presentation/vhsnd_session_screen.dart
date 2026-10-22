@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../app/theme/app_theme.dart';
 import '../data/immunization_repository.dart';
 import '../domain/immunization_models.dart';
 
@@ -131,8 +132,12 @@ class _VhsndSessionScreenState extends ConsumerState<VhsndSessionScreen> {
     final totalAttended = _attendedMap.values.where((v) => v).length;
 
     return Scaffold(
+      backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
         title: const Text('VHSND Session & Mobilisation', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+        backgroundColor: AshaColors.cardSurface,
+        foregroundColor: AshaColors.textPrimary,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

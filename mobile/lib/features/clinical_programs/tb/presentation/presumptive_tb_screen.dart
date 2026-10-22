@@ -244,7 +244,7 @@ class _PresumptiveTbScreenState extends ConsumerState<PresumptiveTbScreen> {
                       decoration: InputDecoration(
                         labelText: _t('Sputum Sample Barcode / ID'),
                         hintText: 'e.g. SP-RAMPUR-2026-001',
-                        border: const OutlineInputBorder(),
+                        border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -252,13 +252,13 @@ class _PresumptiveTbScreenState extends ConsumerState<PresumptiveTbScreen> {
                       controller: _collectionSiteController,
                       decoration: InputDecoration(
                         labelText: _t('Collection Site / Facility'),
-                        border: const OutlineInputBorder(),
+                        border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                       ),
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<SputumTransportStatus>(
                       initialValue: _transportStatus,
-                      decoration: InputDecoration(labelText: _t('Transport Status'), border: const OutlineInputBorder()),
+                      decoration: InputDecoration(labelText: _t('Transport Status'), border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle))),
                       items: SputumTransportStatus.values
                           .map((s) => DropdownMenuItem(value: s, child: Text(_t(s.label))))
                           .toList(),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../app/theme/app_theme.dart';
 import '../domain/vhsnd_models.dart';
 
 /// Screen for managing a Village Health Sanitation and Nutrition Day (VHSND) session
@@ -44,19 +45,27 @@ class _VhsndSessionScreenState extends State<VhsndSessionScreen> with SingleTick
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
-        title: Text('VHSND: ${widget.initialSession.village}'),
-        backgroundColor: const Color(0xFF1B5E20),
-        foregroundColor: Colors.white,
+        title: Text(
+          'VHSND: ${widget.initialSession.village}',
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+        ),
+        backgroundColor: AshaColors.cardSurface,
+        foregroundColor: AshaColors.textPrimary,
+        elevation: 0,
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
+          indicatorColor: AshaColors.primary,
+          labelColor: AshaColors.primary,
+          unselectedLabelColor: AshaColors.textMuted,
+          indicatorWeight: 3,
+          labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
           tabs: const [
-            Tab(icon: Icon(Icons.people), text: 'Due List'),
-            Tab(icon: Icon(Icons.checklist), text: 'Mobilisation'),
-            Tab(icon: Icon(Icons.fact_check), text: 'Recording'),
+            Tab(icon: Icon(Icons.people_rounded), text: 'Due List'),
+            Tab(icon: Icon(Icons.checklist_rounded), text: 'Mobilisation'),
+            Tab(icon: Icon(Icons.fact_check_rounded), text: 'Recording'),
           ],
         ),
       ),

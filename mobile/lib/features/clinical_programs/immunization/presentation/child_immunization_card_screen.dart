@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../app/theme/app_theme.dart';
 import '../data/immunization_repository.dart';
 import '../domain/immunization_models.dart';
 import 'aefi_report_dialog.dart';
@@ -115,7 +116,7 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
                   initialValue: selectedVaccineCode,
                   decoration: const InputDecoration(
                     labelText: 'Vaccine Dose',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                   ),
                   items: NationalImmunizationCatalog.infantAndChildSchedule
                       .map((v) => DropdownMenuItem(
@@ -162,7 +163,7 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
                   initialValue: selectedSite,
                   decoration: const InputDecoration(
                     labelText: 'Administration Site',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                   ),
                   items: AdministrationSite.values
                       .map((site) => DropdownMenuItem(
@@ -179,7 +180,7 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
                   initialValue: selectedSession,
                   decoration: const InputDecoration(
                     labelText: 'Session Type',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                   ),
                   items: ImmunizationSessionType.values
                       .map((st) => DropdownMenuItem(
@@ -196,7 +197,7 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
                   controller: batchController,
                   decoration: const InputDecoration(
                     labelText: 'Vaccine Batch Number (Optional)',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                     hintText: 'e.g. BATCH-2024-X4',
                   ),
                 ),
@@ -207,7 +208,7 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
                   controller: notesController,
                   decoration: const InputDecoration(
                     labelText: 'Notes / ANM Remarks (Optional)',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
                   ),
                   maxLines: 2,
                 ),
@@ -277,7 +278,11 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
     final defaulters = _items.where((i) => i.isDefaulter || i.isOverdue).toList();
 
     return Scaffold(
+      backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
+        backgroundColor: AshaColors.cardSurface,
+        foregroundColor: AshaColors.textPrimary,
+        elevation: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
