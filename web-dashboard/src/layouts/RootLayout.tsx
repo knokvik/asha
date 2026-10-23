@@ -224,17 +224,44 @@ export function RootLayout() {
         {/* 4. Navigation Menu */}
         <div className={`flex-1 overflow-y-auto py-1 space-y-0.5 ${sidebarCollapsed ? 'px-0' : 'px-3'}`}>
           <nav className="space-y-1">
-            {/* 1. Overview at the very top */}
-            {(() => {
-              const overviewItem = NAV_ITEMS[0];
-              const Icon = overviewItem.icon;
-              const isActive = location.pathname === '/' || location.pathname === '/dashboard';
+            {/* 1. Primary Pages outside collapsible: Overview, Tickets, Clinical Programs, Household Registry */}
+            {[
+              {
+                label: 'Overview',
+                path: '/dashboard',
+                end: true,
+                icon: Home,
+                srLabel: 'Main Dashboard',
+              },
+              {
+                label: 'PHC Tickets Queue',
+                path: '/tickets',
+                icon: Activity,
+                badge: 'Live',
+                srLabel: 'Emergency Triage',
+              },
+              {
+                label: 'Clinical Programs',
+                path: '/clinical-programs',
+                icon: FileCheck2,
+              },
+              {
+                label: 'Household Registry',
+                path: '/households',
+                icon: Layers,
+                srLabel: 'ANM / Sub-Centre',
+              },
+            ].map((item) => {
+              const Icon = item.icon;
+              const isActive = item.end
+                ? location.pathname === '/' || location.pathname === '/dashboard'
+                : location.pathname.startsWith(item.path);
               return (
                 <NavLink
-                  key={overviewItem.path}
-                  to={overviewItem.path}
-                  end
-                  title={sidebarCollapsed ? overviewItem.label : undefined}
+                  key={item.path}
+                  to={item.path}
+                  end={item.end}
+                  title={sidebarCollapsed ? item.label : undefined}
                   className={`flex items-center rounded-xl text-xs font-semibold transition-all relative ${
                     sidebarCollapsed ? 'w-10 h-10 mx-auto justify-center' : 'justify-between px-3 py-2'
                   } ${
@@ -245,14 +272,19 @@ export function RootLayout() {
                 >
                   <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'space-x-3 truncate'}`}>
                     <Icon className={`h-4.5 w-4.5 shrink-0 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
-                    {!sidebarCollapsed && <span className="truncate">{overviewItem.label}</span>}
-                    <span className="sr-only">Main Dashboard</span>
+                    {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+                    {item.srLabel && <span className="sr-only">{item.srLabel}</span>}
                   </div>
+                  {item.badge && !sidebarCollapsed && (
+                    <span className="h-4.5 min-w-4.5 px-1 rounded-full text-[10px] font-bold flex items-center justify-center bg-rose-600 text-white animate-pulse">
+                      {item.badge}
+                    </span>
+                  )}
                 </NavLink>
               );
-            })()}
+            })}
 
-            {/* 2. All operational pages in one expanded-by-default accordion */}
+            {/* 2. Operational Pages in collapsible accordion */}
             <button
               type="button"
               onClick={() => setOperationsOpen((open) => !open)}
@@ -263,8 +295,8 @@ export function RootLayout() {
               } text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#232328] hover:text-slate-900 dark:hover:text-white`}
             >
               <span className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'space-x-3 truncate'}`}>
-                <Activity className="h-4.5 w-4.5 shrink-0 text-rose-500" />
-                {!sidebarCollapsed && <span className="truncate">Operations</span>}
+                <Activity className="h-4.5 w-4.5 shrink-0 text-emerald-600" />
+                {!sidebarCollapsed && <span className="truncate">More Operations</span>}
               </span>
               {!sidebarCollapsed && (
                 <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${operationsOpen ? 'rotate-180' : ''}`} />
@@ -274,9 +306,14 @@ export function RootLayout() {
             {operationsOpen && (
               <div className={`${sidebarCollapsed ? 'mt-1' : 'ml-2 mt-1 pl-2 border-l border-slate-200 dark:border-slate-700'} space-y-1`}>
                 {[
-                  { label: 'PHC Action Queue', path: '/phc', icon: Activity, badge: 'Live' },
+                  { label: 'PHC Clinical Desk', path: '/phc', icon: Activity },
                   { label: 'Drug & Bed Inventory', path: '/resources', icon: Package },
-                  ...NAV_ITEMS.slice(1),
+                  ...NAV_ITEMS.filter(
+                    (item) =>
+                      item.path !== '/dashboard' &&
+                      item.path !== '/households' &&
+                      item.path !== '/clinical-programs'
+                  ),
                 ].map((item) => {
                   const Icon = item.icon;
                   const isActive = location.pathname.startsWith(item.path);
@@ -296,6 +333,7 @@ export function RootLayout() {
                       <span className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'space-x-3 truncate'}`}>
                         <Icon className={`h-4.5 w-4.5 shrink-0 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
                         {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+                        {item.srLabel && <span className="sr-only">{item.srLabel}</span>}
                       </span>
                       {item.badge && !sidebarCollapsed && (
                         <span className={`h-4.5 min-w-4.5 px-1 rounded-full text-[10px] font-bold flex items-center justify-center ${item.badge === 'Live' ? 'bg-rose-600 text-white animate-pulse' : 'bg-[#DC2626] text-white'}`}>

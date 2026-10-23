@@ -18,6 +18,7 @@ import { LiveTriagePage } from '@/features/af-supervision/LiveTriagePage';
 import { SystemLogsPage } from '@/features/system-logs/SystemLogsPage';
 import { HouseholdsPage } from '@/features/households/HouseholdsPage';
 import { ClinicalProgramDetailPage } from '@/features/clinical-programs/ClinicalProgramDetailPage';
+import { PHCTicketsPage } from '@/features/tickets/PHCTicketsPage';
 
 export const router = createBrowserRouter([
   {
@@ -35,6 +36,10 @@ export const router = createBrowserRouter([
       {
         path: 'dashboard',
         element: <MainDashboardPage />,
+      },
+      {
+        path: 'tickets',
+        element: <PHCTicketsPage />,
       },
       {
         path: 'phc',

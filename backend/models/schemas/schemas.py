@@ -123,6 +123,12 @@ class ReferralOutcomeRequest(BaseModel):
     recorded_by: str | None = None
 
 
+class ReferralFeedbackRequest(BaseModel):
+    asha_id: str
+    message: str
+    sent_at: int | None = None
+
+
 class ReferralStatusUpdateRequest(BaseModel):
     status: Literal["created", "en_route", "arrived", "outcome_recorded"]
     updated_at: int | None = None

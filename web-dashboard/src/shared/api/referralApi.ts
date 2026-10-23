@@ -35,7 +35,17 @@ export async function recordReferralOutcome(
   status: 'admitted' | 'treated' | 'discharged' | 'did_not_reach',
   outcomeNotes: string
 ): Promise<ReferralItem> {
-  const res = await apiClient.post<ReferralItem>(`/referrals/${referralId}/outcome`, { status, outcome_notes: outcomeNotes, recorded_at: new Date().toISOString() });
+  const outcome = status === 'admitted'
+    ? 'admitted'
+    : status === 'did_not_reach'
+      ? 'counter_referred'
+      : 'treated_discharged';
+  const res = await apiClient.post<ReferralItem>(`/referrals/${referralId}/outcome`, {
+    outcome,
+    doctor_notes: outcomeNotes,
+    treatment_summary: outcomeNotes,
+    outcome_recorded_at: Date.now(),
+  });
   return res.data;
 }
 

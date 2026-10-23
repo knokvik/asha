@@ -23,6 +23,7 @@ from models.db.models import AuditLog, Member, ReferralRecord
 from models.schemas.schemas import (
     ReferralOutcomeRequest,
     ReferralOutcomeResponse,
+    ReferralFeedbackRequest,
     ReferralStatusUpdateRequest,
 )
 from services.notification_service import NotificationService
@@ -167,6 +168,29 @@ async def record_referral_outcome(
         message="Referral outcome recorded and enqueued for sync to referring ASHA device.",
         timeline_entry=timeline_entry,
     )
+
+
+@router.post("/{referral_id}/feedback", status_code=status.HTTP_200_OK)
+async def send_referral_feedback(
+    referral_id: str,
+    payload: ReferralFeedbackRequest,
+    tenant: TenantContext = Depends(_get_optional_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    """Persist PHC instructions so the next mobile sync can show them to ASHA."""
+    result = await db.execute(select(ReferralRecord).where(ReferralRecord.id == referral_id))
+    referral = result.scalar_one_or_none()
+    if not referral:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Referral with ID '{referral_id}' not found.")
+
+    now_ms = payload.sent_at or int(time.time() * 1000)
+    note = f"\n\n--- PHC INSTRUCTION ---\nFrom: {tenant.worker_id}\nTo ASHA: {payload.asha_id}\nSent At: {now_ms}\n{payload.message}\n"
+    referral.referral_note_text = (referral.referral_note_text or "") + note
+    referral.updated_at = now_ms
+    referral.server_seq = now_ms
+    referral.sync_status = "synced"
+    await db.commit()
+    return {"success": True, "referral_id": referral_id, "message": "PHC instruction saved for ASHA sync."}
 
 
 @router.post(
