@@ -38,6 +38,12 @@ const NAV_ITEMS = [
     srLabel: 'Main Dashboard',
   },
   {
+    label: 'India PHC & RaktKosh Map',
+    path: '/india-map',
+    icon: Navigation,
+    badge: '35.9k',
+  },
+  {
     label: 'Live Triage Desk',
     path: '/af/live-triage',
     icon: Activity,
@@ -47,12 +53,6 @@ const NAV_ITEMS = [
     label: 'Field Map',
     path: '/map',
     icon: Map,
-  },
-  {
-    label: 'India PHC & RaktKosh Map',
-    path: '/india-map',
-    icon: Navigation,
-    badge: '35.9k',
   },
   {
     label: 'ASHA Teams',
@@ -72,12 +72,6 @@ const NAV_ITEMS = [
     icon: FileCheck2,
   },
   {
-    label: 'Logs & Activity',
-    path: '/logs',
-    icon: Radio,
-    srLabel: 'System Logs',
-  },
-  {
     label: 'Reports & Analytics',
     path: '/district',
     icon: BarChart3,
@@ -88,6 +82,12 @@ const NAV_ITEMS = [
     path: '/admin',
     icon: ShieldCheck,
     badge: 'Req 43',
+  },
+  {
+    label: 'Logs & Activity',
+    path: '/logs',
+    icon: Radio,
+    srLabel: 'System Logs',
   },
 ];
 
@@ -224,7 +224,7 @@ export function RootLayout() {
         {/* 4. Navigation Menu */}
         <div className={`flex-1 overflow-y-auto py-1 space-y-0.5 ${sidebarCollapsed ? 'px-0' : 'px-3'}`}>
           <nav className="space-y-1">
-            {/* 1. Primary Pages outside collapsible: Overview, Tickets, Clinical Programs, Household Registry */}
+            {/* 1. Primary Pages outside collapsible: Overview, India PHC & RaktKosh Map, Tickets, Clinical Programs, Household Registry */}
             {[
               {
                 label: 'Overview',
@@ -232,6 +232,12 @@ export function RootLayout() {
                 end: true,
                 icon: Home,
                 srLabel: 'Main Dashboard',
+              },
+              {
+                label: 'India PHC & RaktKosh Map',
+                path: '/india-map',
+                icon: Navigation,
+                badge: '35.9k',
               },
               {
                 label: 'PHC Tickets Queue',
@@ -311,6 +317,7 @@ export function RootLayout() {
                   ...NAV_ITEMS.filter(
                     (item) =>
                       item.path !== '/dashboard' &&
+                      item.path !== '/india-map' &&
                       item.path !== '/households' &&
                       item.path !== '/clinical-programs'
                   ),
