@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
+import '../../app/theme/app_theme.dart';
 import 'hi_mr_repair.dart';
 import 'indic_translator.dart';
 import 'languages.dart';
@@ -109,7 +110,8 @@ class _HomePageState extends State<HomePage> {
   static const _maxSeconds = 25;
 
   SettingsStore get settings => widget.settings;
-  List<IndicLanguage> get _languages => widget.availableLanguages ?? indicLanguages;
+  List<IndicLanguage> get _languages =>
+      widget.availableLanguages ?? indicLanguages;
 
   @override
   void initState() {
@@ -166,9 +168,11 @@ class _HomePageState extends State<HomePage> {
     try {
       await store.ensure((progress) {
         final now = DateTime.now();
-        final complete = progress.total > 0 && progress.received >= progress.total;
+        final complete =
+            progress.total > 0 && progress.received >= progress.total;
         if (!complete &&
-            now.difference(_lastProgressPaint) < const Duration(milliseconds: 200)) {
+            now.difference(_lastProgressPaint) <
+                const Duration(milliseconds: 200)) {
           _progress = progress;
           return;
         }
@@ -187,8 +191,7 @@ class _HomePageState extends State<HomePage> {
     } on SocketException {
       if (!mounted) return;
       setState(() {
-        _downloadError =
-            'The download needs a connection. After the models are on the phone, translation works with no network.';
+        _downloadError = 'The download needs a connection. After the models are on the phone, translation works with no network.';
       });
     } catch (error) {
       if (!mounted) return;
@@ -227,8 +230,10 @@ class _HomePageState extends State<HomePage> {
     try {
       await store.ensureAsk((progress) {
         final now = DateTime.now();
-        final complete = progress.total > 0 && progress.received >= progress.total;
-        if (!complete && now.difference(_lastAskPaint) < const Duration(milliseconds: 200)) {
+        final complete =
+            progress.total > 0 && progress.received >= progress.total;
+        if (!complete &&
+            now.difference(_lastAskPaint) < const Duration(milliseconds: 200)) {
           _askProgress = progress;
           return;
         }
@@ -241,8 +246,7 @@ class _HomePageState extends State<HomePage> {
     } on SocketException {
       if (!mounted) return;
       setState(() {
-        _askError =
-            'The download needs a connection. Hearing still works. Ask-back starts once this model is on the phone.';
+        _askError = 'The download needs a connection. Hearing still works. Ask-back starts once this model is on the phone.';
       });
     } catch (error) {
       if (!mounted) return;
@@ -272,7 +276,8 @@ class _HomePageState extends State<HomePage> {
     final store = _models;
     if (store == null || !store.isReady) return;
     if (_hearing != null && _indicToEnglish != null) return;
-    if (mounted) setState(() => _status = 'Preparing Hindi and Marathi hearing');
+    if (mounted)
+      setState(() => _status = 'Preparing Hindi and Marathi hearing');
     _hearing ??= HearingSession.open(
       modelPath: store.asrModelPath,
       tokensPath: store.asrTokensPath,
@@ -336,10 +341,12 @@ class _HomePageState extends State<HomePage> {
       }
     }
     await _levels?.cancel();
-    _levels = _recorder.onAmplitudeChanged(const Duration(milliseconds: 80)).listen((amp) {
-      final db = amp.current.clamp(-50.0, -5.0);
-      _level.value = ((db + 50) / 45).clamp(0.0, 1.0);
-    });
+    _levels = _recorder
+        .onAmplitudeChanged(const Duration(milliseconds: 80))
+        .listen((amp) {
+          final db = amp.current.clamp(-50.0, -5.0);
+          _level.value = ((db + 50) / 45).clamp(0.0, 1.0);
+        });
     if (!mounted) return;
     setState(() {
       _recording = true;
@@ -349,7 +356,7 @@ class _HomePageState extends State<HomePage> {
     });
     _liveTimer?.cancel();
     if (_streamLive) {
-      _liveTimer = Timer.periodic(const Duration(milliseconds: 1200), (_) {
+      _liveTimer = Timer.periodic(const Duration(milliseconds: 1800), (_) {
         unawaited(_decodeLive(finalPass: false));
       });
     }
@@ -419,6 +426,10 @@ class _HomePageState extends State<HomePage> {
   Future<void> _decodeLive({required bool finalPass}) async {
     if (finalPass) _finalRequested = true;
     if (_decodeBusy) {
+      // A live pass is best-effort. Do not queue another full CPU model pass
+      // while the previous one is still decoding; the final pass is handled
+      // immediately when the worker stops recording.
+      if (!finalPass) return;
       _decodeAgain = true;
       return;
     }
@@ -449,12 +460,17 @@ class _HomePageState extends State<HomePage> {
         }
         final language = settings.source;
         final hearWatch = Stopwatch()..start();
-        final raw = hearing.transcribe(pcm16ToFloat(Uint8List.fromList(bytes)), 16000);
+        final raw = hearing.transcribe(
+          pcm16ToFloat(Uint8List.fromList(bytes)),
+          16000,
+        );
         final hearMs = hearWatch.elapsedMilliseconds;
         final heard = prepareHeardForTranslation(raw, language.iso);
         if (heard.isEmpty) {
           if (isFinal && mounted) {
-            _showMessage('I did not catch that. Speak a full sentence, closer to the phone.');
+            _showMessage(
+              'I did not catch that. Speak a full sentence, closer to the phone.',
+            );
           }
           if (isFinal) _finalRequested = false;
           break;
@@ -469,7 +485,9 @@ class _HomePageState extends State<HomePage> {
         if (!mounted) break;
         if (english.trim().isEmpty) {
           if (isFinal) {
-            _showMessage('The translation came back empty. Try a shorter sentence.');
+            _showMessage(
+              'The translation came back empty. Try a shorter sentence.',
+            );
             _finalRequested = false;
           }
           break;
@@ -485,14 +503,15 @@ class _HomePageState extends State<HomePage> {
           break;
         }
         _finalRequested = false;
-        final turn = _Turn(
-          languageCode: language.code,
-          heard: heard,
-          translation: english.trim(),
-          fromEnglish: false,
-        )
-          ..hearMs = hearMs
-          ..translateMs = translateMs;
+        final turn =
+            _Turn(
+                languageCode: language.code,
+                heard: heard,
+                translation: english.trim(),
+                fromEnglish: false,
+              )
+              ..hearMs = hearMs
+              ..translateMs = translateMs;
         setState(() {
           _turns.insert(0, turn);
           _liveHeard = '';
@@ -520,7 +539,9 @@ class _HomePageState extends State<HomePage> {
     try {
       if (mounted) setState(() => _status = 'Speaking the English');
       final dir = await getTemporaryDirectory();
-      final spoken = File('${dir.path}/reply-${DateTime.now().millisecondsSinceEpoch}.wav');
+      final spoken = File(
+        '${dir.path}/reply-${DateTime.now().millisecondsSinceEpoch}.wav',
+      );
       SpeechEngine.speakToFile(
         text: _speechText(turn.translation),
         modelPath: store.ttsModelPath,
@@ -560,7 +581,9 @@ class _HomePageState extends State<HomePage> {
     FocusManager.instance.primaryFocus?.unfocus();
     final language = settings.source;
     if (!widget.allowSecondaryDownloads) {
-      _showMessage('Install the ask-back interpreter pack in Offline packs first.');
+      _showMessage(
+        'Install the ask-back interpreter pack in Offline packs first.',
+      );
       return;
     }
     final ready = await _ensureAsk();
@@ -587,7 +610,9 @@ class _HomePageState extends State<HomePage> {
     if (fromEnglish && typedText.isEmpty) return;
     setState(() {
       _busy = true;
-      _status = audio != null ? 'Hearing the recording' : 'Translating on this phone';
+      _status = audio != null
+          ? 'Hearing the recording'
+          : 'Translating on this phone';
     });
     await Future<void>.delayed(Duration.zero);
     try {
@@ -603,7 +628,9 @@ class _HomePageState extends State<HomePage> {
         hearMs = watch.elapsedMilliseconds;
         heard = prepareHeardForTranslation(raw, source.iso);
         if (heard.isEmpty) {
-          _showMessage('I did not catch that. Speak a full sentence, closer to the phone.');
+          _showMessage(
+            'I did not catch that. Speak a full sentence, closer to the phone.',
+          );
           return;
         }
         if (mounted) setState(() => _status = 'Translating on this phone');
@@ -620,39 +647,49 @@ class _HomePageState extends State<HomePage> {
               languageCode: source.code,
             )
           : _indicToEnglish != null
-              ? _indicToEnglish!.translate(heard, source)
-              : await translateOnPhone(
-                  modelDirectory: store.mtDirectory.path,
-                  text: heard,
-                  languageCode: source.code,
-                );
+          ? _indicToEnglish!.translate(heard, source)
+          : await translateOnPhone(
+              modelDirectory: store.mtDirectory.path,
+              text: heard,
+              languageCode: source.code,
+            );
       final translateMs = translateWatch.elapsedMilliseconds;
       if (translation.trim().isEmpty) {
-        _showMessage('The translation came back empty. Try a shorter sentence.');
+        _showMessage(
+          'The translation came back empty. Try a shorter sentence.',
+        );
         return;
       }
 
-      final turn = _Turn(
-        languageCode: source.code,
-        heard: heard,
-        translation: translation,
-        fromEnglish: fromEnglish,
-      )
-        ..hearMs = hearMs
-        ..translateMs = translateMs;
-      final speakHindi = fromEnglish && settings.autoSpeak && source.iso == 'hi';
+      final turn =
+          _Turn(
+              languageCode: source.code,
+              heard: heard,
+              translation: translation,
+              fromEnglish: fromEnglish,
+            )
+            ..hearMs = hearMs
+            ..translateMs = translateMs;
+      final speakHindi =
+          fromEnglish && settings.autoSpeak && source.iso == 'hi';
       final speakEnglish = !fromEnglish && settings.autoSpeak;
       if (speakHindi || speakEnglish) {
         try {
-          if (speakHindi && !store.hindiVoiceReady && widget.allowSecondaryDownloads) {
+          if (speakHindi &&
+              !store.hindiVoiceReady &&
+              widget.allowSecondaryDownloads) {
             await _downloadHindiVoice(store);
           }
           if (speakHindi && !store.hindiVoiceReady) {
-            _showMessage('The Hindi voice is not on the phone yet. The words are on the screen.');
+            _showMessage(
+              'The Hindi voice is not on the phone yet. The words are on the screen.',
+            );
           } else {
             if (mounted) {
               setState(() {
-                _status = speakHindi ? 'Speaking the Hindi' : 'Speaking the English';
+                _status = speakHindi
+                    ? 'Speaking the Hindi'
+                    : 'Speaking the English';
               });
             }
             await Future<void>.delayed(Duration.zero);
@@ -662,8 +699,12 @@ class _HomePageState extends State<HomePage> {
             );
             SpeechEngine.speakToFile(
               text: _speechText(translation),
-              modelPath: speakHindi ? store.hindiTtsModelPath : store.ttsModelPath,
-              tokensPath: speakHindi ? store.hindiTtsTokensPath : store.ttsTokensPath,
+              modelPath: speakHindi
+                  ? store.hindiTtsModelPath
+                  : store.ttsModelPath,
+              tokensPath: speakHindi
+                  ? store.hindiTtsTokensPath
+                  : store.ttsTokensPath,
               dataDir: store.espeakDirectory,
               destPath: spoken.path,
             );
@@ -705,12 +746,18 @@ class _HomePageState extends State<HomePage> {
     var last = DateTime.fromMillisecondsSinceEpoch(0);
     await store.ensureHindiVoice((progress) {
       final now = DateTime.now();
-      final complete = progress.total > 0 && progress.received >= progress.total;
-      if (!complete && now.difference(last) < const Duration(milliseconds: 200)) return;
+      final complete =
+          progress.total > 0 && progress.received >= progress.total;
+      if (!complete && now.difference(last) < const Duration(milliseconds: 200))
+        return;
       last = now;
       if (!mounted) return;
-      final total = progress.total > 0 ? ' of ${_formatSize(progress.total)}' : '';
-      setState(() => _status = 'Hindi voice · ${_formatSize(progress.received)}$total');
+      final total = progress.total > 0
+          ? ' of ${_formatSize(progress.total)}'
+          : '';
+      setState(
+        () => _status = 'Hindi voice · ${_formatSize(progress.received)}$total',
+      );
     });
   }
 
@@ -739,7 +786,7 @@ class _HomePageState extends State<HomePage> {
     final selected = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
-      backgroundColor: const Color(0xFFFFFCF7),
+      backgroundColor: Colors.white,
       builder: (context) {
         return SafeArea(
           child: ListView(
@@ -748,7 +795,9 @@ class _HomePageState extends State<HomePage> {
                 ListTile(
                   title: Text(language.nativeName),
                   subtitle: Text(
-                    language.speech ? language.name : '${language.name} · type only',
+                    language.speech
+                        ? language.name
+                        : '${language.name} · type only',
                   ),
                   onTap: () => Navigator.pop(context, language.code),
                 ),
@@ -765,7 +814,7 @@ class _HomePageState extends State<HomePage> {
     return showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      backgroundColor: const Color(0xFFFFFCF7),
+      backgroundColor: Colors.white,
       builder: (context) {
         return Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
@@ -838,19 +887,30 @@ class _HomePageState extends State<HomePage> {
         final ask = settings.askInEnglish;
         final locked = _busy || _recording;
         return Scaffold(
+          backgroundColor: AshaColors.screenBg,
           appBar: AppBar(
+            backgroundColor: AshaColors.cardSurface,
+            foregroundColor: AshaColors.textPrimary,
+            elevation: 0,
             title: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   widget.title,
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                    color: AshaColors.textPrimary,
+                  ),
                 ),
                 Text(
                   ask
                       ? 'You write English · they read ${from.name}'
                       : 'Hears an Indian language · speaks English',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF5C564C)),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AshaColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -858,12 +918,18 @@ class _HomePageState extends State<HomePage> {
               IconButton(
                 tooltip: 'About this build',
                 onPressed: _openInfo,
-                icon: const Icon(Icons.info_outline),
+                icon: const Icon(
+                  Icons.info_outline,
+                  color: AshaColors.textPrimary,
+                ),
               ),
               IconButton(
                 tooltip: 'Voice',
                 onPressed: _openSettings,
-                icon: const Icon(Icons.settings_outlined),
+                icon: const Icon(
+                  Icons.settings_outlined,
+                  color: AshaColors.textPrimary,
+                ),
               ),
             ],
           ),
@@ -890,7 +956,11 @@ class _HomePageState extends State<HomePage> {
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                           child: Text(
                             widget.notice!,
-                            style: const TextStyle(fontSize: 13, height: 1.35, color: Color(0xFF5C564C)),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              height: 1.35,
+                              color: AshaColors.textSecondary,
+                            ),
                           ),
                         ),
                       Padding(
@@ -903,20 +973,27 @@ class _HomePageState extends State<HomePage> {
                                 title: ask ? 'English' : from.nativeName,
                                 subtitle: ask
                                     ? 'Type the question'
-                                    : (from.speech ? from.name : '${from.name} · type'),
+                                    : (from.speech
+                                          ? from.name
+                                          : '${from.name} · type'),
                                 onTap: ask || locked ? null : _pickLanguage,
                               ),
                             ),
                             const Padding(
                               padding: EdgeInsets.symmetric(horizontal: 8),
-                              child: Icon(Icons.arrow_forward, color: Color(0xFF5C564C)),
+                              child: Icon(
+                                Icons.arrow_forward_rounded,
+                                color: AshaColors.textSecondary,
+                              ),
                             ),
                             Expanded(
                               child: _LanguageChip(
                                 caption: ask ? 'They read' : 'You read',
                                 title: ask ? from.nativeName : 'English',
                                 subtitle: ask
-                                    ? (from.iso == 'hi' ? 'Read aloud' : 'On the screen')
+                                    ? (from.iso == 'hi'
+                                          ? 'Read aloud'
+                                          : 'On the screen')
                                     : 'Read aloud',
                                 onTap: ask && !locked ? _pickLanguage : null,
                               ),
@@ -941,14 +1018,24 @@ class _HomePageState extends State<HomePage> {
                                 builder: (context, constraints) {
                                   return SingleChildScrollView(
                                     child: ConstrainedBox(
-                                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                                      child: _EmptyHint(ask: ask, language: from),
+                                      constraints: BoxConstraints(
+                                        minHeight: constraints.maxHeight,
+                                      ),
+                                      child: _EmptyHint(
+                                        ask: ask,
+                                        language: from,
+                                      ),
                                     ),
                                   );
                                 },
                               )
                             : ListView.builder(
-                                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  0,
+                                  16,
+                                  12,
+                                ),
                                 itemCount: _turns.length,
                                 itemBuilder: (context, index) {
                                   final turn = _turns[index];
@@ -986,31 +1073,62 @@ class _HomePageState extends State<HomePage> {
                                         ? 'Write the question in English'
                                         : 'Type a sentence',
                                     filled: true,
-                                    fillColor: const Color(0xFFFFFCF7),
-                                    border: const OutlineInputBorder(),
+                                    fillColor: AshaColors.cardSurface,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(
+                                        color: AshaColors.borderSubtle,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(
+                                        color: AshaColors.borderSubtle,
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(
+                                        color: AshaColors.primary,
+                                        width: 1.6,
+                                      ),
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 12,
+                                    ),
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               IconButton.filled(
+                                style: IconButton.styleFrom(
+                                  backgroundColor: AshaColors.primary,
+                                  foregroundColor: Colors.white,
+                                ),
                                 onPressed: _busy ? null : _submitTyped,
-                                icon: const Icon(Icons.send),
+                                icon: const Icon(Icons.send_rounded),
                               ),
                             ],
                           ),
                         ),
                       if (!ask)
                         TextButton(
-                          onPressed: () => setState(() => _showType = !_showType),
+                          onPressed: () =>
+                              setState(() => _showType = !_showType),
                           child: Text(
-                            _showType ? 'Hide typing' : 'Type instead of speaking',
+                            _showType
+                                ? 'Hide typing'
+                                : 'Type instead of speaking',
                           ),
                         ),
                       if (_status.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 4),
                           child: Text(
-                            _recording ? '$_status  ${_elapsedSeconds}s' : _status,
+                            _recording
+                                ? '$_status  ${_elapsedSeconds}s'
+                                : _status,
                             style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                         ),
@@ -1024,7 +1142,9 @@ class _HomePageState extends State<HomePage> {
                           label: _buttonLabel(from, ask),
                           icon: _recording
                               ? Icons.stop_rounded
-                              : (ask ? Icons.campaign_rounded : Icons.mic_rounded),
+                              : (ask
+                                    ? Icons.campaign_rounded
+                                    : Icons.mic_rounded),
                           onPressed: _buttonPressed(ask),
                         ),
                       ),
@@ -1068,27 +1188,44 @@ class _ModeSwitch extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: _modeButton('They speak', selected: !ask, onTap: onChanged == null ? null : () => onChanged!(false))),
-        const SizedBox(width: 8),
-        Expanded(child: _modeButton('I ask', selected: ask, onTap: onChanged == null ? null : () => onChanged!(true))),
+        Expanded(
+          child: _modeButton(
+            'They speak',
+            selected: !ask,
+            onTap: onChanged == null ? null : () => onChanged!(false),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _modeButton(
+            'I ask',
+            selected: ask,
+            onTap: onChanged == null ? null : () => onChanged!(true),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _modeButton(String label, {required bool selected, required VoidCallback? onTap}) {
+  Widget _modeButton(
+    String label, {
+    required bool selected,
+    required VoidCallback? onTap,
+  }) {
     return Material(
-      color: selected ? const Color(0xFF0F6E56) : const Color(0xFFFFFCF7),
-      borderRadius: BorderRadius.circular(14),
+      color: selected ? AshaColors.primary : AshaColors.cardSurface,
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Container(
-          height: 48,
+          height: 52,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: selected ? const Color(0xFF0F6E56) : const Color(0xFFE4DDD2),
+              color: selected ? AshaColors.primary : const Color(0xFFE5E7EB),
+              width: selected ? 1 : 1.5,
             ),
           ),
           child: Text(
@@ -1096,7 +1233,7 @@ class _ModeSwitch extends StatelessWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: selected ? Colors.white : const Color(0xFF1C1915),
+              color: selected ? Colors.white : AshaColors.textPrimary,
             ),
           ),
         ),
@@ -1122,7 +1259,9 @@ class _AskPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final fraction = progress?.fraction ?? 0;
     final received = progress == null ? '' : _formatSize(progress!.received);
-    final total = progress == null || progress!.total <= 0 ? '' : _formatSize(progress!.total);
+    final total = progress == null || progress!.total <= 0
+        ? ''
+        : _formatSize(progress!.total);
     final fileLine = progress == null
         ? 'About 300 MB, the first time you ask.'
         : total.isEmpty
@@ -1132,9 +1271,9 @@ class _AskPanel extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: const Color(0xFFFFFCF7),
+          color: AshaColors.cardSurface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE4DDD2)),
+          border: Border.all(color: AshaColors.borderSubtle),
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
@@ -1143,25 +1282,37 @@ class _AskPanel extends StatelessWidget {
             children: [
               const Text(
                 'Ask-back model',
-                style: TextStyle(fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AshaColors.textPrimary,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 error ?? fileLine,
-                style: const TextStyle(fontSize: 14, height: 1.3),
+                style: const TextStyle(
+                  fontSize: 14,
+                  height: 1.3,
+                  color: AshaColors.textSecondary,
+                ),
               ),
               const SizedBox(height: 8),
               LinearProgressIndicator(
-                value: downloading && fraction > 0 ? fraction : (downloading ? null : 0),
+                value: downloading && fraction > 0
+                    ? fraction
+                    : (downloading ? null : 0),
                 minHeight: 8,
                 borderRadius: BorderRadius.circular(8),
-                color: const Color(0xFF0F6E56),
+                color: AshaColors.primary,
               ),
               if (error != null) ...[
                 const SizedBox(height: 8),
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: TextButton(onPressed: () => onRetry(), child: const Text('Try again')),
+                  child: TextButton(
+                    onPressed: () => onRetry(),
+                    child: const Text('Try again'),
+                  ),
                 ),
               ],
             ],
@@ -1191,7 +1342,9 @@ class _DownloadGate extends StatelessWidget {
   Widget build(BuildContext context) {
     final fraction = progress?.fraction ?? 0;
     final received = progress == null ? '' : _formatSize(progress!.received);
-    final total = progress == null || progress!.total <= 0 ? '' : _formatSize(progress!.total);
+    final total = progress == null || progress!.total <= 0
+        ? ''
+        : _formatSize(progress!.total);
     final fileLine = progress == null
         ? ''
         : total.isEmpty
@@ -1204,7 +1357,11 @@ class _DownloadGate extends StatelessWidget {
         children: [
           const Text(
             'Download once, then it stays on the phone',
-            style: TextStyle(fontSize: 26, height: 1.25, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              fontSize: 26,
+              height: 1.25,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 12),
           const Text(
@@ -1216,19 +1373,28 @@ class _DownloadGate extends StatelessWidget {
             const Text('Looking for models already on this phone.')
           else ...[
             LinearProgressIndicator(
-              value: downloading && fraction > 0 ? fraction : (downloading ? null : 0),
+              value: downloading && fraction > 0
+                  ? fraction
+                  : (downloading ? null : 0),
               minHeight: 8,
               borderRadius: BorderRadius.circular(8),
-              color: const Color(0xFF0F6E56),
+              color: AshaColors.primary,
             ),
             const SizedBox(height: 12),
             Text(
               error ?? (downloading ? fileLine : 'Ready to download.'),
-              style: const TextStyle(fontSize: 16, height: 1.35),
+              style: const TextStyle(
+                fontSize: 16,
+                height: 1.35,
+                color: AshaColors.textSecondary,
+              ),
             ),
             if (error != null) ...[
               const SizedBox(height: 16),
               FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AshaColors.primary,
+                ),
                 onPressed: downloading ? null : () => onRetry(),
                 child: const Text('Try again'),
               ),
@@ -1256,10 +1422,10 @@ class _LanguageChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFFFFFCF7),
+      color: AshaColors.cardSurface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: Color(0xFFE4DDD2)),
+        side: const BorderSide(color: AshaColors.borderSubtle),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
@@ -1271,15 +1437,28 @@ class _LanguageChip extends StatelessWidget {
             children: [
               Text(
                 caption,
-                style: const TextStyle(fontSize: 12, color: Color(0xFF5C564C)),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AshaColors.textSecondary,
+                ),
               ),
               Text(
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AshaColors.textPrimary,
+                ),
               ),
-              Text(subtitle, style: const TextStyle(fontSize: 13)),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AshaColors.textSecondary,
+                ),
+              ),
             ],
           ),
         ),
@@ -1306,7 +1485,12 @@ class _EmptyHint extends StatelessWidget {
                 ? 'Write the question in English, then tap Ask in ${language.nativeName}.'
                 : 'Tap the button and speak one sentence. Tap again to stop.',
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 18, height: 1.35),
+            style: const TextStyle(
+              fontSize: 18,
+              height: 1.35,
+              color: AshaColors.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
@@ -1314,7 +1498,10 @@ class _EmptyHint extends StatelessWidget {
                 ? 'The phone shows ${language.name}. Hindi is read aloud. For the other languages, hold the screen up.'
                 : 'The phone hears the Indian language, keeps field words such as dhokla and meter, and reads the English.',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Color(0xFF5C564C), height: 1.35),
+            style: const TextStyle(
+              color: AshaColors.textSecondary,
+              height: 1.35,
+            ),
           ),
         ],
       ),
@@ -1347,29 +1534,48 @@ class _LiveEnglish extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F7F4),
+        color: const Color(0xFFF0FDF4),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF0F6E56)),
+        border: Border.all(color: AshaColors.primary, width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             tuned ? 'English · Hindi or Marathi' : 'English, as they speak',
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF0F6E56)),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AshaColors.primary,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             english.isEmpty ? 'Listening…' : english,
-            style: const TextStyle(fontSize: 22, height: 1.3, fontWeight: FontWeight.w700),
+            style: const TextStyle(
+              fontSize: 22,
+              height: 1.3,
+              fontWeight: FontWeight.w800,
+              color: AshaColors.textPrimary,
+            ),
           ),
           if (heard.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text(heard, style: const TextStyle(fontSize: 14, height: 1.3, color: Color(0xFF5C564C))),
+            Text(
+              heard,
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.3,
+                color: AshaColors.textSecondary,
+              ),
+            ),
           ],
           if (timing.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text(timing, style: const TextStyle(fontSize: 12, color: Color(0xFF5C564C))),
+            Text(
+              timing,
+              style: const TextStyle(fontSize: 12, color: AshaColors.textMuted),
+            ),
           ],
         ],
       ),
@@ -1390,14 +1596,14 @@ class _TurnCard extends StatelessWidget {
     final showHoldUp = turn.fromEnglish && turn.languageCode != 'hi-IN';
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
-      color: const Color(0xFFFFFCF7),
+      color: AshaColors.cardSurface,
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFFE4DDD2)),
+        side: const BorderSide(color: AshaColors.borderSubtle),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1405,19 +1611,27 @@ class _TurnCard extends StatelessWidget {
               direction,
               style: const TextStyle(
                 fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF0F6E56),
+                fontWeight: FontWeight.w700,
+                color: AshaColors.primary,
               ),
             ),
             const SizedBox(height: 6),
-            Text(turn.heard, style: const TextStyle(fontSize: 15, height: 1.35)),
+            Text(
+              turn.heard,
+              style: const TextStyle(
+                fontSize: 15,
+                height: 1.35,
+                color: AshaColors.textSecondary,
+              ),
+            ),
             const SizedBox(height: 8),
             SelectableText(
               turn.translation,
               style: TextStyle(
-                fontSize: turn.fromEnglish ? 26 : 20,
+                fontSize: turn.fromEnglish ? 24 : 19,
                 height: 1.3,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
+                color: AshaColors.textPrimary,
               ),
             ),
             if (turn.hearMs != null || turn.translateMs != null) ...[
@@ -1425,16 +1639,24 @@ class _TurnCard extends StatelessWidget {
               Text(
                 [
                   if (turn.hearMs != null) 'Heard ${turn.hearMs} ms',
-                  if (turn.translateMs != null) 'translated ${turn.translateMs} ms',
+                  if (turn.translateMs != null)
+                    'translated ${turn.translateMs} ms',
                 ].join(' · '),
-                style: const TextStyle(fontSize: 12, color: Color(0xFF5C564C)),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AshaColors.textMuted,
+                ),
               ),
             ],
             if (showHoldUp) ...[
               const SizedBox(height: 6),
               Text(
                 'Hold the phone up. This phone reads Hindi aloud, so $name stays on the screen.',
-                style: const TextStyle(fontSize: 13, height: 1.3, color: Color(0xFF5C564C)),
+                style: const TextStyle(
+                  fontSize: 13,
+                  height: 1.3,
+                  color: AshaColors.textSecondary,
+                ),
               ),
             ],
             if (onReplay != null)
@@ -1476,7 +1698,8 @@ class _LiveButton extends StatefulWidget {
   State<_LiveButton> createState() => _LiveButtonState();
 }
 
-class _LiveButtonState extends State<_LiveButton> with SingleTickerProviderStateMixin {
+class _LiveButtonState extends State<_LiveButton>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _motion = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1400),
@@ -1514,14 +1737,16 @@ class _LiveButtonState extends State<_LiveButton> with SingleTickerProviderState
   @override
   Widget build(BuildContext context) {
     final enabled = widget.onPressed != null;
-    final base = widget.recording ? const Color(0xFF9F2D2D) : const Color(0xFF0F6E56);
+    final base = widget.recording
+        ? const Color(0xFFDC2626)
+        : AshaColors.primary;
     final color = enabled ? base : base.withValues(alpha: 0.45);
     return SizedBox(
       width: double.infinity,
-      height: 84,
+      height: 60,
       child: Material(
         color: color,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: widget.onPressed,
@@ -1530,8 +1755,8 @@ class _LiveButtonState extends State<_LiveButton> with SingleTickerProviderState
             child: Row(
               children: [
                 SizedBox(
-                  width: 72,
-                  height: 64,
+                  width: 48,
+                  height: 48,
                   child: AnimatedBuilder(
                     animation: _motion,
                     builder: (context, _) {
@@ -1541,26 +1766,27 @@ class _LiveButtonState extends State<_LiveButton> with SingleTickerProviderState
                           recording: widget.recording,
                           busy: widget.busy,
                           speaking: widget.speaking,
-                          level: _level,
+                          level: widget.level.value,
                         ),
                       );
                     },
                   ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     widget.label,
-                    maxLines: 2,
+                    maxLines: 1,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      fontFamily: 'SF Pro Display',
                       height: 1.15,
                     ),
                   ),
                 ),
-                Icon(widget.icon, color: Colors.white, size: 30),
+                Icon(widget.icon, color: Colors.white, size: 26),
               ],
             ),
           ),
@@ -1614,7 +1840,11 @@ class _ButtonMotion extends CustomPainter {
         false,
         arc,
       );
-      canvas.drawCircle(center, 4, Paint()..color = Colors.white.withValues(alpha: 0.9));
+      canvas.drawCircle(
+        center,
+        4,
+        Paint()..color = Colors.white.withValues(alpha: 0.9),
+      );
       return;
     }
     for (var i = 0; i < 3; i++) {

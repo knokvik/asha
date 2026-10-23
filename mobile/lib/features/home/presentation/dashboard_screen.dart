@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../app/theme/app_theme.dart';
 import '../../../core/l10n/language_provider.dart';
 import '../../../core/packs/pack_manager.dart';
 import '../../../core/sync/sync_coordinator.dart';
@@ -666,13 +667,14 @@ class AshaNavigationDrawer extends ConsumerWidget {
     final pendingCount = profile?.pendingVisits ?? 0;
 
     return Drawer(
-      backgroundColor: const Color(0xFF183D2B),
+      backgroundColor: Colors.white,
       child: SafeArea(
         child: Column(
           children: [
             // Header: SS Avatar | Sunita Sharma ✓ | ASHA Worker • Rampur PHC | Close ✕
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 16, 14, 12),
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -680,11 +682,11 @@ class AshaNavigationDrawer extends ConsumerWidget {
                     children: [
                       CircleAvatar(
                         radius: 24,
-                        backgroundColor: Colors.white,
+                        backgroundColor: const Color(0xFFE8F5E9),
                         child: Text(
                           initials,
                           style: const TextStyle(
-                            color: Color(0xFF183D2B),
+                            color: Color(0xFF1B5E20),
                             fontWeight: FontWeight.w900,
                             fontSize: 18,
                             fontFamily: 'SF Pro Display',
@@ -703,7 +705,7 @@ class AshaNavigationDrawer extends ConsumerWidget {
                                     name,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
-                                      color: Colors.white,
+                                      color: Color(0xFF111827),
                                       fontSize: 16,
                                       fontWeight: FontWeight.w800,
                                       fontFamily: 'SF Pro Display',
@@ -713,7 +715,7 @@ class AshaNavigationDrawer extends ConsumerWidget {
                                 const SizedBox(width: 4),
                                 const Icon(
                                   Icons.verified_rounded,
-                                  color: Color(0xFF22C55E),
+                                  color: Color(0xFF16A34A),
                                   size: 16,
                                 ),
                               ],
@@ -723,7 +725,7 @@ class AshaNavigationDrawer extends ConsumerWidget {
                               facility,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                color: Color(0xFFA7C7B7),
+                                color: Color(0xFF6B7280),
                                 fontSize: 12,
                                 fontFamily: 'SF Pro Display',
                               ),
@@ -734,26 +736,26 @@ class AshaNavigationDrawer extends ConsumerWidget {
                       IconButton(
                         icon: const Icon(
                           Icons.close_rounded,
-                          color: Colors.white,
+                          color: Color(0xFF111827),
                           size: 22,
                         ),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
 
-                  // Pill: 🔒 Offline • Data Encrypted or Online
+                  // Pill: Online / Offline
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF112E20),
+                      color: isConnected ? const Color(0xFFF0FDF4) : const Color(0xFFFEF3C7),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: const Color(0xFF29563E),
+                        color: isConnected ? const Color(0xFFBBF7D0) : const Color(0xFFFDE68A),
                         width: 1,
                       ),
                     ),
@@ -765,17 +767,17 @@ class AshaNavigationDrawer extends ConsumerWidget {
                               ? Icons.cloud_done_rounded
                               : Icons.lock_rounded,
                           size: 13,
-                          color: const Color(0xFF22C55E),
+                          color: isConnected ? const Color(0xFF16A34A) : const Color(0xFFD97706),
                         ),
                         const SizedBox(width: 6),
                         Text(
                           isConnected
                               ? shellText(lang, 'serverOnline')
                               : shellText(lang, 'encrypted'),
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: isConnected ? const Color(0xFF15803D) : const Color(0xFFB45309),
                             fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                             fontFamily: 'SF Pro Display',
                           ),
                         ),
@@ -786,17 +788,14 @@ class AshaNavigationDrawer extends ConsumerWidget {
               ),
             ),
 
-            const SizedBox(height: 8),
+            const Divider(color: AshaColors.borderSubtle, height: 1),
 
             // 8 Menu Items + Sign Out
             Expanded(
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                ),
+                color: Colors.white,
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(14, 16, 14, 20),
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 20),
                   children: [
                     // 1. Home (Active white card)
                     _buildDrawerItem(

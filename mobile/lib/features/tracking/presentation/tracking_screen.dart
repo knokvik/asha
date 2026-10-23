@@ -499,9 +499,10 @@ class _TrackingBodyState extends State<_TrackingBody> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 14, color: color),
-                const Spacer(),
+                Icon(icon, size: 15, color: color),
+                const SizedBox(width: 5),
                 Text(count, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: color)),
               ],
             ),

@@ -745,8 +745,25 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
                   final isSelected = _selectedSocialCategory == category;
                   return ChoiceChip(
                     key: Key('category_chip_$category'),
-                    label: Text(category),
+                    label: Text(
+                      category,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : AshaColors.textPrimary,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
                     selected: isSelected,
+                    selectedColor: AshaColors.primary,
+                    backgroundColor: AshaColors.surfaceMuted,
+                    checkmarkColor: Colors.white,
+                    side: BorderSide(
+                      color: isSelected ? AshaColors.primary : AshaColors.borderSubtle,
+                      width: 1.0,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     onSelected: (selected) {
                       setState(() {
                         _selectedSocialCategory = selected ? category : null;
@@ -947,9 +964,11 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(52),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                  minimumSize: const Size.fromHeight(54),
+                  backgroundColor: AshaColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: AshaShapes.buttonRadius,
                   ),
                 ),
               ),
@@ -1087,27 +1106,75 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
             const SizedBox(height: 12),
             Row(
               children: [
-                const Text('Sex: '),
+                const Text(
+                  'Sex: ',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AshaColors.textPrimary,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 ChoiceChip(
-                  label: const Text('F'),
+                  label: Text(
+                    'Female (F)',
+                    style: TextStyle(
+                      color: member.sex == 'F' ? Colors.white : AshaColors.textPrimary,
+                      fontWeight: member.sex == 'F' ? FontWeight.w700 : FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
                   selected: member.sex == 'F',
+                  selectedColor: AshaColors.primary,
+                  backgroundColor: AshaColors.surfaceMuted,
+                  checkmarkColor: Colors.white,
+                  side: BorderSide(
+                    color: member.sex == 'F' ? AshaColors.primary : AshaColors.borderSubtle,
+                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   onSelected: (sel) {
                     if (sel) setState(() => member.sex = 'F');
                   },
                 ),
                 const SizedBox(width: 8),
                 ChoiceChip(
-                  label: const Text('M'),
+                  label: Text(
+                    'Male (M)',
+                    style: TextStyle(
+                      color: member.sex == 'M' ? Colors.white : AshaColors.textPrimary,
+                      fontWeight: member.sex == 'M' ? FontWeight.w700 : FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
                   selected: member.sex == 'M',
+                  selectedColor: AshaColors.primary,
+                  backgroundColor: AshaColors.surfaceMuted,
+                  checkmarkColor: Colors.white,
+                  side: BorderSide(
+                    color: member.sex == 'M' ? AshaColors.primary : AshaColors.borderSubtle,
+                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   onSelected: (sel) {
                     if (sel) setState(() => member.sex = 'M');
                   },
                 ),
                 const SizedBox(width: 8),
                 ChoiceChip(
-                  label: const Text('O'),
+                  label: Text(
+                    'Other (O)',
+                    style: TextStyle(
+                      color: member.sex == 'Other' ? Colors.white : AshaColors.textPrimary,
+                      fontWeight: member.sex == 'Other' ? FontWeight.w700 : FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
                   selected: member.sex == 'Other',
+                  selectedColor: AshaColors.primary,
+                  backgroundColor: AshaColors.surfaceMuted,
+                  checkmarkColor: Colors.white,
+                  side: BorderSide(
+                    color: member.sex == 'Other' ? AshaColors.primary : AshaColors.borderSubtle,
+                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   onSelected: (sel) {
                     if (sel) setState(() => member.sex = 'Other');
                   },

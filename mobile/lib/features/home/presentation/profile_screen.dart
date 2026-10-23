@@ -378,79 +378,10 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 22),
 
-                // ── SECTION 1: Quick Actions & Finance ──────────────────────
-                Text(
-                  shellText(lang, 'quick'),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF4B5563),
-                    fontFamily: 'SF Pro Display',
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                _buildListOption(
-                  icon: Icons.account_balance_wallet_rounded,
-                  iconColor: const Color(0xFF15803D),
-                  iconBgColor: const Color(0xFFDCFCE7),
-                  title: shellText(lang, 'earnings'),
-                  subtitle: shellText(lang, 'earningsSub'),
-                  onTap: () => context.push('/incentives'),
-                ),
-                const SizedBox(height: 10),
-
-                _buildListOption(
-                  icon: Icons.analytics_rounded,
-                  iconColor: const Color(0xFF2563EB),
-                  iconBgColor: const Color(0xFFDBEAFE),
-                  title: shellText(lang, 'reports'),
-                  subtitle: shellText(lang, 'reportsSub'),
-                  onTap: () => context.push('/reports'),
-                ),
-                const SizedBox(height: 10),
-
-                _buildListOption(
-                  icon: Icons.cloud_sync_rounded,
-                  iconColor: isConnected
-                      ? const Color(0xFF16A34A)
-                      : const Color(0xFFD97706),
-                  iconBgColor: isConnected
-                      ? const Color(0xFFDCFCE7)
-                      : const Color(0xFFFEF3C7),
-                  title: shellText(lang, 'sync'),
-                  subtitle: isConnected
-                      ? shellText(lang, 'serverOnline')
-                      : shellText(lang, 'offlineSyncSub'),
-                  onTap: () => context.push('/sync'),
-                ),
-                const SizedBox(height: 10),
-
-                _buildListOption(
-                  icon: Icons.tune_rounded,
-                  iconColor: const Color(0xFF475569),
-                  iconBgColor: const Color(0xFFF1F5F9),
-                  title: shellText(lang, 'settings'),
-                  subtitle: shellText(lang, 'settingsSub'),
-                  onTap: () => context.push('/settings'),
-                ),
-                const SizedBox(height: 22),
-
-                _buildListOption(
-                  icon: Icons.inventory_2_outlined,
-                  iconColor: const Color(0xFF7C3AED),
-                  iconBgColor: const Color(0xFFF3E8FF),
-                  title: 'Offline packs',
-                  subtitle: 'Language, map and interpreter downloads',
-                  onTap: () => context.push('/packs'),
-                ),
-                const SizedBox(height: 22),
-
-                // ── SECTION 2: Clinical Tools & Field Operations ────────────
-                Text(
-                  shellText(lang, 'moreFeatures'),
-                  style: const TextStyle(
+                // ── SECTION 1: Field Operations & System ───────────────────
+                const Text(
+                  'Field Tools & Operations',
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFF4B5563),
@@ -471,32 +402,55 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 10),
 
                 _buildListOption(
+                  icon: Icons.map_outlined,
+                  iconColor: const Color(0xFF059669),
+                  iconBgColor: const Color(0xFFD1FAE5),
+                  title: 'Offline Map & Routes',
+                  subtitle: 'Route planning, hamlet boundaries and GIS layers',
+                  onTap: () => context.push('/route-map'),
+                ),
+                const SizedBox(height: 10),
+
+                _buildListOption(
+                  icon: Icons.inventory_2_outlined,
+                  iconColor: const Color(0xFF4F46E5),
+                  iconBgColor: const Color(0xFFEEF2FF),
+                  title: 'Offline Packs',
+                  subtitle: 'Language, map tiles and AI model downloads',
+                  onTap: () => context.push('/packs'),
+                ),
+                const SizedBox(height: 10),
+
+                _buildListOption(
+                  icon: Icons.settings_outlined,
+                  iconColor: const Color(0xFF475569),
+                  iconBgColor: const Color(0xFFF1F5F9),
+                  title: shellText(lang, 'settings'),
+                  subtitle: shellText(lang, 'settingsSub'),
+                  onTap: () => context.push('/settings'),
+                ),
+                const SizedBox(height: 22),
+
+                // ── SECTION 2: Registry, Knowledge & Support ───────────────
+                const Text(
+                  'Registry, Knowledge & Support',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF4B5563),
+                    fontFamily: 'SF Pro Display',
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                _buildListOption(
                   icon: Icons.menu_book_rounded,
                   iconColor: const Color(0xFF0284C7),
                   iconBgColor: const Color(0xFFE0F2FE),
                   title: shellText(lang, 'registers'),
                   subtitle: shellText(lang, 'registersSub'),
                   onTap: () => context.push('/reports/registers'),
-                ),
-                const SizedBox(height: 10),
-
-                _buildListOption(
-                  icon: Icons.medication_rounded,
-                  iconColor: const Color(0xFF0D9488),
-                  iconBgColor: const Color(0xFFCCFBF1),
-                  title: shellText(lang, 'stock'),
-                  subtitle: shellText(lang, 'stockSub'),
-                  onTap: () => context.push('/stock'),
-                ),
-                const SizedBox(height: 10),
-
-                _buildListOption(
-                  icon: Icons.map_rounded,
-                  iconColor: const Color(0xFF059669),
-                  iconBgColor: const Color(0xFFD1FAE5),
-                  title: shellText(lang, 'maps'),
-                  subtitle: shellText(lang, 'mapsSub'),
-                  onTap: () => context.push('/packs'),
                 ),
                 const SizedBox(height: 10),
 
@@ -517,6 +471,16 @@ class ProfileScreen extends ConsumerWidget {
                   title: shellText(lang, 'education'),
                   subtitle: shellText(lang, 'educationSub'),
                   onTap: () => context.push('/education'),
+                ),
+                const SizedBox(height: 10),
+
+                _buildListOption(
+                  icon: Icons.medication_rounded,
+                  iconColor: const Color(0xFF0D9488),
+                  iconBgColor: const Color(0xFFCCFBF1),
+                  title: shellText(lang, 'stock'),
+                  subtitle: shellText(lang, 'stockSub'),
+                  onTap: () => context.push('/stock'),
                 ),
                 const SizedBox(height: 10),
 

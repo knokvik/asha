@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/theme/app_theme.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/l10n/language_provider.dart';
 import '../../../shared/providers/core_providers.dart';
@@ -565,20 +566,37 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
   Future<void> _showCreateTaskSheet() async {
     final memberNameController = TextEditingController();
     final titleController = TextEditingController();
+    final hamletController = TextEditingController();
     final notesController = TextEditingController();
     var dueDate = _selectedDate;
     var risk = 1.0;
     String? title;
     String? notes;
+    String selectedCategory = 'General Home Visit';
+    String selectedTimeSlot = 'Morning (8 AM - 12 PM)';
     var enteredMemberName = '';
     if (!mounted) return;
     bool? created;
+
+    final templates = const [
+      ('ANC Checkup', 'Maternal Health (ANC/PNC)', 2.0),
+      ('Vaccine Follow-up', 'Child Immunization', 2.0),
+      ('BP & Sugar Check', 'NCD Surveillance', 1.0),
+      ('IFA Tablets Delivery', 'Nutrition & Supplies', 1.0),
+      ('Newborn Care (HBNC)', 'Newborn Care', 3.0),
+      ('Fever & Vitals', 'Fever Surveillance', 2.0),
+    ];
+
     try {
       created = await showModalBottomSheet<bool>(
         context: context,
         isScrollControlled: true,
         showDragHandle: true,
         useSafeArea: true,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
         builder: (sheetContext) => StatefulBuilder(
           builder: (context, setSheetState) => Padding(
             padding: EdgeInsets.fromLTRB(
@@ -591,16 +609,68 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    _dueCopy(_currentLanguage, 'createTask'),
-                    style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AshaColors.primaryLight,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.add_task_rounded, color: AshaColors.primary, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _dueCopy(_currentLanguage, 'createTask'),
+                            style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: AshaColors.textPrimary),
+                          ),
+                          Text(
+                            _dueCopy(_currentLanguage, 'createTaskSub'),
+                            style: const TextStyle(fontSize: 12, color: AshaColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _dueCopy(_currentLanguage, 'createTaskSub'),
-                    style: TextStyle(color: Color(0xFF6B7280)),
+                  const SizedBox(height: 14),
+
+                  // Quick Template Chips
+                  const Text(
+                    'Quick Templates',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AshaColors.textSecondary),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 6),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: templates.map((tpl) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: ActionChip(
+                            avatar: const Icon(Icons.bolt_rounded, size: 14, color: AshaColors.primary),
+                            label: Text(tpl.$1),
+                            labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AshaColors.textPrimary),
+                            backgroundColor: AshaColors.surfaceMuted,
+                            side: const BorderSide(color: AshaColors.borderSubtle),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            onPressed: () {
+                              setSheetState(() {
+                                titleController.text = tpl.$1;
+                                selectedCategory = tpl.$2;
+                                risk = tpl.$3;
+                              });
+                            },
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Beneficiary Name
                   TextField(
                     controller: memberNameController,
                     textCapitalization: TextCapitalization.words,
@@ -610,25 +680,78 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
                         _currentLanguage,
                         'beneficiaryNameHint',
                       ),
-                      border: OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.person_outline_rounded),
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: 12),
+
+                  // Task Title
                   TextField(
                     controller: titleController,
                     decoration: InputDecoration(
                       labelText: _dueCopy(_currentLanguage, 'taskTitle'),
-                      border: OutlineInputBorder(),
+                      prefixIcon: const Icon(Icons.edit_note_rounded),
+                      border: const OutlineInputBorder(),
                     ),
                     onChanged: (_) {
                       if (sheetContext.mounted) setSheetState(() {});
                     },
                   ),
                   const SizedBox(height: 12),
+
+                  // Clinical Category & Locality / Hamlet
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: selectedCategory,
+                          decoration: const InputDecoration(
+                            labelText: 'Category',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'General Home Visit', child: Text('General Visit')),
+                            DropdownMenuItem(value: 'Maternal Health (ANC/PNC)', child: Text('ANC / PNC')),
+                            DropdownMenuItem(value: 'Child Immunization', child: Text('Immunization')),
+                            DropdownMenuItem(value: 'NCD Surveillance', child: Text('NCD Check')),
+                            DropdownMenuItem(value: 'Newborn Care', child: Text('Newborn (HBNC)')),
+                            DropdownMenuItem(value: 'Nutrition & Supplies', child: Text('Nutrition/IFA')),
+                            DropdownMenuItem(value: 'Fever Surveillance', child: Text('Fever/IDSP')),
+                          ],
+                          onChanged: (val) {
+                            if (val != null && sheetContext.mounted) {
+                              setSheetState(() => selectedCategory = val);
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: hamletController,
+                          decoration: const InputDecoration(
+                            labelText: 'Hamlet / Ward',
+                            hintText: 'e.g. Ward 3',
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Date Picker & Risk / Priority
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
                           onPressed: () async {
                             if (!sheetContext.mounted) return;
                             final picked = await showDatePicker(
@@ -643,20 +766,22 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
                               );
                             }
                           },
-                          icon: const Icon(Icons.event_outlined),
+                          icon: const Icon(Icons.event_outlined, size: 18),
                           label: Text(
                             MaterialLocalizations.of(context)
                                 .formatMediumDate(dueDate),
+                            style: const TextStyle(fontSize: 12),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: DropdownButtonFormField<double>(
                           initialValue: risk,
                           decoration: InputDecoration(
                             labelText: _dueCopy(_currentLanguage, 'risk'),
-                            border: OutlineInputBorder(),
+                            border: const OutlineInputBorder(),
+                            isDense: true,
                           ),
                           items: [
                             DropdownMenuItem(
@@ -683,36 +808,74 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
+
+                  // Preferred Time Slot
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedTimeSlot,
+                    decoration: const InputDecoration(
+                      labelText: 'Visit Time Window',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.schedule_rounded),
+                      isDense: true,
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'Morning (8 AM - 12 PM)', child: Text('Morning (8 AM - 12 PM)')),
+                      DropdownMenuItem(value: 'Afternoon (12 PM - 4 PM)', child: Text('Afternoon (12 PM - 4 PM)')),
+                      DropdownMenuItem(value: 'Evening (4 PM - 7 PM)', child: Text('Evening (4 PM - 7 PM)')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null && sheetContext.mounted) {
+                        setSheetState(() => selectedTimeSlot = val);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Additional Details / Notes
                   ExpansionTile(
                     tilePadding: EdgeInsets.zero,
                     title: Text(
                       _dueCopy(_currentLanguage, 'additionalDetails'),
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                     ),
                     children: [
                       TextField(
                         controller: notesController,
-                        maxLines: 3,
+                        maxLines: 2,
                         decoration: InputDecoration(
                           labelText: _dueCopy(
                             _currentLanguage,
                             'notesOptional',
                           ),
+                          hintText: 'Clinical notes, medication reminders, directions',
                           border: const OutlineInputBorder(),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
+
                   FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AshaColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: const RoundedRectangleBorder(borderRadius: AshaShapes.buttonRadius),
+                    ),
                     onPressed: titleController.text.trim().isEmpty
                         ? null
                         : () {
                             if (!sheetContext.mounted) return;
                             title = titleController.text.trim();
-                            notes = notesController.text.trim().isEmpty
-                                ? null
-                                : notesController.text.trim();
+                            final rawNotes = notesController.text.trim();
+                            final hamlet = hamletController.text.trim();
+                            final details = [
+                              'Category: $selectedCategory',
+                              'Window: $selectedTimeSlot',
+                              if (hamlet.isNotEmpty) 'Hamlet: $hamlet',
+                              if (rawNotes.isNotEmpty) rawNotes,
+                            ].join(' · ');
+                            notes = details;
                             Navigator.pop(sheetContext, true);
                           },
                     icon: const Icon(Icons.save_outlined),
@@ -730,6 +893,7 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
       enteredMemberName = memberNameController.text.trim();
       memberNameController.dispose();
       titleController.dispose();
+      hamletController.dispose();
       notesController.dispose();
     }
     if (created != true || title == null || !mounted) return;

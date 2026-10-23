@@ -84,7 +84,7 @@ class AshaTypography {
   static const labelLarge = TextStyle(
     fontSize: 15,
     fontWeight: FontWeight.w700,
-    color: Colors.white,
+    color: AshaColors.textPrimary,
   );
 
   static const subtitleSmall = TextStyle(

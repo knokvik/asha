@@ -767,6 +767,29 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
     return ordered;
   }
 
+  /// Keep the worker's current question sequence stable while adaptive
+  /// questions are added. Recomputing the filtered bank after an answer can
+  /// otherwise remove the answered question and shift the next index several
+  /// positions forward in one tap.
+  List<BankQuestion> _stableVisibleQuestions(
+    List<BankQuestion> previous,
+    FlowState flow,
+  ) {
+    final next = _visibleQuestions(flow);
+    if (previous.isEmpty) return next;
+    final byId = {for (final question in next) question.id: question};
+    final merged = <BankQuestion>[];
+    for (final question in previous) {
+      final current = byId.remove(question.id);
+      // Keep already-present questions in the review sequence even if a new
+      // answer makes their conditional prompt ineligible. This preserves the
+      // current index and prevents a single answer from jumping ahead.
+      merged.add(current ?? question);
+    }
+    merged.addAll(byId.values);
+    return merged;
+  }
+
   Future<void> _speak(BankQuestion question) async {
     await _tts.speak(text: _questionPrompt(question, _lang), language: _lang);
   }
@@ -835,7 +858,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         ),
       );
     }
-    final visible = _visibleQuestions(flow);
+    final visible = _stableVisibleQuestions(_visible, flow);
 
     // Natural sequential progression: step forward to the immediate next question
     // (currentIndex + 1) without erratic jumps.
@@ -1275,16 +1298,43 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                   runSpacing: 8,
                   children: [
                     for (final illness in _illnesses)
-                      FilterChip(
-                        label: Text(illness.$2),
-                        selected: _chosen.contains(illness.$1),
-                        onSelected: (on) => setState(() {
-                          if (on) {
-                            _chosen.add(illness.$1);
-                          } else {
-                            _chosen.remove(illness.$1);
-                          }
-                        }),
+                      Builder(
+                        builder: (context) {
+                          final isSelected = _chosen.contains(illness.$1);
+                          return FilterChip(
+                            label: Text(
+                              illness.$2,
+                              style: TextStyle(
+                                color: isSelected
+                                    ? Colors.white
+                                    : AshaColors.textPrimary,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                            selected: isSelected,
+                            selectedColor: AshaColors.primary,
+                            backgroundColor: AshaColors.surfaceMuted,
+                            checkmarkColor: Colors.white,
+                            side: BorderSide(
+                              color: isSelected
+                                  ? AshaColors.primary
+                                  : AshaColors.borderSubtle,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            onSelected: (on) => setState(() {
+                              if (on) {
+                                _chosen.add(illness.$1);
+                              } else {
+                                _chosen.remove(illness.$1);
+                              }
+                            }),
+                          );
+                        },
                       ),
                   ],
                 ),
@@ -1306,16 +1356,45 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                   runSpacing: 8,
                   children: [
                     for (final contextChip in _reportedContexts)
-                      FilterChip(
-                        label: Text(contextChip.$2),
-                        selected: _reportedContext.contains(contextChip.$1),
-                        onSelected: (selected) => setState(() {
-                          if (selected) {
-                            _reportedContext.add(contextChip.$1);
-                          } else {
-                            _reportedContext.remove(contextChip.$1);
-                          }
-                        }),
+                      Builder(
+                        builder: (context) {
+                          final isSelected = _reportedContext.contains(
+                            contextChip.$1,
+                          );
+                          return FilterChip(
+                            label: Text(
+                              contextChip.$2,
+                              style: TextStyle(
+                                color: isSelected
+                                    ? Colors.white
+                                    : AshaColors.textPrimary,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                            selected: isSelected,
+                            selectedColor: AshaColors.primary,
+                            backgroundColor: AshaColors.surfaceMuted,
+                            checkmarkColor: Colors.white,
+                            side: BorderSide(
+                              color: isSelected
+                                  ? AshaColors.primary
+                                  : AshaColors.borderSubtle,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            onSelected: (selected) => setState(() {
+                              if (selected) {
+                                _reportedContext.add(contextChip.$1);
+                              } else {
+                                _reportedContext.remove(contextChip.$1);
+                              }
+                            }),
+                          );
+                        },
                       ),
                   ],
                 ),

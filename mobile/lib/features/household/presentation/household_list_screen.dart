@@ -54,7 +54,6 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
     final groupedAsync = ref.watch(householdsGroupedByHamletProvider);
 
     return Scaffold(
@@ -63,7 +62,11 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
       appBar: AppBar(
         title: Text(
           l10n?.households ?? 'Households',
-          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+          style: const TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
+            color: AshaColors.textPrimary,
+          ),
         ),
         backgroundColor: AshaColors.cardSurface,
         foregroundColor: AshaColors.textPrimary,
@@ -71,7 +74,7 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
         actions: [
           IconButton(
             key: const Key('household_list_language_button'),
-            icon: const Icon(Icons.language),
+            icon: const Icon(Icons.language_rounded),
             tooltip: l10n?.language ?? 'Language',
             onPressed: () => showDialog(
               context: context,
@@ -80,7 +83,7 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
           ),
           IconButton(
             key: const Key('household_list_refresh_button'),
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Refresh',
             onPressed: () {
               ref.invalidate(householdListProvider);
@@ -89,34 +92,52 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(64),
+          preferredSize: const Size.fromHeight(68),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: TextField(
-              key: const Key('household_search_field'),
-              controller: _searchController,
-              onChanged: _onSearchChanged,
-              decoration: InputDecoration(
-                hintText: 'Search by head name, hamlet, phone...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          _onSearchChanged('');
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: theme.colorScheme.surface,
-                contentPadding: const EdgeInsets.symmetric(
-                  vertical: 0,
-                  horizontal: 16,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Container(
+              height: 46,
+              decoration: BoxDecoration(
+                color: AshaColors.screenBg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AshaColors.borderSubtle),
+              ),
+              child: TextField(
+                key: const Key('household_search_field'),
+                controller: _searchController,
+                onChanged: _onSearchChanged,
+                style: const TextStyle(
+                  color: AshaColors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
                 ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: BorderSide.none,
+                decoration: InputDecoration(
+                  hintText: 'Search by head name, hamlet, phone...',
+                  hintStyle: const TextStyle(
+                    color: AshaColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
+                    color: AshaColors.textSecondary,
+                    size: 20,
+                  ),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 18),
+                          color: AshaColors.textSecondary,
+                          onPressed: () {
+                            _searchController.clear();
+                            _onSearchChanged('');
+                          },
+                        )
+                      : null,
+                  filled: false,
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 11,
+                    horizontal: 14,
+                  ),
+                  border: InputBorder.none,
                 ),
               ),
             ),
@@ -124,26 +145,61 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
         ),
       ),
       body: groupedAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: AshaColors.primary),
+        ),
         error: (err, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
-              const SizedBox(height: 12),
-              Text('Failed to load households: $err'),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () => ref.invalidate(householdListProvider),
-                child: const Text('Retry'),
-              ),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.error_outline_rounded,
+                  size: 48,
+                  color: AshaColors.alertHighRisk,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Failed to load households: $err',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AshaColors.textPrimary),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    ref.invalidate(householdListProvider);
+                    ref.invalidate(householdsGroupedByHamletProvider);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AshaColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: AshaShapes.buttonRadius,
+                    ),
+                  ),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
           ),
         ),
         data: (groupedMap) {
           if (groupedMap.isEmpty) {
             return _buildEmptyState(context, l10n);
           }
+
+          // Compute summary stats
+          final totalHouseholds = groupedMap.values.fold<int>(
+            0,
+            (sum, list) => sum + list.length,
+          );
+          final totalMembers = groupedMap.values.fold<int>(
+            0,
+            (sum, list) =>
+                sum + list.fold<int>(0, (s, h) => s + h.memberCount),
+          );
+          final totalHamlets = groupedMap.keys.length;
 
           // Apply search query filter across all hamlets
           final Map<String, List<Household>> filteredMap = {};
@@ -173,16 +229,44 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
 
           if (filteredMap.isEmpty) {
             return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.search_off, size: 56, color: Colors.grey),
-                  const SizedBox(height: 12),
-                  Text(
-                    'No households match "$_searchQuery"',
-                    style: const TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: AshaColors.primary.withValues(alpha: 0.08),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.search_off_rounded,
+                        size: 32,
+                        color: AshaColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No households match "$_searchQuery"',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AshaColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Try checking the spelling or clear the filter',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AshaColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           }
@@ -190,6 +274,7 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
           final hamletKeys = groupedMap.keys.toList();
 
           return RefreshIndicator(
+            color: AshaColors.primary,
             onRefresh: () async {
               ref.invalidate(householdListProvider);
               ref.invalidate(householdsGroupedByHamletProvider);
@@ -197,16 +282,24 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               children: [
+                // Top KPI Summary Cards Row
+                _buildSummaryKpiRow(
+                  totalHouseholds: totalHouseholds,
+                  totalHamlets: totalHamlets,
+                  totalMembers: totalMembers,
+                ),
+                const SizedBox(height: 14),
+
                 // Hamlet filter chips if more than 1 hamlet
                 if (hamletKeys.length > 1) ...[
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        FilterChip(
+                        _buildHamletFilterChip(
                           key: const Key('hamlet_filter_all'),
-                          label: const Text('All Hamlets'),
-                          selected: _selectedHamletFilter == null,
+                          label: 'All Hamlets',
+                          isSelected: _selectedHamletFilter == null,
                           onSelected: (_) {
                             setState(() => _selectedHamletFilter = null);
                           },
@@ -214,17 +307,17 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                         const SizedBox(width: 8),
                         ...hamletKeys.map((hamlet) {
                           final count = groupedMap[hamlet]?.length ?? 0;
+                          final isSelected = _selectedHamletFilter == hamlet;
                           return Padding(
                             padding: const EdgeInsets.only(right: 8),
-                            child: FilterChip(
+                            child: _buildHamletFilterChip(
                               key: Key('hamlet_filter_$hamlet'),
-                              label: Text('$hamlet ($count)'),
-                              selected: _selectedHamletFilter == hamlet,
+                              label: '$hamlet ($count)',
+                              isSelected: isSelected,
                               onSelected: (selected) {
                                 setState(() {
-                                  _selectedHamletFilter = selected
-                                      ? hamlet
-                                      : null;
+                                  _selectedHamletFilter =
+                                      selected ? hamlet : null;
                                 });
                               },
                             ),
@@ -233,7 +326,7 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                 ],
 
                 // Grouped sections by hamlet
@@ -245,20 +338,24 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 6,
+                          horizontal: 2,
+                        ),
                         child: Row(
                           children: [
                             const Icon(
-                              Icons.location_city,
-                              size: 18,
-                              color: Colors.blueGrey,
+                              Icons.location_on_rounded,
+                              size: 16,
+                              color: AshaColors.primary,
                             ),
                             const SizedBox(width: 6),
                             Text(
                               hamletName,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blueGrey.shade800,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: AshaColors.textPrimary,
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -268,28 +365,35 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.blueGrey.shade100,
+                                color:
+                                    AshaColors.vitalNormal.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AshaColors.vitalNormal
+                                      .withValues(alpha: 0.28),
+                                ),
                               ),
                               child: Text(
-                                '${households.length}',
+                                '${households.length} ${households.length == 1 ? 'Household' : 'Households'}',
                                 style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blueGrey,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF15803D),
                                 ),
                               ),
                             ),
                           ],
                         ),
                       ),
+                      const SizedBox(height: 6),
                       ...households.map(
                         (household) => _buildHouseholdCard(household),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10),
                     ],
                   );
                 }),
+                const SizedBox(height: 72), // Spacing for FAB
               ],
             ),
           );
@@ -299,6 +403,10 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
         key: const Key('register_household_fab'),
         backgroundColor: AshaColors.primary,
         foregroundColor: Colors.white,
+        elevation: 3,
+        shape: const RoundedRectangleBorder(
+          borderRadius: AshaShapes.buttonRadius,
+        ),
         onPressed: () async {
           final result = await Navigator.of(context).push<Household?>(
             MaterialPageRoute(builder: (_) => const HouseholdFormScreen()),
@@ -308,9 +416,144 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
             ref.invalidate(householdsGroupedByHamletProvider);
           }
         },
-        icon: const Icon(Icons.add),
-        label: Text(l10n?.registerHousehold ?? 'Register Household'),
+        icon: const Icon(Icons.person_add_rounded, size: 20),
+        label: Text(
+          l10n?.registerHousehold ?? 'Register Household',
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+            letterSpacing: 0.2,
+          ),
+        ),
       ),
+    );
+  }
+
+  Widget _buildSummaryKpiRow({
+    required int totalHouseholds,
+    required int totalHamlets,
+    required int totalMembers,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AshaColors.cardSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AshaColors.borderSubtle),
+      ),
+      child: Row(
+        children: [
+          _buildKpiBlock(
+            label: 'Households',
+            count: '$totalHouseholds',
+            color: AshaColors.primary,
+            icon: Icons.holiday_village_outlined,
+          ),
+          Container(
+            height: 36,
+            width: 1,
+            color: AshaColors.borderSubtle,
+            margin: const EdgeInsets.symmetric(horizontal: 8),
+          ),
+          _buildKpiBlock(
+            label: 'Hamlets',
+            count: '$totalHamlets',
+            color: const Color(0xFF2563EB),
+            icon: Icons.map_outlined,
+          ),
+          Container(
+            height: 36,
+            width: 1,
+            color: AshaColors.borderSubtle,
+            margin: const EdgeInsets.symmetric(horizontal: 8),
+          ),
+          _buildKpiBlock(
+            label: 'Beneficiaries',
+            count: '$totalMembers',
+            color: const Color(0xFF16A34A),
+            icon: Icons.people_outline_rounded,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKpiBlock({
+    required String label,
+    required String count,
+    required Color color,
+    required IconData icon,
+  }) {
+    return Expanded(
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 17, color: color),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  count,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: color,
+                  ),
+                ),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: AshaColors.textSecondary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHamletFilterChip({
+    required Key key,
+    required String label,
+    required bool isSelected,
+    required ValueChanged<bool> onSelected,
+  }) {
+    return FilterChip(
+      key: key,
+      selected: isSelected,
+      label: Text(label),
+      showCheckmark: false,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : AshaColors.textPrimary,
+        fontWeight: FontWeight.w600,
+        fontSize: 13,
+      ),
+      backgroundColor: AshaColors.cardSurface,
+      selectedColor: AshaColors.primary,
+      side: BorderSide(
+        color: isSelected ? AshaColors.primary : AshaColors.borderSubtle,
+        width: 1,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      onSelected: onSelected,
     );
   }
 
@@ -321,17 +564,37 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.house_outlined, size: 72, color: Colors.grey),
-            const SizedBox(height: 16),
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: AshaColors.primary.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.home_work_outlined,
+                size: 40,
+                color: AshaColors.primary,
+              ),
+            ),
+            const SizedBox(height: 18),
             const Text(
               'No Households Registered',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AshaColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 8),
             const Text(
               'Register households and their family members to build your offline community registry.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(
+                fontSize: 14,
+                color: AshaColors.textSecondary,
+                height: 1.4,
+              ),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
@@ -345,9 +608,17 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                 ref.invalidate(householdListProvider);
                 ref.invalidate(householdsGroupedByHamletProvider);
               },
-              icon: const Icon(Icons.person_add),
+              icon: const Icon(Icons.person_add_rounded, size: 18),
               label: Text(l10n?.registerHousehold ?? 'Register Household'),
-              style: ElevatedButton.styleFrom(minimumSize: const Size(200, 48)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AshaColors.primary,
+                foregroundColor: Colors.white,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: AshaShapes.buttonRadius,
+                ),
+                minimumSize: const Size(220, 50),
+                elevation: 1,
+              ),
             ),
           ],
         ),
@@ -360,169 +631,222 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
         ? ' • ${household.hamlet}'
         : '';
 
-    return Card(
+    return Container(
       key: Key('household_card_${household.id}'),
       margin: const EdgeInsets.only(bottom: 10),
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade200),
+      decoration: BoxDecoration(
+        color: AshaColors.cardSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AshaColors.borderSubtle),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          context.push('/household/${household.id}');
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CircleAvatar(
-                    backgroundColor: Theme.of(context).primaryColor
-                        .withValues(alpha: 0.12),
-                    child: Icon(
-                      Icons.home,
-                      color: Theme.of(context).primaryColor,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            context.push('/household/${household.id}');
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AshaColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.home_work_rounded,
+                        color: AshaColors.primary,
+                        size: 22,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          household.headName,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            household.headName,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AshaColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.location_on_outlined,
+                                size: 14,
+                                color: AshaColors.textSecondary,
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  '${household.village}$hamletStr',
+                                  style: const TextStyle(
+                                    color: AshaColors.textSecondary,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: const BoxDecoration(
+                        color: AshaColors.screenBg,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.chevron_right_rounded,
+                        color: AshaColors.textSecondary,
+                        size: 18,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    // Member count chip
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.people_alt_outlined,
+                            size: 13,
+                            color: AshaColors.textSecondary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${household.memberCount} members',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AshaColors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // BPL status badge
+                    if (household.isBpl)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF3C7),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFFDE68A)),
+                        ),
+                        child: const Text(
+                          'BPL',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFFB45309),
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Row(
+                      ),
+
+                    // Social category badge
+                    if (household.socialCategory != null &&
+                        household.socialCategory!.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3E8FF),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFE9D5FF)),
+                        ),
+                        child: Text(
+                          household.socialCategory!,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF7E22CE),
+                          ),
+                        ),
+                      ),
+
+                    // Phone chip if available
+                    if (household.contactPhone != null &&
+                        household.contactPhone!.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(
-                              Icons.location_on,
-                              size: 14,
-                              color: Colors.grey,
+                              Icons.phone_outlined,
+                              size: 12,
+                              color: AshaColors.textSecondary,
                             ),
                             const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                '${household.village}$hamletStr',
-                                style: const TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 13,
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                            Text(
+                              household.contactPhone!,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: AshaColors.textSecondary,
                               ),
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right, color: Colors.grey),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  // Member count chip
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.people, size: 14, color: Colors.blue),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${household.memberCount} members',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.blue.shade800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // BPL status badge
-                  if (household.isBpl)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
                       ),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.shade100,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        'BPL',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.amber.shade900,
-                        ),
-                      ),
-                    ),
-
-                  // Social category badge
-                  if (household.socialCategory != null &&
-                      household.socialCategory!.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.purple.shade50,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        household.socialCategory!,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.purple.shade800,
-                        ),
-                      ),
-                    ),
-
-                  // Phone chip if available
-                  if (household.contactPhone != null &&
-                      household.contactPhone!.isNotEmpty)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.phone, size: 13, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        Text(
-                          household.contactPhone!,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -22,12 +22,13 @@ class AppDrawer extends ConsumerWidget {
         .interpreterLanguageCodes
         .isNotEmpty;
     return Drawer(
-      backgroundColor: const Color(0xFF1E4231),
+      backgroundColor: Colors.white,
       child: SafeArea(
         child: Column(
           children: [
             // Drawer Header
-            Padding(
+            Container(
+              color: AshaColors.surfaceMuted.withValues(alpha: 0.6),
               padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -39,13 +40,13 @@ class AppDrawer extends ConsumerWidget {
                       // Avatar: White circle with green SS
                       const CircleAvatar(
                         radius: 24,
-                        backgroundColor: Colors.white,
+                        backgroundColor: AshaColors.primaryLight,
                         child: Text(
                           'SS',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF1E4231),
+                            color: AshaColors.primaryDark,
                           ),
                         ),
                       ),
@@ -58,26 +59,26 @@ class AppDrawer extends ConsumerWidget {
                               children: [
                                 Text(
                                   shellText(lang, 'workerName'),
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontWeight: FontWeight.w800,
                                     fontSize: 16,
-                                    color: Colors.white,
+                                    color: AshaColors.textPrimary,
                                   ),
                                 ),
-                                SizedBox(width: 6),
-                                Icon(
+                                const SizedBox(width: 6),
+                                const Icon(
                                   Icons.verified_rounded,
                                   size: 16,
-                                  color: AshaColors.leafMint,
+                                  color: AshaColors.vitalNormal,
                                 ),
                               ],
                             ),
                             const SizedBox(height: 2),
                             Text(
                               shellText(lang, 'worker'),
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 12,
-                                color: Color(0xFFB7D5C6),
+                                color: AshaColors.textSecondary,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -87,7 +88,7 @@ class AppDrawer extends ConsumerWidget {
                       IconButton(
                         icon: const Icon(
                           Icons.close_rounded,
-                          color: Colors.white70,
+                          color: AshaColors.textPrimary,
                           size: 24,
                         ),
                         onPressed: () => Navigator.of(context).pop(),
@@ -102,27 +103,27 @@ class AppDrawer extends ConsumerWidget {
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.12),
+                      color: const Color(0xFFF0FDF4),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.2),
+                        color: const Color(0xFFBBF7D0),
                       ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.lock_rounded,
                           size: 12,
-                          color: AshaColors.leafMint,
+                          color: Color(0xFF16A34A),
                         ),
-                        SizedBox(width: 6),
+                        const SizedBox(width: 6),
                         Text(
                           shellText(lang, 'encrypted'),
-                          style: TextStyle(
-                            color: Colors.white,
+                          style: const TextStyle(
+                            color: Color(0xFF15803D),
                             fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
@@ -132,7 +133,7 @@ class AppDrawer extends ConsumerWidget {
               ),
             ),
 
-            const Divider(color: Color(0xFF2D5F47), height: 1),
+            const Divider(color: AshaColors.borderSubtle, height: 1),
 
             // Navigation Menu Items List
             Expanded(
@@ -249,14 +250,12 @@ class AppDrawer extends ConsumerWidget {
     bool showRedChevron = false,
   }) {
     final bgColor = isSelected
-        ? Colors.white
-        : Colors.white.withValues(alpha: 0.08);
-    final titleColor = isSelected ? const Color(0xFF1E4231) : Colors.white;
-    final subtitleColor = isSelected
-        ? AshaColors.textSecondary
-        : const Color(0xFFB7D5C6);
+        ? AshaColors.primaryLight
+        : Colors.transparent;
+    final titleColor = isSelected ? AshaColors.primaryDark : AshaColors.textPrimary;
+    final subtitleColor = AshaColors.textSecondary;
     final effectiveIconColor =
-        iconColor ?? (isSelected ? const Color(0xFF1E4231) : Colors.white);
+        iconColor ?? (isSelected ? AshaColors.primary : AshaColors.primary);
 
     return Material(
       color: bgColor,
@@ -323,7 +322,7 @@ class AppDrawer extends ConsumerWidget {
                 size: 18,
                 color: showRedChevron
                     ? AshaColors.alertHighRisk
-                    : (isSelected ? const Color(0xFF1E4231) : Colors.white54),
+                    : (isSelected ? AshaColors.primary : AshaColors.textMuted),
               ),
             ],
           ),

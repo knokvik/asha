@@ -108,13 +108,15 @@ class SyncStatusScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              FilledButton.icon(
+              OutlinedButton.icon(
                 onPressed: snapshot.state == SyncConnectionState.syncing
                     ? null
                     : coordinator.syncNow,
-                icon: const Icon(Icons.sync_rounded),
-                label: const Text('Sync now'),
-                style: FilledButton.styleFrom(
+                icon: const Icon(Icons.sync_rounded, color: AshaColors.primary),
+                label: const Text('Sync now', style: TextStyle(color: AshaColors.primary, fontWeight: FontWeight.w700)),
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: AshaColors.cardSurface,
+                  side: const BorderSide(color: AshaColors.borderSubtle),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),

@@ -328,12 +328,16 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   LatLng? _liveLocation;
   double _liveAccuracy = 10.0;
   String _liveProvider = 'gps';
+  double? _liveBearing;
   Timer? _liveLocationTimer;
   Timer? _cameraDebounceTimer;
   LatLng? _pendingCameraCenter;
   double? _pendingCameraZoom;
   var _facilityRenderLimit = 80;
   List<LatLng> _dayRoute = const [];
+  var _unroutableDayLegs = 0;
+  List<LatLng> _selectedRoute = const [];
+  var _selectedRouteUnavailable = false;
   static const _secureStorage = FlutterSecureStorage();
   static const _locationChannel = MethodChannel('asha_platform/location');
 
@@ -362,13 +366,30 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
 
   void _rebuildDayRoute() {
     final stops = todaysRoute(_effectiveFix, widget.pack.households).stops;
+    var unroutableLegs = 0;
     _dayRoute = [
-      for (final point in walkRoute(widget.roads, [
+      for (final point in walkRoadRoute(widget.roads, [
         _effectiveFix,
         for (final stop in stops) stop.point,
-      ]))
+      ], onUnroutableLeg: () => unroutableLegs++))
         LatLng(point.latitude, point.longitude),
     ];
+    _unroutableDayLegs = unroutableLegs;
+  }
+
+  void _rebuildSelectedRoute() {
+    final target = _selected?.point ?? _selectedHousehold?.point;
+    if (target == null) {
+      _selectedRoute = const [];
+      _selectedRouteUnavailable = false;
+      return;
+    }
+    final roadRoute = widget.roads?.routeOnRoads(_effectiveFix, target);
+    _selectedRoute = [
+      if (roadRoute != null)
+        for (final point in roadRoute) LatLng(point.latitude, point.longitude),
+    ];
+    _selectedRouteUnavailable = roadRoute == null;
   }
 
   Future<void> _loadBasemapPreference() async {
@@ -413,6 +434,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
       final longitude = (raw?['longitude'] as num?)?.toDouble();
       final accuracy = (raw?['accuracy'] as num?)?.toDouble() ?? 10.0;
       final provider = (raw?['provider'] as String?) ?? 'gps';
+      final bearing = (raw?['bearing'] as num?)?.toDouble();
       if (latitude == null ||
           longitude == null ||
           latitude < -90 ||
@@ -431,9 +453,11 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
         _liveLocation = location;
         _liveAccuracy = accuracy;
         _liveProvider = provider;
+        _liveBearing = bearing != null && bearing.isFinite ? bearing : null;
         _showLiveLocation = true;
         _isLocating = false;
         _rebuildDayRoute();
+        _rebuildSelectedRoute();
       });
       _startLiveLocationTracking();
       _mapController.move(location, math.max(_mapController.camera.zoom, 17.0));
@@ -441,7 +465,8 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
       _locationUnavailable(
         error.code == 'PERMISSION_DENIED'
             ? 'Location permission is required to show your current location.'
-            : 'GPS is not on or no current location is available. Turn on location and try again.',
+            : 'Location permission is allowed, but Location Services are turned off. Turn them on and try again.',
+        openSettings: error.code == 'GPS_DISABLED',
       );
     } on MissingPluginException {
       _locationUnavailable(
@@ -477,14 +502,17 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
         _liveLocation = next;
         _liveAccuracy = (raw?['accuracy'] as num?)?.toDouble() ?? _liveAccuracy;
         _liveProvider = (raw?['provider'] as String?) ?? _liveProvider;
+        final bearing = (raw?['bearing'] as num?)?.toDouble();
+        if (bearing != null && bearing.isFinite) _liveBearing = bearing;
         _rebuildDayRoute();
+        _rebuildSelectedRoute();
       });
     } catch (_) {
       // Keep the last trusted fix visible when a subsequent GPS read fails.
     }
   }
 
-  void _locationUnavailable(String message) {
+  void _locationUnavailable(String message, {bool openSettings = false}) {
     if (!mounted) return;
     setState(() {
       _isLocating = false;
@@ -492,8 +520,18 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
       _liveLocation = null;
     });
     _liveLocationTimer?.cancel();
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        action: openSettings
+            ? SnackBarAction(
+                label: 'Open settings',
+                onPressed: () =>
+                    _locationChannel.invokeMethod<void>('openLocationSettings'),
+              )
+            : null,
+      ),
+    );
   }
 
   @override
@@ -508,14 +546,8 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   Widget build(BuildContext context) {
     final lang = _lang;
     final selected = _selected;
-    final selectedWalk = selected == null
-        ? null
-        : walkRoute(widget.roads, [_effectiveFix, selected.point]);
-    final selectedPath = [
-      if (selectedWalk != null)
-        for (final point in selectedWalk)
-          LatLng(point.latitude, point.longitude),
-    ];
+    final selectedPath = _selectedRoute;
+    final guidanceCones = _guidanceCones();
     return Scaffold(
       key: const Key('geo_map_screen'),
       backgroundColor: const Color(0xFFF2EFE9),
@@ -630,6 +662,8 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                   CircleLayer(circles: _radarCircles()),
                 if (_showLiveLocation)
                   CircleLayer(circles: _liveLocationCircles()),
+                if (guidanceCones.isNotEmpty)
+                  PolygonLayer(polygons: guidanceCones),
                 MarkerLayer(markers: _markers(lang)),
                 if (widget.useOsmBasemap && !_satelliteView)
                   const RichAttributionWidget(
@@ -902,6 +936,18 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                   ),
                 ],
               ),
+              if (_routeMode && _unroutableDayLegs > 0) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Some stops are outside this offline road pack. No straight-line route is shown for them.',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: _satelliteView
+                        ? Colors.white70
+                        : const Color(0xFF64748B),
+                  ),
+                ),
+              ],
             ],
           ],
         ),
@@ -1066,6 +1112,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                   _selectedHousehold = null;
                   _selectedWard = null;
                   _pointingTarget = null;
+                  _rebuildSelectedRoute();
                 });
               },
             ),
@@ -1114,6 +1161,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                 _selected = null;
                 _selectedWard = null;
                 _selectedHousehold = household;
+                _rebuildSelectedRoute();
               }),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1217,6 +1265,66 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
     ];
   }
 
+  List<Polygon> _guidanceCones() {
+    final origin = _liveLocation;
+    final target = _pointingTarget;
+    if (origin == null || target == null) return const [];
+    final bearing = _selectedRoute.length > 1
+        ? bearingDegrees(
+            LatLon(
+              _selectedRoute.first.latitude,
+              _selectedRoute.first.longitude,
+            ),
+            LatLon(_selectedRoute[1].latitude, _selectedRoute[1].longitude),
+          )
+        : (_liveBearing ?? bearingDegrees(_effectiveFix, target));
+    final radius = _selectedRoute.length > 1 ? 120.0 : 80.0;
+    return [
+      Polygon(
+        points: [
+          origin,
+          _pointFromBearing(origin, bearing - 24, radius),
+          _pointFromBearing(origin, bearing + 24, radius),
+        ],
+        color: const Color(0x332563EB),
+        borderColor: const Color(0xAA2563EB),
+        borderStrokeWidth: 1.5,
+      ),
+    ];
+  }
+
+  LatLng _pointFromBearing(
+    LatLng origin,
+    double bearingDegrees,
+    double metres,
+  ) {
+    const earthRadiusMetres = 6371000.0;
+    final angularDistance = metres / earthRadiusMetres;
+    final bearing = bearingDegrees * math.pi / 180;
+    final latitude = origin.latitude * math.pi / 180;
+    final longitude = origin.longitude * math.pi / 180;
+    final endLatitude = math.asin(
+      math.sin(latitude) * math.cos(angularDistance) +
+          math.cos(latitude) * math.sin(angularDistance) * math.cos(bearing),
+    );
+    final endLongitude =
+        longitude +
+        math.atan2(
+          math.sin(bearing) * math.sin(angularDistance) * math.cos(latitude),
+          math.cos(angularDistance) -
+              math.sin(latitude) * math.sin(endLatitude),
+        );
+    return LatLng(endLatitude * 180 / math.pi, endLongitude * 180 / math.pi);
+  }
+
+  double? _selectedRoadMetres() {
+    if (_selectedRoute.length < 2) return null;
+    return pathMetres([
+      for (final point in _selectedRoute)
+        LatLon(point.latitude, point.longitude),
+    ]);
+  }
+
   List<Marker> _stateHubMarkers(String lang) {
     return [
       for (final hub in _stateHubs)
@@ -1260,6 +1368,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                 _selectedHousehold = null;
                 _selectedWard = null;
                 _pointingTarget = null;
+                _rebuildSelectedRoute();
               });
             },
           ),
@@ -1831,6 +1940,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   Widget _inlineCompassGuidance(LatLon target, String lang) {
     final bearing = bearingDegrees(_effectiveFix, target);
     final metres = haversineMetres(_effectiveFix, target);
+    final roadMetres = _selectedRoadMetres();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -1853,12 +1963,16 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              _directHeadingText(
-                bearingLabel(bearing),
-                bearing.round(),
-                metres.round(),
-                lang,
-              ),
+              roadMetres == null
+                  ? (_selectedRouteUnavailable
+                        ? 'Offline road route unavailable · ${_directHeadingText(bearingLabel(bearing), bearing.round(), metres.round(), lang)}'
+                        : _directHeadingText(
+                            bearingLabel(bearing),
+                            bearing.round(),
+                            metres.round(),
+                            lang,
+                          ))
+                  : 'Follow the highlighted road · ${roadMetres.round()}m',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -1882,6 +1996,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   Widget _directionCard(LatLon target, String lang) {
     final bearing = bearingDegrees(_effectiveFix, target);
     final metres = haversineMetres(_effectiveFix, target);
+    final roadMetres = _selectedRoadMetres();
     return Material(
       color: _satelliteView
           ? const Color(0xFF1E293B).withValues(alpha: 0.96)
@@ -1904,12 +2019,16 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                _directHeadingText(
-                  bearingLabel(bearing),
-                  bearing.round(),
-                  metres.round(),
-                  lang,
-                ),
+                roadMetres == null
+                    ? (_selectedRouteUnavailable
+                          ? 'Offline road route unavailable · ${_directHeadingText(bearingLabel(bearing), bearing.round(), metres.round(), lang)}'
+                          : _directHeadingText(
+                              bearingLabel(bearing),
+                              bearing.round(),
+                              metres.round(),
+                              lang,
+                            ))
+                    : 'Road route · ${roadMetres.round()}m',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,

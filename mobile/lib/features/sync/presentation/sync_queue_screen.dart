@@ -60,27 +60,6 @@ class SyncQueueScreen extends ConsumerWidget {
             onPressed: coordinator.refresh,
             icon: const Icon(Icons.refresh_rounded),
           ),
-          FilledButton.tonalIcon(
-            key: const Key('sync_now_button'),
-            onPressed: snapshot.state == SyncConnectionState.syncing
-                ? null
-                : coordinator.syncNow,
-            icon: snapshot.state == SyncConnectionState.syncing
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.cloud_upload_rounded, size: 18),
-            label: Text(
-              snapshot.state == SyncConnectionState.syncing ? 'Syncing…' : 'Sync Now',
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-            ),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              visualDensity: VisualDensity.compact,
-            ),
-          ),
           const SizedBox(width: 8),
         ],
       ),
@@ -254,6 +233,25 @@ class SyncQueueScreen extends ConsumerWidget {
           ],
         ),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        key: const Key('sync_now_fab'),
+        onPressed: snapshot.state == SyncConnectionState.syncing
+            ? null
+            : coordinator.syncNow,
+        backgroundColor: AshaColors.primary,
+        foregroundColor: Colors.white,
+        icon: snapshot.state == SyncConnectionState.syncing
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              )
+            : const Icon(Icons.cloud_upload_outlined, size: 20),
+        label: Text(
+          snapshot.state == SyncConnectionState.syncing ? 'Syncing…' : 'Sync Now',
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        ),
+      ),
     );
   }
 }
@@ -326,24 +324,19 @@ class _SyncSummaryCard extends StatelessWidget {
     final isError = snapshot.state == SyncConnectionState.error;
 
     final Color statusColor;
-    final Color bgColor;
     final IconData statusIcon;
 
     if (isSyncing) {
       statusColor = const Color(0xFF2563EB);
-      bgColor = const Color(0xFFEFF6FF);
       statusIcon = Icons.sync_rounded;
     } else if (isHealthy) {
       statusColor = const Color(0xFF16A34A);
-      bgColor = const Color(0xFFF0FDF4);
       statusIcon = Icons.cloud_done_rounded;
     } else if (isError) {
       statusColor = const Color(0xFFEA580C);
-      bgColor = const Color(0xFFFFF7ED);
       statusIcon = Icons.sync_problem_rounded;
     } else {
       statusColor = const Color(0xFF4B5563);
-      bgColor = const Color(0xFFF3F4F6);
       statusIcon = Icons.cloud_off_rounded;
     }
 
@@ -356,12 +349,12 @@ class _SyncSummaryCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: bgColor,
+        color: AshaColors.cardSurface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: statusColor.withValues(alpha: 0.3), width: 1.2),
+        border: Border.all(color: const Color(0xFFE5E7EB), width: 1.0),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x06000000),
+            color: Color(0x04000000),
             blurRadius: 8,
             offset: Offset(0, 2),
           ),
@@ -375,10 +368,10 @@ class _SyncSummaryCard extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.15),
+                color: isHealthy ? const Color(0xFFE8F5E9) : statusColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(statusIcon, color: statusColor, size: 26),
+              child: Icon(statusIcon, color: isHealthy ? const Color(0xFF1B5E20) : statusColor, size: 26),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -389,22 +382,22 @@ class _SyncSummaryCard extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 15,
-                          color: statusColor,
+                          color: Color(0xFF111827),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 4),
                   Text(
                     snapshot.pendingCount == 0
                         ? 'All local health packets are preserved and acknowledged.'
                         : '${snapshot.pendingCount} packet${snapshot.pendingCount == 1 ? '' : 's'} queued for secure server dispatch.',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 12,
-                      color: statusColor.withValues(alpha: 0.9),
+                      color: Color(0xFF6B7280),
                       fontWeight: FontWeight.w500,
                     ),
                   ),

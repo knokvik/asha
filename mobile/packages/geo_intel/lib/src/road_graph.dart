@@ -76,7 +76,7 @@ class RoadGraph {
 
   static int _cell(LatLon point) => (point.latitude * 400).floor() * 100000 + (point.longitude * 400).floor();
 
-  int _nearest(LatLon target) {
+  int _nearest(LatLon target, {double maxDistanceMetres = 5000}) {
     if (points.isEmpty) return -1;
     var best = -1;
     var bestMetres = double.infinity;
@@ -95,7 +95,7 @@ class RoadGraph {
         }
       }
     }
-    if (best != -1) return best;
+    if (best != -1 && bestMetres <= maxDistanceMetres) return best;
     for (var i = 0; i < points.length; i++) {
       final metres = haversineMetres(target, points[i]);
       if (metres < bestMetres) {
@@ -103,7 +103,59 @@ class RoadGraph {
         best = i;
       }
     }
+    if (bestMetres > maxDistanceMetres) return -1;
     return best;
+  }
+
+  /// Returns a route only when both endpoints can be credibly snapped to this
+  /// local road graph. Unlike [route], this never draws a misleading straight
+  /// line across a village, district, or state when the pack has no road data
+  /// for one of the points.
+  List<LatLon>? routeOnRoads(
+    LatLon from,
+    LatLon to, {
+    double maxSnapMetres = 180,
+  }) {
+    final start = _nearest(from);
+    final goal = _nearest(to);
+    if (start < 0 || goal < 0) return null;
+    if (haversineMetres(from, points[start]) > maxSnapMetres ||
+        haversineMetres(to, points[goal]) > maxSnapMetres) {
+      return null;
+    }
+    if (start == goal) return [from, points[start], to];
+
+    final dist = List<double>.filled(points.length, double.infinity);
+    final prev = List<int>.filled(points.length, -1);
+    dist[start] = 0;
+    final heap = _Heap();
+    heap.push(0, start);
+    while (heap.isNotEmpty) {
+      final item = heap.pop();
+      final d = item.$1;
+      final here = item.$2;
+      if (d != dist[here]) continue;
+      if (here == goal) break;
+      final next = _next[here];
+      final weight = _weight[here];
+      for (var i = 0; i < next.length; i++) {
+        final there = next[i];
+        final nd = d + weight[i];
+        if (nd < dist[there]) {
+          dist[there] = nd;
+          prev[there] = here;
+          heap.push(nd, there);
+        }
+      }
+    }
+    if (dist[goal].isInfinite) return null;
+    final path = <LatLon>[to];
+    for (var here = goal; here != -1; here = prev[here]) {
+      path.add(points[here]);
+      if (here == start) break;
+    }
+    path.add(from);
+    return path.reversed.toList();
   }
 
   /// Road-following walk. A disconnected pair falls back to the straight line.
@@ -154,6 +206,31 @@ List<LatLon> walkRoute(RoadGraph? graph, List<LatLon> stops) {
     if (path.isEmpty) {
       path.addAll(leg);
     } else if (leg.length > 1) {
+      path.addAll(leg.skip(1));
+    }
+  }
+  return path;
+}
+
+/// Chains only verified on-road legs. Missing or disconnected graph data is
+/// reported through [unroutableLegs] and is deliberately not replaced by a
+/// straight geographic line.
+List<LatLon> walkRoadRoute(
+  RoadGraph? graph,
+  List<LatLon> stops, {
+  void Function()? onUnroutableLeg,
+}) {
+  if (graph == null || stops.length < 2) return const [];
+  final path = <LatLon>[];
+  for (var i = 0; i < stops.length - 1; i++) {
+    final leg = graph.routeOnRoads(stops[i], stops[i + 1]);
+    if (leg == null) {
+      onUnroutableLeg?.call();
+      continue;
+    }
+    if (path.isEmpty) {
+      path.addAll(leg);
+    } else {
       path.addAll(leg.skip(1));
     }
   }

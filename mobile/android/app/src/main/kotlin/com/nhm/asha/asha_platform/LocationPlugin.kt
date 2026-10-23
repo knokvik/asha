@@ -5,10 +5,12 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.provider.Settings
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -52,6 +54,16 @@ class LocationPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHan
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
+        if (call.method == "openLocationSettings") {
+            val activity = activityBinding?.activity
+            if (activity == null) {
+                result.error("ACTIVITY_UNAVAILABLE", "The map activity is not available.", null)
+                return
+            }
+            activity.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+            result.success(null)
+            return
+        }
         if (call.method != "getCurrentLocation") {
             result.notImplemented()
             return
@@ -196,14 +208,15 @@ class LocationPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHan
         }
     }
 
-    private fun Location.toMap(): Map<String, Any> = mapOf(
+    private fun Location.toMap(): Map<String, Any> = mutableMapOf<String, Any>(
         "latitude" to latitude,
         "longitude" to longitude,
         "accuracy" to accuracy.toDouble(),
         "altitude" to altitude,
         "speed" to speed.toDouble(),
-        "bearing" to bearing.toDouble(),
         "time" to time.toDouble(),
         "provider" to (provider ?: "gps"),
-    )
+    ).apply {
+        if (hasBearing()) put("bearing", bearing.toDouble())
+    }
 }
