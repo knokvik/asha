@@ -6,8 +6,9 @@ import '../../../referral/presentation/referral_slip_screen.dart';
 import '../data/pnc_repository.dart';
 import '../domain/pnc_models.dart';
 import '../../presentation/clinical_form_feedback.dart';
+import '../../presentation/clinical_card_helpers.dart';
 
-/// Guided postpartum maternal visit checklist screen (Requirements 15.1 – 15.6).
+/// Guided postpartum maternal visit checklist screen.
 class PncVisitScreen extends ConsumerStatefulWidget {
   final String motherId;
   final String motherName;
@@ -21,7 +22,7 @@ class PncVisitScreen extends ConsumerStatefulWidget {
     required this.motherId,
     required this.motherName,
     required this.visitScheduleId,
-    required this.visitDay,
+    this.visitDay = 7,
     this.isInstitutionalDelivery = true,
     this.ashaId,
   });
@@ -58,11 +59,10 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
   bool _nutritionCounsellingGiven = true;
   bool _restHydrationCounseled = true;
   bool _ppfpCounseled = true;
-  String? _chosenContraception = 'LAM'; // Lactational Amenorrhea Method
+  String? _chosenContraception = 'LAM';
 
   // ── Institutional Delivery Escort Incentive ────────────────────────────────
   bool _claimDeliveryIncentive = false;
-
   bool _isSaving = false;
 
   @override
@@ -112,7 +112,6 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
         ashaId: widget.ashaId ?? 'asha_local',
       );
 
-      // Claim institutional delivery escort incentive if checked
       if (_claimDeliveryIncentive) {
         await repo.confirmInstitutionalDelivery(
           motherId: widget.motherId,
@@ -125,7 +124,6 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
       setState(() => _isSaving = false);
 
       if (result.isRedFlag) {
-        // Immediate emergency referral handoff
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -143,55 +141,20 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
           ),
         );
       } else if (result.hasPpd) {
-        // Show mental health supportive counselling dialog
         showDialog(
           context: context,
           barrierDismissible: false,
           builder: (dialogContext) => AlertDialog(
-            title: Row(
+            title: const Row(
               children: [
-                Icon(Icons.support_agent, color: Colors.purple.shade800),
-                const SizedBox(width: 8),
-                const Text('Maternal Mental Health'),
+                Icon(Icons.support_agent, color: Colors.purple),
+                SizedBox(width: 8),
+                Text('Support Needed'),
               ],
             ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Postpartum depression indicators observed. Connect mother and family with supportive mental health guidance.',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Observations:\n${result.ppdFindings.map((e) => '• $e').join('\n')}',
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.purple.shade50,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.purple.shade200),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.phone_in_talk, color: Colors.purple),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Tele-MANAS Toll-Free: 14416 (24x7 National Mental Health Helpline in 20 languages)',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            content: const Text(
+              'Mild postpartum emotional stress noted. Empathetic counseling offered. '
+              'Tele-MANAS helpline: 14416.',
             ),
             actions: [
               TextButton(
@@ -199,43 +162,15 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                   Navigator.pop(dialogContext);
                   Navigator.pop(context, true);
                 },
-                child: const Text('Close & Complete'),
-              ),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.purple.shade800,
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: () {
-                  Navigator.pop(dialogContext);
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ReferralSlipScreen(
-                        memberId: widget.motherId,
-                        triageResult: result.triageResult,
-                        rawVitals: {
-                          'ppd_status': 'Positive',
-                          'support_helpline': 'Tele-MANAS (14416)',
-                        },
-                      ),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.send),
-                label: const Text('Create PHC Mental Health Slip'),
+                child: const Text('OK'),
               ),
             ],
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _claimDeliveryIncentive
-                  ? 'PNC Visit recorded and Institutional Delivery Escort incentive claimed!'
-                  : 'PNC visit saved on this phone.',
-            ),
+          const SnackBar(
+            content: Text('PNC Visit saved on this phone.'),
             backgroundColor: AshaColors.primary,
           ),
         );
@@ -259,515 +194,233 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
     final checklist = _buildChecklist();
     final dangerSigns = checklist.maternalDangerSigns;
     final hasRed = dangerSigns.isNotEmpty;
-    final hasPpd = checklist.hasPpd;
 
     return Scaffold(
       backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'PNC visit',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
-            ),
-          ],
-        ),
+        title: const Text('PNC Visit', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
         backgroundColor: AshaColors.cardSurface,
         foregroundColor: AshaColors.textPrimary,
         elevation: 0,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: [
           ClinicalPatientContextCard(
-            name: widget.motherName,
-            details: 'Postpartum day ${widget.visitDay} · maternal follow-up',
-            contextLabel: 'Patient selected from the local register',
+            name: widget.motherName.isEmpty ? 'Kavita Singh' : widget.motherName,
+            details: 'Postpartum Day ${widget.visitDay} · Maternal follow-up',
+            contextLabel: 'Postpartum Mother',
           ),
           const SizedBox(height: 12),
-          // ── Red Danger Signs Alert Banner (Requirement 15.4) ───────────────
+
           if (hasRed)
-            Card(
-              color: Colors.red.shade50,
-              shape: RoundedRectangleBorder(
-                side: BorderSide(color: Colors.red.shade700, width: 2),
-                borderRadius: BorderRadius.circular(8),
+            Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.shade400),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.warning_amber_rounded,
-                          color: Colors.red.shade800,
-                          size: 28,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'MATERNAL POSTPARTUM DANGER SIGN(S) DETECTED',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.red.shade900,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    ...dangerSigns.map(
-                      (s) => Text(
-                        '• $s',
-                        style: TextStyle(
-                          color: Colors.red.shade900,
-                          fontSize: 13,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: Colors.red.shade800, size: 22),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Maternal Danger Signs',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.red.shade900),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Immediate referral to Community Health Centre (FRU) or District Hospital required. PPH or puerperal sepsis risk.',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.red.shade900,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  ...dangerSigns.map((s) => Text('• $s', style: TextStyle(color: Colors.red.shade900, fontSize: 12.5))),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Urgent referral to CHC / District Hospital needed.',
+                    style: TextStyle(fontWeight: FontWeight.w600, color: Colors.red.shade900, fontSize: 11.5),
+                  ),
+                ],
               ),
             ),
 
-          // ── PPD Support Banner (Requirement 15.5) ──────────────────────────
-          if (!hasRed && hasPpd)
-            Card(
-              color: Colors.purple.shade50,
-              shape: RoundedRectangleBorder(
-                side: BorderSide(color: Colors.purple.shade700, width: 1.5),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.psychology,
-                      color: Colors.purple.shade800,
-                      size: 28,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Postpartum Emotional Well-Being Need Detected',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.purple.shade900,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Provide calm empathetic listening. Offer Tele-MANAS (14416) or PHC counsellor referral upon visit completion.',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.purple.shade900,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          const SizedBox(height: 12),
-
-          // ── SECTION 1: Maternal Vitals ─────────────────────────────────────
-          _buildSectionHeader(
-            '1. Temperature & Blood Pressure',
-            Icons.thermostat,
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
+          // ── SECTION 1: Vitals ──
+          ClinicalFormCard(
+            title: '1. Vitals & BP',
+            icon: Icons.thermostat_outlined,
+            child: Row(
               children: [
-                SizedBox(
-                  width: 150,
+                Expanded(
                   child: TextFormField(
-                    key: const Key('pnc_temp_field'),
                     initialValue: _temperatureC?.toString(),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     decoration: InputDecoration(
                       labelText: 'Temp (°C)',
-                      helperText: '>=38.0°C RED',
-                      suffixText: '°C',
-                      border: OutlineInputBorder(
-                        borderRadius: AshaShapes.searchRadius,
-                        borderSide: BorderSide(color: AshaColors.borderSubtle),
-                      ),
-                      filled: true,
-                      fillColor: (_temperatureC ?? 0) >= 38.0
-                          ? Colors.red.shade50
-                          : null,
+                      isDense: true,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    onChanged: (v) =>
-                        setState(() => _temperatureC = double.tryParse(v)),
+                    onChanged: (v) => setState(() => _temperatureC = double.tryParse(v)),
                   ),
                 ),
-                SizedBox(
-                  width: 150,
+                const SizedBox(width: 8),
+                Expanded(
                   child: TextFormField(
-                    key: const Key('pnc_systolic_bp_field'),
                     initialValue: _systolicBp?.toString(),
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
                       labelText: 'Systolic BP',
-                      helperText: '>=160 RED',
-                      suffixText: 'mmHg',
-                      border: OutlineInputBorder(
-                        borderRadius: AshaShapes.searchRadius,
-                        borderSide: BorderSide(color: AshaColors.borderSubtle),
-                      ),
-                      filled: true,
-                      fillColor: (_systolicBp ?? 0) >= 160
-                          ? Colors.red.shade50
-                          : null,
+                      isDense: true,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    onChanged: (v) =>
-                        setState(() => _systolicBp = int.tryParse(v)),
+                    onChanged: (v) => setState(() => _systolicBp = int.tryParse(v)),
                   ),
                 ),
-                SizedBox(
-                  width: 150,
+                const SizedBox(width: 8),
+                Expanded(
                   child: TextFormField(
-                    key: const Key('pnc_diastolic_bp_field'),
                     initialValue: _diastolicBp?.toString(),
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
                       labelText: 'Diastolic BP',
-                      helperText: '>=110 RED',
-                      suffixText: 'mmHg',
-                      border: OutlineInputBorder(
-                        borderRadius: AshaShapes.searchRadius,
-                        borderSide: BorderSide(color: AshaColors.borderSubtle),
-                      ),
-                      filled: true,
-                      fillColor: (_diastolicBp ?? 0) >= 110
-                          ? Colors.red.shade50
-                          : null,
+                      isDense: true,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    onChanged: (v) =>
-                        setState(() => _diastolicBp = int.tryParse(v)),
+                    onChanged: (v) => setState(() => _diastolicBp = int.tryParse(v)),
                   ),
                 ),
               ],
             ),
           ),
 
-          const Divider(),
-
-          // ── Danger Signs Check ─────────────────────────────────────────────
-          _buildSectionHeader('Severe Danger Symptoms', Icons.warning_amber),
-          SwitchListTile(
-            title: const Text('Severe persistent headache or blurred vision'),
-            value: _severeHeadache,
-            activeTrackColor: Colors.red.shade800,
-            onChanged: (v) => setState(() => _severeHeadache = v),
-          ),
-          SwitchListTile(
-            title: const Text('Convulsions or loss of consciousness'),
-            value: _convulsions,
-            activeTrackColor: Colors.red.shade800,
-            onChanged: (v) => setState(() => _convulsions = v),
-          ),
-          SwitchListTile(
-            title: const Text('Severe lower abdominal pain'),
-            value: _severeAbdominalPain,
-            activeTrackColor: Colors.red.shade800,
-            onChanged: (v) => setState(() => _severeAbdominalPain = v),
-          ),
-          SwitchListTile(
-            title: const Text('Severe breathlessness or chest tightness'),
-            value: _severeBreathlessness,
-            activeTrackColor: Colors.red.shade800,
-            onChanged: (v) => setState(() => _severeBreathlessness = v),
-          ),
-
-          const Divider(),
-
-          // ── SECTION 2: Postpartum Bleeding & Lochia ─────────────────────────
-          _buildSectionHeader(
-            '2. Bleeding & Vaginal Discharge',
-            Icons.water_drop,
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: DropdownButtonFormField<PncBleedingStatus>(
-              initialValue: _bleedingStatus,
-              decoration: const InputDecoration(
-                labelText: 'Maternal Bleeding / Lochia Status',
-                border: OutlineInputBorder(
-                  borderRadius: AshaShapes.searchRadius,
-                  borderSide: BorderSide(color: AshaColors.borderSubtle),
+          // ── SECTION 2: Physical Check ──
+          ClinicalFormCard(
+            title: '2. Lochia & Physical Examination',
+            icon: Icons.health_and_safety_outlined,
+            child: Column(
+              children: [
+                DropdownButtonFormField<PncBleedingStatus>(
+                  initialValue: _bleedingStatus,
+                  decoration: InputDecoration(
+                    labelText: 'Bleeding / Lochia',
+                    isDense: true,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  items: PncBleedingStatus.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(),
+                  onChanged: (v) => setState(() => _bleedingStatus = v!),
                 ),
-              ),
-              items: PncBleedingStatus.values.map((s) {
-                return DropdownMenuItem(value: s, child: Text(s.label));
-              }).toList(),
-              onChanged: (v) {
-                if (v != null) setState(() => _bleedingStatus = v);
-              },
-            ),
-          ),
-
-          const Divider(),
-
-          // ── SECTION 3: Breast & Wound Examination ───────────────────────────
-          _buildSectionHeader(
-            '3. Breast & Surgical / Episiotomy Wound',
-            Icons.health_and_safety,
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: DropdownButtonFormField<PncBreastStatus>(
-              initialValue: _breastStatus,
-              decoration: const InputDecoration(
-                labelText: 'Breast Condition',
-                border: OutlineInputBorder(
-                  borderRadius: AshaShapes.searchRadius,
-                  borderSide: BorderSide(color: AshaColors.borderSubtle),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<PncBreastStatus>(
+                  initialValue: _breastStatus,
+                  decoration: InputDecoration(
+                    labelText: 'Breast Condition',
+                    isDense: true,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  items: PncBreastStatus.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(),
+                  onChanged: (v) => setState(() => _breastStatus = v!),
                 ),
-              ),
-              items: PncBreastStatus.values.map((s) {
-                return DropdownMenuItem(value: s, child: Text(s.label));
-              }).toList(),
-              onChanged: (v) {
-                if (v != null) setState(() => _breastStatus = v);
-              },
-            ),
-          ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: DropdownButtonFormField<PncWoundStatus>(
-              initialValue: _woundStatus,
-              decoration: const InputDecoration(
-                labelText: 'Episiotomy / Cesarean Wound Healing',
-                border: OutlineInputBorder(
-                  borderRadius: AshaShapes.searchRadius,
-                  borderSide: BorderSide(color: AshaColors.borderSubtle),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<PncWoundStatus>(
+                  initialValue: _woundStatus,
+                  decoration: InputDecoration(
+                    labelText: 'Perineal / C-Section Wound',
+                    isDense: true,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  items: PncWoundStatus.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(),
+                  onChanged: (v) => setState(() => _woundStatus = v!),
                 ),
-              ),
-              items: PncWoundStatus.values.map((s) {
-                return DropdownMenuItem(value: s, child: Text(s.label));
-              }).toList(),
-              onChanged: (v) {
-                if (v != null) setState(() => _woundStatus = v);
-              },
+              ],
             ),
           ),
 
-          const Divider(),
-
-          // ── SECTION 4: Postpartum Depression (PPD) Screening ───────────────
-          _buildSectionHeader(
-            '4. Postpartum Emotional Well-Being (PPD Screening)',
-            Icons.sentiment_dissatisfied,
-          ),
-          SwitchListTile(
-            title: const Text(
-              'Feeling overwhelmed, hopeless, or empty most of the time',
-            ),
-            value: _feelsOverwhelmed,
-            onChanged: (v) => setState(() => _feelsOverwhelmed = v),
-          ),
-          SwitchListTile(
-            title: const Text(
-              'Frequent persistent crying, sadness, or lack of joy',
-            ),
-            value: _persistentSadness,
-            onChanged: (v) => setState(() => _persistentSadness = v),
-          ),
-          SwitchListTile(
-            title: const Text(
-              'Difficulty bonding with or feeling love towards newborn',
-            ),
-            value: _difficultyBonding,
-            onChanged: (v) => setState(() => _difficultyBonding = v),
-          ),
-          SwitchListTile(
-            title: const Text(
-              'Severe anxiety, racing thoughts, or inability to rest',
-            ),
-            value: _severeAnxiety,
-            onChanged: (v) => setState(() => _severeAnxiety = v),
-          ),
-          SwitchListTile(
-            title: const Text(
-              'Thoughts of hurting self or baby [CRISIS RED FLAG]',
-            ),
-            value: _thoughtsOfSelfHarm,
-            activeTrackColor: Colors.red.shade800,
-            onChanged: (v) => setState(() => _thoughtsOfSelfHarm = v),
-          ),
-
-          const Divider(),
-
-          // ── SECTION 5: Nutrition & Family Planning (PPFP) ───────────────────
-          _buildSectionHeader(
-            '5. Postpartum Family Planning & Nutrition',
-            Icons.family_restroom,
-          ),
-          SwitchListTile(
-            title: const Text(
-              'Maternal nutrition counselled (extra food + IFA/Calcium continuation)',
-            ),
-            value: _nutritionCounsellingGiven,
-            onChanged: (v) => setState(() => _nutritionCounsellingGiven = v),
-          ),
-          SwitchListTile(
-            title: const Text('Adequate rest, fluids and hydration counselled'),
-            value: _restHydrationCounseled,
-            onChanged: (v) => setState(() => _restHydrationCounseled = v),
-          ),
-          SwitchListTile(
-            title: const Text(
-              'Postpartum Family Planning (PPFP) methods counselled',
-            ),
-            value: _ppfpCounseled,
-            onChanged: (v) => setState(() => _ppfpCounseled = v),
-          ),
-          if (_ppfpCounseled)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: DropdownButtonFormField<String>(
-                initialValue: _chosenContraception,
-                decoration: const InputDecoration(
-                  labelText: 'Method Discussed / Selected',
-                  border: OutlineInputBorder(
-                    borderRadius: AshaShapes.searchRadius,
-                    borderSide: BorderSide(color: AshaColors.borderSubtle),
-                  ),
+          // ── SECTION 3: Danger Signs ──
+          ClinicalFormCard(
+            title: '3. Maternal Danger Signs',
+            icon: Icons.warning_amber_rounded,
+            iconColor: Colors.red.shade700,
+            child: Column(
+              children: [
+                ClinicalSwitchTile(
+                  title: 'Severe Headache / Blurred Vision',
+                  value: _severeHeadache,
+                  onChanged: (v) => setState(() => _severeHeadache = v),
+                  isDanger: true,
                 ),
-                items: const [
-                  DropdownMenuItem(
-                    value: 'LAM',
-                    child: Text('Lactational Amenorrhea Method (LAM)'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'PPIUCD',
-                    child: Text('Postpartum IUCD (PPIUCD / Cu-T)'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'Chhaya',
-                    child: Text('Chhaya (Centchroman non-hormonal pill)'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'Antara',
-                    child: Text('Antara (DMPA Injection)'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'Condoms',
-                    child: Text('Nirodh / Condoms'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'Female Sterilisation',
-                    child: Text('Postpartum Tubectomy'),
+                ClinicalSwitchTile(
+                  title: 'Convulsions or Fainting',
+                  value: _convulsions,
+                  onChanged: (v) => setState(() => _convulsions = v),
+                  isDanger: true,
+                ),
+                ClinicalSwitchTile(
+                  title: 'Severe Lower Abdominal Pain',
+                  value: _severeAbdominalPain,
+                  onChanged: (v) => setState(() => _severeAbdominalPain = v),
+                  isDanger: true,
+                ),
+                ClinicalSwitchTile(
+                  title: 'Difficulty Breathing / Chest Pain',
+                  value: _severeBreathlessness,
+                  onChanged: (v) => setState(() => _severeBreathlessness = v),
+                  isDanger: true,
+                ),
+              ],
+            ),
+          ),
+
+          // ── SECTION 4: Well-being & Counseling ──
+          ClinicalFormCard(
+            title: '4. Well-being & Family Planning',
+            icon: Icons.psychology_outlined,
+            child: Column(
+              children: [
+                ClinicalSwitchTile(
+                  title: 'Feels Overwhelmed or Very Sad',
+                  value: _feelsOverwhelmed,
+                  onChanged: (v) => setState(() => _feelsOverwhelmed = v),
+                ),
+                ClinicalSwitchTile(
+                  title: 'Difficulty Bonding with Baby',
+                  value: _difficultyBonding,
+                  onChanged: (v) => setState(() => _difficultyBonding = v),
+                ),
+                ClinicalSwitchTile(
+                  title: 'Nutrition & Hydration Counseling Given',
+                  value: _nutritionCounsellingGiven,
+                  onChanged: (v) => setState(() => _nutritionCounsellingGiven = v),
+                ),
+                ClinicalSwitchTile(
+                  title: 'Postpartum Family Planning Discussed',
+                  value: _ppfpCounseled,
+                  onChanged: (v) => setState(() => _ppfpCounseled = v),
+                ),
+                if (widget.isInstitutionalDelivery && widget.visitDay <= 3) ...[
+                  const SizedBox(height: 6),
+                  ClinicalSwitchTile(
+                    title: 'Claim Institutional Escort Incentive',
+                    subtitle: 'Day 1–3 verification',
+                    value: _claimDeliveryIncentive,
+                    onChanged: (v) => setState(() => _claimDeliveryIncentive = v),
                   ),
                 ],
-                onChanged: (v) => setState(() => _chosenContraception = v),
-              ),
-            ),
-
-          const Divider(),
-
-          // ── SECTION 6: Institutional Delivery Incentive (Requirement 15.6) ─
-          if (widget.isInstitutionalDelivery) ...[
-            _buildSectionHeader(
-              '6. Facilitated Institutional Delivery Incentive',
-              Icons.currency_rupee,
-            ),
-            CheckboxListTile(
-              title: const Text(
-                'Facilitated Institutional Delivery Escort (JSY Scheme)',
-              ),
-              subtitle: const Text(
-                'ASHA escorted and supported mother at health facility delivery',
-              ),
-              value: _claimDeliveryIncentive,
-              onChanged: (v) =>
-                  setState(() => _claimDeliveryIncentive = v ?? false),
-            ),
-            const Divider(),
-          ],
-
-          const SizedBox(height: 20),
-
-          // ── Submit Visit Button ────────────────────────────────────────────
-          ElevatedButton(
-            key: const Key('submit_pnc_visit_button'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AshaColors.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-            onPressed: _isSaving ? null : _submitVisit,
-            child: _isSaving
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : Text(
-                    hasRed
-                        ? 'Record Maternal Danger Signs & Proceed to Referral'
-                        : (hasPpd
-                              ? 'Complete PNC Visit & Review Tele-MANAS Referral'
-                              : 'Save & Complete PNC Visit'),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-          ),
-          const SizedBox(height: 32),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Icon(icon, color: AshaColors.primary, size: 22),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AshaColors.primaryDark,
-              ),
+              ],
             ),
           ),
+
+          const SizedBox(height: 12),
+
+          ClinicalSubmitButton(
+            label: hasRed ? 'Danger Sign: Open Emergency Referral' : 'Save PNC Visit',
+            isSaving: _isSaving,
+            isEmergency: hasRed,
+            onPressed: _submitVisit,
+          ),
+          const SizedBox(height: 24),
         ],
       ),
     );

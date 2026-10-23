@@ -6,8 +6,9 @@ import '../../../referral/presentation/referral_slip_screen.dart';
 import '../data/anc_repository.dart';
 import '../domain/anc_models.dart';
 import '../../presentation/clinical_form_feedback.dart';
+import '../../presentation/clinical_card_helpers.dart';
 
-/// Interactive guided checklist screen for ANC Contacts (Requirements 14.2, 14.3, 14.4, 14.5).
+/// Interactive guided checklist screen for ANC Contacts.
 class AncVisitScreen extends ConsumerStatefulWidget {
   final String womanId;
   final String womanName;
@@ -21,8 +22,8 @@ class AncVisitScreen extends ConsumerStatefulWidget {
     required this.womanId,
     required this.womanName,
     required this.visitScheduleId,
-    required this.contactNumber,
-    required this.gestationWeeks,
+    this.contactNumber = 3,
+    this.gestationWeeks = 28,
     this.ashaId,
   });
 
@@ -111,7 +112,6 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
       setState(() => _isSaving = false);
 
       if (result.isRedFlag) {
-        // Immediate emergency referral handoff
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -119,22 +119,46 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
               memberId: widget.womanId,
               triageResult: result.triageResult,
               rawVitals: {
-                if (data.systolicBp != null) 'bp': '${data.systolicBp}/${data.diastolicBp} mmHg',
-                if (data.haemoglobin != null) 'hb': '${data.haemoglobin} g/dL',
-                if (data.fundalHeightWeeks != null) 'fundal_height': '${data.fundalHeightWeeks} wks',
+                if (data.systolicBp != null)
+                  'bp': '${data.systolicBp}/${data.diastolicBp} mmHg',
+                if (data.haemoglobin != null)
+                  'haemoglobin': '${data.haemoglobin} g/dL',
+                'danger_signs': data.clinicalDangerSigns.join(', '),
               },
             ),
           ),
         );
+      } else if (result.isHighRisk) {
+        showDialog(
+          context: context,
+          builder: (dialogCtx) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.event_available, color: Color(0xFFF59E0B)),
+                SizedBox(width: 8),
+                Text('PMSMA Checkup Due'),
+              ],
+            ),
+            content: Text(
+              'Moderate risk factors identified (${data.moderateRiskSigns.join(", ")}). '
+              'Ensure doctor checkup on 9th of this month (PMSMA).',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(dialogCtx);
+                  Navigator.pop(context, true);
+                },
+                child: const Text('Acknowledge'),
+              ),
+            ],
+          ),
+        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              result.isHighRisk
-                  ? 'ANC Contact saved. High-risk alert registered for PMSMA follow-up.'
-                  : 'ANC contact saved on this phone.',
-            ),
-            backgroundColor: result.isHighRisk ? Colors.orange.shade800 : AshaColors.primary,
+          const SnackBar(
+            content: Text('ANC Contact saved successfully.'),
+            backgroundColor: AshaColors.primary,
           ),
         );
         Navigator.pop(context, true);
@@ -144,7 +168,7 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
         setState(() => _isSaving = false);
         showClinicalSaveError(
           context,
-          program: 'ANC contact',
+          program: 'ANC visit',
           error: e,
           onRetry: _submitVisit,
         );
@@ -156,379 +180,320 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
   Widget build(BuildContext context) {
     final data = _buildContactData();
     final dangerSigns = data.clinicalDangerSigns;
-    final moderateSigns = data.moderateRiskSigns;
     final hasRed = dangerSigns.isNotEmpty;
-    final hasYellow = moderateSigns.isNotEmpty;
+    final hasYellow = data.moderateRiskSigns.isNotEmpty;
     final isBirthPlanDue = widget.gestationWeeks >= 34;
 
     return Scaffold(
       backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('ANC visit', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
-          ],
-        ),
+        title: const Text('ANC Visit', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
         backgroundColor: AshaColors.cardSurface,
         foregroundColor: AshaColors.textPrimary,
         elevation: 0,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: [
           ClinicalPatientContextCard(
-            name: widget.womanName,
+            name: widget.womanName.isEmpty ? 'Pooja Devi' : widget.womanName,
             details: 'Contact ${widget.contactNumber} · ${widget.gestationWeeks} weeks pregnant',
-            contextLabel: 'Patient selected from the local register',
+            contextLabel: 'Registered ANC Beneficiary',
           ),
           const SizedBox(height: 12),
-          // ── Red Danger Signs Alert Banner (Requirement 14.3) ───────────────
+
+          // Red Danger Signs Alert Banner
           if (hasRed)
-            Card(
-              color: Colors.red.shade50,
-              shape: RoundedRectangleBorder(
-                side: BorderSide(color: Colors.red.shade700, width: 2),
-                borderRadius: BorderRadius.circular(8),
+            Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.shade400),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.warning_amber_rounded, color: Colors.red.shade800, size: 28),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'EMERGENCY OBSTETRIC DANGER SIGN(S) DETECTED',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.red.shade900,
-                            ),
-                          ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: Colors.red.shade800, size: 22),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Danger Signs Detected',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.red.shade900),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    ...dangerSigns.map(
-                      (s) => Text('• $s', style: TextStyle(color: Colors.red.shade900, fontSize: 13)),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Immediate referral to Community Health Centre (FRU) or District Hospital required. Do not delay transport.',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red.shade900, fontSize: 12),
-                    ),
-                  ],
-                ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  ...dangerSigns.map((s) => Text('• $s', style: TextStyle(color: Colors.red.shade900, fontSize: 12.5))),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Immediate transfer to CHC/Hospital recommended via 108.',
+                    style: TextStyle(fontWeight: FontWeight.w600, color: Colors.red.shade900, fontSize: 11.5),
+                  ),
+                ],
               ),
             ),
 
-          // ── Birth Plan Reminder Card at 34 Weeks (Requirement 14.5) ─────────
           if (isBirthPlanDue)
-            Card(
-              color: Colors.blue.shade50,
-              shape: RoundedRectangleBorder(
-                side: BorderSide(color: Colors.blue.shade700, width: 1.5),
-                borderRadius: BorderRadius.circular(8),
+            Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue.shade300),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
+              child: Row(
+                children: [
+                  Icon(Icons.assignment_turned_in, color: Colors.blue.shade800, size: 22),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Birth plan due (${widget.gestationWeeks}w): Verify hospital, 108 transport, and blood donor.',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.blue.shade900),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // ── SECTION 1: Vitals & Lab Measurements ──
+          ClinicalFormCard(
+            title: '1. Vitals & Lab Measurements',
+            icon: Icons.monitor_heart_outlined,
+            child: Column(
+              children: [
+                Row(
                   children: [
-                    Icon(Icons.assignment_turned_in, color: Colors.blue.shade800, size: 28),
+                    Expanded(
+                      child: TextFormField(
+                        initialValue: _systolicBp?.toString(),
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Systolic BP',
+                          suffixText: 'mmHg',
+                          isDense: true,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AshaColors.borderSubtle)),
+                        ),
+                        onChanged: (v) => setState(() => _systolicBp = int.tryParse(v)),
+                      ),
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Birth Plan Due (${widget.gestationWeeks} Weeks Gestation)',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade900,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Review chosen delivery facility, 108 transport, escort, and emergency blood donor with family.',
-                            style: TextStyle(fontSize: 12, color: Colors.blue.shade900),
-                          ),
-                        ],
+                      child: TextFormField(
+                        initialValue: _diastolicBp?.toString(),
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Diastolic BP',
+                          suffixText: 'mmHg',
+                          isDense: true,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AshaColors.borderSubtle)),
+                        ),
+                        onChanged: (v) => setState(() => _diastolicBp = int.tryParse(v)),
                       ),
                     ),
                   ],
                 ),
-              ),
-            ),
-
-          const SizedBox(height: 12),
-
-          // ── SECTION 1: Blood Pressure & Haemoglobin ────────────────────────
-          _buildSectionHeader('1. Maternal Vitals & Haemoglobin', Icons.monitor_heart),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    key: const Key('anc_systolic_bp_field'),
-                    initialValue: _systolicBp?.toString(),
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Systolic BP (mmHg)',
-                      helperText: '>= 140 = High | >= 160 = RED',
-                      suffixText: 'mmHg',
-                      border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
-                      filled: true,
-                      fillColor: (_systolicBp ?? 0) >= 160
-                          ? Colors.red.shade50
-                          : ((_systolicBp ?? 0) >= 140 ? Colors.orange.shade50 : null),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        initialValue: _haemoglobin?.toString(),
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(
+                          labelText: 'Haemoglobin (Hb)',
+                          suffixText: 'g/dL',
+                          isDense: true,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AshaColors.borderSubtle)),
+                        ),
+                        onChanged: (v) => setState(() => _haemoglobin = double.tryParse(v)),
+                      ),
                     ),
-                    onChanged: (v) => setState(() => _systolicBp = int.tryParse(v)),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextFormField(
-                    key: const Key('anc_diastolic_bp_field'),
-                    initialValue: _diastolicBp?.toString(),
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Diastolic BP (mmHg)',
-                      helperText: '>= 90 = High | >= 110 = RED',
-                      suffixText: 'mmHg',
-                      border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
-                      filled: true,
-                      fillColor: (_diastolicBp ?? 0) >= 110
-                          ? Colors.red.shade50
-                          : ((_diastolicBp ?? 0) >= 90 ? Colors.orange.shade50 : null),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextFormField(
+                        initialValue: _weightKg?.toString(),
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(
+                          labelText: 'Weight',
+                          suffixText: 'kg',
+                          isDense: true,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AshaColors.borderSubtle)),
+                        ),
+                        onChanged: (v) => setState(() => _weightKg = double.tryParse(v)),
+                      ),
                     ),
-                    onChanged: (v) => setState(() => _diastolicBp = int.tryParse(v)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    key: const Key('anc_hb_field'),
-                    initialValue: _haemoglobin?.toString(),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      labelText: 'Haemoglobin (Hb in g/dL)',
-                      helperText: '< 11.0 = Anaemia | < 7.0 = Severe (RED)',
-                      suffixText: 'g/dL',
-                      border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
-                      filled: true,
-                      fillColor: (_haemoglobin ?? 12.0) < 7.0
-                          ? Colors.red.shade50
-                          : ((_haemoglobin ?? 12.0) < 11.0 ? Colors.yellow.shade50 : null),
-                    ),
-                    onChanged: (v) => setState(() => _haemoglobin = double.tryParse(v)),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextFormField(
-                    initialValue: _weightKg?.toString(),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
-                      labelText: 'Maternal Weight (kg)',
-                      suffixText: 'kg',
-                      border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
-                    ),
-                    onChanged: (v) => setState(() => _weightKg = double.tryParse(v)),
-                  ),
+                  ],
                 ),
               ],
             ),
           ),
 
-          const Divider(),
-
-          // ── SECTION 2: Obstetric Assessment ────────────────────────────────
-          _buildSectionHeader('2. Fetal & Uterine Assessment', Icons.pregnant_woman),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
+          // ── SECTION 2: Fetal Assessment ──
+          ClinicalFormCard(
+            title: '2. Fetal & Uterine Assessment',
+            icon: Icons.pregnant_woman_outlined,
+            child: Column(
               children: [
-                Expanded(
-                  child: TextFormField(
-                    initialValue: _fundalHeightWeeks?.toString(),
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Fundal Height (Weeks/cm)',
-                      border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        initialValue: _fundalHeightWeeks?.toString(),
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Fundal Height',
+                          suffixText: 'cm',
+                          isDense: true,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AshaColors.borderSubtle)),
+                        ),
+                        onChanged: (v) => setState(() => _fundalHeightWeeks = int.tryParse(v)),
+                      ),
                     ),
-                    onChanged: (v) => setState(() => _fundalHeightWeeks = int.tryParse(v)),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextFormField(
-                    initialValue: _fetalHeartRateBpm?.toString(),
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Fetal Heart Rate (bpm)',
-                      helperText: 'Normal: 110–160 bpm',
-                      suffixText: 'bpm',
-                      border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextFormField(
+                        initialValue: _fetalHeartRateBpm?.toString(),
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Heart Rate (FHR)',
+                          suffixText: 'bpm',
+                          isDense: true,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AshaColors.borderSubtle)),
+                        ),
+                        onChanged: (v) => setState(() => _fetalHeartRateBpm = int.tryParse(v)),
+                      ),
                     ),
-                    onChanged: (v) => setState(() => _fetalHeartRateBpm = int.tryParse(v)),
-                  ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          if (widget.gestationWeeks >= 20)
-            SwitchListTile(
-              title: const Text('Fetal movements actively felt by mother'),
-              subtitle: const Text('Absent or reduced movement at >= 24 weeks is an emergency danger sign'),
-              value: _fetalMovementPresent,
-              onChanged: (v) => setState(() => _fetalMovementPresent = v),
-            ),
-
-          const Divider(),
-
-          // ── SECTION 3: Urine Testing (Albumin & Sugar) ──────────────────────
-          _buildSectionHeader('3. Urine Dipstick Tests', Icons.science),
-          SwitchListTile(
-            title: const Text('Urine Albumin / Protein Present (+, ++, or +++)'),
-            subtitle: const Text('Indicator for pre-eclampsia when paired with elevated BP'),
-            value: _urineAlbuminPresent,
-            onChanged: (v) => setState(() => _urineAlbuminPresent = v),
-          ),
-          SwitchListTile(
-            title: const Text('Urine Sugar Present'),
-            subtitle: const Text('Indicator for gestational diabetes mellitus (GDM)'),
-            value: _urineSugarPresent,
-            onChanged: (v) => setState(() => _urineSugarPresent = v),
-          ),
-
-          const Divider(),
-
-          // ── SECTION 4: Supplementation & Td Doses ──────────────────────────
-          _buildSectionHeader('4. IFA, Calcium & Td Administration', Icons.medication),
-          SwitchListTile(
-            title: const Text('Iron Folic Acid (IFA) Tablets Given (180 tablets course)'),
-            value: _ifaTabletsGiven,
-            onChanged: (v) => setState(() => _ifaTabletsGiven = v),
-          ),
-          SwitchListTile(
-            title: const Text('Calcium Tablets Given (360 tablets course from 14 weeks)'),
-            value: _calciumTabletsGiven,
-            onChanged: (v) => setState(() => _calciumTabletsGiven = v),
-          ),
-          SwitchListTile(
-            title: const Text('Td Vaccine Dose Administered Today'),
-            value: _tdAdministered,
-            onChanged: (v) => setState(() => _tdAdministered = v),
-          ),
-          if (_tdAdministered)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: DropdownButtonFormField<String>(
-                initialValue: _tdDoseType ?? 'Td-1',
-                decoration: const InputDecoration(labelText: 'Dose Type', border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle))),
-                items: const [
-                  DropdownMenuItem(value: 'Td-1', child: Text('Td-1 Dose')),
-                  DropdownMenuItem(value: 'Td-2', child: Text('Td-2 Dose (4 weeks after Td-1)')),
-                  DropdownMenuItem(value: 'Td-Booster', child: Text('Td-Booster (Pregnancy within 3 years)')),
+                if (widget.gestationWeeks >= 20) ...[
+                  const SizedBox(height: 10),
+                  ClinicalSwitchTile(
+                    title: 'Fetal movements actively felt',
+                    value: _fetalMovementPresent,
+                    onChanged: (v) => setState(() => _fetalMovementPresent = v),
+                  ),
                 ],
-                onChanged: (v) => setState(() => _tdDoseType = v),
-              ),
+              ],
             ),
-
-          const Divider(),
-
-          // ── SECTION 5: Danger Signs Checklist (Requirement 14.3) ────────────
-          _buildSectionHeader('5. Danger Signs Screening', Icons.warning),
-          SwitchListTile(
-            title: const Text('Vaginal Bleeding (Antepartum Haemorrhage) [DANGER SIGN]'),
-            value: _vaginalBleeding,
-            onChanged: (v) => setState(() => _vaginalBleeding = v),
-          ),
-          SwitchListTile(
-            title: const Text('Severe Headache, Blurred Vision, or Epigastric Pain [DANGER SIGN]'),
-            value: _severeHeadacheOrVision,
-            onChanged: (v) => setState(() => _severeHeadacheOrVision = v),
-          ),
-          SwitchListTile(
-            title: const Text('Severe Swelling of Face, Hands, or Abdomen [DANGER SIGN]'),
-            value: _severeSwellingFaceHands,
-            onChanged: (v) => setState(() => _severeSwellingFaceHands = v),
-          ),
-          SwitchListTile(
-            title: const Text('High Fever with Chills / Shivering [DANGER SIGN]'),
-            value: _highFever,
-            onChanged: (v) => setState(() => _highFever = v),
-          ),
-          SwitchListTile(
-            title: const Text('Leaking Amniotic Fluid / Water Breaking [DANGER SIGN]'),
-            value: _leakingAmnioticFluid,
-            onChanged: (v) => setState(() => _leakingAmnioticFluid = v),
-          ),
-          SwitchListTile(
-            title: const Text('Severe Persistent Abdominal Pain [DANGER SIGN]'),
-            value: _severeAbdominalPain,
-            onChanged: (v) => setState(() => _severeAbdominalPain = v),
           ),
 
-          const SizedBox(height: 24),
-
-          // ── Submit Visit Button ────────────────────────────────────────────
-          ElevatedButton(
-            key: const Key('submit_anc_visit_button'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AshaColors.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-            onPressed: _isSaving ? null : _submitVisit,
-            child: _isSaving
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                  )
-                : Text(
-                    hasRed
-                        ? 'Record Danger Signs & Proceed to Emergency Referral'
-                        : (hasYellow ? 'Save High-Risk Contact & Schedule PMSMA' : 'Complete & Save ANC Contact'),
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          // ── SECTION 3: Dipstick & Supplementation ──
+          ClinicalFormCard(
+            title: '3. Tests & Supplements',
+            icon: Icons.medication_outlined,
+            child: Column(
+              children: [
+                ClinicalSwitchTile(
+                  title: 'Urine Albumin (+ / ++)',
+                  value: _urineAlbuminPresent,
+                  onChanged: (v) => setState(() => _urineAlbuminPresent = v),
+                  isDanger: true,
+                ),
+                ClinicalSwitchTile(
+                  title: 'Urine Sugar Present',
+                  value: _urineSugarPresent,
+                  onChanged: (v) => setState(() => _urineSugarPresent = v),
+                ),
+                ClinicalSwitchTile(
+                  title: 'IFA Tablets Distributed (30)',
+                  value: _ifaTabletsGiven,
+                  onChanged: (v) => setState(() => _ifaTabletsGiven = v),
+                ),
+                ClinicalSwitchTile(
+                  title: 'Calcium Tablets Distributed (60)',
+                  value: _calciumTabletsGiven,
+                  onChanged: (v) => setState(() => _calciumTabletsGiven = v),
+                ),
+                ClinicalSwitchTile(
+                  title: 'Td Vaccine Dose Given Today',
+                  value: _tdAdministered,
+                  onChanged: (v) => setState(() => _tdAdministered = v),
+                ),
+                if (_tdAdministered) ...[
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    initialValue: _tdDoseType ?? 'Td-1',
+                    decoration: InputDecoration(
+                      labelText: 'Td Dose Type',
+                      isDense: true,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'Td-1', child: Text('Td-1 Dose')),
+                      DropdownMenuItem(value: 'Td-2', child: Text('Td-2 Dose (4w later)')),
+                      DropdownMenuItem(value: 'Td-Booster', child: Text('Td-Booster')),
+                    ],
+                    onChanged: (v) => setState(() => _tdDoseType = v),
                   ),
-          ),
-          const SizedBox(height: 32),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Icon(icon, color: AshaColors.primary, size: 22),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AshaColors.primaryDark,
-              ),
+                ],
+              ],
             ),
           ),
+
+          // ── SECTION 4: Danger Signs Screening ──
+          ClinicalFormCard(
+            title: '4. Danger Signs Screening',
+            icon: Icons.warning_amber_rounded,
+            iconColor: Colors.red.shade700,
+            child: Column(
+              children: [
+                ClinicalSwitchTile(
+                  title: 'Vaginal Bleeding',
+                  value: _vaginalBleeding,
+                  onChanged: (v) => setState(() => _vaginalBleeding = v),
+                  isDanger: true,
+                ),
+                ClinicalSwitchTile(
+                  title: 'Severe Headache / Blurred Vision',
+                  value: _severeHeadacheOrVision,
+                  onChanged: (v) => setState(() => _severeHeadacheOrVision = v),
+                  isDanger: true,
+                ),
+                ClinicalSwitchTile(
+                  title: 'Severe Swelling (Face / Hands)',
+                  value: _severeSwellingFaceHands,
+                  onChanged: (v) => setState(() => _severeSwellingFaceHands = v),
+                  isDanger: true,
+                ),
+                ClinicalSwitchTile(
+                  title: 'High Fever with Chills',
+                  value: _highFever,
+                  onChanged: (v) => setState(() => _highFever = v),
+                  isDanger: true,
+                ),
+                ClinicalSwitchTile(
+                  title: 'Leaking Amniotic Fluid',
+                  value: _leakingAmnioticFluid,
+                  onChanged: (v) => setState(() => _leakingAmnioticFluid = v),
+                  isDanger: true,
+                ),
+                ClinicalSwitchTile(
+                  title: 'Severe Abdominal Pain',
+                  value: _severeAbdominalPain,
+                  onChanged: (v) => setState(() => _severeAbdominalPain = v),
+                  isDanger: true,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          ClinicalSubmitButton(
+            label: hasRed
+                ? 'Record Danger Signs & Open Emergency Referral'
+                : (hasYellow ? 'Save High-Risk Contact & Schedule PMSMA' : 'Save ANC Contact'),
+            isSaving: _isSaving,
+            isEmergency: hasRed,
+            onPressed: _submitVisit,
+          ),
+          const SizedBox(height: 24),
         ],
       ),
     );

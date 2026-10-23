@@ -7,14 +7,9 @@ import '../../../referral/presentation/referral_slip_screen.dart';
 import '../data/hbnc_repository.dart';
 import '../domain/hbnc_models.dart';
 import '../domain/kmc_guidance.dart';
+import '../../presentation/clinical_card_helpers.dart';
 
 /// Screen presenting the guided Home Based Newborn Care (HBNC) visit checklist.
-///
-/// Implements Requirements 12.2, 12.3, 12.4, 12.7:
-/// - Guided flow: feeding, weight, temperature, breathing, cord, skin, eyes, activity, jaundice, thermal/KMC, maternal PNC.
-/// - Immediate RED alert and referral handoff upon danger sign detection.
-/// - High-risk KMC card for low-birth-weight (<2.5 kg) or preterm infants.
-/// - Persists discrete clinical observations and auto-generates incentive on episode completion.
 class HbncVisitScreen extends ConsumerStatefulWidget {
   final String newbornId;
   final String motherId;
@@ -30,7 +25,7 @@ class HbncVisitScreen extends ConsumerStatefulWidget {
     required this.newbornId,
     required this.motherId,
     required this.visitScheduleId,
-    required this.visitTitle,
+    this.visitTitle = 'HBNC Day 7 Newborn Visit',
     this.visitDay = 7,
     this.birthWeightKg = 2.8,
     this.isPreterm = false,
@@ -42,10 +37,9 @@ class HbncVisitScreen extends ConsumerStatefulWidget {
 }
 
 class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
-  // Checklist State Variables
   double? _currentWeightKg;
-  double? _temperatureC;
-  int? _respiratoryRate;
+  double? _temperatureC = 36.8;
+  int? _respiratoryRate = 42;
   bool _chestIndrawing = false;
   bool _grunting = false;
   FeedingStatus _feedingStatus = FeedingStatus.exclusiveBreastfeeding;
@@ -110,7 +104,6 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
       setState(() => _isSaving = false);
 
       if (result.hasDangerSign) {
-        // Requirement 12.3: Immediate RED referral handoff
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -130,10 +123,10 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
           SnackBar(
             content: Text(
               result.isEpisodeCompleted
-                  ? 'HBNC Episode Complete! Incentive event registered.'
-                  : 'HBNC Visit successfully recorded.',
+                  ? 'HBNC Episode Complete! Incentive registered.'
+                  : 'HBNC Visit successfully saved.',
             ),
-            backgroundColor: Colors.green.shade800,
+            backgroundColor: AshaColors.primary,
           ),
         );
         Navigator.pop(context, true);
@@ -158,84 +151,70 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
     return Scaffold(
       backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.visitTitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
-            ),
-            const Text(
-              'Home-Based Newborn Care (HBNC)',
-              style: TextStyle(fontSize: 12, color: AshaColors.textMuted),
-            ),
-          ],
+        title: Text(
+          widget.visitTitle,
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
         ),
         backgroundColor: AshaColors.cardSurface,
         foregroundColor: AshaColors.textPrimary,
         elevation: 0,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: [
           _buildVisitSummaryCard(),
           const SizedBox(height: 12),
 
-          // ── Danger Signs Alert Banner (Requirement 12.3) ───────────────────
+          // Danger Signs Banner
           if (hasDangers)
-            Card(
-              color: Colors.red.shade50,
-              shape: RoundedRectangleBorder(
-                side: BorderSide(color: Colors.red.shade700, width: 2),
-                borderRadius: BorderRadius.circular(8),
+            Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.shade400),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.warning, color: Colors.red.shade800, size: 28),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'DANGER SIGN DETECTED — URGENT',
-                            style: TextStyle(
-                              color: Colors.red.shade900,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: Colors.red.shade800, size: 22),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Newborn / Maternal Danger Detected',
+                          style: TextStyle(color: Colors.red.shade900, fontWeight: FontWeight.bold, fontSize: 14),
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  for (final sign in [...dangerSigns, ...maternalDangers])
+                    Text('• $sign', style: TextStyle(color: Colors.red.shade900, fontSize: 12.5)),
+                  const SizedBox(height: 6),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade800,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
-                    const SizedBox(height: 8),
-                    for (final sign in [...dangerSigns, ...maternalDangers])
-                      Text('• $sign', style: TextStyle(color: Colors.red.shade900, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 10),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade800, foregroundColor: Colors.white),
-                      onPressed: _submitVisit,
-                      icon: const Icon(Icons.emergency),
-                      label: const Text('Open Emergency Referral Slip (108)'),
-                    ),
-                  ],
-                ),
+                    onPressed: _submitVisit,
+                    icon: const Icon(Icons.emergency, size: 18),
+                    label: const Text('Open Referral Slip (108)', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ],
               ),
             ),
 
-          if (hasDangers) const SizedBox(height: 16),
-
-          // ── High-Risk KMC Guidance Banner (Requirement 12.4) ───────────────
           if (_isHighRisk)
-            Card(
-              color: Colors.amber.shade50,
-              shape: RoundedRectangleBorder(
-                side: BorderSide(color: Colors.amber.shade700, width: 1.5),
-                borderRadius: BorderRadius.circular(8),
+            Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.amber.shade400),
               ),
               child: ExpansionTile(
                 initiallyExpanded: _showKmcDetails,
@@ -243,31 +222,24 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
                 leading: Icon(Icons.favorite, color: Colors.amber.shade900),
                 title: Text(
                   'High-risk newborn · ${widget.birthWeightKg.toStringAsFixed(1)} kg',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.amber.shade900),
                 ),
-                subtitle: const Text('Kangaroo Mother Care (KMC) guidance active'),
+                subtitle: const Text('KMC guidance active', style: TextStyle(fontSize: 12)),
                 children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          KmcGuidance.title,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                        ),
-                        const SizedBox(height: 6),
                         for (final step in KmcGuidance.coreSteps)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            child: Text('• $step', style: const TextStyle(fontSize: 12.5)),
+                            padding: const EdgeInsets.only(bottom: 2),
+                            child: Text('• $step', style: const TextStyle(fontSize: 12)),
                           ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 4),
                         Text(
-                          'Target: At least ${KmcGuidance.recommendedTargetHours(widget.birthWeightKg)} hours/day skin-to-skin',
-                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                          'Target: ≥ ${KmcGuidance.recommendedTargetHours(widget.birthWeightKg)} hrs/day',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.amber.shade900),
                         ),
                       ],
                     ),
@@ -276,348 +248,227 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
               ),
             ),
 
-          if (_isHighRisk) const SizedBox(height: 16),
-
-          // ── 1. Feeding & Breastfeeding ──────────────────────────────────────
-          _buildSectionHeader('1. Feeding & Breastfeeding', Icons.baby_changing_station),
-          for (final f in FeedingStatus.values)
-            RadioListTile<FeedingStatus>(
-              title: Text(f.label, style: TextStyle(color: f.isDangerSign ? Colors.red.shade900 : null)),
-              value: f,
-              groupValue: _feedingStatus,
-              onChanged: (val) => setState(() => _feedingStatus = val!),
-            ),
-
-          const Divider(),
-
-          // ── 2. Weight Measurement ──────────────────────────────────────────
-          _buildSectionHeader('2. Weight Measurement', Icons.monitor_weight),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextFormField(
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                labelText: 'Current Weight in kg (Birth Weight: ${widget.birthWeightKg} kg)',
-                suffixText: 'kg',
-                border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
-              ),
-              onChanged: (val) {
-                final d = double.tryParse(val);
-                setState(() => _currentWeightKg = d);
-              },
-            ),
-          ),
-
-          const SizedBox(height: 16),
-          const Divider(),
-
-          // ── 3. Body Temperature ───────────────────────────────────────────
-          _buildSectionHeader('3. Body Temperature', Icons.thermostat),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextFormField(
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Axillary Temperature (°C) [Normal: 36.5–37.4°C]',
-                suffixText: '°C',
-                border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
-              ),
-              onChanged: (val) {
-                final t = double.tryParse(val);
-                setState(() => _temperatureC = t);
-              },
-            ),
-          ),
-
-          const SizedBox(height: 16),
-          const Divider(),
-
-          // ── 4. Breathing & Respiratory Rate ───────────────────────────────
-          _buildSectionHeader('4. Breathing & Respiratory Rate', Icons.air),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+          // ── SECTION 1: Vitals & Weight ──
+          ClinicalFormCard(
+            title: '1. Newborn Measurements',
+            icon: Icons.monitor_weight_outlined,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TextFormField(
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Breaths per minute',
-                    suffixText: '/min',
-                    border: OutlineInputBorder(
-                      borderRadius: AshaShapes.searchRadius,
-                      borderSide: BorderSide(color: AshaColors.borderSubtle),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        initialValue: _currentWeightKg?.toString(),
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(
+                          labelText: 'Current Weight',
+                          suffixText: 'kg',
+                          isDense: true,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onChanged: (v) => setState(() => _currentWeightKg = double.tryParse(v)),
+                      ),
                     ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextFormField(
+                        initialValue: _temperatureC?.toString(),
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(
+                          labelText: 'Temp',
+                          suffixText: '°C',
+                          isDense: true,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onChanged: (v) => setState(() => _temperatureC = double.tryParse(v)),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextFormField(
+                        initialValue: _respiratoryRate?.toString(),
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Breathing',
+                          suffixText: '/min',
+                          isDense: true,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onChanged: (v) => setState(() => _respiratoryRate = int.tryParse(v)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                ClinicalSwitchTile(
+                  title: 'Chest In-drawing Present',
+                  value: _chestIndrawing,
+                  onChanged: (v) => setState(() => _chestIndrawing = v),
+                  isDanger: true,
+                ),
+                ClinicalSwitchTile(
+                  title: 'Grunting Sound on Expiration',
+                  value: _grunting,
+                  onChanged: (v) => setState(() => _grunting = v),
+                  isDanger: true,
+                ),
+              ],
+            ),
+          ),
+
+          // ── SECTION 2: Feeding & Clinical Status ──
+          ClinicalFormCard(
+            title: '2. Feeding & Clinical Checks',
+            icon: Icons.baby_changing_station_outlined,
+            child: Column(
+              children: [
+                DropdownButtonFormField<FeedingStatus>(
+                  initialValue: _feedingStatus,
+                  decoration: InputDecoration(
+                    labelText: 'Breastfeeding Status',
+                    isDense: true,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onChanged: (val) {
-                    final rr = int.tryParse(val);
-                    setState(() => _respiratoryRate = rr);
-                  },
+                  items: FeedingStatus.values.map((f) => DropdownMenuItem(value: f, child: Text(f.label))).toList(),
+                  onChanged: (v) => setState(() => _feedingStatus = v!),
                 ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    // Quick simulated 60-second counter prompt
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Count chest rises over 60 seconds using phone timer')),
-                    );
-                  },
-                  icon: const Icon(Icons.timer),
-                  label: const Text('Timer (60s)'),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<CordStatus>(
+                  initialValue: _cordStatus,
+                  decoration: InputDecoration(
+                    labelText: 'Umbilical Cord',
+                    isDense: true,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  items: CordStatus.values.map((c) => DropdownMenuItem(value: c, child: Text(c.label))).toList(),
+                  onChanged: (v) => setState(() => _cordStatus = v!),
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<JaundiceStatus>(
+                  initialValue: _jaundiceStatus,
+                  decoration: InputDecoration(
+                    labelText: 'Jaundice / Yellowness',
+                    isDense: true,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  items: JaundiceStatus.values.map((j) => DropdownMenuItem(value: j, child: Text(j.label))).toList(),
+                  onChanged: (v) => setState(() => _jaundiceStatus = v!),
                 ),
               ],
             ),
           ),
-          CheckboxListTile(
-            title: const Text('Chest Indrawing Present (Danger Sign)'),
-            value: _chestIndrawing,
-            onChanged: (v) => setState(() => _chestIndrawing = v ?? false),
-          ),
-          CheckboxListTile(
-            title: const Text('Grunting Present (Danger Sign)'),
-            value: _grunting,
-            onChanged: (v) => setState(() => _grunting = v ?? false),
-          ),
 
-          const Divider(),
-
-          // ── 5. Umbilical Cord Examination ─────────────────────────────────
-          _buildSectionHeader('5. Umbilical Cord Examination', Icons.healing),
-          for (final c in CordStatus.values)
-            RadioListTile<CordStatus>(
-              title: Text(c.label, style: TextStyle(color: c.isDangerSign ? Colors.red.shade900 : null)),
-              value: c,
-              groupValue: _cordStatus,
-              onChanged: (v) => setState(() => _cordStatus = v!),
-            ),
-
-          const Divider(),
-
-          // ── 6. Skin & Jaundice ────────────────────────────────────────────
-          _buildSectionHeader('6. Skin & Jaundice Examination', Icons.visibility),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Text('Skin Pustules / Condition:', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          for (final s in SkinStatus.values)
-            RadioListTile<SkinStatus>(
-              title: Text(s.label, style: TextStyle(color: s.isDangerSign ? Colors.red.shade900 : null)),
-              value: s,
-              groupValue: _skinStatus,
-              onChanged: (v) => setState(() => _skinStatus = v!),
-            ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Text('Jaundice Severity:', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          for (final j in JaundiceStatus.values)
-            RadioListTile<JaundiceStatus>(
-              title: Text(j.label, style: TextStyle(color: j.isDangerSign ? Colors.red.shade900 : null)),
-              value: j,
-              groupValue: _jaundiceStatus,
-              onChanged: (v) => setState(() => _jaundiceStatus = v!),
-            ),
-
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Text('Eye Condition:', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          for (final e in EyeStatus.values)
-            RadioListTile<EyeStatus>(
-              title: Text(e.label, style: TextStyle(color: e.isDangerSign ? Colors.red.shade900 : null)),
-              value: e,
-              groupValue: _eyeStatus,
-              onChanged: (v) => setState(() => _eyeStatus = v!),
-            ),
-
-          const Divider(),
-
-          // ── 7. Activity & Alertness ───────────────────────────────────────
-          _buildSectionHeader('7. Activity, Tone & Consciousness', Icons.psychology),
-          for (final a in ActivityStatus.values)
-            RadioListTile<ActivityStatus>(
-              title: Text(a.label, style: TextStyle(color: a.isDangerSign ? Colors.red.shade900 : null)),
-              value: a,
-              groupValue: _activityStatus,
-              onChanged: (v) => setState(() => _activityStatus = v!),
-            ),
-
-          const Divider(),
-
-          // ── 8. Thermal Care & KMC ─────────────────────────────────────────
-          _buildSectionHeader('8. Thermal Care & Warm Chain', Icons.shield),
-          CheckboxListTile(
-            title: const Text('Delayed Bathing Practiced (Warmth Preserved)'),
-            value: _delayedBathing,
-            onChanged: (v) => setState(() => _delayedBathing = v ?? true),
-          ),
-          CheckboxListTile(
-            title: const Text('Baby Wrapped warmly with Cap and Socks'),
-            value: _warmChain,
-            onChanged: (v) => setState(() => _warmChain = v ?? true),
-          ),
-          CheckboxListTile(
-            title: const Text('Kangaroo Mother Care (KMC) Provided Daily'),
-            value: _kmcPracticed,
-            onChanged: (v) => setState(() => _kmcPracticed = v ?? false),
-          ),
-          if (_kmcPracticed)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: TextFormField(
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'KMC Duration in Hours / Day',
-                  suffixText: 'hours',
-                  border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+          // ── SECTION 3: Thermal Care & KMC ──
+          ClinicalFormCard(
+            title: '3. Warmth & Kangaroo Care',
+            icon: Icons.thermostat,
+            child: Column(
+              children: [
+                ClinicalSwitchTile(
+                  title: 'Kept Warm in Warm Chain (Clothing & Hat)',
+                  value: _warmChain,
+                  onChanged: (v) => setState(() => _warmChain = v),
                 ),
-                onChanged: (v) => setState(() => _kmcHours = double.tryParse(v)),
-              ),
-            ),
-
-          const Divider(),
-
-          // ── 9. Maternal Postpartum Health (PNC) ───────────────────────────
-          _buildSectionHeader('9. Maternal Postpartum Assessment', Icons.pregnant_woman),
-          for (final b in MaternalBleedingStatus.values)
-            RadioListTile<MaternalBleedingStatus>(
-              title: Text(b.label, style: TextStyle(color: b.isDangerSign ? Colors.red.shade900 : null)),
-              value: b,
-              groupValue: _maternalBleeding,
-              onChanged: (v) => setState(() => _maternalBleeding = v!),
-            ),
-          CheckboxListTile(
-            title: const Text('Mother has Postpartum High Fever (Danger Sign)'),
-            value: _maternalFever,
-            onChanged: (v) => setState(() => _maternalFever = v ?? false),
-          ),
-          CheckboxListTile(
-            title: const Text('Mother has Severe Headache / Blurred Vision (Danger Sign)'),
-            value: _maternalSevereHeadache,
-            onChanged: (v) => setState(() => _maternalSevereHeadache = v ?? false),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: DropdownButtonFormField<String>(
-              initialValue: _maternalWound,
-              decoration: const InputDecoration(
-                labelText: 'Maternal Wound / Episiotomy Healing',
-                border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
-              ),
-              items: const [
-                DropdownMenuItem(value: 'normal', child: Text('Normal Healing — Clean, No Infection')),
-                DropdownMenuItem(value: 'infected', child: Text('Infected / Pus Discharge (Danger Sign)')),
-                DropdownMenuItem(value: 'dehiscence', child: Text('Wound Breakdown / Gaping (Danger Sign)')),
+                ClinicalSwitchTile(
+                  title: 'Delayed Bathing Practiced',
+                  value: _delayedBathing,
+                  onChanged: (v) => setState(() => _delayedBathing = v),
+                ),
+                ClinicalSwitchTile(
+                  title: 'Kangaroo Mother Care Practiced Today',
+                  value: _kmcPracticed,
+                  onChanged: (v) => setState(() => _kmcPracticed = v),
+                ),
+                if (_kmcPracticed) ...[
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      labelText: 'Hours of KMC Per Day',
+                      suffixText: 'hours',
+                      isDense: true,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onChanged: (v) => setState(() => _kmcHours = double.tryParse(v)),
+                  ),
+                ],
               ],
-              onChanged: (val) => setState(() => _maternalWound = val ?? 'normal'),
             ),
           ),
 
+          // ── SECTION 4: Maternal Health ──
+          ClinicalFormCard(
+            title: '4. Mother Status in HBNC',
+            icon: Icons.favorite_border,
+            child: Column(
+              children: [
+                DropdownButtonFormField<MaternalBleedingStatus>(
+                  initialValue: _maternalBleeding,
+                  decoration: InputDecoration(
+                    labelText: 'Maternal Bleeding',
+                    isDense: true,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  items: MaternalBleedingStatus.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(),
+                  onChanged: (v) => setState(() => _maternalBleeding = v!),
+                ),
+                const SizedBox(height: 10),
+                ClinicalSwitchTile(
+                  title: 'Maternal High Fever with Chills',
+                  value: _maternalFever,
+                  onChanged: (v) => setState(() => _maternalFever = v),
+                  isDanger: true,
+                ),
+                ClinicalSwitchTile(
+                  title: 'Maternal Severe Headache',
+                  value: _maternalSevereHeadache,
+                  onChanged: (v) => setState(() => _maternalSevereHeadache = v),
+                  isDanger: true,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          ClinicalSubmitButton(
+            label: hasDangers ? 'Danger Sign: Open Referral Slip' : 'Save HBNC Visit',
+            isSaving: _isSaving,
+            isEmergency: hasDangers,
+            onPressed: _submitVisit,
+          ),
           const SizedBox(height: 24),
-
-          // ── Submit / Save Visit Button ────────────────────────────────────
-          ElevatedButton(
-            key: const Key('submit_hbnc_visit_button'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AshaColors.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-            onPressed: _isSaving ? null : _submitVisit,
-            child: _isSaving
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                  )
-                : Text(
-                    hasDangers ? 'Record Danger Signs & Proceed to Referral' : 'Complete & Save HBNC Visit',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-          ),
-          const SizedBox(height: 32),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Icon(icon, color: AshaColors.primary, size: 22),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AshaColors.primaryDark,
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 
   Widget _buildVisitSummaryCard() {
-    return Card(
-      margin: EdgeInsets.zero,
-      elevation: 0,
-      color: AshaColors.cardSurface,
-      shape: RoundedRectangleBorder(
-        borderRadius: AshaShapes.cardRadius,
-        side: const BorderSide(color: AshaColors.borderSubtle),
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AshaColors.cardSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AshaColors.borderSubtle),
       ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AshaColors.primaryLight,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(Icons.child_care, color: AshaColors.primary),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: AshaColors.primaryLight, shape: BoxShape.circle),
+            child: const Icon(Icons.child_care, color: AshaColors.primary, size: 22),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Baby Aarav', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                Text('Birth Weight: ${widget.birthWeightKg} kg · Day ${widget.visitDay}', style: const TextStyle(fontSize: 12, color: AshaColors.textMuted)),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('HBNC home follow-up', style: AshaTypography.cardTitle),
-                  const SizedBox(height: 3),
-                  Text(
-                    'Day ${widget.visitDay} check for the newborn and mother',
-                    style: AshaTypography.bodyMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: AshaColors.surfaceMuted,
-                      borderRadius: AshaShapes.chipBorderRadius,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      child: Text(
-                        'Scheduled visit · record observations below',
-                        style: AshaTypography.subtitleSmall.copyWith(
-                          color: AshaColors.primaryDark,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
