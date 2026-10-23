@@ -27,6 +27,7 @@ export interface ReferralItem {
   patientAge: number;
   patientGender: 'M' | 'F' | 'O';
   village: string;
+  householdHead?: string;
   abhaId?: string;
   isSmsRelayed?: boolean;
   ashaId: string;

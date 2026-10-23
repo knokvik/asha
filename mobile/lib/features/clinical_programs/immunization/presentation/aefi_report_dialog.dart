@@ -47,8 +47,12 @@ class _AefiReportDialogState extends ConsumerState<AefiReportDialog> {
   }
 
   bool get _isUrgent {
-    final hasUrgentSymptom = _selectedSymptoms.any((s) => AefiSymptoms.isUrgent(s));
-    return hasUrgentSymptom || _severity == AefiSeverity.severe || _severity == AefiSeverity.serious;
+    final hasUrgentSymptom = _selectedSymptoms.any(
+      (s) => AefiSymptoms.isUrgent(s),
+    );
+    return hasUrgentSymptom ||
+        _severity == AefiSeverity.severe ||
+        _severity == AefiSeverity.serious;
   }
 
   Future<void> _saveReport() async {
@@ -71,7 +75,9 @@ class _AefiReportDialogState extends ConsumerState<AefiReportDialog> {
         onsetHoursAfterDose: _onsetHours,
         symptoms: _selectedSymptoms.toList(),
         severity: _severity,
-        actionTaken: _actionController.text.trim().isNotEmpty ? _actionController.text.trim() : null,
+        actionTaken: _actionController.text.trim().isNotEmpty
+            ? _actionController.text.trim()
+            : null,
         ashaId: widget.ashaId,
       );
 
@@ -89,7 +95,16 @@ class _AefiReportDialogState extends ConsumerState<AefiReportDialog> {
               children: [
                 Icon(Icons.warning, color: Colors.red, size: 28),
                 SizedBox(width: 8),
-                Text('URGENT AEFI: RED FLAG', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                Expanded(
+                  child: Text(
+                    'URGENT AEFI: RED FLAG',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ],
             ),
             content: Column(
@@ -101,9 +116,13 @@ class _AefiReportDialogState extends ConsumerState<AefiReportDialog> {
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                const Text('• Immediate emergency referral to PHC / CHC generated.'),
+                const Text(
+                  '• Immediate emergency referral to PHC / CHC generated.',
+                ),
                 const Text('• Arrange 108 Ambulance transport immediately.'),
-                const Text('• Emergency sync notification dispatched to ANM and Medical Officer.'),
+                const Text(
+                  '• Emergency sync notification dispatched to ANM and Medical Officer.',
+                ),
               ],
             ),
             actions: [
@@ -122,9 +141,8 @@ class _AefiReportDialogState extends ConsumerState<AefiReportDialog> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error recording AEFI: $e')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error recording AEFI: $e')));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -139,7 +157,10 @@ class _AefiReportDialogState extends ConsumerState<AefiReportDialog> {
         constraints: const BoxConstraints(maxWidth: 600, maxHeight: 720),
         child: Scaffold(
           appBar: AppBar(
-            title: const Text('Report AEFI', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            title: const Text(
+              'Report AEFI',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             leading: IconButton(
               icon: const Icon(Icons.close),
               onPressed: () => Navigator.of(context).pop(),
@@ -149,7 +170,10 @@ class _AefiReportDialogState extends ConsumerState<AefiReportDialog> {
               ? const Center(
                   child: Padding(
                     padding: EdgeInsets.all(24.0),
-                    child: Text('Recording AEFI report...', style: TextStyle(fontSize: 16)),
+                    child: Text(
+                      'Recording AEFI report...',
+                      style: TextStyle(fontSize: 16),
+                    ),
                   ),
                 )
               : Form(
@@ -165,16 +189,26 @@ class _AefiReportDialogState extends ConsumerState<AefiReportDialog> {
                           decoration: BoxDecoration(
                             color: Colors.red.shade100,
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.red.shade400, width: 1.5),
+                            border: Border.all(
+                              color: Colors.red.shade400,
+                              width: 1.5,
+                            ),
                           ),
                           child: const Row(
                             children: [
-                              Icon(Icons.report_problem, color: Colors.red, size: 28),
+                              Icon(
+                                Icons.report_problem,
+                                color: Colors.red,
+                                size: 28,
+                              ),
                               SizedBox(width: 12),
                               Expanded(
                                 child: Text(
                                   'CRITICAL: Severe symptoms selected! This triggers a RED triage flag and emergency escalation to ANM / MO.',
-                                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ],
@@ -188,11 +222,16 @@ class _AefiReportDialogState extends ConsumerState<AefiReportDialog> {
                           labelText: 'Vaccine Administered',
                           border: OutlineInputBorder(),
                         ),
-                        items: NationalImmunizationCatalog.infantAndChildSchedule
-                            .map((v) => DropdownMenuItem(
-                                  value: v.code,
-                                  child: Text('${v.code} (${v.name.split("(").first.trim()})'),
-                                ))
+                        items: NationalImmunizationCatalog
+                            .infantAndChildSchedule
+                            .map(
+                              (v) => DropdownMenuItem(
+                                value: v.code,
+                                child: Text(
+                                  '${v.code} (${v.name.split("(").first.trim()})',
+                                ),
+                              ),
+                            )
                             .toList(),
                         onChanged: (val) => setState(() => _vaccineCode = val!),
                       ),
@@ -212,11 +251,15 @@ class _AefiReportDialogState extends ConsumerState<AefiReportDialog> {
                           ),
                           DropdownMenuItem(
                             value: AefiSeverity.severe,
-                            child: Text('Severe (High fever, abscess, persistent crying)'),
+                            child: Text(
+                              'Severe (High fever, abscess, persistent crying)',
+                            ),
                           ),
                           DropdownMenuItem(
                             value: AefiSeverity.serious,
-                            child: Text('Serious (Anaphylaxis, fits, hospitalization)'),
+                            child: Text(
+                              'Serious (Anaphylaxis, fits, hospitalization)',
+                            ),
                           ),
                         ],
                         onChanged: (val) => setState(() => _severity = val!),
@@ -224,68 +267,96 @@ class _AefiReportDialogState extends ConsumerState<AefiReportDialog> {
                       const SizedBox(height: 16),
 
                       // Onset hours slider / selector
-                      Text('Onset Time After Dose: $_onsetHours hour(s)', style: const TextStyle(fontWeight: FontWeight.w600)),
+                      Text(
+                        'Onset Time After Dose: $_onsetHours hour(s)',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
                       Slider(
                         value: _onsetHours.toDouble(),
                         min: 1,
                         max: 72,
                         divisions: 71,
                         label: '$_onsetHours hrs',
-                        onChanged: (v) => setState(() => _onsetHours = v.round()),
+                        onChanged: (v) =>
+                            setState(() => _onsetHours = v.round()),
                       ),
                       const SizedBox(height: 12),
 
                       // Symptoms Checkbox List
                       const Text(
                         'Observed Symptoms (Select all that apply):',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
                       ),
                       const SizedBox(height: 8),
 
-                      const Text('Urgent Symptoms (Trigger RED Flag):', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13)),
-                      ...AefiSymptoms.urgentSymptoms.map((symptom) => CheckboxListTile(
-                            dense: true,
-                            title: Text(
-                              AefiSymptoms.displayName(symptom),
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                      const Text(
+                        'Urgent Symptoms (Trigger RED Flag):',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      ...AefiSymptoms.urgentSymptoms.map(
+                        (symptom) => CheckboxListTile(
+                          dense: true,
+                          title: Text(
+                            AefiSymptoms.displayName(symptom),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
                             ),
-                            value: _selectedSymptoms.contains(symptom),
-                            activeColor: Colors.red,
-                            onChanged: (checked) {
-                              setState(() {
-                                if (checked == true) {
-                                  _selectedSymptoms.add(symptom);
-                                } else {
-                                  _selectedSymptoms.remove(symptom);
-                                }
-                              });
-                            },
-                          )),
+                          ),
+                          value: _selectedSymptoms.contains(symptom),
+                          activeColor: Colors.red,
+                          onChanged: (checked) {
+                            setState(() {
+                              if (checked == true) {
+                                _selectedSymptoms.add(symptom);
+                              } else {
+                                _selectedSymptoms.remove(symptom);
+                              }
+                            });
+                          },
+                        ),
+                      ),
 
                       const Divider(),
-                      const Text('Minor Symptoms:', style: TextStyle(color: Colors.teal, fontWeight: FontWeight.bold, fontSize: 13)),
+                      const Text(
+                        'Minor Symptoms:',
+                        style: TextStyle(
+                          color: Colors.teal,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
                       ...[
                         AefiSymptoms.mildFever,
                         AefiSymptoms.localSwelling,
                         AefiSymptoms.painAtSite,
                         AefiSymptoms.mildIrritability,
-                      ].map((symptom) => CheckboxListTile(
-                            dense: true,
-                            title: Text(
-                              AefiSymptoms.displayName(symptom),
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                            value: _selectedSymptoms.contains(symptom),
-                            onChanged: (checked) {
-                              setState(() {
-                                if (checked == true) {
-                                  _selectedSymptoms.add(symptom);
-                                } else {
-                                  _selectedSymptoms.remove(symptom);
-                                }
-                              });
-                            },
-                          )),
+                      ].map(
+                        (symptom) => CheckboxListTile(
+                          dense: true,
+                          title: Text(
+                            AefiSymptoms.displayName(symptom),
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                          value: _selectedSymptoms.contains(symptom),
+                          onChanged: (checked) {
+                            setState(() {
+                              if (checked == true) {
+                                _selectedSymptoms.add(symptom);
+                              } else {
+                                _selectedSymptoms.remove(symptom);
+                              }
+                            });
+                          },
+                        ),
+                      ),
 
                       const SizedBox(height: 16),
                       TextFormField(
@@ -301,12 +372,18 @@ class _AefiReportDialogState extends ConsumerState<AefiReportDialog> {
 
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _isUrgent ? Colors.red : Theme.of(context).colorScheme.primary,
+                          backgroundColor: _isUrgent
+                              ? Colors.red
+                              : Theme.of(context).colorScheme.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                         icon: const Icon(Icons.send),
-                        label: Text(_isUrgent ? 'SUBMIT URGENT AEFI & TRIGGER RED FLAG' : 'Save AEFI Report'),
+                        label: Text(
+                          _isUrgent
+                              ? 'SUBMIT URGENT AEFI & TRIGGER RED FLAG'
+                              : 'Save AEFI Report',
+                        ),
                         onPressed: _saveReport,
                       ),
                     ],

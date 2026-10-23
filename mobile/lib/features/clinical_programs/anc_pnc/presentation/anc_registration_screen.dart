@@ -21,11 +21,14 @@ class AncRegistrationScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<AncRegistrationScreen> createState() => _AncRegistrationScreenState();
+  ConsumerState<AncRegistrationScreen> createState() =>
+      _AncRegistrationScreenState();
 }
 
 class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
-  DateTime _lmp = DateTime.now().subtract(const Duration(days: 70)); // Default ~10 weeks
+  DateTime _lmp = DateTime.now().subtract(
+    const Duration(days: 70),
+  ); // Default ~10 weeks
   int _gravida = 1;
   int _para = 0;
   int _livingChildren = 0;
@@ -35,7 +38,8 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
   String? _bloodGroup = 'B+';
   final TextEditingController _mcpController = TextEditingController();
   final TextEditingController _rchController = TextEditingController();
-  final TextEditingController _complicationsController = TextEditingController();
+  final TextEditingController _complicationsController =
+      TextEditingController();
 
   bool _isSaving = false;
 
@@ -64,8 +68,12 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
       abortions: _abortions,
       previousCesarean: _previousCesarean,
       previousComplications: complications,
-      mcpCardNumber: _mcpController.text.trim().isEmpty ? null : _mcpController.text.trim(),
-      rchId: _rchController.text.trim().isEmpty ? null : _rchController.text.trim(),
+      mcpCardNumber: _mcpController.text.trim().isEmpty
+          ? null
+          : _mcpController.text.trim(),
+      rchId: _rchController.text.trim().isEmpty
+          ? null
+          : _rchController.text.trim(),
       bloodGroup: _bloodGroup,
       maternalAgeYears: widget.maternalAgeYears,
     );
@@ -110,7 +118,10 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
       if (mounted) {
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error registering pregnancy: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Error registering pregnancy: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -161,7 +172,11 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.warning_amber_rounded, color: Colors.orange.shade900, size: 26),
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.orange.shade900,
+                          size: 26,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           'HIGH-RISK PREGNANCY (HRP) CRITERIA DETECTED',
@@ -175,12 +190,22 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
                     ),
                     const SizedBox(height: 6),
                     ...highRiskReasons.map(
-                      (r) => Text('• $r', style: TextStyle(color: Colors.orange.shade900, fontSize: 13)),
+                      (r) => Text(
+                        '• $r',
+                        style: TextStyle(
+                          color: Colors.orange.shade900,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       'App will automatically increase ANC contact frequency and sync priority alert to ANM/AF.',
-                      style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12, color: Colors.orange.shade900),
+                      style: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        fontSize: 12,
+                        color: Colors.orange.shade900,
+                      ),
                     ),
                   ],
                 ),
@@ -192,7 +217,9 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
           // ── Gestation & EDD Card ───────────────────────────────────────────
           Card(
             elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(14),
               child: Column(
@@ -204,7 +231,10 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
                       const Expanded(
                         child: Text(
                           'Gestational Age & Delivery Dates',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
                         ),
                       ),
                     ],
@@ -220,10 +250,15 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
                     ),
                   ),
                   ListTile(
-                    title: const Text('Estimated Date of Delivery (EDD) [Naegele]'),
+                    title: const Text(
+                      'Estimated Date of Delivery (EDD) [Naegele]',
+                    ),
                     subtitle: Text(
                       '${reg.edd.day}/${reg.edd.month}/${reg.edd.year}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.teal),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.teal,
+                      ),
                     ),
                   ),
                   ListTile(
@@ -250,9 +285,13 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
                     labelText: 'Gravida (Total pregnancies)',
-                    border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+                    border: OutlineInputBorder(
+                      borderRadius: AshaShapes.searchRadius,
+                      borderSide: BorderSide(color: AshaColors.borderSubtle),
+                    ),
                   ),
-                  onChanged: (v) => setState(() => _gravida = int.tryParse(v) ?? 1),
+                  onChanged: (v) =>
+                      setState(() => _gravida = int.tryParse(v) ?? 1),
                 ),
               ),
               const SizedBox(width: 12),
@@ -262,9 +301,13 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
                     labelText: 'Para (Viable births)',
-                    border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+                    border: OutlineInputBorder(
+                      borderRadius: AshaShapes.searchRadius,
+                      borderSide: BorderSide(color: AshaColors.borderSubtle),
+                    ),
                   ),
-                  onChanged: (v) => setState(() => _para = int.tryParse(v) ?? 0),
+                  onChanged: (v) =>
+                      setState(() => _para = int.tryParse(v) ?? 0),
                 ),
               ),
             ],
@@ -278,9 +321,13 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
                     labelText: 'Living Children',
-                    border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+                    border: OutlineInputBorder(
+                      borderRadius: AshaShapes.searchRadius,
+                      borderSide: BorderSide(color: AshaColors.borderSubtle),
+                    ),
                   ),
-                  onChanged: (v) => setState(() => _livingChildren = int.tryParse(v) ?? 0),
+                  onChanged: (v) =>
+                      setState(() => _livingChildren = int.tryParse(v) ?? 0),
                 ),
               ),
               const SizedBox(width: 12),
@@ -290,9 +337,13 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
                     labelText: 'Previous Stillbirths',
-                    border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+                    border: OutlineInputBorder(
+                      borderRadius: AshaShapes.searchRadius,
+                      borderSide: BorderSide(color: AshaColors.borderSubtle),
+                    ),
                   ),
-                  onChanged: (v) => setState(() => _stillbirths = int.tryParse(v) ?? 0),
+                  onChanged: (v) =>
+                      setState(() => _stillbirths = int.tryParse(v) ?? 0),
                 ),
               ),
               const SizedBox(width: 12),
@@ -302,9 +353,13 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
                     labelText: 'Prior Abortions',
-                    border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+                    border: OutlineInputBorder(
+                      borderRadius: AshaShapes.searchRadius,
+                      borderSide: BorderSide(color: AshaColors.borderSubtle),
+                    ),
                   ),
-                  onChanged: (v) => setState(() => _abortions = int.tryParse(v) ?? 0),
+                  onChanged: (v) =>
+                      setState(() => _abortions = int.tryParse(v) ?? 0),
                 ),
               ),
             ],
@@ -312,8 +367,12 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
           const SizedBox(height: 8),
 
           SwitchListTile(
-            title: const Text('History of previous Cesarean Section (C-Section)'),
-            subtitle: const Text('High risk — requires facility delivery planning'),
+            title: const Text(
+              'History of previous Cesarean Section (C-Section)',
+            ),
+            subtitle: const Text(
+              'High risk — requires facility delivery planning',
+            ),
             value: _previousCesarean,
             onChanged: (val) => setState(() => _previousCesarean = val),
           ),
@@ -326,7 +385,10 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
             controller: _mcpController,
             decoration: const InputDecoration(
               labelText: 'Mother & Child Protection (MCP) Card Number',
-              border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+              border: OutlineInputBorder(
+                borderRadius: AshaShapes.searchRadius,
+                borderSide: BorderSide(color: AshaColors.borderSubtle),
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -334,25 +396,88 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
             controller: _rchController,
             decoration: const InputDecoration(
               labelText: 'RCH Portal ID / ABHA ID',
-              border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+              border: OutlineInputBorder(
+                borderRadius: AshaShapes.searchRadius,
+                borderSide: BorderSide(color: AshaColors.borderSubtle),
+              ),
             ),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: _bloodGroup,
+            isExpanded: true,
             decoration: const InputDecoration(
               labelText: 'Maternal Blood Group & Rh Factor',
-              border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+              border: OutlineInputBorder(
+                borderRadius: AshaShapes.searchRadius,
+                borderSide: BorderSide(color: AshaColors.borderSubtle),
+              ),
             ),
             items: const [
-              DropdownMenuItem(value: 'A+', child: Text('A Positive (A+)')),
-              DropdownMenuItem(value: 'B+', child: Text('B Positive (B+)')),
-              DropdownMenuItem(value: 'O+', child: Text('O Positive (O+)')),
-              DropdownMenuItem(value: 'AB+', child: Text('AB Positive (AB+)')),
-              DropdownMenuItem(value: 'A-', child: Text('A Negative (A-) [Rh Negative High Risk]')),
-              DropdownMenuItem(value: 'B-', child: Text('B Negative (B-) [Rh Negative High Risk]')),
-              DropdownMenuItem(value: 'O-', child: Text('O Negative (O-) [Rh Negative High Risk]')),
-              DropdownMenuItem(value: 'AB-', child: Text('AB Negative (AB-) [Rh Negative High Risk]')),
+              DropdownMenuItem(
+                value: 'A+',
+                child: Text(
+                  'A Positive (A+)',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              DropdownMenuItem(
+                value: 'B+',
+                child: Text(
+                  'B Positive (B+)',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              DropdownMenuItem(
+                value: 'O+',
+                child: Text(
+                  'O Positive (O+)',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              DropdownMenuItem(
+                value: 'AB+',
+                child: Text(
+                  'AB Positive (AB+)',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              DropdownMenuItem(
+                value: 'A-',
+                child: Text(
+                  'A Negative (A-) — Rh negative',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              DropdownMenuItem(
+                value: 'B-',
+                child: Text(
+                  'B Negative (B-) — Rh negative',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              DropdownMenuItem(
+                value: 'O-',
+                child: Text(
+                  'O Negative (O-) — Rh negative',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              DropdownMenuItem(
+                value: 'AB-',
+                child: Text(
+                  'AB Negative (AB-) — Rh negative',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
             onChanged: (v) => setState(() => _bloodGroup = v),
           ),
@@ -362,7 +487,10 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
             decoration: const InputDecoration(
               labelText: 'Prior Complications (e.g. pre-eclampsia, PPH, GDM)',
               helperText: 'Separate multiple conditions with commas',
-              border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+              border: OutlineInputBorder(
+                borderRadius: AshaShapes.searchRadius,
+                borderSide: BorderSide(color: AshaColors.borderSubtle),
+              ),
             ),
           ),
 
@@ -381,7 +509,10 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
                 ? const SizedBox(
                     height: 20,
                     width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : const Text(
                     'Complete Registration & Generate ANC Schedule',

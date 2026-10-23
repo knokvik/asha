@@ -37,7 +37,13 @@ export function HouseholdsPage() {
                 <div><h2 className="text-sm font-black text-slate-900 dark:text-white">{item.patientName}</h2><p className="text-xs text-slate-500">{item.patientAge || 'Age not provided'} · {item.patientGender || 'Gender not provided'}</p></div>
                 <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">Synced</span>
               </div>
-              <dl className="mt-4 grid grid-cols-2 gap-3 text-xs"><div><dt className="text-slate-400">Village</dt><dd className="font-semibold text-slate-700">{item.village}</dd></div><div><dt className="text-slate-400">ASHA worker</dt><dd className="font-semibold text-slate-700">{item.workerName}</dd></div><div><dt className="text-slate-400">Worker phone</dt><dd className="font-semibold text-slate-700">{item.workerPhone || '—'}</dd></div><div><dt className="text-slate-400">Last update</dt><dd className="font-semibold text-slate-700">{item.syncTime}</dd></div></dl>
+              <dl className="mt-4 grid grid-cols-2 gap-3 text-xs">
+                <div><dt className="text-slate-400">Household Head</dt><dd className="font-semibold text-slate-700 dark:text-slate-200">{item.householdHead || item.patientName || '—'}</dd></div>
+                <div><dt className="text-slate-400">Village</dt><dd className="font-semibold text-slate-700 dark:text-slate-200">{item.village}</dd></div>
+                <div><dt className="text-slate-400">ASHA worker</dt><dd className="font-semibold text-slate-700 dark:text-slate-200">{item.workerName}</dd></div>
+                <div><dt className="text-slate-400">Worker phone</dt><dd className="font-semibold text-slate-700 dark:text-slate-200">{item.workerPhone || '—'}</dd></div>
+                <div><dt className="text-slate-400">Last update</dt><dd className="font-semibold text-slate-700 dark:text-slate-200">{item.syncTime}</dd></div>
+              </dl>
               <p className="mt-4 border-t border-slate-100 pt-3 text-xs leading-5 text-slate-500">{item.details}</p>
             </Card>
           ))}

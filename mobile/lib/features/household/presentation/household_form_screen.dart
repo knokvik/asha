@@ -1076,42 +1076,45 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
               },
             ),
             const SizedBox(height: 12),
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  flex: 2,
-                  child: TextFormField(
-                    key: Key('member_age_field_$index'),
-                    controller: member.ageController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Age (Years)',
-                      hintText: 'e.g. 28',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
+                TextFormField(
+                  key: Key('member_age_field_$index'),
+                  controller: member.ageController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Age (Years)',
+                    hintText: 'e.g. 28',
+                    border: OutlineInputBorder(),
+                    isDense: true,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 3,
-                  child: DropdownButtonFormField<String>(
-                    key: Key('member_relationship_field_$index'),
-                    initialValue: member.relationship,
-                    decoration: const InputDecoration(
-                      labelText: 'Relationship',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    items: _relationships.map((rel) {
-                      return DropdownMenuItem(value: rel, child: Text(rel));
-                    }).toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        setState(() => member.relationship = val);
-                      }
-                    },
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  key: Key('member_relationship_field_$index'),
+                  initialValue: member.relationship,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Relationship',
+                    border: OutlineInputBorder(),
+                    isDense: true,
                   ),
+                  items: _relationships.map((rel) {
+                    return DropdownMenuItem(
+                      value: rel,
+                      child: Text(
+                        rel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() => member.relationship = val);
+                    }
+                  },
                 ),
               ],
             ),

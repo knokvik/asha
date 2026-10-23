@@ -149,7 +149,12 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
               children: [
                 Icon(Icons.support_agent, color: Colors.purple),
                 SizedBox(width: 8),
-                Text('Support Needed'),
+                Expanded(
+                  child: Text(
+                    'Support Needed',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
             content: const Text(
@@ -198,7 +203,10 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
     return Scaffold(
       backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
-        title: const Text('PNC Visit', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+        title: const Text(
+          'PNC Visit',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+        ),
         backgroundColor: AshaColors.cardSurface,
         foregroundColor: AshaColors.textPrimary,
         elevation: 0,
@@ -207,7 +215,9 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: [
           ClinicalPatientContextCard(
-            name: widget.motherName.trim().isNotEmpty ? widget.motherName : 'Postnatal Beneficiary',
+            name: widget.motherName.trim().isNotEmpty
+                ? widget.motherName
+                : 'Postnatal Beneficiary',
             details: 'Postpartum Day ${widget.visitDay} · Maternal follow-up',
             contextLabel: 'Postpartum Mother',
           ),
@@ -227,22 +237,42 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.warning_amber_rounded, color: Colors.red.shade800, size: 22),
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: Colors.red.shade800,
+                        size: 22,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Maternal Danger Signs',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.red.shade900),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red.shade900,
+                          ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  ...dangerSigns.map((s) => Text('• $s', style: TextStyle(color: Colors.red.shade900, fontSize: 12.5))),
+                  ...dangerSigns.map(
+                    (s) => Text(
+                      '• $s',
+                      style: TextStyle(
+                        color: Colors.red.shade900,
+                        fontSize: 12.5,
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     'Urgent referral to CHC / District Hospital needed.',
-                    style: TextStyle(fontWeight: FontWeight.w600, color: Colors.red.shade900, fontSize: 11.5),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.red.shade900,
+                      fontSize: 11.5,
+                    ),
                   ),
                 ],
               ),
@@ -257,13 +287,18 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                 Expanded(
                   child: TextFormField(
                     initialValue: _temperatureC?.toString(),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: InputDecoration(
                       labelText: 'Temp (°C)',
                       isDense: true,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    onChanged: (v) => setState(() => _temperatureC = double.tryParse(v)),
+                    onChanged: (v) =>
+                        setState(() => _temperatureC = double.tryParse(v)),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -274,9 +309,12 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                     decoration: InputDecoration(
                       labelText: 'Systolic BP',
                       isDense: true,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    onChanged: (v) => setState(() => _systolicBp = int.tryParse(v)),
+                    onChanged: (v) =>
+                        setState(() => _systolicBp = int.tryParse(v)),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -287,9 +325,12 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                     decoration: InputDecoration(
                       labelText: 'Diastolic BP',
                       isDense: true,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    onChanged: (v) => setState(() => _diastolicBp = int.tryParse(v)),
+                    onChanged: (v) =>
+                        setState(() => _diastolicBp = int.tryParse(v)),
                   ),
                 ),
               ],
@@ -307,9 +348,15 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                   decoration: InputDecoration(
                     labelText: 'Bleeding / Lochia',
                     isDense: true,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  items: PncBleedingStatus.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(),
+                  items: PncBleedingStatus.values
+                      .map(
+                        (s) => DropdownMenuItem(value: s, child: Text(s.label)),
+                      )
+                      .toList(),
                   onChanged: (v) => setState(() => _bleedingStatus = v!),
                 ),
                 const SizedBox(height: 10),
@@ -318,9 +365,15 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                   decoration: InputDecoration(
                     labelText: 'Breast Condition',
                     isDense: true,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  items: PncBreastStatus.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(),
+                  items: PncBreastStatus.values
+                      .map(
+                        (s) => DropdownMenuItem(value: s, child: Text(s.label)),
+                      )
+                      .toList(),
                   onChanged: (v) => setState(() => _breastStatus = v!),
                 ),
                 const SizedBox(height: 10),
@@ -329,9 +382,15 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                   decoration: InputDecoration(
                     labelText: 'Perineal / C-Section Wound',
                     isDense: true,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  items: PncWoundStatus.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(),
+                  items: PncWoundStatus.values
+                      .map(
+                        (s) => DropdownMenuItem(value: s, child: Text(s.label)),
+                      )
+                      .toList(),
                   onChanged: (v) => setState(() => _woundStatus = v!),
                 ),
               ],
@@ -392,7 +451,8 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                 ClinicalSwitchTile(
                   title: 'Nutrition & Hydration Counseling Given',
                   value: _nutritionCounsellingGiven,
-                  onChanged: (v) => setState(() => _nutritionCounsellingGiven = v),
+                  onChanged: (v) =>
+                      setState(() => _nutritionCounsellingGiven = v),
                 ),
                 ClinicalSwitchTile(
                   title: 'Postpartum Family Planning Discussed',
@@ -405,7 +465,8 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                     title: 'Claim Institutional Escort Incentive',
                     subtitle: 'Day 1–3 verification',
                     value: _claimDeliveryIncentive,
-                    onChanged: (v) => setState(() => _claimDeliveryIncentive = v),
+                    onChanged: (v) =>
+                        setState(() => _claimDeliveryIncentive = v),
                   ),
                 ],
               ],
@@ -415,7 +476,9 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
           const SizedBox(height: 12),
 
           ClinicalSubmitButton(
-            label: hasRed ? 'Danger Sign: Open Emergency Referral' : 'Save PNC Visit',
+            label: hasRed
+                ? 'Danger Sign: Open Emergency Referral'
+                : 'Save PNC Visit',
             isSaving: _isSaving,
             isEmergency: hasRed,
             onPressed: _submitVisit,

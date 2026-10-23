@@ -206,13 +206,13 @@ class _SyncHeaderButton extends StatelessWidget {
     final isOffline =
         !isConnected || snapshot?.state == SyncConnectionState.offline;
 
-    // Connected = Green dot on cloud.
-    // Offline / Syncing / Pending = Yellow/Amber sync icon.
-    final iconColor = isConnected && pending == 0
-        ? const Color(0xFF1E4231)
+    // The title-bar cloud reflects connectivity itself: red means offline,
+    // green means the server is reachable, and blue is an active sync.
+    final iconColor = isOffline
+        ? const Color(0xFFDC2626)
         : isSyncing
         ? const Color(0xFF2563EB)
-        : const Color(0xFFD97706); // Amber/Yellow
+        : const Color(0xFF16A34A);
 
     return IconButton(
       key: const Key('shell_sync_button'),
@@ -260,7 +260,7 @@ class _SyncHeaderButton extends StatelessWidget {
                 ),
               ),
             ),
-          // Yellow/Amber badge when packets are waiting to sync or offline
+          // Red badge when packets are waiting while offline.
           if (pending > 0)
             Positioned(
               right: -6,
@@ -270,7 +270,7 @@ class _SyncHeaderButton extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 3),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF59E0B), // Yellow/Amber badge
+                  color: const Color(0xFFDC2626),
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 1),
                 ),
@@ -284,7 +284,7 @@ class _SyncHeaderButton extends StatelessWidget {
                 ),
               ),
             ),
-          // Yellow dot when offline without pending packets
+          // Red dot when offline without pending packets
           if (isOffline && pending == 0 && !isSyncing)
             Positioned(
               right: -1,
@@ -293,7 +293,7 @@ class _SyncHeaderButton extends StatelessWidget {
                 width: 8,
                 height: 8,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF59E0B), // Yellow offline dot
+                  color: const Color(0xFFDC2626),
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 1.5),
                 ),

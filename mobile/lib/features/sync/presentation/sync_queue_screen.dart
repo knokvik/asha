@@ -44,6 +44,7 @@ class SyncQueueScreen extends ConsumerWidget {
         .length;
     final pendingCount = snapshot.pendingCount;
     final failedCount = snapshot.failedCount;
+    final displayRecords = _deduplicatePackets(snapshot.records);
 
     return Scaffold(
       backgroundColor: AshaColors.screenBg,
@@ -223,14 +224,14 @@ class SyncQueueScreen extends ConsumerWidget {
                 ),
               ),
             const SizedBox(height: 18),
-            if (snapshot.records.isEmpty)
+            if (displayRecords.isEmpty)
               const _EmptyQueue()
             else ...[
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '${shellText(lang, 'syncStoredPackets')} (${snapshot.records.length})',
+                    '${shellText(lang, 'syncStoredPackets')} (${displayRecords.length})',
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
@@ -248,7 +249,7 @@ class SyncQueueScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 10),
-              ...snapshot.records.map(
+              ...displayRecords.map(
                 (record) => _QueuePacketTile(record: record),
               ),
             ],
@@ -281,6 +282,34 @@ class SyncQueueScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// One visible row per locally queued operation. Repeated writes for the same
+/// record are collapsed so workers see the packet's real current state rather
+/// than a noisy list of intermediate queue rows.
+List<SyncQueueData> _deduplicatePackets(List<SyncQueueData> records) {
+  final grouped = <String, SyncQueueData>{};
+  int statusRank(String status) => switch (status) {
+    'pending' => 3,
+    'failed' => 4,
+    'synced' => 1,
+    _ => 2,
+  };
+  for (final record in records) {
+    final key = record.recordId.isNotEmpty
+        ? '${record.targetTable}:${record.recordId}'
+        : '${record.targetTable}:${record.payloadJson}';
+    final existing = grouped[key];
+    if (existing == null ||
+        statusRank(record.syncStatus) > statusRank(existing.syncStatus) ||
+        (record.syncStatus == existing.syncStatus &&
+            record.createdAt > existing.createdAt)) {
+      grouped[key] = record;
+    }
+  }
+  final result = grouped.values.toList()
+    ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  return result;
 }
 
 class _SyncStatPill extends StatelessWidget {
@@ -697,7 +726,7 @@ class _PacketSummary {
   String get title {
     if (payload.isNotEmpty && payload.containsKey('flag')) {
       final name = _text(payload['name'], fallback: 'unnamed patient');
-      return 'Triage ticket · $name';
+      return 'Triage: $name';
     }
     final program = _text(payload['program_code'], fallback: '');
     final name = _text(
@@ -710,8 +739,18 @@ class _PacketSummary {
     final subject = name.isNotEmpty
         ? name
         : (recordId.isNotEmpty ? recordId : 'record');
-    final table = targetTable.replaceAll('_', ' ');
-    return '${operation.toUpperCase()} ${program.isNotEmpty ? '$program ' : ''}$table · $subject';
+    final table = targetTable
+        .split('_')
+        .map(
+          (part) => part.isEmpty
+              ? part
+              : '${part[0].toUpperCase()}${part.substring(1)}',
+        )
+        .join(' ');
+    final operationLabel = operation.isEmpty
+        ? ''
+        : '${operation[0].toUpperCase()}${operation.substring(1)} ';
+    return '$operationLabel${program.isNotEmpty ? '$program: ' : ''}$table: $subject';
   }
 
   String get subtitle {

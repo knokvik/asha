@@ -405,8 +405,10 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
                 ),
               ),
               const SizedBox(height: 18),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 10,
+                runSpacing: 10,
                 children: [
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
@@ -421,7 +423,6 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
                     icon: const Icon(Icons.sync_rounded, size: 16),
                     label: Text(_dueCopy(_currentLanguage, 'syncServer')),
                   ),
-                  const SizedBox(width: 10),
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF166534),

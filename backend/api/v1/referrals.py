@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.multi_tenant import TenantContext, set_tenant_context
 from core.security import decode_token
 from db.session import get_db
-from models.db.models import AuditLog, Member, ReferralRecord
+from models.db.models import AuditLog, Member, Household, ReferralRecord
 from models.schemas.schemas import (
     ReferralOutcomeRequest,
     ReferralOutcomeResponse,
@@ -273,15 +273,39 @@ async def list_facility_referrals(
     result = await db.execute(stmt)
     records = result.scalars().all()
 
+    # Pre-fetch member & household info for real names and household head
+    member_ids = [r.member_id for r in records if r.member_id]
+    member_map = {}
+    household_map = {}
+    if member_ids:
+        mem_stmt = select(Member).where(Member.id.in_(member_ids))
+        mem_res = await db.execute(mem_stmt)
+        for m in mem_res.scalars().all():
+            member_map[m.id] = m
+        hh_ids = [m.household_id for m in member_map.values() if m.household_id]
+        if hh_ids:
+            hh_stmt = select(Household).where(Household.id.in_(hh_ids))
+            hh_res = await db.execute(hh_stmt)
+            for h in hh_res.scalars().all():
+                household_map[h.id] = h
+
     items = []
     for r in records:
+        mem = member_map.get(r.member_id) if r.member_id else None
+        hh = household_map.get(mem.household_id) if mem and mem.household_id else None
+
+        patient_name = mem.name if mem and mem.name else f"Beneficiary ({r.id})"
+        head_name = hh.head_name if hh and hh.head_name else (mem.name if mem and mem.relationship_to_head == 'Head' else None)
+        village = hh.village if hh and hh.village else "Shahpur North"
+
         items.append({
             "id": r.id,
             "patientId": r.member_id or f"P-{r.id}",
-            "patientName": f"Beneficiary ({r.id})",
+            "patientName": patient_name,
+            "householdHead": head_name,
             "patientAge": 28,
-            "patientGender": "F",
-            "village": "Shahpur North",
+            "patientGender": (mem.sex if mem and mem.sex else "F"),
+            "village": village,
             "ashaId": "ASHA-001",
             "ashaName": "Sunita Devi",
             "ashaPhone": "9876543210",

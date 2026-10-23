@@ -75,7 +75,8 @@ class ProgramsHubScreen extends ConsumerWidget {
           crossAxisCount: 2,
           crossAxisSpacing: 14,
           mainAxisSpacing: 14,
-          childAspectRatio: 0.88,
+          // Keep enough vertical room for translated program names and subtitles.
+          childAspectRatio: 0.75,
           children: [
             _ClinicalCard(
               title: 'ANC',
@@ -227,16 +228,24 @@ class _ProgramEntrySelectionSheetState
           switch (widget.type) {
             case ClinicalProgramType.anc:
               // Females of reproductive age
-              return m.sex == 'F' && (ageYears == null || (ageYears >= 15 && ageYears <= 49));
+              return m.sex == 'F' &&
+                  (ageYears == null || (ageYears >= 15 && ageYears <= 49));
             case ClinicalProgramType.pnc:
               // Postnatal mothers (Adult / reproductive females, NOT newborns/infants)
-              return m.sex == 'F' && (ageYears == null || (ageYears >= 15 && ageYears <= 49));
+              return m.sex == 'F' &&
+                  (ageYears == null || (ageYears >= 15 && ageYears <= 49));
             case ClinicalProgramType.hbnc:
               // Newborns & young infants (under 1 year) or child records
-              return ageYears == null || ageYears <= 1 || m.relationshipToHead == 'Son' || m.relationshipToHead == 'Daughter';
+              return ageYears == null ||
+                  ageYears <= 1 ||
+                  m.relationshipToHead == 'Son' ||
+                  m.relationshipToHead == 'Daughter';
             case ClinicalProgramType.immunization:
               // Children / infants (under 6 years) or son/daughter
-              return ageYears == null || ageYears <= 6 || m.relationshipToHead == 'Son' || m.relationshipToHead == 'Daughter';
+              return ageYears == null ||
+                  ageYears <= 6 ||
+                  m.relationshipToHead == 'Son' ||
+                  m.relationshipToHead == 'Daughter';
             case ClinicalProgramType.ncd:
               // Adults eligible for NCD / CBAC screening (typically 30+ years)
               return ageYears == null || ageYears >= 18;
@@ -246,7 +255,9 @@ class _ProgramEntrySelectionSheetState
           }
         }).toList();
 
-        final displayList = filteredMembers.isNotEmpty ? filteredMembers : members;
+        final displayList = filteredMembers.isNotEmpty
+            ? filteredMembers
+            : members;
 
         setState(() {
           _beneficiaries = displayList.map((m) {
@@ -382,7 +393,11 @@ class _ProgramEntrySelectionSheetState
           // Option 2: Choose existing patient for regular follow-up visit
           Row(
             children: [
-              const Icon(Icons.people_alt_rounded, size: 16, color: AshaColors.textSecondary),
+              const Icon(
+                Icons.people_alt_rounded,
+                size: 16,
+                color: AshaColors.textSecondary,
+              ),
               const SizedBox(width: 6),
               const Text(
                 'Select Registered Beneficiary (Regular Visit)',
@@ -402,10 +417,16 @@ class _ProgramEntrySelectionSheetState
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
               hintText: 'Search by name, RCH, or mobile number...',
-              hintStyle: const TextStyle(fontSize: 13, color: AshaColors.textMuted),
+              hintStyle: const TextStyle(
+                fontSize: 13,
+                color: AshaColors.textMuted,
+              ),
               prefixIcon: const Icon(Icons.search_rounded, size: 20),
               isDense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 10,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: const BorderSide(color: AshaColors.borderSubtle),
@@ -420,76 +441,95 @@ class _ProgramEntrySelectionSheetState
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : filtered.isEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 24),
-                        child: Center(
-                          child: Text(
-                            'No matching beneficiary found.\nUse the button above to register as a first-time entry.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text(
+                        'No matching beneficiary found.\nUse the button above to register as a first-time entry.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, idx) {
+                      final b = filtered[idx];
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 2,
+                        ),
+                        leading: CircleAvatar(
+                          radius: 18,
+                          backgroundColor: AshaColors.surfaceMuted,
+                          child: Icon(
+                            b['sex'] == 'F'
+                                ? Icons.face_3_rounded
+                                : Icons.face_rounded,
+                            color: AshaColors.primary,
+                            size: 20,
                           ),
                         ),
-                      )
-                    : ListView.separated(
-                        shrinkWrap: true,
-                        itemCount: filtered.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
-                        itemBuilder: (context, idx) {
-                          final b = filtered[idx];
-                          return ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                            leading: CircleAvatar(
-                              radius: 18,
-                              backgroundColor: AshaColors.surfaceMuted,
-                              child: Icon(
-                                b['sex'] == 'F' ? Icons.face_3_rounded : Icons.face_rounded,
-                                color: AshaColors.primary,
-                                size: 20,
+                        title: Text(
+                          b['name']!,
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: AshaColors.textPrimary,
+                          ),
+                        ),
+                        subtitle: Text(
+                          b['rch']!,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AshaColors.textSecondary,
+                          ),
+                        ),
+                        trailing: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF0FDF4),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFBBF7D0)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Text(
+                                'Regular Visit',
+                                style: TextStyle(
+                                  color: Color(0xFF15803D),
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
-                            ),
-                            title: Text(
-                              b['name']!,
-                              style: const TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w700,
-                                color: AshaColors.textPrimary,
+                              SizedBox(width: 4),
+                              Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                size: 10,
+                                color: Color(0xFF15803D),
                               ),
-                            ),
-                            subtitle: Text(
-                              b['rch']!,
-                              style: const TextStyle(fontSize: 11, color: AshaColors.textSecondary),
-                            ),
-                            trailing: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF0FDF4),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: const Color(0xFFBBF7D0)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: const [
-                                  Text(
-                                    'Regular Visit',
-                                    style: TextStyle(
-                                      color: Color(0xFF15803D),
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                  SizedBox(width: 4),
-                                  Icon(Icons.arrow_forward_ios_rounded, size: 10, color: Color(0xFF15803D)),
-                                ],
-                              ),
-                            ),
-                            onTap: () {
-                              Navigator.of(context).pop();
-                              final suffix = '?memberId=${Uri.encodeComponent(b['id']!)}&name=${Uri.encodeComponent(b['name']!)}';
-                              context.push('${widget.visitRouteBase}$suffix');
-                            },
-                          );
+                            ],
+                          ),
+                        ),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          final suffix =
+                              '?memberId=${Uri.encodeComponent(b['id']!)}&name=${Uri.encodeComponent(b['name']!)}';
+                          context.push('${widget.visitRouteBase}$suffix');
                         },
-                      ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -561,6 +601,8 @@ class _ClinicalCard extends StatelessWidget {
               // Title: ANC, PNC, etc.
               Text(
                 title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
@@ -569,12 +611,16 @@ class _ClinicalCard extends StatelessWidget {
               ),
               const SizedBox(height: 3),
               // Subtitle
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AshaColors.textSecondary,
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: Text(
+                  subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AshaColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ],

@@ -260,61 +260,72 @@ class ProfileScreen extends ConsumerWidget {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            InkWell(
-                              onTap: () => context.push('/sync'),
-                              borderRadius: BorderRadius.circular(20),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isConnected
-                                      ? const Color(0xFFF0FDF4)
-                                      : const Color(0xFFFEF3C7),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: isConnected
-                                        ? const Color(0xFFBBF7D0)
-                                        : const Color(0xFFFDE68A),
-                                    width: 1.0,
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: InkWell(
+                                onTap: () => context.push('/sync'),
+                                borderRadius: BorderRadius.circular(20),
+                                child: Container(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 150,
                                   ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      isConnected
-                                          ? Icons.cloud_done_rounded
-                                          : Icons.cloud_off_rounded,
-                                      size: 14,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isConnected
+                                        ? const Color(0xFFF0FDF4)
+                                        : const Color(0xFFFEF3C7),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
                                       color: isConnected
-                                          ? const Color(0xFF16A34A)
-                                          : const Color(0xFFD97706),
+                                          ? const Color(0xFFBBF7D0)
+                                          : const Color(0xFFFDE68A),
+                                      width: 1.0,
                                     ),
-                                    const SizedBox(width: 5),
-                                    Text(
-                                      isConnected
-                                          ? shellText(lang, 'serverOnline')
-                                          : shellText(lang, 'offline'),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        isConnected
+                                            ? Icons.cloud_done_rounded
+                                            : Icons.cloud_off_rounded,
+                                        size: 14,
                                         color: isConnected
-                                            ? const Color(0xFF15803D)
-                                            : const Color(0xFFB45309),
-                                        fontFamily: 'SF Pro Display',
+                                            ? const Color(0xFF16A34A)
+                                            : const Color(0xFFD97706),
                                       ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Icon(
-                                      Icons.chevron_right_rounded,
-                                      size: 15,
-                                      color: isConnected
-                                          ? const Color(0xFF16A34A)
-                                          : const Color(0xFFD97706),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 5),
+                                      Flexible(
+                                        child: Text(
+                                          isConnected
+                                              ? shellText(lang, 'serverOnline')
+                                              : shellText(lang, 'offline'),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          softWrap: false,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: isConnected
+                                                ? const Color(0xFF15803D)
+                                                : const Color(0xFFB45309),
+                                            fontFamily: 'SF Pro Display',
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Icon(
+                                        Icons.chevron_right_rounded,
+                                        size: 15,
+                                        color: isConnected
+                                            ? const Color(0xFF16A34A)
+                                            : const Color(0xFFD97706),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),

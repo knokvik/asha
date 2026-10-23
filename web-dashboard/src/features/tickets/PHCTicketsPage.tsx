@@ -105,6 +105,7 @@ export function PHCTicketsPage() {
           status: ref.status === 'treated' ? 'Processed' : 'Triage Priority',
           severity: ref.severity || 'RED',
           patientName: ref.patientName,
+          householdHead: ref.householdHead,
           patientAge: ref.ageMonths ? `${Math.floor(ref.ageMonths / 12)}y` : undefined,
           patientGender: ref.patientGender,
           abhaId: ref.abhaId,
@@ -114,6 +115,9 @@ export function PHCTicketsPage() {
         });
       }
     }
+
+    // Sort so newest / live triage items appear on top (ascending by recency)
+    list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
     // Filter by priority
     return list.filter((item) => {
@@ -388,6 +392,10 @@ export function PHCTicketsPage() {
                       <dd className="font-semibold text-slate-700 dark:text-slate-200">{item.village || '—'}</dd>
                     </div>
                     <div>
+                      <dt className="text-slate-400">Household Head</dt>
+                      <dd className="font-semibold text-slate-700 dark:text-slate-200">{item.householdHead || item.patientName || '—'}</dd>
+                    </div>
+                    <div>
                       <dt className="text-slate-400">ASHA worker</dt>
                       <dd className="font-semibold text-slate-700 dark:text-slate-200">{item.workerName}</dd>
                     </div>
@@ -493,7 +501,9 @@ export function PHCTicketsPage() {
               {/* Patient Snapshot */}
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#1E1E1E] border border-slate-200 dark:border-slate-800 text-xs grid grid-cols-2 gap-2">
                 <div><span className="text-slate-400">Patient:</span> <strong className="text-slate-800 dark:text-slate-200">{selectedCase.patientName}</strong></div>
+                <div><span className="text-slate-400">Household Head:</span> <strong className="text-slate-800 dark:text-slate-200">{selectedCase.householdHead || selectedCase.patientName || '—'}</strong></div>
                 <div><span className="text-slate-400">Village:</span> <strong className="text-slate-800 dark:text-slate-200">{selectedCase.village}</strong></div>
+                <div><span className="text-slate-400">Referring ASHA:</span> <strong className="text-slate-800 dark:text-slate-200">{selectedCase.workerName} ({selectedCase.workerPhone || '—'})</strong></div>
                 <div><span className="text-slate-400">Vitals:</span> <span className="text-slate-700 dark:text-slate-300">{selectedCase.vitalsSummary || 'Not provided'}</span></div>
                 <div><span className="text-slate-400">Danger signs:</span> <span className="text-rose-700 font-semibold">{selectedCase.dangerSigns?.join(', ') || 'None reported'}</span></div>
               </div>

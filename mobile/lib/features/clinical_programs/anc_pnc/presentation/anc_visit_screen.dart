@@ -136,7 +136,12 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
               children: [
                 Icon(Icons.event_available, color: Color(0xFFF59E0B)),
                 SizedBox(width: 8),
-                Text('PMSMA Checkup Due'),
+                Expanded(
+                  child: Text(
+                    'PMSMA Checkup Due',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
             content: Text(
@@ -187,7 +192,10 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
     return Scaffold(
       backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
-        title: const Text('ANC Visit', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+        title: const Text(
+          'ANC Visit',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+        ),
         backgroundColor: AshaColors.cardSurface,
         foregroundColor: AshaColors.textPrimary,
         elevation: 0,
@@ -196,8 +204,11 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: [
           ClinicalPatientContextCard(
-            name: widget.womanName.trim().isNotEmpty ? widget.womanName : 'ANC Beneficiary',
-            details: 'Contact ${widget.contactNumber} · ${widget.gestationWeeks} weeks pregnant',
+            name: widget.womanName.trim().isNotEmpty
+                ? widget.womanName
+                : 'ANC Beneficiary',
+            details:
+                'Contact ${widget.contactNumber} · ${widget.gestationWeeks} weeks pregnant',
             contextLabel: 'Registered ANC Beneficiary',
           ),
           const SizedBox(height: 12),
@@ -217,22 +228,42 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.warning_amber_rounded, color: Colors.red.shade800, size: 22),
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: Colors.red.shade800,
+                        size: 22,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Danger Signs Detected',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.red.shade900),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red.shade900,
+                          ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  ...dangerSigns.map((s) => Text('• $s', style: TextStyle(color: Colors.red.shade900, fontSize: 12.5))),
+                  ...dangerSigns.map(
+                    (s) => Text(
+                      '• $s',
+                      style: TextStyle(
+                        color: Colors.red.shade900,
+                        fontSize: 12.5,
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     'Immediate transfer to CHC/Hospital recommended via 108.',
-                    style: TextStyle(fontWeight: FontWeight.w600, color: Colors.red.shade900, fontSize: 11.5),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.red.shade900,
+                      fontSize: 11.5,
+                    ),
                   ),
                 ],
               ),
@@ -249,12 +280,20 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.assignment_turned_in, color: Colors.blue.shade800, size: 22),
+                  Icon(
+                    Icons.assignment_turned_in,
+                    color: Colors.blue.shade800,
+                    size: 22,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Birth plan due (${widget.gestationWeeks}w): Verify hospital, 108 transport, and blood donor.',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.blue.shade900),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.blue.shade900,
+                      ),
                     ),
                   ),
                 ],
@@ -277,9 +316,15 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
                           labelText: 'Systolic BP',
                           suffixText: 'mmHg',
                           isDense: true,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AshaColors.borderSubtle)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: AshaColors.borderSubtle,
+                            ),
+                          ),
                         ),
-                        onChanged: (v) => setState(() => _systolicBp = int.tryParse(v)),
+                        onChanged: (v) =>
+                            setState(() => _systolicBp = int.tryParse(v)),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -291,9 +336,15 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
                           labelText: 'Diastolic BP',
                           suffixText: 'mmHg',
                           isDense: true,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AshaColors.borderSubtle)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: AshaColors.borderSubtle,
+                            ),
+                          ),
                         ),
-                        onChanged: (v) => setState(() => _diastolicBp = int.tryParse(v)),
+                        onChanged: (v) =>
+                            setState(() => _diastolicBp = int.tryParse(v)),
                       ),
                     ),
                   ],
@@ -304,28 +355,44 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
                     Expanded(
                       child: TextFormField(
                         initialValue: _haemoglobin?.toString(),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Haemoglobin (Hb)',
                           suffixText: 'g/dL',
                           isDense: true,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AshaColors.borderSubtle)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: AshaColors.borderSubtle,
+                            ),
+                          ),
                         ),
-                        onChanged: (v) => setState(() => _haemoglobin = double.tryParse(v)),
+                        onChanged: (v) =>
+                            setState(() => _haemoglobin = double.tryParse(v)),
                       ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: TextFormField(
                         initialValue: _weightKg?.toString(),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Weight',
                           suffixText: 'kg',
                           isDense: true,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AshaColors.borderSubtle)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: AshaColors.borderSubtle,
+                            ),
+                          ),
                         ),
-                        onChanged: (v) => setState(() => _weightKg = double.tryParse(v)),
+                        onChanged: (v) =>
+                            setState(() => _weightKg = double.tryParse(v)),
                       ),
                     ),
                   ],
@@ -350,9 +417,16 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
                           labelText: 'Fundal Height',
                           suffixText: 'cm',
                           isDense: true,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AshaColors.borderSubtle)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: AshaColors.borderSubtle,
+                            ),
+                          ),
                         ),
-                        onChanged: (v) => setState(() => _fundalHeightWeeks = int.tryParse(v)),
+                        onChanged: (v) => setState(
+                          () => _fundalHeightWeeks = int.tryParse(v),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -364,9 +438,16 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
                           labelText: 'Heart Rate (FHR)',
                           suffixText: 'bpm',
                           isDense: true,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AshaColors.borderSubtle)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(
+                              color: AshaColors.borderSubtle,
+                            ),
+                          ),
                         ),
-                        onChanged: (v) => setState(() => _fetalHeartRateBpm = int.tryParse(v)),
+                        onChanged: (v) => setState(
+                          () => _fetalHeartRateBpm = int.tryParse(v),
+                        ),
                       ),
                     ),
                   ],
@@ -422,12 +503,20 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
                     decoration: InputDecoration(
                       labelText: 'Td Dose Type',
                       isDense: true,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     items: const [
                       DropdownMenuItem(value: 'Td-1', child: Text('Td-1 Dose')),
-                      DropdownMenuItem(value: 'Td-2', child: Text('Td-2 Dose (4w later)')),
-                      DropdownMenuItem(value: 'Td-Booster', child: Text('Td-Booster')),
+                      DropdownMenuItem(
+                        value: 'Td-2',
+                        child: Text('Td-2 Dose (4w later)'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Td-Booster',
+                        child: Text('Td-Booster'),
+                      ),
                     ],
                     onChanged: (v) => setState(() => _tdDoseType = v),
                   ),
@@ -458,7 +547,8 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
                 ClinicalSwitchTile(
                   title: 'Severe Swelling (Face / Hands)',
                   value: _severeSwellingFaceHands,
-                  onChanged: (v) => setState(() => _severeSwellingFaceHands = v),
+                  onChanged: (v) =>
+                      setState(() => _severeSwellingFaceHands = v),
                   isDanger: true,
                 ),
                 ClinicalSwitchTile(
@@ -488,7 +578,9 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
           ClinicalSubmitButton(
             label: hasRed
                 ? 'Record Danger Signs & Open Emergency Referral'
-                : (hasYellow ? 'Save High-Risk Contact & Schedule PMSMA' : 'Save ANC Contact'),
+                : (hasYellow
+                      ? 'Save High-Risk Contact & Schedule PMSMA'
+                      : 'Save ANC Contact'),
             isSaving: _isSaving,
             isEmergency: hasRed,
             onPressed: _submitVisit,
