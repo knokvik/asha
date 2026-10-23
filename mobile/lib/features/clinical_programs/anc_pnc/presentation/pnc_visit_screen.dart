@@ -207,7 +207,7 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: [
           ClinicalPatientContextCard(
-            name: widget.motherName.isEmpty ? 'Kavita Singh' : widget.motherName,
+            name: widget.motherName.trim().isNotEmpty ? widget.motherName : 'Postnatal Beneficiary',
             details: 'Postpartum Day ${widget.visitDay} · Maternal follow-up',
             contextLabel: 'Postpartum Mother',
           ),

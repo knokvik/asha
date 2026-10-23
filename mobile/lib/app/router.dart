@@ -392,6 +392,7 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
           path: 'hbnc-visit',
           builder: (context, state) => HbncVisitScreen(
             newbornId: state.uri.queryParameters['memberId'] ?? '',
+            newbornName: state.uri.queryParameters['name'],
             motherId: state.uri.queryParameters['motherId'] ?? '',
             visitScheduleId:
                 state.uri.queryParameters['visitId'] ?? 'sched_hbnc_01',

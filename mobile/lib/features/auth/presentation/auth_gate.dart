@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/database/demo_data_seeder.dart';
 import '../../../services/auth_service.dart';
 import '../../../shared/providers/core_providers.dart';
 import 'pin_setup_screen.dart';
@@ -35,6 +36,13 @@ class _AuthGateState extends ConsumerState<AuthGate> {
         await ref.read(keyManagerProvider).deriveKey('supabase:${user.id}');
     if (!mounted) return;
     ref.read(databaseKeyProvider.notifier).unlock(key);
+    
+    // Seed real demo beneficiaries if local DB is currently empty
+    try {
+      final db = ref.read(appDatabaseProvider);
+      await DemoDataSeeder.seedIfEmpty(db);
+    } catch (_) {}
+
     final session = Supabase.instance.client.auth.currentSession;
     if (session != null) {
       const storage = FlutterSecureStorage();

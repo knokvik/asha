@@ -12,6 +12,7 @@ import '../../presentation/clinical_card_helpers.dart';
 /// Screen presenting the guided Home Based Newborn Care (HBNC) visit checklist.
 class HbncVisitScreen extends ConsumerStatefulWidget {
   final String newbornId;
+  final String? newbornName;
   final String motherId;
   final String visitScheduleId;
   final String visitTitle;
@@ -23,6 +24,7 @@ class HbncVisitScreen extends ConsumerStatefulWidget {
   const HbncVisitScreen({
     super.key,
     required this.newbornId,
+    this.newbornName,
     required this.motherId,
     required this.visitScheduleId,
     this.visitTitle = 'HBNC Day 7 Newborn Visit',
@@ -444,6 +446,9 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
   }
 
   Widget _buildVisitSummaryCard() {
+    final displayName = widget.newbornName?.trim().isNotEmpty == true
+        ? widget.newbornName!
+        : 'Newborn Beneficiary';
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -463,7 +468,7 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Baby Aarav', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 Text('Birth Weight: ${widget.birthWeightKg} kg · Day ${widget.visitDay}', style: const TextStyle(fontSize: 12, color: AshaColors.textMuted)),
               ],
             ),

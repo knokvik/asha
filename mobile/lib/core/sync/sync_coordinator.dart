@@ -133,15 +133,10 @@ class SyncCoordinator extends ChangeNotifier {
       final worker = await SyncWorker.fromStoredConfig(
         db: _database,
         storage: _storage,
+      ) ?? SyncWorker(
+        db: _database,
+        apiBaseUrl: await _storage.read(key: 'sync_api_base_url') ?? 'http://localhost:8000',
       );
-      if (worker == null) {
-        await _finish(
-          SyncConnectionState.offline,
-          error:
-              'No sync server is configured. Your packets remain on this device.',
-        );
-        return;
-      }
 
       final success = await worker.run();
       await refresh();

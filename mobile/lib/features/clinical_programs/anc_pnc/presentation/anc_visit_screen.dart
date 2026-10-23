@@ -196,7 +196,7 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: [
           ClinicalPatientContextCard(
-            name: widget.womanName.isEmpty ? 'Pooja Devi' : widget.womanName,
+            name: widget.womanName.trim().isNotEmpty ? widget.womanName : 'ANC Beneficiary',
             details: 'Contact ${widget.contactNumber} · ${widget.gestationWeeks} weeks pregnant',
             contextLabel: 'Registered ANC Beneficiary',
           ),

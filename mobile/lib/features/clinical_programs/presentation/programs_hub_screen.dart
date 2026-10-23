@@ -217,8 +217,39 @@ class _ProgramEntrySelectionSheetState
     try {
       final members = await db.select(db.members).get();
       if (members.isNotEmpty) {
+        // Filter based on clinical program category
+        final filteredMembers = members.where((m) {
+          final nowMs = DateTime.now().millisecondsSinceEpoch;
+          final ageYears = m.dobApprox != null
+              ? (nowMs - m.dobApprox!) / (365.25 * 24 * 3600 * 1000)
+              : null;
+
+          switch (widget.type) {
+            case ClinicalProgramType.anc:
+              // Females of reproductive age
+              return m.sex == 'F' && (ageYears == null || (ageYears >= 15 && ageYears <= 49));
+            case ClinicalProgramType.pnc:
+              // Postnatal mothers (Adult / reproductive females, NOT newborns/infants)
+              return m.sex == 'F' && (ageYears == null || (ageYears >= 15 && ageYears <= 49));
+            case ClinicalProgramType.hbnc:
+              // Newborns & young infants (under 1 year) or child records
+              return ageYears == null || ageYears <= 1 || m.relationshipToHead == 'Son' || m.relationshipToHead == 'Daughter';
+            case ClinicalProgramType.immunization:
+              // Children / infants (under 6 years) or son/daughter
+              return ageYears == null || ageYears <= 6 || m.relationshipToHead == 'Son' || m.relationshipToHead == 'Daughter';
+            case ClinicalProgramType.ncd:
+              // Adults eligible for NCD / CBAC screening (typically 30+ years)
+              return ageYears == null || ageYears >= 18;
+            case ClinicalProgramType.tb:
+              // All registered community members
+              return true;
+          }
+        }).toList();
+
+        final displayList = filteredMembers.isNotEmpty ? filteredMembers : members;
+
         setState(() {
-          _beneficiaries = members.map((m) {
+          _beneficiaries = displayList.map((m) {
             return {
               'id': m.id,
               'name': m.name,
