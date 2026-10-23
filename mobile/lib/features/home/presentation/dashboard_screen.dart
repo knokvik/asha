@@ -468,6 +468,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           onTap: () => context.push('/households'),
         ),
         _buildQuickActionCard(
+          key: const Key('home_triage_button'),
+          title: shellText(_lang, 'triage'),
+          iconWidget: _quickActionIcon(
+            Icons.emergency_rounded,
+            const Color(0xFFDC2626),
+          ),
+          onTap: () => context.push('/triage'),
+        ),
+        _buildQuickActionCard(
+          title: shellText(_lang, 'programs'),
+          iconWidget: _quickActionIcon(
+            Icons.medical_services_rounded,
+            const Color(0xFF7C3AED),
+          ),
+          onTap: () => context.push('/clinical-programs'),
+        ),
+        _buildQuickActionCard(
           title: 'Tracking',
           iconWidget: _quickActionIcon(
             Icons.track_changes_rounded,

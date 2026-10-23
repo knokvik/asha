@@ -17,6 +17,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/l10n/language_provider.dart';
 import '../../../core/l10n/language_selector_dialog.dart';
+import '../../../core/database/app_database.dart';
 import '../../../core/sync/sync_engine.dart';
 import '../../../core/triage/models/age_band.dart';
 import '../../../core/voice/tts_service.dart';
@@ -181,6 +182,7 @@ class TriageFlowScreen extends ConsumerStatefulWidget {
 
 class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   final _name = TextEditingController();
+  final _householdHeadSearch = TextEditingController();
   final _age = TextEditingController();
   final _location = TextEditingController();
   final _details = TextEditingController();
@@ -235,6 +237,10 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   int _breathSecondsRemaining = 60;
   int _breathCount = 0;
   bool _breathCounting = false;
+  List<Household> _householdSuggestions = const [];
+  List<Member> _householdMembers = const [];
+  Household? _selectedHousehold;
+  Member? _selectedMember;
 
   String get _engineVersion =>
       'imci-engine/pack-${_session?.loop.pack.version ?? 'unknown'}';
@@ -279,6 +285,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   void dispose() {
     _breathTimer?.cancel();
     _name.dispose();
+    _householdHeadSearch.dispose();
     _age.dispose();
     _location.dispose();
     _details.dispose();
@@ -292,6 +299,52 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
     _questionScrollController.dispose();
     _audioRecorder.dispose();
     super.dispose();
+  }
+
+  Future<void> _searchHouseholdHeads(String value) async {
+    final query = value.trim();
+    if (query.isEmpty) {
+      if (mounted) setState(() => _householdSuggestions = const []);
+      return;
+    }
+    final db = ref.read(appDatabaseProvider);
+    final rows = (await db.select(db.households).get())
+        .where((household) => household.headName.toLowerCase().contains(query.toLowerCase()))
+        .take(8)
+        .toList();
+    if (!mounted || _householdHeadSearch.text.trim() != query) return;
+    setState(() => _householdSuggestions = rows);
+  }
+
+  Future<void> _selectHousehold(Household household) async {
+    final db = ref.read(appDatabaseProvider);
+    final members = await (db.select(db.members)
+          ..where((m) => m.householdId.equals(household.id)))
+        .get();
+    if (!mounted) return;
+    setState(() {
+      _selectedHousehold = household;
+      _householdSuggestions = const [];
+      _householdMembers = members;
+      _selectedMember = null;
+      _householdHeadSearch.text = household.headName;
+    });
+  }
+
+  void _selectMember(Member member) {
+    final ageMonths = member.dobApprox == null
+        ? null
+        : DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(member.dobApprox!)).inDays ~/ 30;
+    final years = ageMonths == null ? null : ageMonths ~/ 12;
+    setState(() {
+      _selectedMember = member;
+      _name.text = member.name;
+      _sex = member.sex == 'F' ? 'Female' : member.sex == 'M' ? 'Male' : '';
+      _location.text = _selectedHousehold?.village ?? '';
+      _ageUnit = (ageMonths != null && ageMonths < 60) ? 'months' : 'years';
+      _age.text = _ageUnit == 'months' ? '${ageMonths ?? ''}' : '${years ?? ''}';
+    });
+    _syncAgeBandFromInput(_age.text);
   }
 
   Future<void> _captureTriageImage() async {
@@ -1128,6 +1181,62 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
               fontSize: 12,
             ),
           ),
+        ],
+        const SizedBox(height: 12),
+        TextField(
+          controller: _householdHeadSearch,
+          textCapitalization: TextCapitalization.words,
+          onChanged: _searchHouseholdHeads,
+          decoration: const InputDecoration(
+            labelText: 'Household head',
+            hintText: 'Search household head name',
+            prefixIcon: Icon(Icons.home_work_outlined),
+            border: OutlineInputBorder(),
+          ),
+        ),
+        if (_householdSuggestions.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Card(
+            margin: EdgeInsets.zero,
+            child: Column(
+              children: _householdSuggestions.map((household) {
+                return ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.home_outlined),
+                  title: Text(household.headName),
+                  subtitle: Text('${household.village}${household.hamlet == null ? '' : ' · ${household.hamlet}'}'),
+                  onTap: () => _selectHousehold(household),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+        if (_selectedHousehold != null && _householdMembers.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: _selectedMember?.id,
+            decoration: const InputDecoration(
+              labelText: 'Select household member',
+              prefixIcon: Icon(Icons.person_search_outlined),
+              border: OutlineInputBorder(),
+            ),
+            items: _householdMembers.map((member) => DropdownMenuItem(
+              value: member.id,
+              child: Text(member.name),
+            )).toList(),
+            onChanged: (id) {
+              final member = _householdMembers.firstWhere((m) => m.id == id);
+              _selectMember(member);
+            },
+          ),
+          if (_selectedMember != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                '${_selectedMember!.name} · ${_age.text} ${_ageUnit} · ${_sex.isEmpty ? 'Gender not recorded' : _sex}',
+                style: const TextStyle(fontWeight: FontWeight.w600, color: AshaColors.textSecondary),
+              ),
+            ),
         ],
         const SizedBox(height: 12),
         TextField(
