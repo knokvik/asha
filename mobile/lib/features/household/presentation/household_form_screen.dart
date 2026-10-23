@@ -100,12 +100,51 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
   // Member list
   final List<MemberFormData> _members = [];
 
+  Household? _liveDuplicateHousehold;
+  List<Household> _cachedExistingHouseholds = [];
+
   @override
   void initState() {
     super.initState();
     // Default: Add head of household as initial member entry
     _members.add(MemberFormData(relationship: 'Head', sex: 'M'));
-    _headNameController.addListener(_syncHeadName);
+    _headNameController.addListener(_onHeadNameChanged);
+    _loadExistingHouseholdsForDuplicateCheck();
+  }
+
+  Future<void> _loadExistingHouseholdsForDuplicateCheck() async {
+    try {
+      final repo = ref.read(householdRepositoryProvider);
+      _cachedExistingHouseholds = await repo.householdDao.db
+          .select(repo.householdDao.db.households)
+          .get();
+    } catch (_) {}
+  }
+
+  void _onHeadNameChanged() {
+    _syncHeadName();
+    _checkLiveDuplicate();
+  }
+
+  void _checkLiveDuplicate() {
+    final query = DuplicateDetector.normaliseName(_headNameController.text);
+    if (query.length < 3) {
+      if (_liveDuplicateHousehold != null) {
+        setState(() => _liveDuplicateHousehold = null);
+      }
+      return;
+    }
+    final match = _cachedExistingHouseholds.cast<Household?>().firstWhere(
+      (h) {
+        final existing = DuplicateDetector.normaliseName(h!.headName);
+        return existing == query ||
+            (query.length >= 4 && (existing.contains(query) || query.contains(existing)));
+      },
+      orElse: () => null,
+    );
+    if (match?.id != _liveDuplicateHousehold?.id) {
+      setState(() => _liveDuplicateHousehold = match);
+    }
   }
 
   void _syncHeadName() {
@@ -118,7 +157,7 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
 
   @override
   void dispose() {
-    _headNameController.removeListener(_syncHeadName);
+    _headNameController.removeListener(_onHeadNameChanged);
     _villageController.dispose();
     _hamletController.dispose();
     _headNameController.dispose();
@@ -638,6 +677,51 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
                 return null;
               },
             ),
+            if (_liveDuplicateHousehold != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFBEB),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFCD34D), width: 1.2),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Color(0xFFB45309),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Possible Duplicate / Double Entry Detected',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF92400E),
+                              fontSize: 12.5,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '“${_liveDuplicateHousehold!.headName}” is already registered in ${_liveDuplicateHousehold!.village}${_liveDuplicateHousehold!.hamlet != null ? ' (${_liveDuplicateHousehold!.hamlet})' : ''}. If this is a regular follow-up visit, avoid creating a duplicate entry.',
+                            style: const TextStyle(
+                              color: Color(0xFF78350F),
+                              fontSize: 11.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
 
             // ── Section 2: Socio-Economic & Contact ─────────────────────────

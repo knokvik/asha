@@ -1,8 +1,5 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
@@ -31,21 +28,8 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   final _searchController = TextEditingController();
-  int _sharedSignalCount = 0;
-  String? _sharedSignalPeerWorker;
-  bool _hasServerContext = false;
 
   String get _lang => ref.watch(languageProvider).languageCode;
-
-  String _getSharedSignalSubtitle(String lang) {
-    if (_sharedSignalPeerWorker != null) {
-      return '${shellText(lang, 'peerSignalFrom')} $_sharedSignalPeerWorker';
-    }
-    if (_hasServerContext) {
-      return shellText(lang, 'serverSyncedContext');
-    }
-    return shellText(lang, 'noSharedSignals');
-  }
 
   @override
   void dispose() {
@@ -53,44 +37,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     super.dispose();
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _loadSharedSignals();
-  }
-
-  Future<void> _loadSharedSignals() async {
-    try {
-      const storage = FlutterSecureStorage();
-      final raw = await storage.read(key: 'triage_hotspot_context_json');
-      final history = await storage.read(key: 'peer_sync_history_json');
-      if (!mounted) return;
-      final context = raw == null ? null : jsonDecode(raw);
-      final hotspots = context is Map && context['hotspots'] is List
-          ? (context['hotspots'] as List)
-                .where((item) => item is Map && item['active'] == true)
-                .length
-          : 0;
-      final historyItems = history == null
-          ? const <dynamic>[]
-          : jsonDecode(history);
-      final latestSource = historyItems is List && historyItems.isNotEmpty
-          ? (historyItems.first['source_worker_id'] ?? 'nearby ASHA').toString()
-          : null;
-      setState(() {
-        _sharedSignalCount = hotspots;
-        _sharedSignalPeerWorker = latestSource;
-        _hasServerContext = hotspots > 0;
-      });
-    } catch (_) {
-      // The dashboard remains usable if secure storage has no context yet.
-    }
-  }
-
   Future<void> _refreshDashboard() async {
-    // Keep refresh lightweight and offline-safe: reload local shared context
-    // immediately. The sync worker continues pulling server deltas separately.
-    await _loadSharedSignals();
+    // Keep refresh lightweight and offline-safe
   }
 
   @override
@@ -150,8 +98,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             // 2. Compact field map preview replaces the profile block.
             _buildMapPreview(context),
             const SizedBox(height: 16),
-            _buildSharedSignalCard(context),
-            const SizedBox(height: 16),
 
             // 3. 4 Metric Blocks: 12 Today | 3 Overdue | 8 Completed | 2 Follow-ups
             _buildMetricStrip(context),
@@ -176,89 +122,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _buildSharedSignalCard(BuildContext context) {
-    final hasSignals = _sharedSignalCount > 0;
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFE5E7EB),
-          width: 1.2,
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x06000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () async {
-            await context.push('/peer-sync');
-            _loadSharedSignals();
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: hasSignals ? const Color(0xFFFEF3C7) : const Color(0xFFF3F4F6),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.radar_rounded,
-                    color: hasSignals ? const Color(0xFFD97706) : const Color(0xFF4B5563),
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _sharedSignalCount == 0
-                            ? shellText(_lang, 'sharedAreaSignals')
-                            : '$_sharedSignalCount ${_sharedSignalCount == 1 ? shellText(_lang, 'activeAreaSignalSingular') : shellText(_lang, 'activeAreaSignals')}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                          color: Color(0xFF111827),
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        _getSharedSignalSubtitle(_lang),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: hasSignals ? const Color(0xFF92400E) : const Color(0xFF6B7280),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 14,
-                  color: Color(0xFF9CA3AF),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   /// Top App Bar matching Screen 1:
   /// Far-left hamburger menu ☰, centered 'asha' wordmark, notification bell 🔔 with unread badge.
@@ -626,32 +489,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ],
         ),
         const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _buildQuickActionCard(
-                title: hasInterpreter
-                    ? shellText(_lang, 'interpreter')
-                    : shellText(_lang, 'voicePacks'),
-                iconWidget: _quickActionIcon(
-                  hasInterpreter ? Icons.translate_rounded : Icons.download_rounded,
-                  const Color(0xFF2563EB),
-                ),
-                onTap: () => context.push(hasInterpreter ? '/interpreter' : '/packs'),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildQuickActionCard(
-                title: shellText(_lang, 'programs'),
-                iconWidget: _quickActionIcon(
-                  Icons.medical_services_rounded,
-                  const Color(0xFF7C3AED),
-                ),
-                onTap: () => context.push('/clinical-programs'),
-              ),
-            ),
-          ],
+        _buildQuickActionCard(
+          title: hasInterpreter
+              ? shellText(_lang, 'interpreter')
+              : shellText(_lang, 'voicePacks'),
+          iconWidget: _quickActionIcon(
+            hasInterpreter ? Icons.translate_rounded : Icons.download_rounded,
+            const Color(0xFF2563EB),
+          ),
+          onTap: () => context.push(hasInterpreter ? '/interpreter' : '/packs'),
+        ),
+        const SizedBox(height: 10),
+        _buildQuickActionCard(
+          title: shellText(_lang, 'programs'),
+          iconWidget: _quickActionIcon(
+            Icons.medical_services_rounded,
+            const Color(0xFF7C3AED),
+          ),
+          onTap: () => context.push('/clinical-programs'),
         ),
         const SizedBox(height: 10),
         Row(

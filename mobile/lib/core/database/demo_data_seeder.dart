@@ -6,14 +6,16 @@ import 'package:asha_platform/core/database/app_database.dart';
 /// for investor and clinical evaluation walkthroughs.
 class DemoDataSeeder {
   static Future<void> seedIfEmpty(AppDatabase db) async {
-    final existingHouseholds = await db.select(db.households).get();
-    if (existingHouseholds.isNotEmpty) return; // Already seeded
-
     final now = DateTime.now();
     final nowMs = now.millisecondsSinceEpoch;
     final dayMs = 24 * 3600 * 1000;
-
     const workerId = 'asha_sunita_01';
+
+    final existingHouseholds = await db.select(db.households).get();
+    if (existingHouseholds.isNotEmpty) {
+      await _seedIncentivesAndEncountersIfEmpty(db, workerId, nowMs, dayMs);
+      return; // Already seeded households
+    }
 
     // 1. ASHA Worker Profile
     await db.into(db.users).insert(
@@ -536,30 +538,89 @@ class DemoDataSeeder {
           );
     }
 
-    // 7. ASHA Earnings & Incentive Claims (₹ 4,200)
-    final lineItems = [
-      {'activity_code': 'ANC_REG_EARLY', 'description': 'Early ANC registration (<12 wks) - Pooja Devi', 'amount': 300.0, 'date': '2026-10-02'},
-      {'activity_code': 'INST_DELIVERY_ESCORT', 'description': 'Institutional delivery escort - Kavita Singh', 'amount': 600.0, 'date': '2026-10-09'},
-      {'activity_code': 'HBNC_HOME_VISITS', 'description': 'HBNC home visits package - Baby Aarav', 'amount': 250.0, 'date': '2026-10-12'},
-      {'activity_code': 'IMMUNIZATION_COMPLETE', 'description': 'Complete child immunization tracking', 'amount': 400.0, 'date': '2026-10-05'},
-      {'activity_code': 'CBAC_NCD_SCREENING', 'description': 'CBAC screening 30+ adults (15 individuals)', 'amount': 1500.0, 'date': '2026-10-07'},
-      {'activity_code': 'VHSND_MOBILIZATION', 'description': 'VHSND monthly community mobilization', 'amount': 200.0, 'date': '2026-10-01'},
-      {'activity_code': 'PPIUCD_POSTPARTUM_FP', 'description': 'Postpartum PPIUCD counselling & adoption', 'amount': 300.0, 'date': '2026-10-10'},
-      {'activity_code': 'ROUTINE_MONTHLY_MEETING', 'description': 'Monthly PHC review meeting attendance', 'amount': 650.0, 'date': '2026-10-03'},
-    ];
+    // 7. ASHA Earnings & Incentive Claims & Events
+    await _seedIncentivesAndEncountersIfEmpty(db, workerId, nowMs, dayMs);
+  }
 
-    await db.into(db.incentiveClaims).insert(
-          IncentiveClaimsCompanion.insert(
-            id: 'claim_oct_2026',
-            workerId: workerId,
-            claimPeriod: 'October 2026',
-            status: const Value('submitted'),
-            lineItemsJson: Value(jsonEncode(lineItems)),
-            totalAmount: const Value(4200.0),
-            submittedAt: Value(nowMs - (2 * dayMs)),
-            paymentReference: const Value('PFMS-PENDING-APPROVAL'),
-            syncStatus: const Value('synced'),
-          ),
-        );
+  static Future<void> _seedIncentivesAndEncountersIfEmpty(
+    AppDatabase db,
+    String workerId,
+    int nowMs,
+    int dayMs,
+  ) async {
+    final existingEvents = await db.select(db.incentiveEvents).get();
+    if (existingEvents.isEmpty) {
+      final eventsData = [
+        ('ANC_REG_EARLY', 'mem_pooja_01', 'approved', nowMs - (18 * dayMs)),
+        ('ANC_CHECKUP_FULL', 'mem_pooja_01', 'approved', nowMs - (14 * dayMs)),
+        ('INST_DELIVERY_ESCORT', 'mem_kavita_02', 'approved', nowMs - (8 * dayMs)),
+        ('HBNC_COMPLETE', 'mem_aarav_02', 'eligible', nowMs - (3 * dayMs)),
+        ('IMMUNIZATION_FULL_1YR', 'mem_priya_04', 'eligible', nowMs - (2 * dayMs)),
+        ('CBAC_SCREENING', 'mem_ramprasad_03', 'paid', nowMs - (35 * dayMs)),
+        ('TB_DOTS_SUPPORT', 'mem_shanti_05', 'paid', nowMs - (38 * dayMs)),
+        ('VHSND_SESSION', 'mem_kavita_02', 'paid', nowMs - (42 * dayMs)),
+      ];
+
+      for (var i = 0; i < eventsData.length; i++) {
+        final ev = eventsData[i];
+        await db.into(db.incentiveEvents).insertOnConflictUpdate(
+              IncentiveEventsCompanion.insert(
+                id: 'ev_demo_$i',
+                memberId: ev.$2,
+                activityCode: ev.$1,
+                catalogueVersionId: 'NHM_NAT_2024_V1',
+                eventDate: ev.$4,
+                status: Value(ev.$3),
+                createdAt: ev.$4,
+                idempotencyKey: 'idem_ev_$i',
+                syncStatus: const Value('synced'),
+              ),
+            );
+      }
+    }
+
+    final existingClaims = await db.select(db.incentiveClaims).get();
+    if (existingClaims.isEmpty) {
+      final lineItemsOct = [
+        {'activity_code': 'ANC_REG_EARLY', 'description': 'Early ANC registration (<12 wks) - Pooja Devi', 'amount': 300.0, 'date': '2026-10-02'},
+        {'activity_code': 'INST_DELIVERY_ESCORT', 'description': 'Institutional delivery escort - Kavita Singh', 'amount': 600.0, 'date': '2026-10-09'},
+        {'activity_code': 'HBNC_COMPLETE', 'description': 'HBNC home visits package - Baby Aarav', 'amount': 250.0, 'date': '2026-10-12'},
+      ];
+
+      await db.into(db.incentiveClaims).insertOnConflictUpdate(
+            IncentiveClaimsCompanion.insert(
+              id: 'claim_2026_10',
+              workerId: workerId,
+              claimPeriod: '2026-10',
+              status: const Value('approved'),
+              lineItemsJson: Value(jsonEncode(lineItemsOct)),
+              totalAmount: const Value(1150.0),
+              submittedAt: Value(nowMs - (2 * dayMs)),
+              paymentReference: const Value('PFMS-PENDING-DBT'),
+              syncStatus: const Value('synced'),
+            ),
+          );
+
+      final lineItemsSep = [
+        {'activity_code': 'CBAC_SCREENING', 'description': 'CBAC screening 30+ adults - Ramprasad', 'amount': 150.0, 'date': '2026-09-12'},
+        {'activity_code': 'TB_DOTS_SUPPORT', 'description': 'TB Treatment Support - Shanti Devi', 'amount': 500.0, 'date': '2026-09-18'},
+        {'activity_code': 'VHSND_SESSION', 'description': 'VHSND monthly mobilization', 'amount': 200.0, 'date': '2026-09-22'},
+      ];
+
+      await db.into(db.incentiveClaims).insertOnConflictUpdate(
+            IncentiveClaimsCompanion.insert(
+              id: 'claim_2026_09',
+              workerId: workerId,
+              claimPeriod: '2026-09',
+              status: const Value('paid'),
+              lineItemsJson: Value(jsonEncode(lineItemsSep)),
+              totalAmount: const Value(850.0),
+              submittedAt: Value(nowMs - (32 * dayMs)),
+              paidAt: Value(nowMs - (28 * dayMs)),
+              paymentReference: const Value('PFMS-DBT-20260930-9941'),
+              syncStatus: const Value('synced'),
+            ),
+          );
+    }
   }
 }

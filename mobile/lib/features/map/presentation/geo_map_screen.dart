@@ -98,13 +98,20 @@ class _GeoMapPageState extends State<GeoMapPage> {
       final counts = await rootBundle.loadString(
         'packages/triage/lib/data/pack/disease_counts.csv',
       );
-      final facilities = await (await mapStore.file('facilities.geojson')).readAsString();
-      final indiaFacilities = await (await mapStore.file('india_facilities.json')).readAsString();
-      final states = await (await mapStore.file('india_states.geojson')).readAsString();
-      final households = await (await mapStore.file('households.json')).readAsString();
-      final referrals = await (await mapStore.file('referrals.json')).readAsString();
+      final facilities = await (await mapStore.file('facilities.geojson'))
+          .readAsString();
+      final indiaFacilities = await (await mapStore.file(
+        'india_facilities.json',
+      )).readAsString();
+      final states = await (await mapStore.file('india_states.geojson'))
+          .readAsString();
+      final households = await (await mapStore.file('households.json'))
+          .readAsString();
+      final referrals = await (await mapStore.file('referrals.json'))
+          .readAsString();
       final roads = await (await mapStore.file('roads.json')).readAsString();
-      final labelsRaw = await (await mapStore.file('labels.json')).readAsString();
+      final labelsRaw = await (await mapStore.file('labels.json'))
+          .readAsString();
       TileProvider? tiles;
       if (widget.useOsmBasemap) {
         tiles = MemoryTileProvider(MbTilesTileProvider.blank);
@@ -322,9 +329,10 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   double _liveAccuracy = 10.0;
   String _liveProvider = 'gps';
   Timer? _liveLocationTimer;
-  Timer? _facilityBatchTimer;
+  Timer? _cameraDebounceTimer;
+  LatLng? _pendingCameraCenter;
+  double? _pendingCameraZoom;
   var _facilityRenderLimit = 80;
-  var _facilityBatchScheduled = false;
   List<LatLng> _dayRoute = const [];
   static const _secureStorage = FlutterSecureStorage();
   static const _locationChannel = MethodChannel('asha_platform/location');
@@ -491,7 +499,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   @override
   void dispose() {
     _liveLocationTimer?.cancel();
-    _facilityBatchTimer?.cancel();
+    _cameraDebounceTimer?.cancel();
     _mapController.dispose();
     super.dispose();
   }
@@ -529,11 +537,17 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                   flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
                 ),
                 onPositionChanged: (camera, _) {
-                  if ((camera.zoom - _zoomLevel).abs() < 0.05) return;
-                  _facilityBatchTimer?.cancel();
-                  _facilityBatchScheduled = false;
-                  _facilityRenderLimit = 80;
-                  setState(() => _zoomLevel = camera.zoom);
+                  // Do not rebuild the marker tree for every gesture frame.
+                  // flutter_map can emit dozens of camera updates during one
+                  // pinch/pan; rebuilding thousands of widgets here makes the
+                  // map jank even when the tiles themselves are smooth.
+                  _pendingCameraCenter = camera.center;
+                  _pendingCameraZoom = camera.zoom;
+                  _cameraDebounceTimer?.cancel();
+                  _cameraDebounceTimer = Timer(
+                    const Duration(milliseconds: 180),
+                    _commitCameraChange,
+                  );
                 },
                 onTap: (_, _) {
                   if (_ateMarkerTap) {
@@ -899,7 +913,41 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
     final camera = _mapController.camera;
     final next = (camera.zoom + delta).clamp(3.0, 18.0);
     _mapController.move(camera.center, next);
-    setState(() => _zoomLevel = next);
+  }
+
+  void _commitCameraChange() {
+    final zoom = _pendingCameraZoom;
+    final center = _pendingCameraCenter;
+    if (!mounted || zoom == null || center == null) return;
+    _pendingCameraCenter = null;
+    _pendingCameraZoom = null;
+    setState(() {
+      _zoomLevel = zoom;
+      _facilityRenderLimit = _markerBudgetForZoom(zoom);
+    });
+  }
+
+  int _markerBudgetForZoom(double zoom) {
+    if (zoom < 7) return 80;
+    if (zoom < 10) return 120;
+    if (zoom < 13) return 180;
+    return 260;
+  }
+
+  double _viewportPadding(double zoom) {
+    if (zoom < 7) return 0.12;
+    if (zoom < 10) return 0.06;
+    if (zoom < 13) return 0.025;
+    return 0.01;
+  }
+
+  double _distanceFromCamera(double latitude, double longitude) {
+    final center = _mapController.camera.center;
+    final latDelta = latitude - center.latitude;
+    final lonDelta =
+        (longitude - center.longitude) *
+        math.cos(center.latitude * math.pi / 180);
+    return latDelta * latDelta + lonDelta * lonDelta;
   }
 
   List<Marker> _markers(String lang) {
@@ -917,7 +965,17 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
       );
     }
     if (_zoomLevel >= 13) {
-      for (final label in widget.labels) {
+      final bounds = _mapController.camera.visibleBounds;
+      final pad = _viewportPadding(_zoomLevel);
+      final labels = widget.labels
+          .where((label) {
+            return label.latitude >= bounds.south - pad &&
+                label.latitude <= bounds.north + pad &&
+                label.longitude >= bounds.west - pad &&
+                label.longitude <= bounds.east + pad;
+          })
+          .take(100);
+      for (final label in labels) {
         markers.add(
           Marker(
             point: LatLng(label.latitude, label.longitude),
@@ -949,10 +1007,11 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
       final List<FacilityPoi> visiblePool;
       if (facilities.length > 60) {
         final bounds = _mapController.camera.visibleBounds;
-        final south = bounds.south - 0.2;
-        final north = bounds.north + 0.2;
-        final west = bounds.west - 0.2;
-        final east = bounds.east + 0.2;
+        final pad = _viewportPadding(_zoomLevel);
+        final south = bounds.south - pad;
+        final north = bounds.north + pad;
+        final west = bounds.west - pad;
+        final east = bounds.east + pad;
 
         visiblePool = facilities.where((poi) {
           return poi.latitude >= south &&
@@ -966,34 +1025,27 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
           visiblePool.add(_selected!);
         }
 
-        visiblePool.sort((a, b) {
-          int rank(String cat) => switch (cat) {
-            'hospital' => 3,
-            'blood_bank' => 2,
-            'chc' => 1,
-            _ => 0,
-          };
-          return rank(a.category).compareTo(rank(b.category));
-        });
+        visiblePool.sort(
+          (a, b) => _distanceFromCamera(
+            a.latitude,
+            a.longitude,
+          ).compareTo(_distanceFromCamera(b.latitude, b.longitude)),
+        );
       } else {
         visiblePool = facilities;
       }
 
       // Keep the original facility pin design at every zoom. State-level
-      // viewports can contain thousands of POIs, so materialise them in small
-      // batches instead of replacing them with count circles or building all
-      // markers in one frame.
+      // viewports can contain thousands of POIs, so render a bounded set of
+      // nearby pins. A fixed budget avoids the repeated rebuild storm that
+      // progressive batch timers caused while the camera was moving.
       final renderPool = visiblePool.length > 120
           ? visiblePool.take(_facilityRenderLimit).toList()
           : visiblePool;
-      if (renderPool.length < visiblePool.length) {
-        _scheduleFacilityBatch(visiblePool.length);
-      }
 
       for (final poi in renderPool) {
         final chosen = _selected?.id == poi.id;
-        final showLabel =
-            _zoomLevel >= 12 || chosen || renderPool.length <= 40;
+        final showLabel = _zoomLevel >= 12 || chosen || renderPool.length <= 40;
         markers.add(
           Marker(
             key: Key('poi-${poi.id}'),
@@ -1029,12 +1081,25 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
             : !household.dueToday,
       );
       final pins = _routeMode ? route : scoped.toList();
-      final renderPins = pins.length > 120
-          ? pins.take(_facilityRenderLimit).toList()
+      final visiblePins = pins.length > 60
+          ? pins.where((household) {
+              final bounds = _mapController.camera.visibleBounds;
+              final pad = _viewportPadding(_zoomLevel);
+              return household.latitude >= bounds.south - pad &&
+                  household.latitude <= bounds.north + pad &&
+                  household.longitude >= bounds.west - pad &&
+                  household.longitude <= bounds.east + pad;
+            }).toList()
           : pins.toList();
-      if (renderPins.length < pins.length) {
-        _scheduleFacilityBatch(pins.length);
-      }
+      visiblePins.sort(
+        (a, b) => _distanceFromCamera(
+          a.latitude,
+          a.longitude,
+        ).compareTo(_distanceFromCamera(b.latitude, b.longitude)),
+      );
+      final renderPins = visiblePins.length > _facilityRenderLimit
+          ? visiblePins.take(_facilityRenderLimit).toList()
+          : visiblePins;
       for (final household in renderPins) {
         final routeIndex = route.indexWhere((pin) => pin.id == household.id);
         markers.add(
@@ -1107,9 +1172,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
             child: GestureDetector(
               onTap: () => ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(
-                    _sharedHotspotSnackbarText(hotspot, lang),
-                  ),
+                  content: Text(_sharedHotspotSnackbarText(hotspot, lang)),
                 ),
               ),
               child: const _SharedHotspotMarker(),
@@ -1136,21 +1199,6 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
       }
     }
     return markers;
-  }
-
-  void _scheduleFacilityBatch(int target) {
-    if (_facilityRenderLimit >= target || _facilityBatchScheduled) return;
-    _facilityBatchScheduled = true;
-    _facilityBatchTimer = Timer(const Duration(milliseconds: 120), () {
-      _facilityBatchScheduled = false;
-      if (!mounted) return;
-      setState(() {
-        _facilityRenderLimit = math.min(_facilityRenderLimit + 80, target);
-      });
-      if (_facilityRenderLimit < target) {
-        _scheduleFacilityBatch(target);
-      }
-    });
   }
 
   List<CircleMarker> _liveLocationCircles() {
@@ -1959,169 +2007,433 @@ String _localizeStateName(String name, String lang) {
   if (lang == 'en') return name;
   const states = <String, Map<String, String>>{
     'Uttar Pradesh': {
-      'hi': 'उत्तर प्रदेश', 'mr': 'उत्तर प्रदेश', 'bn': 'উত্তর প্রদেশ', 'te': 'ఉత్తరప్రదేశ్',
-      'ta': 'உத்தரப் பிரதேசம்', 'kn': 'ಉತ್ತರ ಪ್ರದೇಶ', 'ml': 'ഉത്തർപ്രദേശ്', 'gu': 'ઉત્તર પ્રદેશ',
-      'pa': 'ਉੱਤਰ ਪ੍ਰਦੇਸ਼', 'or': 'ଉତ୍ତର ପ୍ରଦେଶ', 'as': 'উত্তৰ প্ৰদেশ',
+      'hi': 'उत्तर प्रदेश',
+      'mr': 'उत्तर प्रदेश',
+      'bn': 'উত্তর প্রদেশ',
+      'te': 'ఉత్తరప్రదేశ్',
+      'ta': 'உத்தரப் பிரதேசம்',
+      'kn': 'ಉತ್ತರ ಪ್ರದೇಶ',
+      'ml': 'ഉത്തർപ്രദേശ്',
+      'gu': 'ઉત્તર પ્રદેશ',
+      'pa': 'ਉੱਤਰ ਪ੍ਰਦੇਸ਼',
+      'or': 'ଉତ୍ତର ପ୍ରଦେଶ',
+      'as': 'উত্তৰ প্ৰদেশ',
     },
     'Maharashtra': {
-      'hi': 'महाराष्ट्र', 'mr': 'महाराष्ट्र', 'bn': 'মহারাষ্ট্র', 'te': 'మహారాష్ట్ర',
-      'ta': 'மகாராஷ்டிரா', 'kn': 'ಮಹಾರಾಷ್ಟ್ರ', 'ml': 'മഹാരാഷ്ട്ര', 'gu': 'મહારાષ્ટ્ર',
-      'pa': 'ਮਹਾਰਾਸ਼ਟਰ', 'or': 'ମହାରାଷ୍ଟ୍ର', 'as': 'মহাৰাষ্ট্ৰ',
+      'hi': 'महाराष्ट्र',
+      'mr': 'महाराष्ट्र',
+      'bn': 'মহারাষ্ট্র',
+      'te': 'మహారాష్ట్ర',
+      'ta': 'மகாராஷ்டிரா',
+      'kn': 'ಮಹಾರಾಷ್ಟ್ರ',
+      'ml': 'മഹാരാഷ്ട്ര',
+      'gu': 'મહારાષ્ટ્ર',
+      'pa': 'ਮਹਾਰਾਸ਼ਟਰ',
+      'or': 'ମହାରାଷ୍ଟ୍ର',
+      'as': 'মহাৰাষ্ট্ৰ',
     },
     'Rajasthan': {
-      'hi': 'राजस्थान', 'mr': 'राजस्थान', 'bn': 'রাজস্থান', 'te': 'రాజస్థాన్',
-      'ta': 'ராஜஸ்தான்', 'kn': 'ರಾಜಸ್ಥಾನ', 'ml': 'രാജസ്ഥാൻ', 'gu': 'રાજસ્થાન',
-      'pa': 'ਰਾਜਸਥਾਨ', 'or': 'ରାଜସ୍ଥାନ', 'as': 'ৰাজস্থান',
+      'hi': 'राजस्थान',
+      'mr': 'राजस्थान',
+      'bn': 'রাজস্থান',
+      'te': 'రాజస్థాన్',
+      'ta': 'ராஜஸ்தான்',
+      'kn': 'ರಾಜಸ್ಥಾನ',
+      'ml': 'രാജസ്ഥാൻ',
+      'gu': 'રાજસ્થાન',
+      'pa': 'ਰਾਜਸਥਾਨ',
+      'or': 'ରାଜସ୍ଥାନ',
+      'as': 'ৰাজস্থান',
     },
     'Karnataka': {
-      'hi': 'कर्नाटक', 'mr': 'कर्नाटक', 'bn': 'কর্ণাটক', 'te': 'కర్ణాటక',
-      'ta': 'கர்நாடகா', 'kn': 'ಕರ್ನಾಟಕ', 'ml': 'ಕರ್ನಾಟಕ', 'gu': 'કર્ણાટક',
-      'pa': 'ਕਰਨਾਟਕ', 'or': 'କର୍ଣ୍ଣାଟକ', 'as': 'কৰ্ণাটক',
+      'hi': 'कर्नाटक',
+      'mr': 'कर्नाटक',
+      'bn': 'কর্ণাটক',
+      'te': 'కర్ణాటక',
+      'ta': 'கர்நாடகா',
+      'kn': 'ಕರ್ನಾಟಕ',
+      'ml': 'ಕರ್ನಾಟಕ',
+      'gu': 'કર્ણાટક',
+      'pa': 'ਕਰਨਾਟਕ',
+      'or': 'କର୍ଣ୍ଣାଟକ',
+      'as': 'কৰ্ণাটক',
     },
     'Tamil Nadu': {
-      'hi': 'तमिलनाडु', 'mr': 'तमिळनाडू', 'bn': 'তামিলনাড়ু', 'te': 'తమిళనాడు',
-      'ta': 'தமிழ்நாடு', 'kn': 'ತಮಿಳುನಾಡು', 'ml': 'തമിഴ്‌നാട്', 'gu': 'તમિલનાડુ',
-      'pa': 'ਤਾਮਿਲਨਾਡੂ', 'or': 'ତାମିଲନାଡୁ', 'as': 'তামিলনাডু',
+      'hi': 'तमिलनाडु',
+      'mr': 'तमिळनाडू',
+      'bn': 'তামিলনাড়ু',
+      'te': 'తమిళనాడు',
+      'ta': 'தமிழ்நாடு',
+      'kn': 'ತಮಿಳುನಾಡು',
+      'ml': 'തമിഴ്‌നാട്',
+      'gu': 'તમિલનાડુ',
+      'pa': 'ਤਾਮਿਲਨਾਡੂ',
+      'or': 'ତାମିଲନାଡୁ',
+      'as': 'তামিলনাডু',
     },
     'Gujarat': {
-      'hi': 'गुजरात', 'mr': 'गुजरात', 'bn': 'ગુજરાત', 'te': 'గుజరాత్',
-      'ta': 'குஜராத்', 'kn': 'ಗುಜರಾತ್', 'ml': 'ഗുജറാത്ത്', 'gu': 'ગુજરાત',
-      'pa': 'ਗੁਜਰਾਤ', 'or': 'ଗୁଜରାଟ', 'as': 'গুজৰাট',
+      'hi': 'गुजरात',
+      'mr': 'गुजरात',
+      'bn': 'ગુજરાત',
+      'te': 'గుజరాత్',
+      'ta': 'குஜராத்',
+      'kn': 'ಗುಜರಾತ್',
+      'ml': 'ഗുജറാത്ത്',
+      'gu': 'ગુજરાત',
+      'pa': 'ਗੁਜਰਾਤ',
+      'or': 'ଗୁଜରାଟ',
+      'as': 'গুজৰাট',
     },
     'Bihar': {
-      'hi': 'बिहार', 'mr': 'बिहार', 'bn': 'বিহার', 'te': 'బీహార్',
-      'ta': 'பீகார்', 'kn': 'ಬಿಹಾರ', 'ml': 'ബിഹാർ', 'gu': 'બિહાર',
-      'pa': 'ਬਿਹਾਰ', 'or': 'ବିହାର', 'as': 'বিহাৰ',
+      'hi': 'बिहार',
+      'mr': 'बिहार',
+      'bn': 'বিহার',
+      'te': 'బీహార్',
+      'ta': 'பீகார்',
+      'kn': 'ಬಿಹಾರ',
+      'ml': 'ബിഹാർ',
+      'gu': 'બિહાર',
+      'pa': 'ਬਿਹਾਰ',
+      'or': 'ବିହାର',
+      'as': 'বিহাৰ',
     },
     'Odisha': {
-      'hi': 'ओडिशा', 'mr': 'ओडिशा', 'bn': 'ওড়িশা', 'te': 'ఒడిశా',
-      'ta': 'ஒடிசா', 'kn': 'ಒಡಿಶಾ', 'ml': 'ಒഡീഷ', 'gu': 'ઓડિશા',
-      'pa': 'ਓਡੀਸ਼ਾ', 'or': 'ଓଡ଼ିଶା', 'as': 'ওড়িশা',
+      'hi': 'ओडिशा',
+      'mr': 'ओडिशा',
+      'bn': 'ওড়িশা',
+      'te': 'ఒడిశా',
+      'ta': 'ஒடிசா',
+      'kn': 'ಒಡಿಶಾ',
+      'ml': 'ಒഡീഷ',
+      'gu': 'ઓડિશા',
+      'pa': 'ਓਡੀਸ਼ਾ',
+      'or': 'ଓଡ଼ିଶା',
+      'as': 'ওড়িশা',
     },
     'Madhya Pradesh': {
-      'hi': 'मध्य प्रदेश', 'mr': 'मध्य प्रदेश', 'bn': 'মধ্য প্রদেশ', 'te': 'మధ్యప్రదేశ్',
-      'ta': 'மத்தியப் பிரதேசம்', 'kn': 'ಮಧ್ಯ ಪ್ರದೇಶ', 'ml': 'മധ്യപ്രദേശ്', 'gu': 'મધ્ય પ્રદેશ',
-      'pa': 'ਮੱਧ ਪ੍ਰਦੇਸ਼', 'or': 'ମଧ୍ୟ ପ୍ରଦେଶ', 'as': 'মধ্য প্ৰদেশ',
+      'hi': 'मध्य प्रदेश',
+      'mr': 'मध्य प्रदेश',
+      'bn': 'মধ্য প্রদেশ',
+      'te': 'మధ్యప్రదేశ్',
+      'ta': 'மத்தியப் பிரதேசம்',
+      'kn': 'ಮಧ್ಯ ಪ್ರದೇಶ',
+      'ml': 'മധ്യപ്രദേശ്',
+      'gu': 'મધ્ય પ્રદેશ',
+      'pa': 'ਮੱਧ ਪ੍ਰਦੇਸ਼',
+      'or': 'ମଧ୍ୟ ପ୍ରଦେଶ',
+      'as': 'মধ্য প্ৰদেশ',
     },
     'Andhra Pradesh': {
-      'hi': 'आंध्र प्रदेश', 'mr': 'आंध्र प्रदेश', 'bn': 'অন্ধ্র প্রদেশ', 'te': 'ఆంధ్రప్రదేశ్',
-      'ta': 'ஆந்திரப் பிரதேசம்', 'kn': 'ಆಂಧ್ರ ಪ್ರದೇಶ', 'ml': 'ആന്ധ്രാപ്രദേശ്', 'gu': 'આંધ્ર પ્રદેશ',
-      'pa': 'ਆਂਧਰਾ ਪ੍ਰਦੇਸ਼', 'or': 'ଆନ୍ଧ୍ର ପ୍ରଦେଶ', 'as': 'অন্ধ্ৰ প্ৰদেশ',
+      'hi': 'आंध्र प्रदेश',
+      'mr': 'आंध्र प्रदेश',
+      'bn': 'অন্ধ্র প্রদেশ',
+      'te': 'ఆంధ్రప్రదేశ్',
+      'ta': 'ஆந்திரப் பிரதேசம்',
+      'kn': 'ಆಂಧ್ರ ಪ್ರದೇಶ',
+      'ml': 'ആന്ധ്രാപ്രദേശ്',
+      'gu': 'આંધ્ર પ્રદેશ',
+      'pa': 'ਆਂਧਰਾ ਪ੍ਰਦੇਸ਼',
+      'or': 'ଆନ୍ଧ୍ର ପ୍ରଦେଶ',
+      'as': 'অন্ধ্ৰ প্ৰদেশ',
     },
     'West Bengal': {
-      'hi': 'पश्चिम बंगाल', 'mr': 'पश्चिम बंगाल', 'bn': 'পশ্চিমবঙ্গ', 'te': 'పశ్చిమ బెంగాల్',
-      'ta': 'மேற்கு வங்காளம்', 'kn': 'ಪಶ್ಚಿಮ ಬಂಗಾಳ', 'ml': 'പശ്ചിമ ബംഗാൾ', 'gu': 'પશ્ચિમ બંગાળ',
-      'pa': 'ਪੱਛਮੀ ਬੰਗਾਲ', 'or': 'ପଶ୍ଚିମ ବଙ୍ଗ', 'as': 'পশ্চিম বংগ',
+      'hi': 'पश्चिम बंगाल',
+      'mr': 'पश्चिम बंगाल',
+      'bn': 'পশ্চিমবঙ্গ',
+      'te': 'పశ్చిమ బెంగాల్',
+      'ta': 'மேற்கு வங்காளம்',
+      'kn': 'ಪಶ್ಚಿಮ ಬಂಗಾಳ',
+      'ml': 'പശ്ചിമ ബംഗാൾ',
+      'gu': 'પશ્ચિમ બંગાળ',
+      'pa': 'ਪੱਛਮੀ ਬੰਗਾਲ',
+      'or': 'ପଶ୍ଚିମ ବଙ୍ଗ',
+      'as': 'পশ্চিম বংগ',
     },
     'Kerala': {
-      'hi': 'केरल', 'mr': 'केरळ', 'bn': 'কেরালা', 'te': 'కేరళ',
-      'ta': 'கேரளா', 'kn': 'ಕೇರಳ', 'ml': 'കേരളം', 'gu': 'કેરળ',
-      'pa': 'ਕੇਰਲ', 'or': 'କେରଳ', 'as': 'কেৰালা',
+      'hi': 'केरल',
+      'mr': 'केरळ',
+      'bn': 'কেরালা',
+      'te': 'కేరళ',
+      'ta': 'கேரளா',
+      'kn': 'ಕೇರಳ',
+      'ml': 'കേരളം',
+      'gu': 'કેરળ',
+      'pa': 'ਕੇਰਲ',
+      'or': 'କେରଳ',
+      'as': 'কেৰালা',
     },
     'Chhattisgarh': {
-      'hi': 'छत्तीसगढ़', 'mr': 'छत्तीसगड', 'bn': 'ছত্তিশগড়', 'te': 'ఛత్తీస్‌గఢ్',
-      'ta': 'சத்தீஸ்கர்', 'kn': 'ಛತ್ತೀಸ್‌ಗಢ', 'ml': 'ഛത്തീസ്ഗഡ്', 'gu': 'છત્તીસગઢ',
-      'pa': 'ਛੱਤੀਸਗੜ੍ਹ', 'or': 'ଛତିଶଗଡ଼', 'as': 'ছত্তীশগড়',
+      'hi': 'छत्तीसगढ़',
+      'mr': 'छत्तीसगड',
+      'bn': 'ছত্তিশগড়',
+      'te': 'ఛత్తీస్‌గఢ్',
+      'ta': 'சத்தீஸ்கர்',
+      'kn': 'ಛತ್ತೀಸ್‌ಗಢ',
+      'ml': 'ഛത്തീസ്ഗഡ്',
+      'gu': 'છત્તીસગઢ',
+      'pa': 'ਛੱਤੀਸਗੜ੍ਹ',
+      'or': 'ଛତିଶଗଡ଼',
+      'as': 'ছত্তীশগড়',
     },
     'Telangana': {
-      'hi': 'तेलंगाना', 'mr': 'तेलंगणा', 'bn': 'তেলেঙ্গানা', 'te': 'తెలంగాణ',
-      'ta': 'தெலுங்கானா', 'kn': 'ತೆಲಂಗಾಣ', 'ml': 'തെലങ്കാന', 'gu': 'તેલંગાણા',
-      'pa': 'ਤੇਲੰਗਾਨਾ', 'or': 'ତେଲେଙ୍ଗାନା', 'as': 'তেলেংগানা',
+      'hi': 'तेलंगाना',
+      'mr': 'तेलंगणा',
+      'bn': 'তেলেঙ্গানা',
+      'te': 'తెలంగాణ',
+      'ta': 'தெலுங்கானா',
+      'kn': 'ತೆಲಂಗಾಣ',
+      'ml': 'തെലങ്കാന',
+      'gu': 'તેલંગાણા',
+      'pa': 'ਤੇਲੰਗਾਨਾ',
+      'or': 'ତେଲେଙ୍ଗାନା',
+      'as': 'তেলেংগানা',
     },
     'Assam': {
-      'hi': 'असम', 'mr': 'आसाम', 'bn': 'আসাম', 'te': 'అస్సాం',
-      'ta': 'அசாம்', 'kn': 'ಅಸ್ಸಾಂ', 'ml': 'അസം', 'gu': 'અસમ',
-      'pa': 'ਅਸਾਮ', 'or': 'ଆସାମ', 'as': 'অসম',
+      'hi': 'असम',
+      'mr': 'आसाम',
+      'bn': 'আসাম',
+      'te': 'అస్సాం',
+      'ta': 'அசாம்',
+      'kn': 'ಅಸ್ಸಾಂ',
+      'ml': 'അസം',
+      'gu': 'અસમ',
+      'pa': 'ਅਸਾਮ',
+      'or': 'ଆସାମ',
+      'as': 'অসম',
     },
     'Jammu & Kashmir': {
-      'hi': 'जम्मू और कश्मीर', 'mr': 'जम्मू आणि काश्मीर', 'bn': 'জম্মু ও কাশ্মীর', 'te': 'జమ్మూ కాశ్మీర్',
-      'ta': 'ஜம்மு & காஷ்மீர்', 'kn': 'ಜಮ್ಮು ಮತ್ತು ಕಾಶ್ಮೀರ', 'ml': 'ജമ്മു & കശ്മീർ', 'gu': 'જમ્મુ અને કાશ્મીર',
-      'pa': 'ਜੰਮੂ ਅਤੇ ਕਸ਼ਮੀਰ', 'or': 'ଜମ୍ମୁ ଓ କାଶ୍ମୀର', 'as': 'জম্মু আৰু কাশ্মীৰ',
+      'hi': 'जम्मू और कश्मीर',
+      'mr': 'जम्मू आणि काश्मीर',
+      'bn': 'জম্মু ও কাশ্মীর',
+      'te': 'జమ్మూ కాశ్మీర్',
+      'ta': 'ஜம்மு & காஷ்மீர்',
+      'kn': 'ಜಮ್ಮು ಮತ್ತು ಕಾಶ್ಮೀರ',
+      'ml': 'ജമ്മു & കശ്മീർ',
+      'gu': 'જમ્મુ અને કાશ્મીર',
+      'pa': 'ਜੰਮੂ ਅਤੇ ਕਸ਼ਮੀਰ',
+      'or': 'ଜମ୍ମୁ ଓ କାଶ୍ମୀର',
+      'as': 'জম্মু আৰু কাশ্মীৰ',
     },
     'Punjab': {
-      'hi': 'पंजाब', 'mr': 'पंजाब', 'bn': 'পাঞ্জাব', 'te': 'పంజాబ్',
-      'ta': 'பஞ்சாப்', 'kn': 'ಪಂಜಾಬ್', 'ml': 'പഞ്ചാബ്', 'gu': 'પંજાબ',
-      'pa': 'ਪੰਜਾਬ', 'or': 'ପଞ୍ଜାବ', 'as': 'পঞ্জাৱ',
+      'hi': 'पंजाब',
+      'mr': 'पंजाब',
+      'bn': 'পাঞ্জাব',
+      'te': 'పంజాబ్',
+      'ta': 'பஞ்சாப்',
+      'kn': 'ಪಂಜಾಬ್',
+      'ml': 'പഞ്ചാബ്',
+      'gu': 'પંજાબ',
+      'pa': 'ਪੰਜਾਬ',
+      'or': 'ପଞ୍ଜାବ',
+      'as': 'পঞ্জাৱ',
     },
     'Haryana': {
-      'hi': 'हरियाणा', 'mr': 'हरियाणा', 'bn': 'হরিয়ানা', 'te': 'హర్యానా',
-      'ta': 'ஹரியானா', 'kn': 'ಹರಿಯಾಣ', 'ml': 'ഹരിയാന', 'gu': 'હરિયાણા',
-      'pa': 'ਹਰਿਆਣਾ', 'or': 'ହରିୟାଣା', 'as': 'হাৰিয়ানা',
+      'hi': 'हरियाणा',
+      'mr': 'हरियाणा',
+      'bn': 'হরিয়ানা',
+      'te': 'హర్యానా',
+      'ta': 'ஹரியானா',
+      'kn': 'ಹರಿಯಾಣ',
+      'ml': 'ഹരിയാന',
+      'gu': 'હરિયાણા',
+      'pa': 'ਹਰਿਆਣਾ',
+      'or': 'ହରିୟାଣା',
+      'as': 'হাৰিয়ানা',
     },
     'Delhi': {
-      'hi': 'दिल्ली', 'mr': 'दिल्ली', 'bn': 'দিল্লি', 'te': 'ఢిల్లీ',
-      'ta': 'டெல்லி', 'kn': 'ದೆಹಲಿ', 'ml': 'ഡൽഹി', 'gu': 'દિલ્હી',
-      'pa': 'ਦਿੱਲੀ', 'or': 'ଦିଲ୍ଲୀ', 'as': 'দিল্লী',
+      'hi': 'दिल्ली',
+      'mr': 'दिल्ली',
+      'bn': 'দিল্লি',
+      'te': 'ఢిల్లీ',
+      'ta': 'டெல்லி',
+      'kn': 'ದೆಹಲಿ',
+      'ml': 'ഡൽഹി',
+      'gu': 'દિલ્હી',
+      'pa': 'ਦਿੱਲੀ',
+      'or': 'ଦିଲ୍ଲୀ',
+      'as': 'দিল্লী',
     },
     'Himachal Pradesh': {
-      'hi': 'हिमाचल प्रदेश', 'mr': 'हिमाचल प्रदेश', 'bn': 'হিমাচল প্রদেশ', 'te': 'హిమాచల్ ప్రదేశ్',
-      'ta': 'இமாச்சலப் பிரதேசம்', 'kn': 'ಹಿಮಾಚಲ ಪ್ರದೇಶ', 'ml': 'ഹിമാചൽ പ്രദേശ്', 'gu': 'હિમાચલ પ્રદેશ',
-      'pa': 'ਹਿਮਾਚਲ ਪ੍ਰਦੇਸ਼', 'or': 'ହିମାଚଳ ପ୍ରଦେଶ', 'as': 'হিমাচল প্ৰদেশ',
+      'hi': 'हिमाचल प्रदेश',
+      'mr': 'हिमाचल प्रदेश',
+      'bn': 'হিমাচল প্রদেশ',
+      'te': 'హిమాచల్ ప్రదేశ్',
+      'ta': 'இமாச்சலப் பிரதேசம்',
+      'kn': 'ಹಿಮಾಚಲ ಪ್ರದೇಶ',
+      'ml': 'ഹിമാചൽ പ്രദേശ്',
+      'gu': 'હિમાચલ પ્રદેશ',
+      'pa': 'ਹਿਮਾਚਲ ਪ੍ਰਦੇਸ਼',
+      'or': 'ହିମାଚଳ ପ୍ରଦେଶ',
+      'as': 'হিমাচল প্ৰদেশ',
     },
     'Jharkhand': {
-      'hi': 'झारखंड', 'mr': 'झारखंड', 'bn': 'ঝাড়খণ্ড', 'te': 'జార్ఖండ్',
-      'ta': 'ஜார்கண்ட்', 'kn': 'ಜಾರ್ಖಂಡ್', 'ml': 'ജാർഖണ്ഡ്', 'gu': 'ઝારખંડ',
-      'pa': 'ਝਾਰਖੰਡ', 'or': 'ଝାଡ଼ଖଣ୍ଡ', 'as': 'ঝাৰখণ্ড',
+      'hi': 'झारखंड',
+      'mr': 'झारखंड',
+      'bn': 'ঝাড়খণ্ড',
+      'te': 'జార్ఖండ్',
+      'ta': 'ஜார்கண்ட்',
+      'kn': 'ಜಾರ್ಖಂಡ್',
+      'ml': 'ജാർഖണ്ഡ്',
+      'gu': 'ઝારખંડ',
+      'pa': 'ਝਾਰਖੰਡ',
+      'or': 'ଝାଡ଼ଖଣ୍ଡ',
+      'as': 'ঝাৰখণ্ড',
     },
     'Uttarakhand': {
-      'hi': 'उत्तराखंड', 'mr': 'उत्तराखंड', 'bn': 'উত্তরাখণ্ড', 'te': 'ఉత్తరాఖండ్',
-      'ta': 'உத்தரகாண்ட்', 'kn': 'ಉತ್ತರಾಖಂಡ', 'ml': 'ഉത്തരാഖണ്ഡ്', 'gu': 'ઉત્તરાખંડ',
-      'pa': 'ਉੱਤਰਾਖੰਡ', 'or': 'ଉତ୍ତରାଖଣ୍ଡ', 'as': 'উত্তৰাখণ্ড',
+      'hi': 'उत्तराखंड',
+      'mr': 'उत्तराखंड',
+      'bn': 'উত্তরাখণ্ড',
+      'te': 'ఉత్తరాఖండ్',
+      'ta': 'உத்தரகாண்ட்',
+      'kn': 'ಉತ್ತರಾಖಂಡ',
+      'ml': 'ഉത്തരാഖണ്ഡ്',
+      'gu': 'ઉત્તરાખંડ',
+      'pa': 'ਉੱਤਰਾਖੰਡ',
+      'or': 'ଉତ୍ତରାଖଣ୍ଡ',
+      'as': 'উত্তৰাখণ্ড',
     },
     'Meghalaya': {
-      'hi': 'मेघालय', 'mr': 'मेघालय', 'bn': 'মেঘালয়', 'te': 'మేఘాలయ',
-      'ta': 'மேகாலயா', 'kn': 'ಮೇಘಾಲಯ', 'ml': 'മേഘാലയ', 'gu': 'મેઘાલય',
-      'pa': 'ਮੇਘਾਲਿਆ', 'or': 'ମେଘାଳୟ', 'as': 'মেঘালয়',
+      'hi': 'मेघालय',
+      'mr': 'मेघालय',
+      'bn': 'মেঘালয়',
+      'te': 'మేఘాలయ',
+      'ta': 'மேகாலயா',
+      'kn': 'ಮೇಘಾಲಯ',
+      'ml': 'മേഘാലയ',
+      'gu': 'મેઘાલય',
+      'pa': 'ਮੇਘਾਲਿਆ',
+      'or': 'ମେଘାଳୟ',
+      'as': 'মেঘালয়',
     },
     'Arunachal Pradesh': {
-      'hi': 'अरुणाचल प्रदेश', 'mr': 'अरुणाचल प्रदेश', 'bn': 'অরুণাচল প্রদেশ', 'te': 'అరుణాచల్ ప్రదేశ్',
-      'ta': 'அருணாச்சலப் பிரதேசம்', 'kn': 'ಅರುಣಾಚಲ ಪ್ರದೇಶ', 'ml': 'അരുണാചൽ പ്രദേശ്', 'gu': 'અરુણાચલ પ્રદેશ',
-      'pa': 'ਅਰੁਣਾਂਚਲ ਪ੍ਰਦੇਸ਼', 'or': 'ଅରୁଣାଚଳ ପ୍ରଦେଶ', 'as': 'অৰুণাচল প্ৰদেশ',
+      'hi': 'अरुणाचल प्रदेश',
+      'mr': 'अरुणाचल प्रदेश',
+      'bn': 'অরুণাচল প্রদেশ',
+      'te': 'అరుణాచల్ ప్రదేశ్',
+      'ta': 'அருணாச்சலப் பிரதேசம்',
+      'kn': 'ಅರುಣಾಚಲ ಪ್ರದೇಶ',
+      'ml': 'അരുണാചൽ പ്രദേശ്',
+      'gu': 'અરુણાચલ પ્રદેશ',
+      'pa': 'ਅਰੁਣਾਂਚਲ ਪ੍ਰਦੇਸ਼',
+      'or': 'ଅରୁଣାଚଳ ପ୍ରଦେଶ',
+      'as': 'অৰুণাচল প্ৰদেশ',
     },
     'Nagaland': {
-      'hi': 'नागालैंड', 'mr': 'नागालँड', 'bn': 'নাগাল্যান্ড', 'te': 'నాగాలాండ్',
-      'ta': 'நாகாலாந்து', 'kn': 'ನಾಗಾಲ್ಯಾಂಡ್', 'ml': 'നാഗാലാൻഡ്', 'gu': 'નાગાલેન્ડ',
-      'pa': 'ਨਾਗਾਲੈਂਡ', 'or': 'ନାଗାଲାଣ୍ଡ', 'as': 'নাগালেণ্ড',
+      'hi': 'नागालैंड',
+      'mr': 'नागालँड',
+      'bn': 'নাগাল্যান্ড',
+      'te': 'నాగాలాండ్',
+      'ta': 'நாகாலாந்து',
+      'kn': 'ನಾಗಾಲ್ಯಾಂಡ್',
+      'ml': 'നാഗാലാൻഡ്',
+      'gu': 'નાગાલેન્ડ',
+      'pa': 'ਨਾਗਾਲੈਂਡ',
+      'or': 'ନାଗାଲାଣ୍ଡ',
+      'as': 'নাগালেণ্ড',
     },
     'Tripura': {
-      'hi': 'त्रिपुरा', 'mr': 'त्रिपुरा', 'bn': 'ত্রিপুরা', 'te': 'త్రిపుర',
-      'ta': 'திரிபுரா', 'kn': 'ತ್ರಿಪುರ', 'ml': 'ത്രിപുര', 'gu': 'ત્રિપુરા',
-      'pa': 'ਤ੍ਰਿਪੁਰਾ', 'or': 'ତ୍ରିପୁରା', 'as': 'ত্ৰিপুৰা',
+      'hi': 'त्रिपुरा',
+      'mr': 'त्रिपुरा',
+      'bn': 'ত্রিপুরা',
+      'te': 'త్రిపుర',
+      'ta': 'திரிபுரா',
+      'kn': 'ತ್ರಿಪುರ',
+      'ml': 'ത്രിപുര',
+      'gu': 'ત્રિપુરા',
+      'pa': 'ਤ੍ਰਿਪੁਰਾ',
+      'or': 'ତ୍ରିପୁରା',
+      'as': 'ত্ৰিপুৰা',
     },
     'Manipur': {
-      'hi': 'मणिपुर', 'mr': 'मणिपूर', 'bn': 'মণিপুর', 'te': 'మణిపూర్',
-      'ta': 'மணிப்பூர்', 'kn': 'ಮಣಿಪುರ', 'ml': 'മണിപ്പൂർ', 'gu': 'મણિપુર',
-      'pa': 'ਮਣੀਪੁਰ', 'or': 'ମଣିପୁର', 'as': 'মণিপুৰ',
+      'hi': 'मणिपुर',
+      'mr': 'मणिपूर',
+      'bn': 'মণিপুর',
+      'te': 'మణిపూర్',
+      'ta': 'மணிப்பூர்',
+      'kn': 'ಮಣಿಪುರ',
+      'ml': 'മണിപ്പൂർ',
+      'gu': 'મણિપુર',
+      'pa': 'ਮਣੀਪੁਰ',
+      'or': 'ମଣିପୁର',
+      'as': 'মণিপুৰ',
     },
     'Mizoram': {
-      'hi': 'मिजोरम', 'mr': 'मिझोराम', 'bn': 'মিজোরাম', 'te': 'మిజోరం',
-      'ta': 'மிசோரம்', 'kn': 'ಮಿಜೋರಾಂ', 'ml': 'മിസോറാം', 'gu': 'મિઝોરમ',
-      'pa': 'ਮਿਜ਼ੋਰਮ', 'or': 'ମਿଜୋਰਾਮ', 'as': 'মিজোৰাম',
+      'hi': 'मिजोरम',
+      'mr': 'मिझोराम',
+      'bn': 'মিজোরাম',
+      'te': 'మిజోరం',
+      'ta': 'மிசோரம்',
+      'kn': 'ಮಿಜೋರಾಂ',
+      'ml': 'മിസോറാം',
+      'gu': 'મિઝોરમ',
+      'pa': 'ਮਿਜ਼ੋਰਮ',
+      'or': 'ମਿଜୋਰਾਮ',
+      'as': 'মিজোৰাম',
     },
     'Puducherry': {
-      'hi': 'पुडुचेरी', 'mr': 'पुडुचेरी', 'bn': 'পুদুচেরি', 'te': 'పుదుచ్చేరి',
-      'ta': 'புதுச்சேரி', 'kn': 'ಪುದುಚೇರಿ', 'ml': 'പുതുച്ചേരി', 'gu': 'પુડુચેરી',
-      'pa': 'ਪੁਡੂਚੇਰੀ', 'or': 'ପୁଡୁଚେରୀ', 'as': 'পুডুচেৰী',
+      'hi': 'पुडुचेरी',
+      'mr': 'पुडुचेरी',
+      'bn': 'পুদুচেরি',
+      'te': 'పుదుచ్చేరి',
+      'ta': 'புதுச்சேரி',
+      'kn': 'ಪುದುಚೇರಿ',
+      'ml': 'പുതുച്ചേരി',
+      'gu': 'પુડુચેરી',
+      'pa': 'ਪੁਡੂਚੇਰੀ',
+      'or': 'ପୁଡୁଚେରୀ',
+      'as': 'পুডুচেৰী',
     },
     'Chandigarh': {
-      'hi': 'चंडीगढ़', 'mr': 'चंदिगढ', 'bn': 'চণ্ডীগড়', 'te': 'చండీగఢ్',
-      'ta': 'சண்டிகர்', 'kn': 'ಚಂಡೀಗಢ', 'ml': 'ചണ്ഡീഗഡ്', 'gu': 'ચંદીગઢ',
-      'pa': 'ਚੰਡੀਗੜ੍ਹ', 'or': 'ଚଣ୍ଡିଗଡ଼', 'as': 'চণ্ডীগড়',
+      'hi': 'चंडीगढ़',
+      'mr': 'चंदिगढ',
+      'bn': 'চণ্ডীগড়',
+      'te': 'చండీగఢ్',
+      'ta': 'சண்டிகர்',
+      'kn': 'ಚಂಡೀಗಢ',
+      'ml': 'ചണ്ഡീഗഡ്',
+      'gu': 'ચંદીગઢ',
+      'pa': 'ਚੰਡੀਗੜ੍ਹ',
+      'or': 'ଚଣ୍ଡିଗଡ଼',
+      'as': 'চণ্ডীগড়',
     },
     'Goa': {
-      'hi': 'गोवा', 'mr': 'गोवा', 'bn': 'গোয়া', 'te': 'గోవా',
-      'ta': 'கோவா', 'kn': 'ಗೋವಾ', 'ml': 'ഗോവ', 'gu': 'ગોવા',
-      'pa': 'ਗੋਆ', 'or': 'ଗୋଆ', 'as': 'গোৱা',
+      'hi': 'गोवा',
+      'mr': 'गोवा',
+      'bn': 'গোয়া',
+      'te': 'గోవా',
+      'ta': 'கோவா',
+      'kn': 'ಗೋವಾ',
+      'ml': 'ഗോവ',
+      'gu': 'ગોવા',
+      'pa': 'ਗੋਆ',
+      'or': 'ଗୋଆ',
+      'as': 'গোৱা',
     },
     'A & N Islands': {
-      'hi': 'अंडमान और निकोबार', 'mr': 'अंदमान आणि निकोबार', 'bn': 'আন্দামান ও নিকোবর', 'te': 'అండమాన్ నికోబార్',
-      'ta': 'அந்தமான் & நிக்கோபார்', 'kn': 'ಅಂಡಮಾನ್ & ನಿಕೋಬಾರ್', 'ml': 'ആൻഡമാൻ & നിക്കോബാർ', 'gu': 'અંદમાન અને નિકોબાર',
-      'pa': 'ਅੰਡੇਮਾਨ ਅਤੇ ਨਿਕੋਬਾਰ', 'or': 'ଆଣ୍ଡାମାନ ଓ ନିକୋବର', 'as': 'আন্দামান আৰু নিকোবৰ',
+      'hi': 'अंडमान और निकोबार',
+      'mr': 'अंदमान आणि निकोबार',
+      'bn': 'আন্দামান ও নিকোবর',
+      'te': 'అండమాన్ నికోబార్',
+      'ta': 'அந்தமான் & நிக்கோபார்',
+      'kn': 'ಅಂಡಮಾನ್ & ನಿಕೋಬಾರ್',
+      'ml': 'ആൻഡമാൻ & നിക്കോബാർ',
+      'gu': 'અંદમાન અને નિકોબાર',
+      'pa': 'ਅੰਡੇਮਾਨ ਅਤੇ ਨਿਕੋਬਾਰ',
+      'or': 'ଆଣ୍ଡାମାନ ଓ ନିକୋବର',
+      'as': 'আন্দামান আৰু নিকোবৰ',
     },
     'Sikkim': {
-      'hi': 'सिक्किम', 'mr': 'सिक्कीम', 'bn': 'সিকিম', 'te': 'సిక్కిಂ',
-      'ta': 'சிக்கிம்', 'kn': 'ಸಿಕ್ಕಿಂ', 'ml': 'സിക്കിം', 'gu': 'સિક્કિમ',
-      'pa': 'ਸਿੱਕਮ', 'or': 'ସିକିମ', 'as': 'ছিকিম',
+      'hi': 'सिक्किम',
+      'mr': 'सिक्कीम',
+      'bn': 'সিকিম',
+      'te': 'సిక్కిಂ',
+      'ta': 'சிக்கிம்',
+      'kn': 'ಸಿಕ್ಕಿಂ',
+      'ml': 'സിക്കിം',
+      'gu': 'સિક્કિમ',
+      'pa': 'ਸਿੱਕਮ',
+      'or': 'ସିକିମ',
+      'as': 'ছিকিম',
     },
   };
   return states[name]?[lang] ?? name;
@@ -2132,114 +2444,316 @@ String _localizeMapLabel(String name, String lang) {
 
   const termMap = <String, Map<String, String>>{
     'UPHC': {
-      'mr': 'नागरी प्रा.आ. केंद्र', 'hi': 'शहरी प्रा.स्वा. केंद्र', 'bn': 'ইউপিএইচসি', 'te': 'పట్టణ పిహెచ్‌సి',
-      'ta': 'நகர்ப்புற ஆரம்ப சுகாதார நிலையம்', 'kn': 'ನಗರ ಪ್ರಾಥಮಿಕ ಆರೋಗ್ಯ ಕೇಂದ್ರ', 'ml': 'യുപിഎച്ച്സി', 'gu': 'શહેરી પીએચસી',
-      'pa': 'ਯੂਪੀਐਚਸੀ', 'or': 'ୟୁପିଏଚସି', 'as': 'ইউপিএইচচি',
+      'mr': 'नागरी प्रा.आ. केंद्र',
+      'hi': 'शहरी प्रा.स्वा. केंद्र',
+      'bn': 'ইউপিএইচসি',
+      'te': 'పట్టణ పిహెచ్‌సి',
+      'ta': 'நகர்ப்புற ஆரம்ப சுகாதார நிலையம்',
+      'kn': 'ನಗರ ಪ್ರಾಥಮಿಕ ಆರೋಗ್ಯ ಕೇಂದ್ರ',
+      'ml': 'യുപിഎച്ച്സി',
+      'gu': 'શહેરી પીએચસી',
+      'pa': 'ਯੂਪੀਐਚਸੀ',
+      'or': 'ୟୁପିଏଚସି',
+      'as': 'ইউপিএইচচি',
     },
     'CHC': {
-      'mr': 'सामुदायिक आरोग्य केंद्र', 'hi': 'सामुदायिक स्वास्थ्य केंद्र', 'bn': 'কমিউনিটি স্বাস্থ্য কেন্দ্র', 'te': 'సామాజిక ఆరోగ్య కేంద్రం',
-      'ta': 'சமூக சுகாதார மையம்', 'kn': 'ಸಮುದಾಯ ಆರೋಗ್ಯ ಕೇಂದ್ರ', 'ml': 'സാമൂഹിക ആരോഗ്യ കേന്ദ്രം', 'gu': 'સામુદાયિક આરોગ્ય કેન્દ્ર',
-      'pa': 'ਕਮਿਊਨਿਟੀ ਸਿਹਤ ਕੇਂਦਰ', 'or': 'ଗୋଷ୍ଠୀ ସ୍ୱାସ୍ଥ୍ୟ କେନ୍ଦ୍ର', 'as': 'সামূহিক স্বাস্থ্য কেন্দ্ৰ',
+      'mr': 'सामुदायिक आरोग्य केंद्र',
+      'hi': 'सामुदायिक स्वास्थ्य केंद्र',
+      'bn': 'কমিউনিটি স্বাস্থ্য কেন্দ্র',
+      'te': 'సామాజిక ఆరోగ్య కేంద్రం',
+      'ta': 'சமூக சுகாதார மையம்',
+      'kn': 'ಸಮುದಾಯ ಆರೋಗ್ಯ ಕೇಂದ್ರ',
+      'ml': 'സാമൂഹിക ആരോഗ്യ കേന്ദ്രം',
+      'gu': 'સામુદાયિક આરોગ્ય કેન્દ્ર',
+      'pa': 'ਕਮਿਊਨਿਟੀ ਸਿਹਤ ਕੇਂਦਰ',
+      'or': 'ଗୋଷ୍ଠୀ ସ୍ୱାସ୍ଥ୍ୟ କେନ୍ଦ୍ର',
+      'as': 'সামূহিক স্বাস্থ্য কেন্দ্ৰ',
     },
     'PHC': {
-      'mr': 'प्राथमिक आरोग्य केंद्र', 'hi': 'प्राथमिक स्वास्थ्य केंद्र', 'bn': 'প্রাথমিক স্বাস্থ্য কেন্দ্র', 'te': 'ప్రాథమిక ఆరోగ్య కేంద్రం',
-      'ta': 'ஆரம்ப சுகாதார நிலையம்', 'kn': 'ಪ್ರಾಥಮಿಕ ಆರೋಗ್ಯ ಕೇಂದ್ರ', 'ml': 'പ്രാഥമിക ആരോഗ്യ കേന്ദ്രം', 'gu': 'પ્રાથમિક આરોગ્ય કેન્દ્ર',
-      'pa': 'ਪ੍ਰਾਇਮਰੀ ਸਿਹਤ ਕੇਂਦਰ', 'or': 'ପ୍ରାଥମିକ ସ୍ୱାସ୍ଥ୍ୟ କେନ୍ଦ୍ର', 'as': 'প্ৰাথমিক স্বাস্থ্য কেন্দ্ৰ',
+      'mr': 'प्राथमिक आरोग्य केंद्र',
+      'hi': 'प्राथमिक स्वास्थ्य केंद्र',
+      'bn': 'প্রাথমিক স্বাস্থ্য কেন্দ্র',
+      'te': 'ప్రాథమిక ఆరోగ్య కేంద్రం',
+      'ta': 'ஆரம்ப சுகாதார நிலையம்',
+      'kn': 'ಪ್ರಾಥಮಿಕ ಆರೋಗ್ಯ ಕೇಂದ್ರ',
+      'ml': 'പ്രാഥമിക ആരോഗ്യ കേന്ദ്രം',
+      'gu': 'પ્રાથમિક આરોગ્ય કેન્દ્ર',
+      'pa': 'ਪ੍ਰਾਇਮਰੀ ਸਿਹਤ ਕੇਂਦਰ',
+      'or': 'ପ୍ରାଥମିକ ସ୍ୱାସ୍ଥ୍ୟ କେନ୍ଦ୍ର',
+      'as': 'প্ৰাথমিক স্বাস্থ্য কেন্দ্ৰ',
     },
     'Sub-centre': {
-      'mr': 'उप-आरोग्य केंद्र', 'hi': 'उप-स्वास्थ्य केंद्र', 'bn': 'উপ-স্বাস্থ্য কেন্দ্র', 'te': 'ఉప-కేంద్రం',
-      'ta': 'துணை சுகாதார நிலையம்', 'kn': 'ಉಪ ಕೇಂದ್ರ', 'ml': 'ഉപകേന്ദ്രം', 'gu': 'પેટા-આરોગ્ય કેન્દ્ર',
-      'pa': 'ਉਪ-ਸਿਹਤ ਕੇਂਦਰ', 'or': 'ଉପ-ସ୍ୱାସ୍ଥ୍ୟ କେନ୍ଦ୍ର', 'as': 'উপ-স্বাস্থ্য কেন্দ্ৰ',
+      'mr': 'उप-आरोग्य केंद्र',
+      'hi': 'उप-स्वास्थ्य केंद्र',
+      'bn': 'উপ-স্বাস্থ্য কেন্দ্র',
+      'te': 'ఉప-కేంద్రం',
+      'ta': 'துணை சுகாதார நிலையம்',
+      'kn': 'ಉಪ ಕೇಂದ್ರ',
+      'ml': 'ഉപകേന്ദ്രം',
+      'gu': 'પેટા-આરોગ્ય કેન્દ્ર',
+      'pa': 'ਉਪ-ਸਿਹਤ ਕੇਂਦਰ',
+      'or': 'ଉପ-ସ୍ୱାସ୍ଥ୍ୟ କେନ୍ଦ୍ର',
+      'as': 'উপ-স্বাস্থ্য কেন্দ্ৰ',
     },
     'Sub-Centre': {
-      'mr': 'उप-आरोग्य केंद्र', 'hi': 'उप-स्वास्थ्य केंद्र', 'bn': 'উপ-स्वास्थ्य केंद्र', 'te': 'ఉప-కేంద్రం',
-      'ta': 'துணை சுகாதார நிலையம்', 'kn': 'ಉಪ ಕೇಂದ್ರ', 'ml': 'ഉപകേന്ദ്രം', 'gu': 'પેટા-આરોગ્ય કેન્દ્ર',
-      'pa': 'ਉਪ-ਸਿਹਤ ਕੇਂਦਰ', 'or': 'ଉପ-ସ୍ୱାସ୍ଥ୍ୟ କେନ୍ଦ୍ର', 'as': 'উপ-স্বাস্থ্য কেন্দ্ৰ',
+      'mr': 'उप-आरोग्य केंद्र',
+      'hi': 'उप-स्वास्थ्य केंद्र',
+      'bn': 'উপ-स्वास्थ्य केंद्र',
+      'te': 'ఉప-కేంద్రం',
+      'ta': 'துணை சுகாதார நிலையம்',
+      'kn': 'ಉಪ ಕೇಂದ್ರ',
+      'ml': 'ഉപകേന്ദ്രം',
+      'gu': 'પેટા-આરોગ્ય કેન્દ્ર',
+      'pa': 'ਉਪ-ਸਿਹਤ ਕੇਂਦਰ',
+      'or': 'ଉପ-ସ୍ୱାସ୍ଥ୍ୟ କେନ୍ଦ୍ର',
+      'as': 'উপ-স্বাস্থ্য কেন্দ্ৰ',
     },
     'General hospital': {
-      'mr': 'सामान्य रुग्णालय', 'hi': 'सामान्य अस्पताल', 'bn': 'জেনারেল হাসপাতাল', 'te': 'జనరల్ ఆసుపత్రి',
-      'ta': 'பொது மருத்துவமனை', 'kn': 'ಜನರಲ್ ಆಸ್ಪತ್ರೆ', 'ml': 'ജനറൽ ആശുപത്രി', 'gu': 'જનરલ હોસ્પિટલ',
-      'pa': 'ਜਨਰਲ ਹਸਪਤਾਲ', 'or': 'ସାଧାରଣ ଡାକ୍ତରଖାନା', 'as': 'সাধাৰণ চিকিৎসালয়',
+      'mr': 'सामान्य रुग्णालय',
+      'hi': 'सामान्य अस्पताल',
+      'bn': 'জেনারেল হাসপাতাল',
+      'te': 'జనరల్ ఆసుపత్రి',
+      'ta': 'பொது மருத்துவமனை',
+      'kn': 'ಜನರಲ್ ಆಸ್ಪತ್ರೆ',
+      'ml': 'ജനറൽ ആശുപത്രി',
+      'gu': 'જનરલ હોસ્પિટલ',
+      'pa': 'ਜਨਰਲ ਹਸਪਤਾਲ',
+      'or': 'ସାଧାରଣ ଡାକ୍ତରଖାନା',
+      'as': 'সাধাৰণ চিকিৎসালয়',
     },
     'General Hospital': {
-      'mr': 'सामान्य रुग्णालय', 'hi': 'सामान्य अस्पताल', 'bn': 'জেনারেল হাসপাতাল', 'te': 'జనరల్ ఆసుపత్రి',
-      'ta': 'பொது மருத்துவமனை', 'kn': 'ಜನರಲ್ ಆಸ್ಪತ್ರೆ', 'ml': 'ജനറൽ ആശുപത്രി', 'gu': 'જનરલ હોસ્પિટલ',
-      'pa': 'ਜਨਰਲ ਹਸਪਤਾਲ', 'or': 'ସାଧାରଣ ଡାକ୍ତରଖାନା', 'as': 'সাধাৰণ চিকিৎসালয়',
+      'mr': 'सामान्य रुग्णालय',
+      'hi': 'सामान्य अस्पताल',
+      'bn': 'জেনারেল হাসপাতাল',
+      'te': 'జనరల్ ఆసుపత్రి',
+      'ta': 'பொது மருத்துவமனை',
+      'kn': 'ಜನರಲ್ ಆಸ್ಪತ್ರೆ',
+      'ml': 'ജനറൽ ആശുപത്രി',
+      'gu': 'જનરલ હોસ્પિટલ',
+      'pa': 'ਜਨਰਲ ਹਸਪਤਾਲ',
+      'or': 'ସାଧାରଣ ଡାକ୍ତରଖାନା',
+      'as': 'সাধাৰণ চিকিৎসালয়',
     },
     'Hospital': {
-      'mr': 'रुग्णालय', 'hi': 'अस्पताल', 'bn': 'হাসপাতাল', 'te': 'ఆసుపత్రి',
-      'ta': 'மருத்துவமனை', 'kn': 'ಆಸ್ಪತ್ರೆ', 'ml': 'ആശുപത്രി', 'gu': 'હોસ્પિટલ',
-      'pa': 'ਹਸਪਤਾਲ', 'or': 'ଡାକ୍ତରଖାନା', 'as': 'চিকিৎসালয়',
+      'mr': 'रुग्णालय',
+      'hi': 'अस्पताल',
+      'bn': 'হাসপাতাল',
+      'te': 'ఆసుపత్రి',
+      'ta': 'மருத்துவமனை',
+      'kn': 'ಆಸ್ಪತ್ರೆ',
+      'ml': 'ആശുപത്രി',
+      'gu': 'હોસ્પિટલ',
+      'pa': 'ਹਸਪਤਾਲ',
+      'or': 'ଡାକ୍ତରଖାନା',
+      'as': 'চিকিৎসালয়',
     },
     'Dispensary': {
-      'mr': 'दवाखाना', 'hi': 'दवाखाना', 'bn': 'ডিসপেনসারি', 'te': 'డిస్పెన్సరీ',
-      'ta': 'மருந்தகம்', 'kn': 'ಔಷಧಾಲಯ', 'ml': 'ഡിസ്പെൻസറി', 'gu': 'દવાખાનું',
-      'pa': 'ਡਿਸਪੈਂਸਰੀ', 'or': 'ଚିକିତ୍ସାଳୟ', 'as': 'ডিচপেনচাৰী',
+      'mr': 'दवाखाना',
+      'hi': 'दवाखाना',
+      'bn': 'ডিসপেনসারি',
+      'te': 'డిస్పెన్సరీ',
+      'ta': 'மருந்தகம்',
+      'kn': 'ಔಷಧಾಲಯ',
+      'ml': 'ഡിസ്പെൻസറി',
+      'gu': 'દવાખાનું',
+      'pa': 'ਡਿਸਪੈਂਸਰੀ',
+      'or': 'ଚିକିତ୍ସାଳୟ',
+      'as': 'ডিচপেনচাৰী',
     },
     'Diagnostic lab': {
-      'mr': 'निदान प्रयोगशाळा', 'hi': 'निदान प्रयोगशाला', 'bn': 'ডায়াগনস্টিক ল্যাব', 'te': 'డయాగ్నస్టిక్ ల్యాబ్',
-      'ta': 'பரிசோதனை மையம்', 'kn': 'ಡಯಾಗ್ನೋಸ್ಟಿಕ್ ಲ್ಯಾಬ್', 'ml': 'ഡയഗ്നോസ്റ്റിക് ലാബ്', 'gu': 'નિદાન પ્રયોગશાળા',
-      'pa': 'ਡਾਇਗਨੋਸਟਿਕ ਲੈਬ', 'or': 'ନିଦାନ ପରୀକ୍ଷାଗାର', 'as': 'ডায়াগনষ্টিক লেব',
+      'mr': 'निदान प्रयोगशाळा',
+      'hi': 'निदान प्रयोगशाला',
+      'bn': 'ডায়াগনস্টিক ল্যাব',
+      'te': 'డయాగ్నస్టిక్ ల్యాబ్',
+      'ta': 'பரிசோதனை மையம்',
+      'kn': 'ಡಯಾಗ್ನೋಸ್ಟಿಕ್ ಲ್ಯಾಬ್',
+      'ml': 'ഡയഗ്നോസ്റ്റിക് ലാബ്',
+      'gu': 'નિદાન પ્રયોગશાળા',
+      'pa': 'ਡਾਇਗਨੋਸਟਿਕ ਲੈਬ',
+      'or': 'ନିଦାନ ପରୀକ୍ଷାଗାର',
+      'as': 'ডায়াগনষ্টিক লেব',
     },
     'Diagnostic Lab': {
-      'mr': 'निदान प्रयोगशाळा', 'hi': 'निदान प्रयोगशाला', 'bn': 'ডায়াগনস্টিক ল্যাব', 'te': 'డయాగ్నస్టిక్ ల్యాబ్',
-      'ta': 'பரிசோதனை மையம்', 'kn': 'ಡಯಾಗ್ನೋಸ್ಟಿಕ್ ಲ್ಯಾಬ್', 'ml': 'ഡയഗ്നോസ്റ്റിക് ലാബ്', 'gu': 'નિદાન પ્રયોગશાળા',
-      'pa': 'ਡਾਇਗਨੋਸਟਿਕ ਲੈਬ', 'or': 'ନିଦାନ ପରୀକ୍ଷାଗାର', 'as': 'ডায়াগনষ্টিক লেব',
+      'mr': 'निदान प्रयोगशाळा',
+      'hi': 'निदान प्रयोगशाला',
+      'bn': 'ডায়াগনস্টিক ল্যাব',
+      'te': 'డయాగ్నస్టిక్ ల్యాబ్',
+      'ta': 'பரிசோதனை மையம்',
+      'kn': 'ಡಯಾಗ್ನೋಸ್ಟಿಕ್ ಲ್ಯಾಬ್',
+      'ml': 'ഡയഗ്നോസ്റ്റിക് ലാബ്',
+      'gu': 'નિદાન પ્રયોગશાળા',
+      'pa': 'ਡਾਇਗਨੋਸਟਿਕ ਲੈਬ',
+      'or': 'ନିଦାନ ପରୀକ୍ଷାଗାର',
+      'as': 'ডায়াগনষ্টিক লেব',
     },
     'Blood bank': {
-      'mr': 'रक्तपेढी', 'hi': 'रक्त बैंक', 'bn': 'ব্লাড ব্যাংক', 'te': 'రక్త నిధి',
-      'ta': 'இரத்த வங்கி', 'kn': 'ರಕ್ತ ನಿಧಿ', 'ml': 'ബ്ലഡ് ബാങ്ക്', 'gu': 'બ્લડ બેંક',
-      'pa': 'ਬਲੱਡ ਬੈਂਕ', 'or': 'ରକ୍ତ ଭଣ୍ଡାର', 'as': 'ব্লাড বেংক',
+      'mr': 'रक्तपेढी',
+      'hi': 'रक्त बैंक',
+      'bn': 'ব্লাড ব্যাংক',
+      'te': 'రక్త నిధి',
+      'ta': 'இரத்த வங்கி',
+      'kn': 'ರಕ್ತ ನಿಧಿ',
+      'ml': 'ബ്ലഡ് ബാങ്ക്',
+      'gu': 'બ્લડ બેંક',
+      'pa': 'ਬਲੱਡ ਬੈਂਕ',
+      'or': 'ରକ୍ତ ଭଣ୍ଡାର',
+      'as': 'ব্লাড বেংক',
     },
     'Blood Bank': {
-      'mr': 'रक्तपेढी', 'hi': 'रक्त बैंक', 'bn': 'ব্লাড ব্যাংক', 'te': 'రక్త నిధి',
-      'ta': 'இரத்த வங்கி', 'kn': 'ರಕ್ತ ನಿಧಿ', 'ml': 'ബ്ലഡ് ബാങ്ക്', 'gu': 'બ્લડ બેંક',
-      'pa': 'ਬਲੱਡ ਬੈਂਕ', 'or': 'ରକ୍ତ ଭଣ୍ଡାର', 'as': 'ব্লাড বেংক',
+      'mr': 'रक्तपेढी',
+      'hi': 'रक्त बैंक',
+      'bn': 'ব্লাড ব্যাংক',
+      'te': 'రక్త నిధి',
+      'ta': 'இரத்த வங்கி',
+      'kn': 'ರಕ್ತ ನಿಧಿ',
+      'ml': 'ബ്ലഡ് ബാങ്ക്',
+      'gu': 'બ્લડ બેંક',
+      'pa': 'ਬਲੱਡ ਬੈਂਕ',
+      'or': 'ରକ୍ତ ଭଣ୍ଡାର',
+      'as': 'ব্লাড বেংক',
     },
     'Janaushadhi Kendra': {
-      'mr': 'जन औषधी केंद्र', 'hi': 'जन औषधि केंद्र', 'bn': 'জন ঔষধ কেন্দ্র', 'te': 'జన ఔషధి కేంద్రం',
-      'ta': 'ஜன் ஔஷதி மையம்', 'kn': 'ಜನ ಔಷಧಿ ಕೇಂದ್ರ', 'ml': 'ജൻ ഔഷധി കേന്ദ്രം', 'gu': 'જન ઔષધિ કેન્દ્ર',
-      'pa': 'ਜਨ ਔਸ਼ਧੀ ਕੇਂਦਰ', 'or': 'ଜନ ଔଷଧି କେନ୍ଦ୍ର', 'as': 'জন ঔষধি কেন্দ্ৰ',
+      'mr': 'जन औषधी केंद्र',
+      'hi': 'जन औषधि केंद्र',
+      'bn': 'জন ঔষধ কেন্দ্র',
+      'te': 'జన ఔషధి కేంద్రం',
+      'ta': 'ஜன் ஔஷதி மையம்',
+      'kn': 'ಜನ ಔಷಧಿ ಕೇಂದ್ರ',
+      'ml': 'ജൻ ഔഷധി കേന്ദ്രം',
+      'gu': 'જન ઔષધિ કેન્દ્ર',
+      'pa': 'ਜਨ ਔਸ਼ਧੀ ਕੇਂਦਰ',
+      'or': 'ଜନ ଔଷଧି କେନ୍ଦ୍ର',
+      'as': 'জন ঔষধি কেন্দ্ৰ',
     },
     'Anganwadi': {
-      'mr': 'अंगणवाडी', 'hi': 'आंगनवाड़ी', 'bn': 'অঙ্গনওয়াড়ি', 'te': 'అంగన్‌వాడీ',
-      'ta': 'அங்கன்வாடி', 'kn': 'ಅಂಗನವಾಡಿ', 'ml': 'അങ്കണവാടി', 'gu': 'આંગણવાડી',
-      'pa': 'ਆਂਗਣਵਾੜੀ', 'or': 'ଅଙ୍ଗନୱାଡ଼ି', 'as': 'অংগনৱাড়ী',
+      'mr': 'अंगणवाडी',
+      'hi': 'आंगनवाड़ी',
+      'bn': 'অঙ্গনওয়াড়ি',
+      'te': 'అంగన్‌వాడీ',
+      'ta': 'அங்கன்வாடி',
+      'kn': 'ಅಂಗನವಾಡಿ',
+      'ml': 'അങ്കണവാടി',
+      'gu': 'આંગણવાડી',
+      'pa': 'ਆਂਗਣਵਾੜੀ',
+      'or': 'ଅଙ୍ଗନୱାଡ଼ି',
+      'as': 'অংগনৱাড়ী',
     },
     'Block office': {
-      'mr': 'गट कार्यालय', 'hi': 'ब्लॉक कार्यालय', 'bn': 'ব্লক অফিস', 'te': 'బ్లాక్ కార్యాలయం',
-      'ta': 'வட்டார அலுவலகம்', 'kn': 'ಬ್ಲಾಕ್ ಕಚೇರಿ', 'ml': 'ബ്ലോക്ക് ഓഫീസ്', 'gu': 'બ્લોક કચેરી',
-      'pa': 'ਬਲਾਕ ਦਫ਼ਤਰ', 'or': 'ବ୍ଲକ କାର୍ଯ୍ୟାଳୟ', 'as': 'ব্লক কাৰ্যালয়',
+      'mr': 'गट कार्यालय',
+      'hi': 'ब्लॉक कार्यालय',
+      'bn': 'ব্লক অফিস',
+      'te': 'బ్లాక్ కార్యాలయం',
+      'ta': 'வட்டார அலுவலகம்',
+      'kn': 'ಬ್ಲಾಕ್ ಕಚೇರಿ',
+      'ml': 'ബ്ലോക്ക് ഓഫീസ്',
+      'gu': 'બ્લોક કચેરી',
+      'pa': 'ਬਲਾਕ ਦਫ਼ਤਰ',
+      'or': 'ବ୍ଲକ କାର୍ଯ୍ୟାଳୟ',
+      'as': 'ব্লক কাৰ্যালয়',
     },
     'Panchayat office': {
-      'mr': 'ग्रामपंचायत कार्यालय', 'hi': 'पंचायत कार्यालय', 'bn': 'পঞ্চায়েত অফিস', 'te': 'పంచాయతీ కార్యాలయం',
-      'ta': 'பஞ்சாயத்து அலுவலகம்', 'kn': 'ಪಂಚಾಯತ್ ಕಚೇರಿ', 'ml': 'പഞ്ചായത്ത് ഓഫീസ്', 'gu': 'પંચાયત કચેરી',
-      'pa': 'ਪੰਚਾਇਤ ਦਫ਼ਤਰ', 'or': 'ପଞ୍ଚାୟତ କାର୍ଯ୍ୟାଳୟ', 'as': 'পঞ্চায়ত কাৰ্যালয়',
+      'mr': 'ग्रामपंचायत कार्यालय',
+      'hi': 'पंचायत कार्यालय',
+      'bn': 'পঞ্চায়েত অফিস',
+      'te': 'పంచాయతీ కార్యాలయం',
+      'ta': 'பஞ்சாயத்து அலுவலகம்',
+      'kn': 'ಪಂಚಾಯತ್ ಕಚೇರಿ',
+      'ml': 'പഞ്ചായത്ത് ഓഫീസ്',
+      'gu': 'પંચાયત કચેરી',
+      'pa': 'ਪੰਚਾਇਤ ਦਫ਼ਤਰ',
+      'or': 'ପଞ୍ଚାୟତ କାର୍ଯ୍ୟାଳୟ',
+      'as': 'পঞ্চায়ত কাৰ্যালয়',
     },
     'Police station': {
-      'mr': 'पोलीस ठाणे', 'hi': 'पुलिस थाना', 'bn': 'পুলিশ স্টেশন', 'te': 'పోలీస్ స్టేషన్',
-      'ta': 'காவல் நிலையம்', 'kn': 'ಪೊಲೀಸ್ ಠಾಣೆ', 'ml': 'പോലീസ് സ്റ്റേഷൻ', 'gu': 'પોલીસ સ્ટેશન',
-      'pa': 'ਪੁਲਿਸ ਥਾਣਾ', 'or': 'ଥାନା', 'as': 'আৰক্ষী থানা',
+      'mr': 'पोलीस ठाणे',
+      'hi': 'पुलिस थाना',
+      'bn': 'পুলিশ স্টেশন',
+      'te': 'పోలీస్ స్టేషన్',
+      'ta': 'காவல் நிலையம்',
+      'kn': 'ಪೊಲೀಸ್ ಠಾಣೆ',
+      'ml': 'പോലീസ് സ്റ്റേഷൻ',
+      'gu': 'પોલીસ સ્ટેશન',
+      'pa': 'ਪੁਲਿਸ ਥਾਣਾ',
+      'or': 'ଥାନା',
+      'as': 'আৰক্ষী থানা',
     },
     'Ration shop': {
-      'mr': 'रेशन दुकान', 'hi': 'राशन दुकान', 'bn': 'রেশন দোকান', 'te': 'రేషన్ షాపు',
-      'ta': 'ரேஷன் கடை', 'kn': 'ಪಡಿತರ ಅಂಗಡಿ', 'ml': 'റേഷൻ കട', 'gu': 'રેશનની દુકાન',
-      'pa': 'ਰਾਸ਼ਨ ਦੀ ਦੁਕਾਨ', 'or': 'ରାସନ ଦୋକାନ', 'as': 'ৰেচনৰ দোকান',
+      'mr': 'रेशन दुकान',
+      'hi': 'राशन दुकान',
+      'bn': 'রেশন দোকান',
+      'te': 'రేషన్ షాపు',
+      'ta': 'ரேஷன் கடை',
+      'kn': 'ಪಡಿತರ ಅಂಗಡಿ',
+      'ml': 'റേഷൻ കട',
+      'gu': 'રેશનની દુકાન',
+      'pa': 'ਰਾਸ਼ਨ ਦੀ ਦੁਕਾਨ',
+      'or': 'ରାସନ ଦୋକାନ',
+      'as': 'ৰেচনৰ দোকান',
     },
     'Road': {
-      'mr': 'रस्ता', 'hi': 'मार्ग', 'bn': 'রোড', 'te': 'రోడ్డు', 'ta': 'சாலை', 'kn': 'ರಸ್ತೆ', 'ml': 'റോഡ്', 'gu': 'રોડ', 'pa': 'ਰੋਡ', 'or': 'ରାସ୍ତା', 'as': 'পথ',
+      'mr': 'रस्ता',
+      'hi': 'मार्ग',
+      'bn': 'রোড',
+      'te': 'రోడ్డు',
+      'ta': 'சாலை',
+      'kn': 'ರಸ್ತೆ',
+      'ml': 'റോഡ്',
+      'gu': 'રોડ',
+      'pa': 'ਰੋਡ',
+      'or': 'ରାସ୍ତା',
+      'as': 'পথ',
     },
     'Flyover': {
-      'mr': 'उड्डाणपूल', 'hi': 'फ्लाईओवर', 'bn': 'ফ্লাইওভার', 'te': 'ఫ్లైఓవర్', 'ta': 'மேம்பாலம்', 'kn': 'ಮೇಲ್ಸೇತುವೆ', 'ml': 'ഫ്ലൈഓവർ', 'gu': 'ફ્લાયઓવર', 'pa': 'ਫਲਾਈਓਵਰ', 'or': 'ଫ୍ଲାଏଓଭର', 'as': 'উৰণীয়া সেতু',
+      'mr': 'उड्डाणपूल',
+      'hi': 'फ्लाईओवर',
+      'bn': 'ফ্লাইওভার',
+      'te': 'ఫ్లైఓవర్',
+      'ta': 'மேம்பாலம்',
+      'kn': 'ಮೇಲ್ಸೇತುವೆ',
+      'ml': 'ഫ്ലൈഓവർ',
+      'gu': 'ફ્લાયઓવર',
+      'pa': 'ਫਲਾਈਓਵਰ',
+      'or': 'ଫ୍ଲାଏଓଭର',
+      'as': 'উৰণীয়া সেতু',
     },
     'Bridge': {
-      'mr': 'पूल', 'hi': 'पुल', 'bn': 'সেতু', 'te': 'వంతెన', 'ta': 'பாலம்', 'kn': 'ಸೇತುವೆ', 'ml': 'പാലം', 'gu': 'પુલ', 'pa': 'ਪੁਲ', 'or': 'ପୋଲ', 'as': 'দলং',
+      'mr': 'पूल',
+      'hi': 'पुल',
+      'bn': 'সেতু',
+      'te': 'వంతెన',
+      'ta': 'பாலம்',
+      'kn': 'ಸೇತುವೆ',
+      'ml': 'പാലം',
+      'gu': 'પુલ',
+      'pa': 'ਪੁਲ',
+      'or': 'ପୋଲ',
+      'as': 'দলং',
     },
     'Chowk': {
-      'mr': 'चौक', 'hi': 'चौक', 'bn': 'চক', 'te': 'చౌక్', 'ta': 'சந்திப்பு', 'kn': 'ಚೌಕ', 'ml': 'ചൗക്ക്', 'gu': 'ચોક', 'pa': 'ਚੌਕ', 'or': 'ଛକ', 'as': 'চক',
+      'mr': 'चौक',
+      'hi': 'चौक',
+      'bn': 'চক',
+      'te': 'చౌక్',
+      'ta': 'சந்திப்பு',
+      'kn': 'ಚೌಕ',
+      'ml': 'ചൗക്ക്',
+      'gu': 'ચોક',
+      'pa': 'ਚੌਕ',
+      'or': 'ଛକ',
+      'as': 'চক',
     },
     'Underpass': {
-      'mr': 'भुयारी मार्ग', 'hi': 'अंडरपास', 'bn': 'আন্ডারপাস', 'te': 'అండర్‌పాస్', 'ta': 'சுரங்கப்பாதை', 'kn': 'ಕೆಳಸೇತುವೆ', 'ml': 'അണ്ടർപാസ്', 'gu': 'અંડરપાસ', 'pa': 'ਅੰਡਰਪਾਸ', 'or': 'ଅଣ୍ଡରପାସ୍', 'as': 'আণ্ডাৰপাছ',
+      'mr': 'भुयारी मार्ग',
+      'hi': 'अंडरपास',
+      'bn': 'আন্ডারপাস',
+      'te': 'అండర్‌పాస్',
+      'ta': 'சுரங்கப்பாதை',
+      'kn': 'ಕೆಳಸೇತುವೆ',
+      'ml': 'അണ്ടർപാസ്',
+      'gu': 'અંડરપાસ',
+      'pa': 'ਅੰਡਰਪਾਸ',
+      'or': 'ଅଣ୍ଡରପାସ୍',
+      'as': 'আণ্ডাৰপাছ',
     },
   };
 
@@ -2257,19 +2771,43 @@ String _localizeHouseholdName(String name, String lang) {
   if (lang == 'en') return name;
   const householdMap = <String, Map<String, String>>{
     'Demo household near': {
-      'mr': 'प्रात्यक्षिक घर जवळ', 'hi': 'डेमो घर पास', 'bn': 'নমুনা বাড়ি কাছাকাছি', 'te': 'నమూనా ఇల్లు సమీపంలో',
-      'ta': 'மாதிரி வீடு அருகில்', 'kn': 'ಮಾದರಿ ಮನೆ ಹತ್ತಿರ', 'ml': 'മാതൃകാ വീട് അടുത്ത്', 'gu': 'ડેમો ઘર નજીક',
-      'pa': 'ਡੈਮੋ ਘਰ ਨੇੜੇ', 'or': 'ନମୁନା ଘର ନିକଟ', 'as': 'নমুনা ঘৰ ওচৰত',
+      'mr': 'प्रात्यक्षिक घर जवळ',
+      'hi': 'डेमो घर पास',
+      'bn': 'নমুনা বাড়ি কাছাকাছি',
+      'te': 'నమూనా ఇల్లు సమీపంలో',
+      'ta': 'மாதிரி வீடு அருகில்',
+      'kn': 'ಮಾದರಿ ಮನೆ ಹತ್ತಿರ',
+      'ml': 'മാതൃകാ വീട് അടുത്ത്',
+      'gu': 'ડેમો ઘર નજીક',
+      'pa': 'ਡੈਮੋ ਘਰ ਨੇੜੇ',
+      'or': 'ନମୁନା ଘର ନିକଟ',
+      'as': 'নমুনা ঘৰ ওচৰত',
     },
     'Demo household mid': {
-      'mr': 'प्रात्यक्षिक घर मध्यम', 'hi': 'डेमो घर मध्यम', 'bn': 'নমুনা বাড়ি মধ্যবর্তী', 'te': 'నమూనా ఇల్లు మధ్యస్థ',
-      'ta': 'மாதிரி வீடு நடுவில்', 'kn': 'ಮಾದರಿ ಮನೆ ಮಧ್ಯಮ', 'ml': 'മാതൃകാ വീട് മധ്യേ', 'gu': 'ડેમો ઘર મધ્યમ',
-      'pa': 'ਡੈਮੋ ਘਰ ਮੱਧ', 'or': 'ନମୁନା ଘର ମଧ୍ୟମ', 'as': 'নমুনা ঘৰ মধ্যম',
+      'mr': 'प्रात्यक्षिक घर मध्यम',
+      'hi': 'डेमो घर मध्यम',
+      'bn': 'নমুনা বাড়ি মধ্যবর্তী',
+      'te': 'నమూనా ఇల్లు మధ్యస్థ',
+      'ta': 'மாதிரி வீடு நடுவில்',
+      'kn': 'ಮಾದರಿ ಮನೆ ಮಧ್ಯಮ',
+      'ml': 'മാതൃകാ വീട് മധ്യേ',
+      'gu': 'ડેમો ઘર મધ્યમ',
+      'pa': 'ਡੈਮੋ ਘਰ ਮੱਧ',
+      'or': 'ନମୁନା ଘର ମଧ୍ୟମ',
+      'as': 'নমুনা ঘৰ মধ্যম',
     },
     'Demo household far': {
-      'mr': 'प्रात्यक्षिक घर दूर', 'hi': 'डेमो घर दूर', 'bn': 'নমুনা বাড়ি দূরে', 'te': 'నమూనా ఇల్లు దూరంగా',
-      'ta': 'மாதிரி வீடு தொலைவில்', 'kn': 'ಮಾದರಿ ಮನೆ ದೂರ', 'ml': 'മാതൃകാ വീട് ദൂരെ', 'gu': 'ડેમો ઘર દૂર',
-      'pa': 'ਡੈਮੋ ਘਰ ਦੂਰ', 'or': 'ନମୁନା ଘର ଦୂର', 'as': 'নমুনা ঘৰ দূৰত',
+      'mr': 'प्रात्यक्षिक घर दूर',
+      'hi': 'डेमो घर दूर',
+      'bn': 'নমুনা বাড়ি দূরে',
+      'te': 'నమూనా ఇల్లు దూరంగా',
+      'ta': 'மாதிரி வீடு தொலைவில்',
+      'kn': 'ಮಾದರಿ ಮನೆ ದೂರ',
+      'ml': 'മാതൃകാ വീട് ദൂരെ',
+      'gu': 'ડેમો ઘર દૂર',
+      'pa': 'ਡੈਮੋ ਘਰ ਦੂਰ',
+      'or': 'ନମୁନା ଘର ଦୂର',
+      'as': 'নমুনা ঘৰ দূৰত',
     },
   };
   if (householdMap.containsKey(name)) {
@@ -2277,10 +2815,30 @@ String _localizeHouseholdName(String name, String lang) {
   }
   const termMap = <String, Map<String, String>>{
     'Household': {
-      'mr': 'घर', 'hi': 'घर', 'bn': 'বাড়ি', 'te': 'ఇల్లు', 'ta': 'வீடு', 'kn': 'ಮನೆ', 'ml': 'വീട്', 'gu': 'ઘર', 'pa': 'ਘਰ', 'or': 'ଘର', 'as': 'ঘৰ',
+      'mr': 'घर',
+      'hi': 'घर',
+      'bn': 'বাড়ি',
+      'te': 'ఇల్లు',
+      'ta': 'வீடு',
+      'kn': 'ಮನೆ',
+      'ml': 'വീട്',
+      'gu': 'ઘર',
+      'pa': 'ਘਰ',
+      'or': 'ଘର',
+      'as': 'ঘৰ',
     },
     'household': {
-      'mr': 'घर', 'hi': 'घर', 'bn': 'বাড়ি', 'te': 'ఇల్లు', 'ta': 'வீடு', 'kn': 'ಮನೆ', 'ml': 'വീട്', 'gu': 'ઘર', 'pa': 'ਘਰ', 'or': 'ଘର', 'as': 'ঘৰ',
+      'mr': 'घर',
+      'hi': 'घर',
+      'bn': 'বাড়ি',
+      'te': 'ఇల్లు',
+      'ta': 'வீடு',
+      'kn': 'ಮನೆ',
+      'ml': 'വീട്',
+      'gu': 'ઘર',
+      'pa': 'ਘਰ',
+      'or': 'ଘର',
+      'as': 'ঘৰ',
     },
   };
   var result = name;
@@ -2296,28 +2854,69 @@ String _localizeDue(String due, String lang) {
   if (lang == 'en') return due;
   const duesMap = <String, Map<String, String>>{
     'follow-up': {
-      'mr': 'पुढील तपासणी', 'hi': 'फॉलो-अप', 'bn': 'ফলো-আপ', 'te': 'ఫాలో-అప్', 'ta': 'பின்தொடர்தல்',
-      'kn': 'ಫಾಲೋ-ಅಪ್', 'ml': 'ഫോളോ-അപ്പ്', 'gu': 'ફોલો-અપ', 'pa': 'ਫਾਲੋ-ਅੱਪ', 'or': 'ଅନୁବର୍ତ୍ତୀ ଯାଞ୍ଚ', 'as': 'ফলো-আপ',
+      'mr': 'पुढील तपासणी',
+      'hi': 'फॉलो-अप',
+      'bn': 'ফলো-আপ',
+      'te': 'ఫాలో-అప్',
+      'ta': 'பின்தொடர்தல்',
+      'kn': 'ಫಾಲೋ-ಅಪ್',
+      'ml': 'ഫോളോ-അപ്പ്',
+      'gu': 'ફોલો-અપ',
+      'pa': 'ਫਾਲੋ-ਅੱਪ',
+      'or': 'ଅନୁବର୍ତ୍ତୀ ଯାଞ୍ଚ',
+      'as': 'ফলো-আপ',
     },
     'ANC': {
-      'mr': 'प्रसूतीपूर्व तपासणी (ANC)', 'hi': 'प्रसवपूर्व जांच (ANC)', 'bn': 'প্রসবপূর্ব যত্ন (ANC)',
-      'te': 'ప్రసవపూర్వ సంరక్షణ (ANC)', 'ta': 'மகப்பேறுக்கு முந்தைய பராமரிப்பு (ANC)', 'kn': 'ಪ್ರಸವಪೂರ್ವ ಆರೈಕೆ (ANC)',
-      'ml': 'പ്രസവത്തിനു മുമ്പുള്ള പരിചരണം (ANC)', 'gu': 'પ્રસવપૂર્વ તપાસ (ANC)', 'pa': 'ਜਣੇਪੇ ਤੋਂ ਪਹਿਲਾਂ ਦੀ ਦੇਖਭਾਲ (ANC)',
-      'or': 'ପ୍ରସବପୂର୍ବ ଯତ୍ନ (ANC)', 'as': 'প্ৰসৱপূৰ্ব যত্ন (ANC)',
+      'mr': 'प्रसूतीपूर्व तपासणी (ANC)',
+      'hi': 'प्रसवपूर्व जांच (ANC)',
+      'bn': 'প্রসবপূর্ব যত্ন (ANC)',
+      'te': 'ప్రసవపూర్వ సంరక్షణ (ANC)',
+      'ta': 'மகப்பேறுக்கு முந்தைய பராமரிப்பு (ANC)',
+      'kn': 'ಪ್ರಸವಪೂರ್ವ ಆರೈಕೆ (ANC)',
+      'ml': 'പ്രസവത്തിനു മുമ്പുള്ള പരിചരണം (ANC)',
+      'gu': 'પ્રસવપૂર્વ તપાસ (ANC)',
+      'pa': 'ਜਣੇਪੇ ਤੋਂ ਪਹਿਲਾਂ ਦੀ ਦੇਖਭਾਲ (ANC)',
+      'or': 'ପ୍ରସବପୂର୍ବ ଯତ୍ନ (ANC)',
+      'as': 'প্ৰসৱপূৰ্ব যত্ন (ANC)',
     },
     'PNC': {
-      'mr': 'प्रसूतीनंतरची तपासणी (PNC)', 'hi': 'प्रसवोत्तर जांच (PNC)', 'bn': 'প্রসবোত্তর যত্ন (PNC)',
-      'te': 'ప్రసవానంతర సంరక్షణ (PNC)', 'ta': 'மகப்பேற்றுக்கு பிந்தைய பராமரிப்பு (PNC)', 'kn': 'ಪ್ರಸವೋತ್ತರ ಆರೈಕೆ (PNC)',
-      'ml': 'പ്രസവാനന്തര പരിചരണം (PNC)', 'gu': 'પ્રસવોત્તર તપાસ (PNC)', 'pa': 'ਜਣੇਪੇ ਤੋਂ ਬਾਅਦ ਦੀ ਦੇਖਭਾਲ (PNC)',
-      'or': 'ପ୍ରସବୋତ୍ତର ଯତ୍ନ (PNC)', 'as': 'প্ৰসৱোত্তৰ যত্ন (PNC)',
+      'mr': 'प्रसूतीनंतरची तपासणी (PNC)',
+      'hi': 'प्रसवोत्तर जांच (PNC)',
+      'bn': 'প্রসবোত্তর যত্ন (PNC)',
+      'te': 'ప్రసవానంతర సంరక్షణ (PNC)',
+      'ta': 'மகப்பேற்றுக்கு பிந்தைய பராமரிப்பு (PNC)',
+      'kn': 'ಪ್ರಸವೋತ್ತರ ಆರೈಕೆ (PNC)',
+      'ml': 'പ്രസവാനന്തര പരിചരണം (PNC)',
+      'gu': 'પ્રસવોત્તર તપાસ (PNC)',
+      'pa': 'ਜਣੇਪੇ ਤੋਂ ਬਾਅਦ ਦੀ ਦੇਖਭਾਲ (PNC)',
+      'or': 'ପ୍ରସବୋତ୍ତର ଯତ୍ନ (PNC)',
+      'as': 'প্ৰসৱোত্তৰ যত্ন (PNC)',
     },
     'immunization': {
-      'mr': 'लसीकरण', 'hi': 'टीकाकरण', 'bn': 'টিকাদান', 'te': 'టీకా', 'ta': 'தடுப்பூசி',
-      'kn': 'ಲಸಿಕೆ', 'ml': 'പ്രതിരോധ കുത്തിവയ്പ്പ്', 'gu': 'રસીકરણ', 'pa': 'ਟੀਕਾਕਰਨ', 'or': 'ଟୀକାକରଣ', 'as': 'টীকাকৰণ',
+      'mr': 'लसीकरण',
+      'hi': 'टीकाकरण',
+      'bn': 'টিকাদান',
+      'te': 'టీకా',
+      'ta': 'தடுப்பூசி',
+      'kn': 'ಲಸಿಕೆ',
+      'ml': 'പ്രതിരോധ കുത്തിവയ്പ്പ്',
+      'gu': 'રસીકરણ',
+      'pa': 'ਟੀਕਾਕਰਨ',
+      'or': 'ଟୀକାକରଣ',
+      'as': 'টীকাকৰণ',
     },
     'overdue': {
-      'mr': 'प्रलंबित', 'hi': 'विलंबित', 'bn': 'বকেয়া', 'te': 'గడువు ముగిసింది', 'ta': 'தாமதமானது',
-      'kn': 'ಬಾಕಿ ಉಳಿದಿದೆ', 'ml': 'കാലഹരണപ്പെട്ടു', 'gu': 'બાકી', 'pa': 'ਬਕਾਇਆ', 'or': 'ବକେୟା', 'as': 'বকেয়া',
+      'mr': 'प्रलंबित',
+      'hi': 'विलंबित',
+      'bn': 'বকেয়া',
+      'te': 'గడువు ముగిసింది',
+      'ta': 'தாமதமானது',
+      'kn': 'ಬಾಕಿ ಉಳಿದಿದೆ',
+      'ml': 'കാലഹരണപ്പെട്ടു',
+      'gu': 'બાકી',
+      'pa': 'ਬਕਾਇਆ',
+      'or': 'ବକେୟା',
+      'as': 'বকেয়া',
     },
   };
   return duesMap[due]?[lang] ?? due;
@@ -2342,89 +2941,201 @@ String _localizeCategoryLabel(String category, [String lang = 'en']) {
       'sub_centre' || 'subcentre' => 'Sub-centre',
       'lab' => 'Diagnostic Lab',
       'all' => 'Facilities',
-      _ => category
-          .replaceAll('_', ' ')
-          .split(' ')
-          .map(
-            (word) => word.isEmpty
-                ? word
-                : '${word[0].toUpperCase()}${word.substring(1)}',
-          )
-          .join(' '),
+      _ =>
+        category
+            .replaceAll('_', ' ')
+            .split(' ')
+            .map(
+              (word) => word.isEmpty
+                  ? word
+                  : '${word[0].toUpperCase()}${word.substring(1)}',
+            )
+            .join(' '),
     };
   }
 
   const catMap = <String, Map<String, String>>{
     'all': {
-      'mr': 'आरोग्य सुविधा', 'hi': 'स्वास्थ्य सुविधाएं', 'bn': 'স্বাস্থ্য সুবিধা', 'te': 'ఆరోగ్య సదుపాయాలు',
-      'ta': 'சுகாதார வசதிகள்', 'kn': 'ಆರೋಗ್ಯ ಸೌಲಭ್ಯಗಳು', 'ml': 'ആരോഗ്യ സൗകര്യങ്ങൾ', 'gu': 'આરોગ્ય સુવિધાઓ',
-      'pa': 'ਸਿਹਤ ਸਹੂਲਤਾਂ', 'or': 'ସ୍ୱାସ୍ଥ୍ୟ ସୁବିଧା', 'as': 'স্বাস্থ্য সুবিধা',
+      'mr': 'आरोग्य सुविधा',
+      'hi': 'स्वास्थ्य सुविधाएं',
+      'bn': 'স্বাস্থ্য সুবিধা',
+      'te': 'ఆరోగ్య సదుపాయాలు',
+      'ta': 'சுகாதார வசதிகள்',
+      'kn': 'ಆರೋಗ್ಯ ಸೌಲಭ್ಯಗಳು',
+      'ml': 'ആരോഗ്യ സൗകര്യങ്ങൾ',
+      'gu': 'આરોગ્ય સુવિધાઓ',
+      'pa': 'ਸਿਹਤ ਸਹੂਲਤਾਂ',
+      'or': 'ସ୍ୱାସ୍ଥ୍ୟ ସୁବିଧା',
+      'as': 'স্বাস্থ্য সুবিধা',
     },
     'phc': {
-      'mr': 'प्रा.आ. केंद्र (PHC)', 'hi': 'प्रा.स्वा. केंद्र (PHC)', 'bn': 'পিএইচসি', 'te': 'పిహెచ్‌సి',
-      'ta': 'ஆரம்ப சுகாதார நிலையம்', 'kn': 'ಪ್ರಾಥಮಿಕ ಆರೋಗ್ಯ ಕೇಂದ್ರ', 'ml': 'പിഎച്ച്സി', 'gu': 'પીએચસી',
-      'pa': 'ਪੀਐਚਸੀ', 'or': 'ପିଏଚସି', 'as': 'পিএইচচি',
+      'mr': 'प्रा.आ. केंद्र (PHC)',
+      'hi': 'प्रा.स्वा. केंद्र (PHC)',
+      'bn': 'পিএইচসি',
+      'te': 'పిహెచ్‌సి',
+      'ta': 'ஆரம்ப சுகாதார நிலையம்',
+      'kn': 'ಪ್ರಾಥಮಿಕ ಆರೋಗ್ಯ ಕೇಂದ್ರ',
+      'ml': 'പിഎച്ച്സി',
+      'gu': 'પીએચસી',
+      'pa': 'ਪੀਐਚਸੀ',
+      'or': 'ପିଏଚସି',
+      'as': 'পিএইচচি',
     },
     'chc': {
-      'mr': 'सा.आ. केंद्र (CHC)', 'hi': 'सामुदायिक स्वास्थ्य केंद्र (CHC)', 'bn': 'সিএইচসি', 'te': 'సిహెచ్‌సి',
-      'ta': 'சமூக சுகாதார மையம்', 'kn': 'ಸಮುದಾಯ ಆರೋಗ್ಯ ಕೇಂದ್ರ', 'ml': 'സിഎച്ച്സി', 'gu': 'સીએચસી',
-      'pa': 'ਸੀਐਚਸੀ', 'or': 'ସିଏଚସି', 'as': 'চিএইচচি',
+      'mr': 'सा.आ. केंद्र (CHC)',
+      'hi': 'सामुदायिक स्वास्थ्य केंद्र (CHC)',
+      'bn': 'সিএইচসি',
+      'te': 'సిహెచ్‌సి',
+      'ta': 'சமூக சுகாதார மையம்',
+      'kn': 'ಸಮುದಾಯ ಆರೋಗ್ಯ ಕೇಂದ್ರ',
+      'ml': 'സിഎച്ച്സി',
+      'gu': 'સીએચસી',
+      'pa': 'ਸੀਐਚਸੀ',
+      'or': 'ସିଏଚସି',
+      'as': 'চিএইচচি',
     },
     'hospital': {
-      'mr': 'रुग्णालय', 'hi': 'अस्पताल', 'bn': 'হাসপাতাল', 'te': 'ఆసుపత్రి',
-      'ta': 'மருத்துவமனை', 'kn': 'ಆಸ್ಪತ್ರೆ', 'ml': 'ആശുപത്രി', 'gu': 'હોસ્પિટલ',
-      'pa': 'ਹਸਪਤਾਲ', 'or': 'ଡାକ୍ତରଖାନା', 'as': 'চিকিৎসালয়',
+      'mr': 'रुग्णालय',
+      'hi': 'अस्पताल',
+      'bn': 'হাসপাতাল',
+      'te': 'ఆసుపత్రి',
+      'ta': 'மருத்துவமனை',
+      'kn': 'ಆಸ್ಪತ್ರೆ',
+      'ml': 'ആശുപത്രി',
+      'gu': 'હોસ્પિટલ',
+      'pa': 'ਹਸਪਤਾਲ',
+      'or': 'ଡାକ୍ତରଖାନା',
+      'as': 'চিকিৎসালয়',
     },
     'dh': {
-      'mr': 'जिल्हा रुग्णालय', 'hi': 'जिला अस्पताल', 'bn': 'জেলা হাসপাতাল', 'te': 'జిల్లా ఆసుపత్రి',
-      'ta': 'மாவட்ட மருத்துவமனை', 'kn': 'ಜಿಲ್ಲಾ ಆಸ್ಪತ್ರೆ', 'ml': 'ജില്ലാ ആശുപത്രി', 'gu': 'જિલ્લા હોસ્પિટલ',
-      'pa': 'ਜ਼ਿਲ੍ਹਾ ਹਸਪਤਾਲ', 'or': 'ଜିଲ୍ଲା ଡାକ୍ତରଖାନା', 'as': 'জিলা চিকিৎসালয়',
+      'mr': 'जिल्हा रुग्णालय',
+      'hi': 'जिला अस्पताल',
+      'bn': 'জেলা হাসপাতাল',
+      'te': 'జిల్లా ఆసుపత్రి',
+      'ta': 'மாவட்ட மருத்துவமனை',
+      'kn': 'ಜಿಲ್ಲಾ ಆಸ್ಪತ್ರೆ',
+      'ml': 'ജില്ലാ ആശുപത്രി',
+      'gu': 'જિલ્લા હોસ્પિટલ',
+      'pa': 'ਜ਼ਿਲ੍ਹਾ ਹਸਪਤਾਲ',
+      'or': 'ଜିଲ୍ଲା ଡାକ୍ତରଖାନା',
+      'as': 'জিলা চিকিৎসালয়',
     },
     'blood_bank': {
-      'mr': 'रक्तपेढी', 'hi': 'रक्त बैंक', 'bn': 'ব্লাড ব্যাংক', 'te': 'రక్త నిధి',
-      'ta': 'இரத்த வங்கி', 'kn': 'ರಕ್ತ ನಿಧಿ', 'ml': 'ബ്ലഡ് ബാങ്ക്', 'gu': 'બ્લડ બેંક',
-      'pa': 'ਬਲੱਡ ਬੈਂਕ', 'or': 'ରକ୍ତ ଭଣ୍ଡାର', 'as': 'ব্লাড বেংক',
+      'mr': 'रक्तपेढी',
+      'hi': 'रक्त बैंक',
+      'bn': 'ব্লাড ব্যাংক',
+      'te': 'రక్త నిధి',
+      'ta': 'இரத்த வங்கி',
+      'kn': 'ರಕ್ತ ನಿಧಿ',
+      'ml': 'ബ്ലഡ് ബാങ്ക്',
+      'gu': 'બ્લડ બેંક',
+      'pa': 'ਬਲੱਡ ਬੈਂਕ',
+      'or': 'ରକ୍ତ ଭଣ୍ଡାର',
+      'as': 'ব্লাড বেংক',
     },
     'nrc': {
-      'mr': 'पोषण पुनर्वसन केंद्र (NRC)', 'hi': 'पोषण पुनर्वास केंद्र (NRC)', 'bn': 'এনআরসি', 'te': 'ఎన్‌ఆర్‌సి',
-      'ta': 'ஊட்டச்சத்து மறுவாழ்வு மையம்', 'kn': 'ಪೌಷ್ಟಿಕಾಂಶ ಪುನರ್ವಸತಿ ಕೇಂದ್ರ', 'ml': 'എൻആർസി', 'gu': 'એનઆરસી',
-      'pa': 'ਐਨਆਰਸੀ', 'or': 'ଏନଆରସି', 'as': 'এনআৰচি',
+      'mr': 'पोषण पुनर्वसन केंद्र (NRC)',
+      'hi': 'पोषण पुनर्वास केंद्र (NRC)',
+      'bn': 'এনআরসি',
+      'te': 'ఎన్‌ఆర్‌సి',
+      'ta': 'ஊட்டச்சத்து மறுவாழ்வு மையம்',
+      'kn': 'ಪೌಷ್ಟಿಕಾಂಶ ಪುನರ್ವಸತಿ ಕೇಂದ್ರ',
+      'ml': 'എൻആർസി',
+      'gu': 'એનઆરસી',
+      'pa': 'ਐਨਆਰਸੀ',
+      'or': 'ଏନଆରସି',
+      'as': 'এনআৰচি',
     },
     'antivenom': {
-      'mr': 'सर्पदंश लस', 'hi': 'एंटीवेनम', 'bn': 'অ্যান্টিভেনম', 'te': 'యాంటీవెనమ్',
-      'ta': 'பாம்புக்கடி மருந்து', 'kn': 'ಹಾವುಕಡಿತ ಲಸಿಕೆ', 'ml': 'ആന്റിവെനം', 'gu': 'એન્ટીવેનમ',
-      'pa': 'ਐਂਟੀਵੈਨਮ', 'or': 'ଆଣ୍ଟିଭେନମ', 'as': 'এণ্টিভেনম',
+      'mr': 'सर्पदंश लस',
+      'hi': 'एंटीवेनम',
+      'bn': 'অ্যান্টিভেনম',
+      'te': 'యాంటీవెనమ్',
+      'ta': 'பாம்புக்கடி மருந்து',
+      'kn': 'ಹಾವುಕಡಿತ ಲಸಿಕೆ',
+      'ml': 'ആന്റിവെനം',
+      'gu': 'એન્ટીવેનમ',
+      'pa': 'ਐਂਟੀਵੈਨਮ',
+      'or': 'ଆଣ୍ଟିଭେନମ',
+      'as': 'এণ্টিভেনম',
     },
     'ab_hwc': {
-      'mr': 'आरोग्य व कल्याण केंद्र (AB-HWC)', 'hi': 'आरोग्य व कल्याण केंद्र (AB-HWC)', 'bn': 'এবি-এইচডব্লিউসি',
-      'te': 'ఆరోగ్య కేంద్రం (AB-HWC)', 'ta': 'சுகாதார நல மையம்', 'kn': 'ಆರೋಗ್ಯ ಕ್ಷೇಮ ಕೇಂದ್ರ',
-      'ml': 'ആരോഗ്യ കേന്ദ്രം (AB-HWC)', 'gu': 'આરોગ્ય કેન્દ્ર (AB-HWC)', 'pa': 'ਤੰਦਰੁਸਤੀ ਕੇਂਦਰ',
-      'or': 'ଆରୋଗ୍ୟ କେନ୍ଦ୍ର (AB-HWC)', 'as': 'আৰোগ্য কেন্দ্ৰ (AB-HWC)',
+      'mr': 'आरोग्य व कल्याण केंद्र (AB-HWC)',
+      'hi': 'आरोग्य व कल्याण केंद्र (AB-HWC)',
+      'bn': 'এবি-এইচডব্লিউসি',
+      'te': 'ఆరోగ్య కేంద్రం (AB-HWC)',
+      'ta': 'சுகாதார நல மையம்',
+      'kn': 'ಆರೋಗ್ಯ ಕ್ಷೇಮ ಕೇಂದ್ರ',
+      'ml': 'ആരോഗ്യ കേന്ദ്രം (AB-HWC)',
+      'gu': 'આરોગ્ય કેન્દ્ર (AB-HWC)',
+      'pa': 'ਤੰਦਰੁਸਤੀ ਕੇਂਦਰ',
+      'or': 'ଆରୋଗ୍ୟ କେନ୍ଦ୍ର (AB-HWC)',
+      'as': 'আৰোগ্য কেন্দ্ৰ (AB-HWC)',
     },
     'deic': {
-      'mr': 'विशेष बाल हस्तक्षेप केंद्र (DEIC)', 'hi': 'प्रारंभिक हस्तक्षेप केंद्र (DEIC)', 'bn': 'ডিইআইসি',
-      'te': 'డిఇఐసి', 'ta': 'குழந்தை பராமரிப்பு மையம் (DEIC)', 'kn': 'ಆರಂಭಿಕ ಹಸ್ತಕ್ಷೇಪ ಕೇಂದ್ರ',
-      'ml': 'ഡിഇআইസി', 'gu': 'ડીઈઆઈસી', 'pa': 'ਡੀਈਆਈਸੀ', 'or': 'ଡିଇଆଇସି', 'as': 'ডিইআইচি',
+      'mr': 'विशेष बाल हस्तक्षेप केंद्र (DEIC)',
+      'hi': 'प्रारंभिक हस्तक्षेप केंद्र (DEIC)',
+      'bn': 'ডিইআইসি',
+      'te': 'డిఇఐసి',
+      'ta': 'குழந்தை பராமரிப்பு மையம் (DEIC)',
+      'kn': 'ಆರಂಭಿಕ ಹಸ್ತಕ್ಷೇಪ ಕೇಂದ್ರ',
+      'ml': 'ഡിഇআইസി',
+      'gu': 'ડીઈઆઈસી',
+      'pa': 'ਡੀਈਆਈਸੀ',
+      'or': 'ଡିଇଆଇସି',
+      'as': 'ডিইআইচি',
     },
     'pmjay': {
-      'mr': 'आयुष्मान भारत (PM-JAY)', 'hi': 'आयुष्मान भारत (PM-JAY)', 'bn': 'পিএম-জেএওয়াই',
-      'te': 'పిఎం-జెఎవై', 'ta': 'பிஎம்-ஜேஏஒய்', 'kn': 'ಪಿಎಂ-ಜೆಎವೈ', 'ml': 'പിഎം-ജെഎവൈ',
-      'gu': 'પીએમ-જેએવાય', 'pa': 'ਪੀਐਮ-ਜੇਏਵਾਈ', 'or': 'ପିଏମ-ଜେଏୱାଇ', 'as': 'পিএম-জেএৱাই',
+      'mr': 'आयुष्मान भारत (PM-JAY)',
+      'hi': 'आयुष्मान भारत (PM-JAY)',
+      'bn': 'পিএম-জেএওয়াই',
+      'te': 'పిఎం-జెఎవై',
+      'ta': 'பிஎம்-ஜேஏஒய்',
+      'kn': 'ಪಿಎಂ-ಜೆಎವೈ',
+      'ml': 'പിഎം-ജെഎവൈ',
+      'gu': 'પીએમ-જેએવાય',
+      'pa': 'ਪੀਐਮ-ਜੇਏਵਾਈ',
+      'or': 'ପିଏମ-ଜେଏୱାଇ',
+      'as': 'পিএম-জেএৱাই',
     },
     'anganwadi': {
-      'mr': 'अंगणवाडी', 'hi': 'आंगनवाड़ी', 'bn': 'অঙ্গনওয়াড়ি', 'te': 'అంగన్‌వాడీ',
-      'ta': 'அங்கன்வாடி', 'kn': 'ಅಂಗನವಾಡಿ', 'ml': 'അങ്കണവാടി', 'gu': 'આંગણવાડી',
-      'pa': 'ਆਂਗਣਵਾੜੀ', 'or': 'ଅଙ୍ଗନୱାଡ଼ି', 'as': 'অংগনৱাড়ী',
+      'mr': 'अंगणवाडी',
+      'hi': 'आंगनवाड़ी',
+      'bn': 'অঙ্গনওয়াড়ি',
+      'te': 'అంగన్‌వాడీ',
+      'ta': 'அங்கன்வாடி',
+      'kn': 'ಅಂಗನವಾಡಿ',
+      'ml': 'അങ്കണവാടി',
+      'gu': 'આંગણવાડી',
+      'pa': 'ਆਂਗਣਵਾੜੀ',
+      'or': 'ଅଙ୍ଗନୱାଡ଼ି',
+      'as': 'অংগনৱাড়ী',
     },
     'sub_centre': {
-      'mr': 'उप-आरोग्य केंद्र', 'hi': 'उप-स्वास्थ्य केंद्र', 'bn': 'উপ-স্বাস্থ্য কেন্দ্র', 'te': 'ఉప-కేంద్రం',
-      'ta': 'துணை சுகாதார நிலையம்', 'kn': 'ಉಪ ಕೇಂದ್ರ', 'ml': 'ഉപകേന്ദ്രം', 'gu': 'પેટા-આરોગ્ય કેન્દ્ર',
-      'pa': 'ਉਪ-ਸਿਹਤ ਕੇਂਦਰ', 'or': 'ଉପ-ସ୍ୱାସ୍ଥ୍ୟ କେନ୍ଦ୍ର', 'as': 'উপ-স্বাস্থ্য কেন্দ্ৰ',
+      'mr': 'उप-आरोग्य केंद्र',
+      'hi': 'उप-स्वास्थ्य केंद्र',
+      'bn': 'উপ-স্বাস্থ্য কেন্দ্র',
+      'te': 'ఉప-కేంద్రం',
+      'ta': 'துணை சுகாதார நிலையம்',
+      'kn': 'ಉಪ ಕೇಂದ್ರ',
+      'ml': 'ഉപകേന്ദ്രം',
+      'gu': 'પેટા-આરોગ્ય કેન્દ્ર',
+      'pa': 'ਉਪ-ਸਿਹਤ ਕੇਂਦਰ',
+      'or': 'ଉପ-ସ୍ୱାସ୍ଥ୍ୟ କେନ୍ଦ୍ର',
+      'as': 'উপ-স্বাস্থ্য কেন্দ্ৰ',
     },
     'lab': {
-      'mr': 'निदान प्रयोगशाळा', 'hi': 'निदान प्रयोगशाला', 'bn': 'ডায়াগনস্টিক ল্যাব', 'te': 'డయాగ్నస్టిక్ ల్యాబ్',
-      'ta': 'பரிசோதனை மையம்', 'kn': 'ಡಯಾಗ್ನೋಸ್ಟಿಕ್ ಲ್ಯಾಬ್', 'ml': 'ഡയഗ്നോസ്റ്റിക് ലാബ്', 'gu': 'નિદાન પ્રયોગશાળા',
-      'pa': 'ਡਾਇਗਨੋਸਟਿਕ ਲੈਬ', 'or': 'ନିଦାନ ପରୀକ୍ଷାଗାର', 'as': 'ডায়াগনষ্টিক লেব',
+      'mr': 'निदान प्रयोगशाळा',
+      'hi': 'निदान प्रयोगशाला',
+      'bn': 'ডায়াগনস্টিক ল্যাব',
+      'te': 'డయాగ్నస్టిక్ ల్యాబ్',
+      'ta': 'பரிசோதனை மையம்',
+      'kn': 'ಡಯಾಗ್ನೋಸ್ಟಿಕ್ ಲ್ಯಾಬ್',
+      'ml': 'ഡയഗ്നോസ്റ്റിക് ലാബ്',
+      'gu': 'નિદાન પ્રયોગશાળા',
+      'pa': 'ਡਾਇਗਨੋਸਟਿਕ ਲੈਬ',
+      'or': 'ନିଦାନ ପରୀକ୍ଷାଗାର',
+      'as': 'ডায়াগনষ্টিক লেব',
     },
   };
 
@@ -2460,52 +3171,147 @@ String _filterPillLabel(String key, String lang) {
 
   const pillMap = <String, Map<String, String>>{
     'all': {
-      'mr': 'सर्व सुविधा', 'hi': 'सभी सुविधाएं', 'bn': 'সব সুবিধা', 'te': 'అన్ని సదుపాయాలు', 'ta': 'அனைத்து வசதிகள்',
-      'kn': 'ಎಲ್ಲಾ ಸೌಲಭ್ಯಗಳು', 'ml': 'എല്ലാ സൗകര്യങ്ങളും', 'gu': 'બધી સુવિધાઓ', 'pa': 'ਸਾਰੀਆਂ ਸਹੂਲਤਾਂ', 'or': 'ସମସ୍ତ ସୁବିଧା', 'as': 'সকলো সুবিধা',
+      'mr': 'सर्व सुविधा',
+      'hi': 'सभी सुविधाएं',
+      'bn': 'সব সুবিধা',
+      'te': 'అన్ని సదుపాయాలు',
+      'ta': 'அனைத்து வசதிகள்',
+      'kn': 'ಎಲ್ಲಾ ಸೌಲಭ್ಯಗಳು',
+      'ml': 'എല്ലാ സൗകര്യങ്ങളും',
+      'gu': 'બધી સુવિધાઓ',
+      'pa': 'ਸਾਰੀਆਂ ਸਹੂਲਤਾਂ',
+      'or': 'ସମସ୍ତ ସୁବିଧା',
+      'as': 'সকলো সুবিধা',
     },
     'phc': {
-      'mr': 'PHC', 'hi': 'PHC', 'bn': 'PHC', 'te': 'PHC', 'ta': 'PHC',
-      'kn': 'PHC', 'ml': 'PHC', 'gu': 'PHC', 'pa': 'PHC', 'or': 'PHC', 'as': 'PHC',
+      'mr': 'PHC',
+      'hi': 'PHC',
+      'bn': 'PHC',
+      'te': 'PHC',
+      'ta': 'PHC',
+      'kn': 'PHC',
+      'ml': 'PHC',
+      'gu': 'PHC',
+      'pa': 'PHC',
+      'or': 'PHC',
+      'as': 'PHC',
     },
     'chc': {
-      'mr': 'CHC', 'hi': 'CHC', 'bn': 'CHC', 'te': 'CHC', 'ta': 'CHC',
-      'kn': 'CHC', 'ml': 'CHC', 'gu': 'CHC', 'pa': 'CHC', 'or': 'CHC', 'as': 'CHC',
+      'mr': 'CHC',
+      'hi': 'CHC',
+      'bn': 'CHC',
+      'te': 'CHC',
+      'ta': 'CHC',
+      'kn': 'CHC',
+      'ml': 'CHC',
+      'gu': 'CHC',
+      'pa': 'CHC',
+      'or': 'CHC',
+      'as': 'CHC',
     },
     'blood_bank': {
-      'mr': 'रक्तपेढी', 'hi': 'रक्त बैंक', 'bn': 'ব্লাড ব্যাংক', 'te': 'రక్త నిధి',
-      'ta': 'இரத்த வங்கி', 'kn': 'ರಕ್ತ ನಿಧಿ', 'ml': 'ബ്ലഡ് ബാങ്ക്', 'gu': 'બ્લડ બેંક',
-      'pa': 'ਬਲੱਡ ਬੈਂਕ', 'or': 'ରକ୍ତ ଭଣ୍ଡାର', 'as': 'ব্লাড বেংক',
+      'mr': 'रक्तपेढी',
+      'hi': 'रक्त बैंक',
+      'bn': 'ব্লাড ব্যাংক',
+      'te': 'రక్త నిధి',
+      'ta': 'இரத்த வங்கி',
+      'kn': 'ರಕ್ತ ನಿಧಿ',
+      'ml': 'ബ്ലഡ് ബാങ്ക്',
+      'gu': 'બ્લડ બેંક',
+      'pa': 'ਬਲੱਡ ਬੈਂਕ',
+      'or': 'ରକ୍ତ ଭଣ୍ଡାର',
+      'as': 'ব্লাড বেংক',
     },
     'nrc': {
-      'mr': 'NRC', 'hi': 'NRC', 'bn': 'NRC', 'te': 'NRC', 'ta': 'NRC',
-      'kn': 'NRC', 'ml': 'NRC', 'gu': 'NRC', 'pa': 'NRC', 'or': 'NRC', 'as': 'NRC',
+      'mr': 'NRC',
+      'hi': 'NRC',
+      'bn': 'NRC',
+      'te': 'NRC',
+      'ta': 'NRC',
+      'kn': 'NRC',
+      'ml': 'NRC',
+      'gu': 'NRC',
+      'pa': 'NRC',
+      'or': 'NRC',
+      'as': 'NRC',
     },
     'antivenom': {
-      'mr': 'सर्पदंश लस', 'hi': 'एंटीवेनम', 'bn': 'অ্যান্টিভেনম', 'te': 'యాంటీవెనమ్',
-      'ta': 'பாம்புக்கடி மருந்து', 'kn': 'ಹಾವುಕಡಿತ ಲಸಿಕೆ', 'ml': 'ആന്റിവെനം', 'gu': 'એન્ટીવેનમ',
-      'pa': 'ਐਂਟੀਵੈਨਮ', 'or': 'ଆଣ୍ଟିଭେନମ', 'as': 'এণ্টিভেনম',
+      'mr': 'सर्पदंश लस',
+      'hi': 'एंटीवेनम',
+      'bn': 'অ্যান্টিভেনম',
+      'te': 'యాంటీవెనమ్',
+      'ta': 'பாம்புக்கடி மருந்து',
+      'kn': 'ಹಾವುಕಡಿತ ಲಸಿಕೆ',
+      'ml': 'ആന്റിവെനം',
+      'gu': 'એન્ટીવેનમ',
+      'pa': 'ਐਂਟੀਵੈਨਮ',
+      'or': 'ଆଣ୍ଟିଭେନମ',
+      'as': 'এণ্টিভেনম',
     },
     'ab_hwc': {
-      'mr': 'AB-HWC', 'hi': 'AB-HWC', 'bn': 'AB-HWC', 'te': 'AB-HWC', 'ta': 'AB-HWC',
-      'kn': 'AB-HWC', 'ml': 'AB-HWC', 'gu': 'AB-HWC', 'pa': 'AB-HWC', 'or': 'AB-HWC', 'as': 'AB-HWC',
+      'mr': 'AB-HWC',
+      'hi': 'AB-HWC',
+      'bn': 'AB-HWC',
+      'te': 'AB-HWC',
+      'ta': 'AB-HWC',
+      'kn': 'AB-HWC',
+      'ml': 'AB-HWC',
+      'gu': 'AB-HWC',
+      'pa': 'AB-HWC',
+      'or': 'AB-HWC',
+      'as': 'AB-HWC',
     },
     'deic': {
-      'mr': 'DEIC', 'hi': 'DEIC', 'bn': 'DEIC', 'te': 'DEIC', 'ta': 'DEIC',
-      'kn': 'DEIC', 'ml': 'DEIC', 'gu': 'DEIC', 'pa': 'DEIC', 'or': 'DEIC', 'as': 'DEIC',
+      'mr': 'DEIC',
+      'hi': 'DEIC',
+      'bn': 'DEIC',
+      'te': 'DEIC',
+      'ta': 'DEIC',
+      'kn': 'DEIC',
+      'ml': 'DEIC',
+      'gu': 'DEIC',
+      'pa': 'DEIC',
+      'or': 'DEIC',
+      'as': 'DEIC',
     },
     'pmjay': {
-      'mr': 'PM-JAY', 'hi': 'PM-JAY', 'bn': 'PM-JAY', 'te': 'PM-JAY', 'ta': 'PM-JAY',
-      'kn': 'PM-JAY', 'ml': 'PM-JAY', 'gu': 'PM-JAY', 'pa': 'PM-JAY', 'or': 'PM-JAY', 'as': 'PM-JAY',
+      'mr': 'PM-JAY',
+      'hi': 'PM-JAY',
+      'bn': 'PM-JAY',
+      'te': 'PM-JAY',
+      'ta': 'PM-JAY',
+      'kn': 'PM-JAY',
+      'ml': 'PM-JAY',
+      'gu': 'PM-JAY',
+      'pa': 'PM-JAY',
+      'or': 'PM-JAY',
+      'as': 'PM-JAY',
     },
     'radar': {
-      'mr': 'रोग रडार', 'hi': 'रोग रडार', 'bn': 'রোগ রাডার', 'te': 'వ్యాధి రాడార్',
-      'ta': 'நோய் ரேடார்', 'kn': 'ರೋಗ ರೇಡಾರ್', 'ml': 'രോഗ റഡാർ', 'gu': 'રોગ રડાર',
-      'pa': 'ਬਿਮਾਰੀ ਰਾਡਾਰ', 'or': 'ରୋଗ ରାଡାର୍', 'as': 'ৰোগ ৰাডাৰ',
+      'mr': 'रोग रडार',
+      'hi': 'रोग रडार',
+      'bn': 'রোগ রাডার',
+      'te': 'వ్యాధి రాడార్',
+      'ta': 'நோய் ரேடார்',
+      'kn': 'ರೋಗ ರೇಡಾರ್',
+      'ml': 'രോഗ റഡാർ',
+      'gu': 'રોગ રડાર',
+      'pa': 'ਬਿਮਾਰੀ ਰਾਡਾਰ',
+      'or': 'ରୋଗ ରାଡାର୍',
+      'as': 'ৰোগ ৰাডাৰ',
     },
     'households': {
-      'mr': 'घरे', 'hi': 'परिवार / घर', 'bn': 'পরিবারসমূহ', 'te': 'గృహాలు',
-      'ta': 'குடும்பங்கள்', 'kn': 'ಮನೆಗಳು', 'ml': 'വീടുകൾ', 'gu': 'ઘરો',
-      'pa': 'ਘਰ', 'or': 'ଘରଗୁଡ଼ିକ', 'as': 'ঘৰসমূহ',
+      'mr': 'घरे',
+      'hi': 'परिवार / घर',
+      'bn': 'পরিবারসমূহ',
+      'te': 'గృహాలు',
+      'ta': 'குடும்பங்கள்',
+      'kn': 'ಮನೆಗಳು',
+      'ml': 'വീടുകൾ',
+      'gu': 'ઘરો',
+      'pa': 'ਘਰ',
+      'or': 'ଘରଗୁଡ଼ିକ',
+      'as': 'ঘৰসমূহ',
     },
   };
   return pillMap[key]?[lang] ?? key;
@@ -2524,27 +3330,69 @@ String _localizeConditionLabel(String condition, [String lang = 'en']) {
 
   const condMap = <String, Map<String, String>>{
     'dengue_like': {
-      'mr': 'डेंग्यू-सदृश', 'hi': 'डेंगू-जैसे', 'bn': 'ডেঙ্গু-সদৃশ', 'te': 'డెంగ్యూ తరహా',
-      'ta': 'டெங்கு போன்ற', 'kn': 'ಡೆಂಗ್ಯೂ ತರಹದ', 'ml': 'ഡെങ്കി പോലുള്ള', 'gu': 'ડેન્ગ્યુ જેવું',
-      'pa': 'ਡੇਂਗੂ ਵਰਗਾ', 'or': 'ଡେଙ୍ଗୁ ଭଳି', 'as': 'ডেংগুৰ দৰে',
+      'mr': 'डेंग्यू-सदृश',
+      'hi': 'डेंगू-जैसे',
+      'bn': 'ডেঙ্গু-সদৃশ',
+      'te': 'డెంగ్యూ తరహా',
+      'ta': 'டெங்கு போன்ற',
+      'kn': 'ಡೆಂಗ್ಯೂ ತರಹದ',
+      'ml': 'ഡെങ്കി പോലുള്ള',
+      'gu': 'ડેન્ગ્યુ જેવું',
+      'pa': 'ਡੇਂਗੂ ਵਰਗਾ',
+      'or': 'ଡେଙ୍ଗୁ ଭଳି',
+      'as': 'ডেংগুৰ দৰে',
     },
     'acute_diarrhoea': {
-      'mr': 'अतिसार', 'hi': 'डायरिया / अतिसार', 'bn': 'ডায়রিয়া', 'te': 'విరేచనాలు',
-      'ta': 'வயிற்றுப்போக்கு', 'kn': 'ಅತಿಸಾರ', 'ml': 'വയറിളക്കം', 'gu': 'ઝાડા / અતિસાર',
-      'pa': 'ਦਸਤ', 'or': 'ତରଳ ଝାଡ଼ା', 'as': 'হাগনি / ডায়েৰিয়া',
+      'mr': 'अतिसार',
+      'hi': 'डायरिया / अतिसार',
+      'bn': 'ডায়রিয়া',
+      'te': 'విరేచనాలు',
+      'ta': 'வயிற்றுப்போக்கு',
+      'kn': 'ಅತಿಸಾರ',
+      'ml': 'വയറിളക്കം',
+      'gu': 'ઝાડા / અતિસાર',
+      'pa': 'ਦਸਤ',
+      'or': 'ତରଳ ଝାଡ଼ା',
+      'as': 'হাগনি / ডায়েৰিয়া',
     },
     'measles_like': {
-      'mr': 'गोवर-सदृश', 'hi': 'खसरा-जैसे', 'bn': 'হাম-সদৃশ', 'te': 'తట్టు తరహా',
-      'ta': 'தட்டம்மை போன்ற', 'kn': 'ದಡಾರ ತರಹದ', 'ml': 'അഞ്ചാംപനി പോലുള്ള', 'gu': 'ઓરી જેવું',
-      'pa': 'ਖਸਰਾ ਵਰਗਾ', 'or': 'ମିଳିମିଳା ଭଳି', 'as': 'হামৰ দৰে',
+      'mr': 'गोवर-सदृश',
+      'hi': 'खसरा-जैसे',
+      'bn': 'হাম-সদৃশ',
+      'te': 'తట్టు తరహా',
+      'ta': 'தட்டம்மை போன்ற',
+      'kn': 'ದಡಾರ ತರಹದ',
+      'ml': 'അഞ്ചാംപനി പോലുള്ള',
+      'gu': 'ઓરી જેવું',
+      'pa': 'ਖਸਰਾ ਵਰਗਾ',
+      'or': 'ମିଳିମିଳା ଭଳି',
+      'as': 'হামৰ দৰে',
     },
     'aes': {
-      'mr': 'AES', 'hi': 'AES', 'bn': 'AES', 'te': 'AES', 'ta': 'AES',
-      'kn': 'AES', 'ml': 'AES', 'gu': 'AES', 'pa': 'AES', 'or': 'AES', 'as': 'AES',
+      'mr': 'AES',
+      'hi': 'AES',
+      'bn': 'AES',
+      'te': 'AES',
+      'ta': 'AES',
+      'kn': 'AES',
+      'ml': 'AES',
+      'gu': 'AES',
+      'pa': 'AES',
+      'or': 'AES',
+      'as': 'AES',
     },
     'fever': {
-      'mr': 'ताप', 'hi': 'बुखार', 'bn': 'জ্বর', 'te': 'జ్వరం', 'ta': 'காய்ச்சல்',
-      'kn': 'ಜ್ವರ', 'ml': 'പനി', 'gu': 'તાવ', 'pa': 'ਬੁਖ਼ਾਰ', 'or': 'ଜ୍ୱର', 'as': 'জ্বৰ',
+      'mr': 'ताप',
+      'hi': 'बुखार',
+      'bn': 'জ্বর',
+      'te': 'జ్వరం',
+      'ta': 'காய்ச்சல்',
+      'kn': 'ಜ್ವರ',
+      'ml': 'പനി',
+      'gu': 'તાવ',
+      'pa': 'ਬੁਖ਼ਾਰ',
+      'or': 'ଜ୍ୱର',
+      'as': 'জ্বৰ',
     },
   };
   return condMap[condition]?[lang] ?? condition;
@@ -2553,9 +3401,17 @@ String _localizeConditionLabel(String condition, [String lang = 'en']) {
 String _callLabel(String lang) {
   if (lang == 'en') return 'Call';
   const map = {
-    'mr': 'कॉल करा', 'hi': 'कॉल करें', 'bn': 'কল করুন', 'te': 'కాల్ చేయండి',
-    'ta': 'அழைக்கவும்', 'kn': 'ಕರೆ ಮಾಡಿ', 'ml': 'വിളിക്കുക', 'gu': 'કૉલ કરો',
-    'pa': 'ਕਾਲ ਕਰੋ', 'or': 'କଲ କରନ୍ତୁ', 'as': 'কল কৰক',
+    'mr': 'कॉल करा',
+    'hi': 'कॉल करें',
+    'bn': 'কল করুন',
+    'te': 'కాల్ చేయండి',
+    'ta': 'அழைக்கவும்',
+    'kn': 'ಕರೆ ಮಾಡಿ',
+    'ml': 'വിളിക്കുക',
+    'gu': 'કૉલ કરો',
+    'pa': 'ਕਾਲ ਕਰੋ',
+    'or': 'କଲ କରନ୍ତୁ',
+    'as': 'কল কৰক',
   };
   return map[lang] ?? 'Call';
 }
@@ -2567,9 +3423,17 @@ String _pointMeLabel(String lang) {
   // this module does not provide (no magnetometer dependency).
   if (lang == 'en') return 'Nearest household';
   const map = {
-    'mr': 'जवळचे घर', 'hi': 'निकटतम घर', 'bn': 'নিকটতম পরিবার', 'te': 'సమీప గృహం',
-    'ta': 'அருகில் உள்ள குடும்பம்', 'kn': 'ಹತ್ತಿರದ ಮನೆ', 'ml': 'ഏറ്റവും അടുത്ത കുടുംബം', 'gu': 'નજીકનું ઘર',
-    'pa': 'ਨਜ਼ਦੀਕੀ ਘਰ', 'or': 'ନିକଟ ଗୃହ', 'as': 'নিকটতম পৰিয়াল',
+    'mr': 'जवळचे घर',
+    'hi': 'निकटतम घर',
+    'bn': 'নিকটতম পরিবার',
+    'te': 'సమీప గృహం',
+    'ta': 'அருகில் உள்ள குடும்பம்',
+    'kn': 'ಹತ್ತಿರದ ಮನೆ',
+    'ml': 'ഏറ്റവും അടുത്ത കുടുംബം',
+    'gu': 'નજીકનું ઘર',
+    'pa': 'ਨਜ਼ਦੀਕੀ ਘਰ',
+    'or': 'ନିକଟ ଗୃହ',
+    'as': 'নিকটতম পৰিয়াল',
   };
   return map[lang] ?? 'Nearest household';
 }
@@ -2577,9 +3441,17 @@ String _pointMeLabel(String lang) {
 String _todaysRouteLabel(String lang) {
   if (lang == 'en') return "Today's route";
   const map = {
-    'mr': 'आजचा मार्ग', 'hi': 'आज का रूट', 'bn': 'আজকের রুট', 'te': 'నేటి మార్గం',
-    'ta': 'இன்றைய பாதை', 'kn': 'ಇಂದಿನ ಮಾರ್ಗ', 'ml': 'ഇന്നത്തെ റൂട്ട്', 'gu': 'આજનો રૂટ',
-    'pa': 'ਅੱਜ ਦਾ ਰੂਟ', 'or': 'ଆଜିର ରୁଟ୍', 'as': 'আজিৰ পথ',
+    'mr': 'आजचा मार्ग',
+    'hi': 'आज का रूट',
+    'bn': 'আজকের রুট',
+    'te': 'నేటి మార్గం',
+    'ta': 'இன்றைய பாதை',
+    'kn': 'ಇಂದಿನ ಮಾರ್ಗ',
+    'ml': 'ഇന്നത്തെ റൂട്ട്',
+    'gu': 'આજનો રૂટ',
+    'pa': 'ਅੱਜ ਦਾ ਰੂਟ',
+    'or': 'ଆଜିର ରୁଟ୍',
+    'as': 'আজিৰ পথ',
   };
   return map[lang] ?? "Today's route";
 }
@@ -2587,11 +3459,16 @@ String _todaysRouteLabel(String lang) {
 String _startAssessmentText(String wardId, String lang) {
   if (lang == 'en') return 'Start assessment in $wardId';
   final map = {
-    'mr': '$wardId मध्ये मूल्यांकन सुरू करा', 'hi': '$wardId में मूल्यांकन शुरू करें',
-    'bn': '$wardId এ মূল্যায়ন শুরু করুন', 'te': '$wardId లో అంచనా ప్రారంభించండి',
-    'ta': '$wardId இல் மதிப்பீட்டைத் தொடங்கு', 'kn': '$wardId ನಲ್ಲಿ ಮೌಲ್ಯಮಾಪನ ಪ್ರಾರಂಭಿಸಿ',
-    'ml': '$wardId ൽ വിലയിരുത്തൽ ആരംഭിക്കുക', 'gu': '$wardId માં આકારણી શરૂ કરો',
-    'pa': '$wardId ਵਿੱਚ ਮੁਲਾਂਕਣ ਸ਼ੁਰੂ ਕਰੋ', 'or': '$wardId ରେ ମୂଲ୍ୟାଙ୍କନ ଆରମ୍ଭ କରନ୍ତୁ',
+    'mr': '$wardId मध्ये मूल्यांकन सुरू करा',
+    'hi': '$wardId में मूल्यांकन शुरू करें',
+    'bn': '$wardId এ মূল্যায়ন শুরু করুন',
+    'te': '$wardId లో అంచనా ప్రారంభించండి',
+    'ta': '$wardId இல் மதிப்பீட்டைத் தொடங்கு',
+    'kn': '$wardId ನಲ್ಲಿ ಮೌಲ್ಯಮಾಪನ ಪ್ರಾರಂಭಿಸಿ',
+    'ml': '$wardId ൽ വിലയിരുത്തൽ ആരംഭിക്കുക',
+    'gu': '$wardId માં આકારણી શરૂ કરો',
+    'pa': '$wardId ਵਿੱਚ ਮੁਲਾਂਕਣ ਸ਼ੁਰੂ ਕਰੋ',
+    'or': '$wardId ରେ ମୂଲ୍ୟାଙ୍କନ ଆରମ୍ଭ କରନ୍ତୁ',
     'as': '$wardId ত মূল্যায়ন আৰম্ভ কৰক',
   };
   return map[lang] ?? 'Start assessment in $wardId';
@@ -2600,11 +3477,16 @@ String _startAssessmentText(String wardId, String lang) {
 String _casesInWeekText(int cases, int week, String lang) {
   if (lang == 'en') return '$cases cases in week $week';
   final map = {
-    'mr': 'आठवडा $week मध्ये $cases प्रकरणे', 'hi': 'सप्ताह $week में $cases मामले',
-    'bn': '$week তম সপ্তাহে $cases টি কেস', 'te': 'వారం $week లో $cases కేసులు',
-    'ta': 'வாரம் $week இல் $cases வழக்குகள்', 'kn': 'ವಾರ $week ರಲ್ಲಿ $cases ಪ್ರಕರಣಗಳು',
-    'ml': '$week-ാം ആഴ്ചയിൽ $cases കേസുകൾ', 'gu': 'અઠવાડિયા $week માં $cases કેસ',
-    'pa': 'ਹਫ਼ਤਾ $week ਵਿੱਚ $cases ਕੇਸ', 'or': 'ସପ୍ତାହ $week ରେ $cases ମାମଲା',
+    'mr': 'आठवडा $week मध्ये $cases प्रकरणे',
+    'hi': 'सप्ताह $week में $cases मामले',
+    'bn': '$week তম সপ্তাহে $cases টি কেস',
+    'te': 'వారం $week లో $cases కేసులు',
+    'ta': 'வாரம் $week இல் $cases வழக்குகள்',
+    'kn': 'ವಾರ $week ರಲ್ಲಿ $cases ಪ್ರಕರಣಗಳು',
+    'ml': '$week-ാം ആഴ്ചയിൽ $cases കേസുകൾ',
+    'gu': 'અઠવાડિયા $week માં $cases કેસ',
+    'pa': 'ਹਫ਼ਤਾ $week ਵਿੱਚ $cases ਕੇਸ',
+    'or': 'ସପ୍ତାହ $week ରେ $cases ମାମଲା',
     'as': 'সপ্তাহ $week ত $cases টা কেছ',
   };
   return map[lang] ?? '$cases cases in week $week';
@@ -2615,17 +3497,28 @@ String _sharedHotspotSnackbarText(SharedHotspot hotspot, String lang) {
     return '${hotspot.condition}: ${hotspot.cases} reports from ${hotspot.workerCount} ASHA workers';
   }
   final map = {
-    'mr': '${hotspot.condition}: ${hotspot.workerCount} आशा कार्यकर्त्यांकडून ${hotspot.cases} अहवाल',
-    'hi': '${hotspot.condition}: ${hotspot.workerCount} आशा कार्यकर्ताओं से ${hotspot.cases} रिपोर्ट',
-    'bn': '${hotspot.condition}: ${hotspot.workerCount} আশা কর্মী থেকে ${hotspot.cases} রিপোর্ট',
-    'te': '${hotspot.condition}: ${hotspot.workerCount} ఆశా కార్యకర్తల నుండి ${hotspot.cases} నివేదికలు',
-    'ta': '${hotspot.condition}: ${hotspot.workerCount} ஆஷா பணியாளர்களிடமிருந்து ${hotspot.cases} அறிக்கைகள்',
-    'kn': '${hotspot.condition}: ${hotspot.workerCount} ಆಶಾ ಕಾರ್ಯಕರ್ತೆಯರಿಂದ ${hotspot.cases} ವರದಿಗಳು',
-    'ml': '${hotspot.condition}: ${hotspot.workerCount} ആശാ പ്രവർത്തകരിൽ നിന്ന് ${hotspot.cases} റിപ്പോർട്ടുകൾ',
-    'gu': '${hotspot.condition}: ${hotspot.workerCount} આશા કાર્યકરો તરફથી ${hotspot.cases} અહેવાલ',
-    'pa': '${hotspot.condition}: ${hotspot.workerCount} ਆਸ਼ਾ ਵਰਕਰਾਂ ਤੋਂ ${hotspot.cases} ਰਿਪੋਰਟਾਂ',
-    'or': '${hotspot.condition}: ${hotspot.workerCount} ଆଶା କର୍ମୀଙ୍କଠାରୁ ${hotspot.cases} ରିପୋର୍ଟ',
-    'as': '${hotspot.condition}: ${hotspot.workerCount} আশা কৰ্মীৰ পৰা ${hotspot.cases} প্ৰতিবেদন',
+    'mr':
+        '${hotspot.condition}: ${hotspot.workerCount} आशा कार्यकर्त्यांकडून ${hotspot.cases} अहवाल',
+    'hi':
+        '${hotspot.condition}: ${hotspot.workerCount} आशा कार्यकर्ताओं से ${hotspot.cases} रिपोर्ट',
+    'bn':
+        '${hotspot.condition}: ${hotspot.workerCount} আশা কর্মী থেকে ${hotspot.cases} রিপোর্ট',
+    'te':
+        '${hotspot.condition}: ${hotspot.workerCount} ఆశా కార్యకర్తల నుండి ${hotspot.cases} నివేదికలు',
+    'ta':
+        '${hotspot.condition}: ${hotspot.workerCount} ஆஷா பணியாளர்களிடமிருந்து ${hotspot.cases} அறிக்கைகள்',
+    'kn':
+        '${hotspot.condition}: ${hotspot.workerCount} ಆಶಾ ಕಾರ್ಯಕರ್ತೆಯರಿಂದ ${hotspot.cases} ವರದಿಗಳು',
+    'ml':
+        '${hotspot.condition}: ${hotspot.workerCount} ആശാ പ്രവർത്തകരിൽ നിന്ന് ${hotspot.cases} റിപ്പോർട്ടുകൾ',
+    'gu':
+        '${hotspot.condition}: ${hotspot.workerCount} આશા કાર્યકરો તરફથી ${hotspot.cases} અહેવાલ',
+    'pa':
+        '${hotspot.condition}: ${hotspot.workerCount} ਆਸ਼ਾ ਵਰਕਰਾਂ ਤੋਂ ${hotspot.cases} ਰਿਪੋਰਟਾਂ',
+    'or':
+        '${hotspot.condition}: ${hotspot.workerCount} ଆଶା କର୍ମୀଙ୍କଠାରୁ ${hotspot.cases} ରିପୋର୍ଟ',
+    'as':
+        '${hotspot.condition}: ${hotspot.workerCount} আশা কৰ্মীৰ পৰা ${hotspot.cases} প্ৰতিবেদন',
   };
   return map[lang] ??
       '${hotspot.condition}: ${hotspot.cases} reports from ${hotspot.workerCount} ASHA workers';
@@ -2634,9 +3527,17 @@ String _sharedHotspotSnackbarText(SharedHotspot hotspot, String lang) {
 String _upToDateLabel(String lang) {
   if (lang == 'en') return 'Up to date';
   const map = {
-    'mr': 'अद्ययावत', 'hi': 'अद्यतन', 'bn': 'আপ টু ডেট', 'te': 'తాజా సమాచారం',
-    'ta': 'புதுப்பிக்கப்பட்டது', 'kn': 'ನವೀಕರಿಸಲಾಗಿದೆ', 'ml': 'അപ് ടു ഡേറ്റ്',
-    'gu': 'અદ્યતન', 'pa': 'ਅੱਪ ਟੂ ਡੇਟ', 'or': 'ଅଦ୍ୟତନ', 'as': 'আপ টু ডেট',
+    'mr': 'अद्ययावत',
+    'hi': 'अद्यतन',
+    'bn': 'আপ টু ডেট',
+    'te': 'తాజా సమాచారం',
+    'ta': 'புதுப்பிக்கப்பட்டது',
+    'kn': 'ನವೀಕರಿಸಲಾಗಿದೆ',
+    'ml': 'അപ് ടു ഡേറ്റ്',
+    'gu': 'અદ્યતન',
+    'pa': 'ਅੱਪ ਟੂ ਡੇਟ',
+    'or': 'ଅଦ୍ୟତନ',
+    'as': 'আপ টু ডেট',
   };
   return map[lang] ?? 'Up to date';
 }
@@ -2644,8 +3545,17 @@ String _upToDateLabel(String lang) {
 String _yearSuffix(String lang) {
   if (lang == 'en') return 'y';
   const map = {
-    'mr': ' वर्षे', 'hi': ' वर्ष', 'bn': ' বছর', 'te': ' సం.', 'ta': ' ஆண்.',
-    'kn': ' ವರ್ಷ', 'ml': ' വർഷം', 'gu': ' વર્ષ', 'pa': ' ਸਾਲ', 'or': ' ବର୍ଷ', 'as': ' বছৰ',
+    'mr': ' वर्षे',
+    'hi': ' वर्ष',
+    'bn': ' বছর',
+    'te': ' సం.',
+    'ta': ' ஆண்.',
+    'kn': ' ವರ್ಷ',
+    'ml': ' വർഷം',
+    'gu': ' વર્ષ',
+    'pa': ' ਸਾਲ',
+    'or': ' ବର୍ଷ',
+    'as': ' বছৰ',
   };
   return map[lang] ?? 'y';
 }
@@ -2653,10 +3563,17 @@ String _yearSuffix(String lang) {
 String _distanceAwayText(int metres, String lang) {
   if (lang == 'en') return '${metres}m away';
   final map = {
-    'mr': '$metresमी दूर', 'hi': '$metresमी दूर', 'bn': '$metresমি দূরে',
-    'te': '$metresమీ దూరంలో', 'ta': '$metresமீ தொலைவில்', 'kn': '$metresಮೀ ದೂರ',
-    'ml': '$metresമീറ്റർ അകലെ', 'gu': '$metresમી દૂર', 'pa': '$metresਮੀ ਦੂਰ',
-    'or': '$metresମି ଦୂର', 'as': '$metresমি দূৰত',
+    'mr': '$metresमी दूर',
+    'hi': '$metresमी दूर',
+    'bn': '$metresমি দূরে',
+    'te': '$metresమీ దూరంలో',
+    'ta': '$metresமீ தொலைவில்',
+    'kn': '$metresಮೀ ದೂರ',
+    'ml': '$metresമീറ്റർ അകലെ',
+    'gu': '$metresમી દૂર',
+    'pa': '$metresਮੀ ਦੂਰ',
+    'or': '$metresମି ଦୂର',
+    'as': '$metresমি দূৰত',
   };
   return map[lang] ?? '${metres}m away';
 }
@@ -2689,9 +3606,17 @@ String _directHeadingText(
 String _liveGpsText(String lang) {
   if (lang == 'en') return 'Live GPS';
   const map = {
-    'mr': 'थेट GPS', 'hi': 'लाइव GPS', 'bn': 'লাইভ GPS', 'te': 'లైవ్ GPS',
-    'ta': 'நேரலை GPS', 'kn': 'ಲೈವ್ GPS', 'ml': 'തത്സമയ GPS', 'gu': 'લાઈવ GPS',
-    'pa': 'ਲਾਈਵ GPS', 'or': 'ଲାଇଭ୍ GPS', 'as': 'লাইভ GPS',
+    'mr': 'थेट GPS',
+    'hi': 'लाइव GPS',
+    'bn': 'লাইভ GPS',
+    'te': 'లైవ్ GPS',
+    'ta': 'நேரலை GPS',
+    'kn': 'ಲೈವ್ GPS',
+    'ml': 'തത്സമയ GPS',
+    'gu': 'લાઈવ GPS',
+    'pa': 'ਲਾਈਵ GPS',
+    'or': 'ଲାଇଭ୍ GPS',
+    'as': 'লাইভ GPS',
   };
   return map[lang] ?? 'Live GPS';
 }
@@ -2699,10 +3624,17 @@ String _liveGpsText(String lang) {
 String _catchmentText(String wardId, String lang) {
   if (lang == 'en') return 'Catchment · $wardId';
   final map = {
-    'mr': 'कार्यक्षेत्र · $wardId', 'hi': 'कार्यक्षेत्र · $wardId', 'bn': 'এলাকা · $wardId',
-    'te': 'పరిధి · $wardId', 'ta': 'பகுதி · $wardId', 'kn': 'ಕಾರ್ಯಕ್ಷೇತ್ರ · $wardId',
-    'ml': 'പ്രദേശം · $wardId', 'gu': 'કાર્યક્ષેત્ર · $wardId', 'pa': 'ਕਾਰਜ ਖੇਤਰ · $wardId',
-    'or': 'କାର୍ଯ୍ୟକ୍ଷେତ୍ର · $wardId', 'as': 'কাৰ্যক্ষেত্ৰ · $wardId',
+    'mr': 'कार्यक्षेत्र · $wardId',
+    'hi': 'कार्यक्षेत्र · $wardId',
+    'bn': 'এলাকা · $wardId',
+    'te': 'పరిధి · $wardId',
+    'ta': 'பகுதி · $wardId',
+    'kn': 'ಕಾರ್ಯಕ್ಷೇತ್ರ · $wardId',
+    'ml': 'പ്രദേശം · $wardId',
+    'gu': 'કાર્યક્ષેત્ર · $wardId',
+    'pa': 'ਕਾਰਜ ਖੇਤਰ · $wardId',
+    'or': 'କାର୍ଯ୍ୟକ୍ଷେତ୍ର · $wardId',
+    'as': 'কাৰ্যক্ষেত্ৰ · $wardId',
   };
   return map[lang] ?? 'Catchment · $wardId';
 }
@@ -2710,9 +3642,17 @@ String _catchmentText(String wardId, String lang) {
 String _conditionPrefix(String lang) {
   if (lang == 'en') return 'Condition: ';
   const map = {
-    'mr': 'स्थिती: ', 'hi': 'स्थिति: ', 'bn': 'পরিস্থিতি: ', 'te': 'పరిస్థితి: ',
-    'ta': 'நிலைமை: ', 'kn': 'ಸ್ಥಿತಿ: ', 'ml': 'സ്ഥിതി: ', 'gu': 'સ્થિતિ: ',
-    'pa': 'ਸਥਿਤੀ: ', 'or': 'ପରିସ୍ଥିତି: ', 'as': 'পৰিস্থিতি: ',
+    'mr': 'स्थिती: ',
+    'hi': 'स्थिति: ',
+    'bn': 'পরিস্থিতি: ',
+    'te': 'పరిస్థితి: ',
+    'ta': 'நிலைமை: ',
+    'kn': 'ಸ್ಥಿತಿ: ',
+    'ml': 'സ്ഥിതി: ',
+    'gu': 'સ્થિતિ: ',
+    'pa': 'ਸਥਿਤੀ: ',
+    'or': 'ପରିସ୍ଥିତି: ',
+    'as': 'পৰিস্থিতি: ',
   };
   return map[lang] ?? 'Condition: ';
 }
@@ -2720,10 +3660,17 @@ String _conditionPrefix(String lang) {
 String _weekLabel(int week, String lang) {
   if (lang == 'en') return 'Week $week / 12';
   final map = {
-    'mr': 'आठवडा $week / 12', 'hi': 'सप्ताह $week / 12', 'bn': 'সপ্তাহ $week / 12',
-    'te': 'వారం $week / 12', 'ta': 'வாரம் $week / 12', 'kn': 'ವಾರ $week / 12',
-    'ml': 'ആഴ്ച $week / 12', 'gu': 'અઠવાડિયું $week / 12', 'pa': 'ਹਫ਼ਤਾ $week / 12',
-    'or': 'ସପ୍ତାହ $week / 12', 'as': 'সপ্তাহ $week / 12',
+    'mr': 'आठवडा $week / 12',
+    'hi': 'सप्ताह $week / 12',
+    'bn': 'সপ্তাহ $week / 12',
+    'te': 'వారం $week / 12',
+    'ta': 'வாரம் $week / 12',
+    'kn': 'ವಾರ $week / 12',
+    'ml': 'ആഴ്ച $week / 12',
+    'gu': 'અઠવાડિયું $week / 12',
+    'pa': 'ਹਫ਼ਤਾ $week / 12',
+    'or': 'ସପ୍ତାହ $week / 12',
+    'as': 'সপ্তাহ $week / 12',
   };
   return map[lang] ?? 'Week $week / 12';
 }

@@ -30,9 +30,12 @@ import '../features/tracking/presentation/tracking_screen.dart';
 // Triage & Referral
 import '../features/referral/presentation/referral_slip_screen.dart';
 import '../features/triage/presentation/language_bridge_screen.dart';
+import '../core/bhasha/home_page.dart';
+import '../core/bhasha/settings_store.dart';
 
 // Clinical Programs Hub & Protocols
-import '../features/clinical_programs/presentation/programs_hub_screen.dart';
+import '../features/clinical_programs/presentation/programs_hub_screen.dart'
+    show ProgramsHubScreen;
 import '../features/clinical_programs/anc_pnc/presentation/anc_registration_screen.dart';
 import '../features/clinical_programs/anc_pnc/presentation/anc_visit_screen.dart';
 import '../features/clinical_programs/anc_pnc/presentation/pnc_visit_screen.dart';
@@ -168,10 +171,8 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
     ),
     GoRoute(
       path: '/profile/edit',
-      pageBuilder: (context, state) => _buildSlidePage(
-        state: state,
-        child: const EditWorkerProfileScreen(),
-      ),
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const EditWorkerProfileScreen()),
     ),
     GoRoute(
       path: '/profile',
@@ -298,8 +299,13 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
     ),
     GoRoute(
       path: '/interpreter',
-      pageBuilder: (context, state) =>
-          _buildSlidePage(state: state, child: const LanguageBridgeScreen()),
+      pageBuilder: (context, state) => _buildSlidePage(
+        state: state,
+        child: HomePage(
+          settings: SettingsStore(),
+          autoDownloadMissingModels: false,
+        ),
+      ),
     ),
     GoRoute(path: '/triage/questions', redirect: (context, state) => '/triage'),
     GoRoute(

@@ -316,7 +316,9 @@ class _LanguageBridgeScreenState extends ConsumerState<LanguageBridgeScreen>
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
-                  isPatient ? 'Select Patient Language' : 'Select ASHA Language',
+                  isPatient
+                      ? 'Select Patient Language'
+                      : 'Select ASHA Language',
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -336,13 +338,17 @@ class _LanguageBridgeScreenState extends ConsumerState<LanguageBridgeScreen>
                       title: Text(
                         lang['name']!,
                         style: TextStyle(
-                          fontWeight:
-                              isSelected ? FontWeight.bold : FontWeight.normal,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                           color: isSelected ? AshaColors.primary : null,
                         ),
                       ),
                       trailing: isSelected
-                          ? const Icon(Icons.check_circle, color: AshaColors.primary)
+                          ? const Icon(
+                              Icons.check_circle,
+                              color: AshaColors.primary,
+                            )
                           : null,
                       onTap: () {
                         setState(() {
@@ -395,7 +401,10 @@ class _LanguageBridgeScreenState extends ConsumerState<LanguageBridgeScreen>
               // Language Switcher Strip
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: AshaColors.screenBg,
                   borderRadius: BorderRadius.circular(14),
@@ -489,8 +498,24 @@ class _LanguageBridgeScreenState extends ConsumerState<LanguageBridgeScreen>
                 unselectedLabelColor: AshaColors.textMuted,
                 labelStyle: const TextStyle(fontWeight: FontWeight.w700),
                 tabs: const [
-                  Tab(text: 'Live Conversation'),
-                  Tab(text: 'Clinical Phrasebook'),
+                  Tab(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('Interpreter 1', style: TextStyle(fontSize: 11)),
+                        Text('They speak', style: TextStyle(fontSize: 10)),
+                      ],
+                    ),
+                  ),
+                  Tab(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('Interpreter 2', style: TextStyle(fontSize: 11)),
+                        Text('I ask', style: TextStyle(fontSize: 10)),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -499,10 +524,7 @@ class _LanguageBridgeScreenState extends ConsumerState<LanguageBridgeScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          _buildConversationTab(),
-          _buildPhrasebookTab(),
-        ],
+        children: [_buildConversationTab(), _buildPhrasebookTab()],
       ),
     );
   }
@@ -517,12 +539,19 @@ class _LanguageBridgeScreenState extends ConsumerState<LanguageBridgeScreen>
             color: const Color(0xFFFEF3C7),
             child: Row(
               children: [
-                const Icon(Icons.info_outline, size: 16, color: Color(0xFFB45309)),
+                const Icon(
+                  Icons.info_outline,
+                  size: 16,
+                  color: Color(0xFFB45309),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     widget.notice!,
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF78350F)),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF78350F),
+                    ),
                   ),
                 ),
               ],
@@ -567,7 +596,8 @@ class _LanguageBridgeScreenState extends ConsumerState<LanguageBridgeScreen>
                       child: TextField(
                         controller: _textController,
                         decoration: InputDecoration(
-                          hintText: 'Type question in English or ${_patientLangName.split(' ').first}...',
+                          hintText:
+                              'Type question in English or ${_patientLangName.split(' ').first}...',
                           hintStyle: const TextStyle(fontSize: 13),
                           filled: true,
                           fillColor: AshaColors.screenBg,
@@ -577,11 +607,15 @@ class _LanguageBridgeScreenState extends ConsumerState<LanguageBridgeScreen>
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
-                            borderSide: BorderSide(color: AshaColors.borderSubtle),
+                            borderSide: BorderSide(
+                              color: AshaColors.borderSubtle,
+                            ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(24),
-                            borderSide: BorderSide(color: AshaColors.borderSubtle),
+                            borderSide: BorderSide(
+                              color: AshaColors.borderSubtle,
+                            ),
                           ),
                         ),
                         onSubmitted: (_) => _sendMessage(isAsha: true),
@@ -692,14 +726,18 @@ class _LanguageBridgeScreenState extends ConsumerState<LanguageBridgeScreen>
           ),
         ),
         child: Column(
-          crossAxisAlignment:
-              isAsha ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isAsha
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: isAsha
                         ? const Color(0xFFDCFCE7)
@@ -892,11 +930,7 @@ class _PhraseCategory {
 }
 
 class _Phrase {
-  const _Phrase({
-    required this.en,
-    required this.hi,
-    required this.mr,
-  });
+  const _Phrase({required this.en, required this.hi, required this.mr});
 
   final String en;
   final String hi;

@@ -14,9 +14,11 @@ class InterpreterScreen extends StatefulWidget {
   State<InterpreterScreen> createState() => _InterpreterScreenState();
 }
 
-class _InterpreterScreenState extends State<InterpreterScreen> with SingleTickerProviderStateMixin {
+class _InterpreterScreenState extends State<InterpreterScreen>
+    with SingleTickerProviderStateMixin {
   String _sourceLanguage = 'Hindi';
   String _targetLanguage = 'Marathi';
+  bool _theySpeak = true;
   bool _isListening = false;
   final TtsService _ttsService = TtsService();
 
@@ -47,7 +49,9 @@ class _InterpreterScreenState extends State<InterpreterScreen> with SingleTicker
 
     if (!_isListening) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Audio recognized and translated offline.')),
+        const SnackBar(
+          content: Text('Audio recognized and translated offline.'),
+        ),
       );
     }
   }
@@ -72,7 +76,11 @@ class _InterpreterScreenState extends State<InterpreterScreen> with SingleTicker
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: AshaColors.textPrimary),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 20,
+            color: AshaColors.textPrimary,
+          ),
           onPressed: () {
             if (context.canPop()) {
               context.pop();
@@ -102,7 +110,11 @@ class _InterpreterScreenState extends State<InterpreterScreen> with SingleTicker
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(Icons.swap_horiz_rounded, size: 18, color: AshaColors.primary),
+                const Icon(
+                  Icons.swap_horiz_rounded,
+                  size: 18,
+                  color: AshaColors.primary,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   _targetLanguage,
@@ -113,7 +125,11 @@ class _InterpreterScreenState extends State<InterpreterScreen> with SingleTicker
                   ),
                 ),
                 const SizedBox(width: 4),
-                const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AshaColors.textMuted),
+                const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 16,
+                  color: AshaColors.textMuted,
+                ),
               ],
             ),
           ),
@@ -125,6 +141,33 @@ class _InterpreterScreenState extends State<InterpreterScreen> with SingleTicker
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Column(
             children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: AshaColors.cardSurface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AshaColors.borderSubtle),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _modeButton(
+                        label: 'They speak',
+                        selected: _theySpeak,
+                        onTap: () => setState(() => _theySpeak = true),
+                      ),
+                    ),
+                    Expanded(
+                      child: _modeButton(
+                        label: 'I ask',
+                        selected: !_theySpeak,
+                        onTap: () => setState(() => _theySpeak = false),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
               const Spacer(),
 
               // Microphone & Waveform Area
@@ -138,10 +181,16 @@ class _InterpreterScreenState extends State<InterpreterScreen> with SingleTicker
                       animation: _animController,
                       builder: (context, child) {
                         return Container(
-                          width: 170 + (_isListening ? _animController.value * 24 : 0),
-                          height: 170 + (_isListening ? _animController.value * 24 : 0),
+                          width:
+                              170 +
+                              (_isListening ? _animController.value * 24 : 0),
+                          height:
+                              170 +
+                              (_isListening ? _animController.value * 24 : 0),
                           decoration: BoxDecoration(
-                            color: AshaColors.primary.withValues(alpha: _isListening ? 0.15 : 0.06),
+                            color: AshaColors.primary.withValues(
+                              alpha: _isListening ? 0.15 : 0.06,
+                            ),
                             shape: BoxShape.circle,
                           ),
                         );
@@ -162,7 +211,9 @@ class _InterpreterScreenState extends State<InterpreterScreen> with SingleTicker
 
               // Instructions: Tap and speak | I will translate
               Text(
-                _isListening ? 'Listening...' : 'Tap and speak',
+                _isListening
+                    ? 'Listening...'
+                    : (_theySpeak ? 'They speak' : 'Tap and ask'),
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -221,7 +272,11 @@ class _InterpreterScreenState extends State<InterpreterScreen> with SingleTicker
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.volume_up_rounded, color: AshaColors.primary, size: 26),
+                          icon: const Icon(
+                            Icons.volume_up_rounded,
+                            color: AshaColors.primary,
+                            size: 26,
+                          ),
                           tooltip: 'Speak audio',
                           onPressed: _speakTranslated,
                         ),
@@ -233,6 +288,33 @@ class _InterpreterScreenState extends State<InterpreterScreen> with SingleTicker
 
               const SizedBox(height: 20),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _modeButton({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? AshaColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: selected ? Colors.white : AshaColors.textSecondary,
           ),
         ),
       ),

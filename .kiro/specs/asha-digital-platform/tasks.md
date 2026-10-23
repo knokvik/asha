@@ -186,7 +186,7 @@ Language choices from the design document:
     - Create `lib/core/voice/model_manager.dart`: each language model is an independently downloadable SHA-256-verified `.zip`; store in `getApplicationSupportDirectory()`; exclude from cloud backup; support install/remove without APK update
     - Present model installation only through Offline Packs; no interpreter model download begins when a worker merely opens a language/interpreter screen
     - _Requirements: 6.9_
-    - Progress: the central Offline Packs screen is now the only installer for interpreter capability. It never starts a model download simply by opening an interpreter screen; the screen is enabled only after the worker installs a permitted interpreter language, and removal clears the model core without touching health records.
+    - Progress: the central Offline Packs screen is now the only installer for interpreter capability. It never starts a model download simply by opening an interpreter screen; the screen is enabled only after the worker installs a permitted interpreter language, and removal clears the model core without touching health records. The active bridge now exposes two clear modes, `They speak` and `I ask`, from one routed screen.
 
   - [x] 4.7 Write unit tests for Lexicon lookup, noise detection, and TTS fallback
     - Test: `lookup` returns correct canonical concept for each language
@@ -487,7 +487,7 @@ Language choices from the design document:
     - Coverage heatmap aggregate view for supervisors (requires ASHA consent)
     - _Requirements: 25.1, 25.2, 25.3, 25.4, 25.5_
     - Progress: the all-India geo payload is no longer declared as a mobile asset. The server build produces an allowlisted, SHA-256-verified `map-india` archive; the worker installs it on demand to protected app storage, where the map and route views read it. Old map-pack deep links now open the unified Offline Packs screen.
-    - Progress: state-level facility views now use zoom-aware geographic clustering once a viewport contains more than 120 facilities, preventing a state tap from materialising thousands of Flutter markers and freezing the map.
+    - Progress: state-level facility views keep the existing pin design while using debounced camera updates, viewport filtering, zoom-aware render budgets, and nearest-first selection; this prevents a state tap or pinch gesture from materialising thousands of Flutter markers and freezing the map.
 
   - [x] 12.3 Implement VHSND session planning and health education library
     - VHSND: session beneficiary list per service (immunization/ANC/CBAC/FP) + mobilisation checklist + session summary form; attendance + services recording → update individual beneficiary timelines; VHSNC meeting log

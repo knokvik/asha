@@ -836,22 +836,33 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
       );
     }
     final visible = _visibleQuestions(flow);
-    final next = visible.indexWhere(
-      (question) => !flow.answeredIds.contains(question.id),
-    );
-    // A danger sign still colours the ticket, but the worker finishes every
-    // question that is on screen before the tag, QR, and queue.
-    if (next < 0) {
-      _finish(flow);
-      return;
+
+    // Natural sequential progression: step forward to the immediate next question
+    // (currentIndex + 1) without erratic jumps.
+    final currentIdx = visible.indexWhere((q) => q.id == currentQuestion.id);
+    int next;
+    if (currentIdx >= 0 && currentIdx + 1 < visible.length) {
+      next = currentIdx + 1;
+    } else {
+      // Reached the end of visible list; check if any questions were missed/unanswered
+      final firstUnanswered = visible.indexWhere(
+        (question) => !flow.answeredIds.contains(question.id),
+      );
+      if (firstUnanswered >= 0) {
+        next = firstUnanswered;
+      } else {
+        _finish(flow);
+        return;
+      }
     }
+
     FocusScope.of(context).unfocus();
     setState(() {
       _visible = visible;
       _index = next;
       _answerError = null;
     });
-    _answerController.clear();
+    _loadAnswerIntoEditor(visible[next]);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final key = _questionKeys[visible[next].id];
       final target = key?.currentContext;
@@ -1239,12 +1250,14 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
           elevation: 0,
           child: ExpansionTile(
             initiallyExpanded: true,
+            expandedCrossAxisAlignment: CrossAxisAlignment.start,
+            expandedAlignment: Alignment.centerLeft,
             title: Text(
               _triageCopy(lang, 'contextFilters'),
               style: const TextStyle(fontWeight: FontWeight.w800),
             ),
             subtitle: Text(_triageCopy(lang, 'contextFiltersSub')),
-            childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            childrenPadding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
             children: [
               Align(
                 alignment: Alignment.centerLeft,
@@ -1254,25 +1267,29 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final illness in _illnesses)
-                    FilterChip(
-                      label: Text(illness.$2),
-                      selected: _chosen.contains(illness.$1),
-                      onSelected: (on) => setState(() {
-                        if (on) {
-                          _chosen.add(illness.$1);
-                        } else {
-                          _chosen.remove(illness.$1);
-                        }
-                      }),
-                    ),
-                ],
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Wrap(
+                  alignment: WrapAlignment.start,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final illness in _illnesses)
+                      FilterChip(
+                        label: Text(illness.$2),
+                        selected: _chosen.contains(illness.$1),
+                        onSelected: (on) => setState(() {
+                          if (on) {
+                            _chosen.add(illness.$1);
+                          } else {
+                            _chosen.remove(illness.$1);
+                          }
+                        }),
+                      ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
@@ -1281,23 +1298,27 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final contextChip in _reportedContexts)
-                    FilterChip(
-                      label: Text(contextChip.$2),
-                      selected: _reportedContext.contains(contextChip.$1),
-                      onSelected: (selected) => setState(() {
-                        if (selected) {
-                          _reportedContext.add(contextChip.$1);
-                        } else {
-                          _reportedContext.remove(contextChip.$1);
-                        }
-                      }),
-                    ),
-                ],
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Wrap(
+                  alignment: WrapAlignment.start,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final contextChip in _reportedContexts)
+                      FilterChip(
+                        label: Text(contextChip.$2),
+                        selected: _reportedContext.contains(contextChip.$1),
+                        onSelected: (selected) => setState(() {
+                          if (selected) {
+                            _reportedContext.add(contextChip.$1);
+                          } else {
+                            _reportedContext.remove(contextChip.$1);
+                          }
+                        }),
+                      ),
+                  ],
+                ),
               ),
             ],
           ),

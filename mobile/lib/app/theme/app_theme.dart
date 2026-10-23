@@ -264,17 +264,32 @@ class AppTheme {
         hintStyle: const TextStyle(color: AshaColors.textMuted, fontSize: 14),
       ),
 
-      // Status & Filter Chips
+      // Status & Filter Chips: High-contrast theme match for selected & unselected states
       chipTheme: ChipThemeData(
         backgroundColor: AshaColors.surfaceMuted,
-        selectedColor: AshaColors.primaryLight,
-        labelStyle: const TextStyle(
-          color: AshaColors.textPrimary,
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-        ),
+        selectedColor: AshaColors.primary,
+        checkmarkColor: Colors.white,
+        labelStyle: WidgetStateTextStyle.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            );
+          }
+          return const TextStyle(
+            color: AshaColors.textPrimary,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          );
+        }),
         shape: const RoundedRectangleBorder(borderRadius: AshaShapes.chipBorderRadius),
-        side: const BorderSide(color: AshaColors.borderSubtle, width: 0.8),
+        side: WidgetStateBorderSide.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const BorderSide(color: AshaColors.primary, width: 1.2);
+          }
+          return const BorderSide(color: AshaColors.borderSubtle, width: 0.8);
+        }),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       ),
 

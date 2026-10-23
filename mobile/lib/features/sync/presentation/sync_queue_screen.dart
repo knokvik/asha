@@ -39,6 +39,10 @@ class SyncQueueScreen extends ConsumerWidget {
     String lang,
   ) {
     final snapshot = coordinator.snapshot;
+    final totalSynced = snapshot.records.where((r) => r.syncStatus == 'synced').length;
+    final pendingCount = snapshot.pendingCount;
+    final failedCount = snapshot.failedCount;
+
     return Scaffold(
       backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
@@ -56,14 +60,28 @@ class SyncQueueScreen extends ConsumerWidget {
             onPressed: coordinator.refresh,
             icon: const Icon(Icons.refresh_rounded),
           ),
-          IconButton(
+          FilledButton.tonalIcon(
             key: const Key('sync_now_button'),
-            tooltip: shellText(lang, 'syncNow'),
             onPressed: snapshot.state == SyncConnectionState.syncing
                 ? null
                 : coordinator.syncNow,
-            icon: const Icon(Icons.sync_rounded),
+            icon: snapshot.state == SyncConnectionState.syncing
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.cloud_upload_rounded, size: 18),
+            label: Text(
+              snapshot.state == SyncConnectionState.syncing ? 'Syncing…' : 'Sync Now',
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            ),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              visualDensity: VisualDensity.compact,
+            ),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: RefreshIndicator(
@@ -73,33 +91,104 @@ class SyncQueueScreen extends ConsumerWidget {
           children: [
             _SyncSummaryCard(snapshot: snapshot, lang: lang),
             const SizedBox(height: 12),
+
+            // Quick Metrics Stat Row
+            Row(
+              children: [
+                Expanded(
+                  child: _SyncStatPill(
+                    label: 'In Queue',
+                    count: pendingCount,
+                    icon: Icons.schedule_rounded,
+                    color: const Color(0xFF2563EB),
+                    bgColor: const Color(0xFFEFF6FF),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _SyncStatPill(
+                    label: 'Synced',
+                    count: totalSynced,
+                    icon: Icons.cloud_done_rounded,
+                    color: const Color(0xFF16A34A),
+                    bgColor: const Color(0xFFF0FDF4),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _SyncStatPill(
+                    label: 'Failed',
+                    count: failedCount,
+                    icon: Icons.error_outline_rounded,
+                    color: const Color(0xFFDC2626),
+                    bgColor: const Color(0xFFFEF2F2),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
             _ConflictSummarySection(snapshot: snapshot),
             const SizedBox(height: 12),
+
+            // Peer-to-Peer Nearby Exchange Banner
             Container(
               decoration: BoxDecoration(
                 color: AshaColors.cardSurface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: AshaColors.borderSubtle),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x06000000),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
               ),
               child: ListTile(
                 leading: Container(
-                  width: 40,
-                  height: 40,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: const Color(0xFFDCFCE7),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.people_alt_outlined, color: Color(0xFF15803D)),
+                  child: const Icon(
+                    Icons.connect_without_contact_rounded,
+                    color: Color(0xFF15803D),
+                    size: 24,
+                  ),
                 ),
-                title: Text(
-                  shellText(lang, 'peerSyncTitle'),
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                title: Row(
+                  children: [
+                    Text(
+                      shellText(lang, 'peerSyncTitle'),
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDCFCE7),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        'OFFLINE',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF15803D),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 subtitle: Text(
                   shellText(lang, 'peerSyncSub'),
                   style: const TextStyle(fontSize: 12, color: AshaColors.textSecondary),
                 ),
-                trailing: const Icon(Icons.chevron_right_rounded),
+                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF9CA3AF)),
                 onTap: () => context.push('/peer-sync'),
               ),
             ),
@@ -111,29 +200,114 @@ class SyncQueueScreen extends ConsumerWidget {
             if (snapshot.errorMessage != null)
               Padding(
                 padding: const EdgeInsets.only(top: 10),
-                child: Text(
-                  snapshot.errorMessage!,
-                  style: TextStyle(color: Colors.orange.shade900, fontSize: 12),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF2F2),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFFCA5A5)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.warning_amber_rounded, size: 18, color: Color(0xFFDC2626)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          snapshot.errorMessage!,
+                          style: const TextStyle(color: Color(0xFF991B1B), fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             const SizedBox(height: 18),
             if (snapshot.records.isEmpty)
               const _EmptyQueue()
             else ...[
-              Text(
-                '${shellText(lang, 'syncStoredPackets')} (${snapshot.records.length})',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${shellText(lang, 'syncStoredPackets')} (${snapshot.records.length})',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: AshaColors.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    'Total Packets',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AshaColors.textSecondary,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               ...snapshot.records.map(
                 (record) => _QueuePacketTile(record: record),
               ),
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SyncStatPill extends StatelessWidget {
+  final String label;
+  final int count;
+  final IconData icon;
+  final Color color;
+  final Color bgColor;
+
+  const _SyncStatPill({
+    required this.label,
+    required this.count,
+    required this.icon,
+    required this.color,
+    required this.bgColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                ),
+              ),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: color.withValues(alpha: 0.8),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -148,45 +322,91 @@ class _SyncSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isHealthy = snapshot.state == SyncConnectionState.ready;
-    final color = isHealthy ? Colors.teal.shade800 : Colors.orange.shade900;
+    final isSyncing = snapshot.state == SyncConnectionState.syncing;
+    final isError = snapshot.state == SyncConnectionState.error;
+
+    final Color statusColor;
+    final Color bgColor;
+    final IconData statusIcon;
+
+    if (isSyncing) {
+      statusColor = const Color(0xFF2563EB);
+      bgColor = const Color(0xFFEFF6FF);
+      statusIcon = Icons.sync_rounded;
+    } else if (isHealthy) {
+      statusColor = const Color(0xFF16A34A);
+      bgColor = const Color(0xFFF0FDF4);
+      statusIcon = Icons.cloud_done_rounded;
+    } else if (isError) {
+      statusColor = const Color(0xFFEA580C);
+      bgColor = const Color(0xFFFFF7ED);
+      statusIcon = Icons.sync_problem_rounded;
+    } else {
+      statusColor = const Color(0xFF4B5563);
+      bgColor = const Color(0xFFF3F4F6);
+      statusIcon = Icons.cloud_off_rounded;
+    }
+
     final title = switch (snapshot.state) {
       SyncConnectionState.syncing => shellText(lang, 'syncingPackets'),
       SyncConnectionState.ready => shellText(lang, 'syncAllUpToDate'),
       SyncConnectionState.error => shellText(lang, 'syncWaitingReconnect'),
       SyncConnectionState.offline => shellText(lang, 'syncWorkingOffline'),
     };
-    return Card(
-      margin: EdgeInsets.zero,
-      color: color.withValues(alpha: 0.08),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
+
+    return Container(
+      decoration: BoxDecoration(
+        color: bgColor,
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: color.withValues(alpha: 0.25)),
+        border: Border.all(color: statusColor.withValues(alpha: 0.3), width: 1.2),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            Icon(
-              isHealthy ? Icons.cloud_done_outlined : Icons.cloud_off_outlined,
-              color: color,
-              size: 30,
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(statusIcon, color: statusColor, size: 26),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: TextStyle(fontWeight: FontWeight.w700, color: color),
+                  Row(
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: statusColor,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Text(
                     snapshot.pendingCount == 0
-                        ? 'No packets are waiting on this device.'
-                        : '${snapshot.pendingCount} packet${snapshot.pendingCount == 1 ? '' : 's'} waiting to send',
-                    style: const TextStyle(fontSize: 12),
+                        ? 'All local health packets are preserved and acknowledged.'
+                        : '${snapshot.pendingCount} packet${snapshot.pendingCount == 1 ? '' : 's'} queued for secure server dispatch.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: statusColor.withValues(alpha: 0.9),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
@@ -203,47 +423,170 @@ class _QueuePacketTile extends StatelessWidget {
 
   const _QueuePacketTile({required this.record});
 
+  IconData _getIconForTable(String table) {
+    final lower = table.toLowerCase();
+    if (lower.contains('triage')) return Icons.local_hospital_rounded;
+    if (lower.contains('encounter')) return Icons.medical_services_rounded;
+    if (lower.contains('schedule') || lower.contains('visit')) return Icons.event_available_rounded;
+    if (lower.contains('household')) return Icons.home_work_rounded;
+    if (lower.contains('member')) return Icons.person_rounded;
+    if (lower.contains('incentive') || lower.contains('claim')) return Icons.payments_rounded;
+    if (lower.contains('referral')) return Icons.share_location_rounded;
+    return Icons.folder_shared_rounded;
+  }
+
+  Color _getColorForTable(String table) {
+    final lower = table.toLowerCase();
+    if (lower.contains('triage')) return const Color(0xFFDC2626);
+    if (lower.contains('encounter')) return const Color(0xFF0D9488);
+    if (lower.contains('schedule') || lower.contains('visit')) return const Color(0xFF2563EB);
+    if (lower.contains('household')) return const Color(0xFF7C3AED);
+    if (lower.contains('member')) return const Color(0xFF4F46E5);
+    if (lower.contains('incentive') || lower.contains('claim')) return const Color(0xFFD97706);
+    return const Color(0xFF4B5563);
+  }
+
   @override
   Widget build(BuildContext context) {
     final summary = _PacketSummary.fromRecord(record);
     final isFailed = record.syncStatus == 'failed';
     final isSynced = record.syncStatus == 'synced';
-    final color = isFailed
-        ? Colors.orange.shade800
-        : isSynced
-        ? Colors.teal.shade700
-        : Colors.blue.shade700;
     final timestamp = DateTime.fromMillisecondsSinceEpoch(record.createdAt);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        onTap: () => _showPacketDetails(context, summary),
-        leading: CircleAvatar(
-          backgroundColor: color.withValues(alpha: 0.12),
-          child: Icon(
-            isFailed
-                ? Icons.warning_amber_rounded
-                : isSynced
-                ? Icons.check_rounded
-                : Icons.outbox_rounded,
-            color: color,
+
+    final statusColor = isFailed
+        ? const Color(0xFFDC2626)
+        : isSynced
+            ? const Color(0xFF16A34A)
+            : const Color(0xFF2563EB);
+
+    final statusBg = isFailed
+        ? const Color(0xFFFEF2F2)
+        : isSynced
+            ? const Color(0xFFF0FDF4)
+            : const Color(0xFFEFF6FF);
+
+    final tableIcon = _getIconForTable(record.targetTable);
+    final tableColor = _getColorForTable(record.targetTable);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: AshaColors.cardSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isFailed ? const Color(0xFFFCA5A5) : AshaColors.borderSubtle,
+          width: isFailed ? 1.4 : 1,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x04000000),
+            blurRadius: 6,
+            offset: Offset(0, 2),
           ),
-        ),
-        title: Text(
-          summary.title,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-        ),
-        subtitle: Text(
-          '${summary.subtitle}\nP${record.priority} • ${_formatTime(timestamp)}',
-          style: const TextStyle(fontSize: 11),
-        ),
-        isThreeLine: true,
-        trailing: Text(
-          record.syncStatus,
-          style: TextStyle(
-            color: color,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _showPacketDetails(context, summary),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: tableColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(tableIcon, color: tableColor, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              summary.title,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AshaColors.textPrimary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: statusBg,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                            ),
+                            child: Text(
+                              record.syncStatus.toUpperCase(),
+                              style: TextStyle(
+                                color: statusColor,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        summary.subtitle,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          color: AshaColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF3F4F6),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'P${record.priority}',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF374151),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(Icons.schedule_rounded, size: 12, color: Colors.grey.shade500),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatTime(timestamp),
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
