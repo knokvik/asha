@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../services/auth_service.dart';
@@ -34,6 +35,22 @@ class _AuthGateState extends ConsumerState<AuthGate> {
         await ref.read(keyManagerProvider).deriveKey('supabase:${user.id}');
     if (!mounted) return;
     ref.read(databaseKeyProvider.notifier).unlock(key);
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session != null) {
+      const storage = FlutterSecureStorage();
+      await storage.write(key: 'access_token', value: session.accessToken);
+      await storage.write(key: 'worker_id', value: user.id);
+    }
+    // A fresh authenticated session must see the current Supabase registry,
+    // not only records newer than a watermark left by an older install.
+    await const FlutterSecureStorage().delete(key: 'sync_watermarks');
+    final coordinator = ref.read(syncCoordinatorProvider);
+    if (coordinator != null) {
+      await coordinator.start();
+      if (coordinator.snapshot.isConnectedToServer) {
+        await coordinator.syncNow();
+      }
+    }
   }
 
   @override

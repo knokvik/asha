@@ -457,7 +457,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       mainAxisSpacing: 10,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.65,
+      // Give the four primary actions a larger touch target and use the
+      // available space above the bottom navigation without hard-coding a
+      // viewport height. The grid remains scroll-safe on smaller phones.
+      childAspectRatio: 1.35,
       children: [
         _buildQuickActionCard(
           title: 'Household',
@@ -498,13 +501,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Widget _quickActionIcon(IconData icon, Color color) {
     return Container(
-      width: 48,
-      height: 48,
+      width: 56,
+      height: 56,
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Icon(icon, color: color, size: 32),
+      child: Icon(icon, color: color, size: 36),
     );
   }
 
@@ -522,8 +525,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          constraints: const BoxConstraints(minHeight: 116),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          constraints: const BoxConstraints(minHeight: 136),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: const Color(0xFFE5E7EB), width: 1.0),
@@ -542,7 +545,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               Text(
                 title,
                 style: const TextStyle(

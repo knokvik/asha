@@ -1211,9 +1211,16 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
             ),
           ),
         ],
-        if (_selectedHousehold != null && _householdMembers.isNotEmpty) ...[
+        if (_selectedHousehold != null) ...[
           const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+            leading: const Icon(Icons.home_work_outlined),
+            title: Text(_selectedHousehold!.headName),
+            subtitle: const Text('Household head'),
+          ),
+          if (_householdMembers.isNotEmpty)
+            DropdownButtonFormField<String>(
             value: _selectedMember?.id,
             decoration: const InputDecoration(
               labelText: 'Select household member',
@@ -1229,6 +1236,11 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
               _selectMember(member);
             },
           ),
+          if (_householdMembers.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text('No registered members in this household yet.'),
+            ),
           if (_selectedMember != null)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -1245,6 +1257,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
             labelText: _triageCopy(lang, 'patientName'),
             border: OutlineInputBorder(),
           ),
+          readOnly: _selectedMember != null,
         ),
         const SizedBox(height: 12),
         TextField(
@@ -1256,6 +1269,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
             hintText: _triageCopy(lang, 'ageHint'),
             border: OutlineInputBorder(),
           ),
+          readOnly: _selectedMember != null,
         ),
         const SizedBox(height: 14),
         DropdownButtonFormField<String>(
@@ -1320,7 +1334,9 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
               child: Text(_triageCopy(lang, 'transgender')),
             ),
           ],
-          onChanged: (value) => setState(() => _sex = value ?? 'Male'),
+          onChanged: _selectedMember == null
+              ? (value) => setState(() => _sex = value ?? 'Male')
+              : null,
         ),
         const SizedBox(height: 16),
         TextField(
@@ -1332,6 +1348,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
             border: OutlineInputBorder(),
             prefixIcon: Icon(Icons.location_on_outlined),
           ),
+          readOnly: _selectedMember != null,
         ),
         const SizedBox(height: 12),
         TextField(

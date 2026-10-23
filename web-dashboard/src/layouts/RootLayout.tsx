@@ -14,8 +14,6 @@ import {
   FileCheck2,
   Package,
   BarChart3,
-  Settings,
-  HelpCircle,
   ShieldCheck,
   ChevronRight,
   Menu,
@@ -105,7 +103,7 @@ export function RootLayout() {
   const [offlineMode, setOfflineMode] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-  const [clinicalToolsOpen, setClinicalToolsOpen] = useState(false);
+  const [operationsOpen, setOperationsOpen] = useState(true);
   const catchment = localStorage.getItem('asha_catchment') || 'delhi-aerocity';
   const isDelhiCatchment = catchment === 'delhi-aerocity';
   const facilityName = isDelhiCatchment ? 'PHC Aerocity' : 'PHC Shahpur';
@@ -254,30 +252,31 @@ export function RootLayout() {
               );
             })()}
 
-            {/* 2. Clinical tools accordion */}
+            {/* 2. All operational pages in one expanded-by-default accordion */}
             <button
               type="button"
-              onClick={() => setClinicalToolsOpen((open) => !open)}
-              title={sidebarCollapsed ? 'Clinical tools' : undefined}
-              aria-expanded={clinicalToolsOpen}
+              onClick={() => setOperationsOpen((open) => !open)}
+              title={sidebarCollapsed ? 'Operations' : undefined}
+              aria-expanded={operationsOpen}
               className={`flex items-center rounded-xl text-xs font-semibold transition-all relative w-full cursor-pointer ${
                 sidebarCollapsed ? 'w-10 h-10 mx-auto justify-center' : 'justify-between px-3 py-2'
               } text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#232328] hover:text-slate-900 dark:hover:text-white`}
             >
               <span className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'space-x-3 truncate'}`}>
                 <Activity className="h-4.5 w-4.5 shrink-0 text-rose-500" />
-                {!sidebarCollapsed && <span className="truncate">Clinical tools</span>}
+                {!sidebarCollapsed && <span className="truncate">Operations</span>}
               </span>
               {!sidebarCollapsed && (
-                <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${clinicalToolsOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${operationsOpen ? 'rotate-180' : ''}`} />
               )}
             </button>
 
-            {clinicalToolsOpen && (
+            {operationsOpen && (
               <div className={`${sidebarCollapsed ? 'mt-1' : 'ml-2 mt-1 pl-2 border-l border-slate-200 dark:border-slate-700'} space-y-1`}>
                 {[
-                  { label: 'Emergency Triage', path: '/phc', icon: Activity, badge: '2' },
+                  { label: 'PHC Action Queue', path: '/phc', icon: Activity, badge: 'Live' },
                   { label: 'Drug & Bed Inventory', path: '/resources', icon: Package },
+                  ...NAV_ITEMS.slice(1),
                 ].map((item) => {
                   const Icon = item.icon;
                   const isActive = location.pathname.startsWith(item.path);
@@ -299,7 +298,7 @@ export function RootLayout() {
                         {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
                       </span>
                       {item.badge && !sidebarCollapsed && (
-                        <span className="h-4.5 min-w-4.5 px-1 rounded-full text-[10px] font-bold flex items-center justify-center bg-[#DC2626] text-white">
+                        <span className={`h-4.5 min-w-4.5 px-1 rounded-full text-[10px] font-bold flex items-center justify-center ${item.badge === 'Live' ? 'bg-rose-600 text-white animate-pulse' : 'bg-[#DC2626] text-white'}`}>
                           {item.badge}
                         </span>
                       )}
@@ -309,81 +308,8 @@ export function RootLayout() {
               </div>
             )}
 
-            {/* 3. Main Navigation Items */}
-            {NAV_ITEMS.slice(1).map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname.startsWith(item.path);
-
-              return (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  end={item.end}
-                  title={sidebarCollapsed ? item.label : undefined}
-                  className={`flex items-center rounded-xl text-xs font-semibold transition-all relative ${
-                    sidebarCollapsed ? 'w-10 h-10 mx-auto justify-center' : 'justify-between px-3 py-2'
-                  } ${
-                    isActive
-                      ? 'bg-[#0C5A3E] text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#232328] hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'space-x-3 truncate'}`}>
-                    <Icon className={`h-4.5 w-4.5 shrink-0 ${isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
-                    {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
-                    {item.srLabel && <span className="sr-only">{item.srLabel}</span>}
-                  </div>
-                  {item.badge && (
-                    <span
-                      className={`h-4.5 min-w-4.5 px-1.5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 ${
-                        sidebarCollapsed
-                          ? 'absolute -top-1 -right-1 bg-[#DC2626] text-white ring-2 ring-white dark:ring-[#18181B] shadow-xs'
-                          : isActive
-                          ? 'bg-white text-[#0C5A3E]'
-                          : item.badge === 'Live'
-                          ? 'bg-rose-600 text-white animate-pulse'
-                          : item.badge === 'Req 43'
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-[#DC2626] text-white'
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </NavLink>
-              );
-            })}
           </nav>
 
-          {/* Divider & Utilities */}
-          <div className={`pt-2 mt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 ${sidebarCollapsed ? 'px-0' : ''}`}>
-            <NavLink
-              to="/admin"
-              title={sidebarCollapsed ? 'Settings' : undefined}
-              className={({ isActive }) =>
-                `flex items-center rounded-xl text-xs font-medium transition-colors ${
-                  sidebarCollapsed ? 'w-10 h-10 mx-auto justify-center' : 'space-x-3 px-3 py-2'
-                } ${
-                  isActive
-                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-[#232328] hover:text-slate-900 dark:hover:text-white'
-                }`
-              }
-            >
-              <Settings className="h-4.5 w-4.5 text-slate-400 shrink-0" />
-              {!sidebarCollapsed && <span>Settings</span>}
-            </NavLink>
-            <NavLink
-              to="/resources"
-              title={sidebarCollapsed ? 'Help & Support' : undefined}
-              className={`flex items-center rounded-xl text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-[#232328] hover:text-slate-900 dark:hover:text-white transition-colors ${
-                sidebarCollapsed ? 'w-10 h-10 mx-auto justify-center' : 'space-x-3 px-3 py-2'
-              }`}
-            >
-              <HelpCircle className="h-4.5 w-4.5 text-slate-400 shrink-0" />
-              {!sidebarCollapsed && <span>Help & Support</span>}
-            </NavLink>
-          </div>
         </div>
 
         {/* 5. Bottom Section: USER PROFILE */}

@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -62,7 +60,6 @@ final syncCoordinatorProvider = Provider<SyncCoordinator?>((ref) {
   // setup flow), so do not open a database or fall back to plaintext storage.
   if (ref.watch(databaseKeyProvider) == null) return null;
   final coordinator = SyncCoordinator(ref.watch(appDatabaseProvider));
-  unawaited(coordinator.start());
   ref.onDispose(coordinator.dispose);
   return coordinator;
 });
