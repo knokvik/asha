@@ -14,13 +14,11 @@ import '../data/member_dao.dart';
 class HouseholdDetailScreen extends ConsumerStatefulWidget {
   final String householdId;
 
-  const HouseholdDetailScreen({
-    super.key,
-    required this.householdId,
-  });
+  const HouseholdDetailScreen({super.key, required this.householdId});
 
   @override
-  ConsumerState<HouseholdDetailScreen> createState() => _HouseholdDetailScreenState();
+  ConsumerState<HouseholdDetailScreen> createState() =>
+      _HouseholdDetailScreenState();
 }
 
 class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
@@ -28,6 +26,7 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
   String? _errorMessage;
   Household? _household;
   List<Member> _members = [];
+  String? _resolvedHouseholdId;
 
   @override
   void initState() {
@@ -46,13 +45,24 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
       final householdDao = HouseholdDao(db);
       final memberDao = MemberDao(db);
 
-      final h = await householdDao.getById(widget.householdId);
-      final m = await memberDao.getByHousehold(widget.householdId);
+      var householdId = widget.householdId;
+      var h = await householdDao.getById(householdId);
+      // Clinical program links sometimes open this screen with a member ID.
+      // Resolve that ID to the member's household before showing the error state.
+      if (h == null) {
+        final member = await memberDao.getById(widget.householdId);
+        if (member != null) {
+          householdId = member.householdId;
+          h = await householdDao.getById(householdId);
+        }
+      }
+      final m = await memberDao.getByHousehold(householdId);
 
       if (mounted) {
         setState(() {
           _household = h;
           _members = m;
+          _resolvedHouseholdId = householdId;
           _isLoading = false;
         });
       }
@@ -113,7 +123,10 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
                         items: const [
                           DropdownMenuItem(value: 'F', child: Text('Female')),
                           DropdownMenuItem(value: 'M', child: Text('Male')),
-                          DropdownMenuItem(value: 'Other', child: Text('Other')),
+                          DropdownMenuItem(
+                            value: 'Other',
+                            child: Text('Other'),
+                          ),
                         ],
                         onChanged: (val) {
                           if (val != null) setDialogState(() => sex = val);
@@ -125,15 +138,29 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: relationship,
-                  decoration: const InputDecoration(labelText: 'Relation to Head'),
+                  decoration: const InputDecoration(
+                    labelText: 'Relation to Head',
+                  ),
                   items: const [
-                    DropdownMenuItem(value: 'Head', child: Text('Head of Household')),
-                    DropdownMenuItem(value: 'Spouse', child: Text('Spouse / Wife / Husband')),
+                    DropdownMenuItem(
+                      value: 'Head',
+                      child: Text('Head of Household'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Spouse',
+                      child: Text('Spouse / Wife / Husband'),
+                    ),
                     DropdownMenuItem(value: 'Son', child: Text('Son')),
-                    DropdownMenuItem(value: 'Daughter', child: Text('Daughter')),
+                    DropdownMenuItem(
+                      value: 'Daughter',
+                      child: Text('Daughter'),
+                    ),
                     DropdownMenuItem(value: 'Mother', child: Text('Mother')),
                     DropdownMenuItem(value: 'Father', child: Text('Father')),
-                    DropdownMenuItem(value: 'Daughter-in-law', child: Text('Daughter-in-law')),
+                    DropdownMenuItem(
+                      value: 'Daughter-in-law',
+                      child: Text('Daughter-in-law'),
+                    ),
                     DropdownMenuItem(value: 'Other', child: Text('Other')),
                   ],
                   onChanged: (val) {
@@ -186,7 +213,9 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
       final memberId = const Uuid().v4();
       final now = DateTime.now().millisecondsSinceEpoch;
       final ageYears = int.tryParse(ageCtrl.text.trim()) ?? 20;
-      final dobApprox = DateTime.now().subtract(Duration(days: ageYears * 365)).millisecondsSinceEpoch;
+      final dobApprox = DateTime.now()
+          .subtract(Duration(days: ageYears * 365))
+          .millisecondsSinceEpoch;
 
       await memberDao.insertMember(
         MembersCompanion(
@@ -197,8 +226,12 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
           relationshipToHead: drift.Value(relationship),
           dobApprox: drift.Value(dobApprox),
           isDobApprox: const drift.Value(true),
-          phone: drift.Value(phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim()),
-          abhaId: drift.Value(abhaCtrl.text.trim().isEmpty ? null : abhaCtrl.text.trim()),
+          phone: drift.Value(
+            phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(),
+          ),
+          abhaId: drift.Value(
+            abhaCtrl.text.trim().isEmpty ? null : abhaCtrl.text.trim(),
+          ),
           lifecycleStatus: const drift.Value('active'),
           consentStatus: const drift.Value('pending'),
           createdAt: drift.Value(now),
@@ -208,7 +241,10 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
         ),
       );
 
-      await householdDao.updateMemberCount(widget.householdId, _members.length + 1);
+      await householdDao.updateMemberCount(
+        _resolvedHouseholdId ?? widget.householdId,
+        _members.length + 1,
+      );
       _loadHouseholdData();
       if (mounted) {
         await context.push('/beneficiary/$memberId/consent');
@@ -272,7 +308,9 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
             // ── Household Overview Card ──────────────────────────────────────
             Card(
               elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -282,8 +320,14 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
                       children: [
                         CircleAvatar(
                           radius: 28,
-                          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.15),
-                          child: Icon(Icons.home, size: 30, color: theme.colorScheme.primary),
+                          backgroundColor: theme.colorScheme.primary.withValues(
+                            alpha: 0.15,
+                          ),
+                          child: Icon(
+                            Icons.home,
+                            size: 30,
+                            color: theme.colorScheme.primary,
+                          ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
@@ -309,12 +353,19 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
                               Row(
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: h.isBpl ? Colors.green.shade50 : Colors.blue.shade50,
+                                      color: h.isBpl
+                                          ? Colors.green.shade50
+                                          : Colors.blue.shade50,
                                       borderRadius: BorderRadius.circular(4),
                                       border: Border.all(
-                                        color: h.isBpl ? Colors.green.shade300 : Colors.blue.shade300,
+                                        color: h.isBpl
+                                            ? Colors.green.shade300
+                                            : Colors.blue.shade300,
                                       ),
                                     ),
                                     child: Text(
@@ -322,22 +373,32 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.bold,
-                                        color: h.isBpl ? Colors.green.shade800 : Colors.blue.shade800,
+                                        color: h.isBpl
+                                            ? Colors.green.shade800
+                                            : Colors.blue.shade800,
                                       ),
                                     ),
                                   ),
                                   if (h.socialCategory != null) ...[
                                     const SizedBox(width: 6),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: Colors.grey.shade100,
                                         borderRadius: BorderRadius.circular(4),
-                                        border: Border.all(color: Colors.grey.shade300),
+                                        border: Border.all(
+                                          color: Colors.grey.shade300,
+                                        ),
                                       ),
                                       child: Text(
                                         h.socialCategory!,
-                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -352,12 +413,25 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _buildStatColumn('Family Members', '${_members.length}', Icons.groups),
-                        _buildStatColumn('Contact', h.contactPhone ?? 'No Phone', Icons.phone),
-                        _buildStatColumn('Sync', h.syncStatus.toUpperCase(), Icons.cloud_done),
+                        _buildStatColumn(
+                          'Family Members',
+                          '${_members.length}',
+                          Icons.groups,
+                        ),
+                        _buildStatColumn(
+                          'Contact',
+                          h.contactPhone ?? 'No Phone',
+                          Icons.phone,
+                        ),
+                        _buildStatColumn(
+                          'Sync',
+                          h.syncStatus.toUpperCase(),
+                          Icons.cloud_done,
+                        ),
                       ],
                     ),
-                    if (h.landmarkNotes != null && h.landmarkNotes!.isNotEmpty) ...[
+                    if (h.landmarkNotes != null &&
+                        h.landmarkNotes!.isNotEmpty) ...[
                       const SizedBox(height: 12),
                       Container(
                         padding: const EdgeInsets.all(8),
@@ -368,7 +442,11 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.location_on, size: 16, color: Colors.amber),
+                            const Icon(
+                              Icons.location_on,
+                              size: 16,
+                              color: Colors.amber,
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -413,7 +491,11 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
                   padding: const EdgeInsets.all(24.0),
                   child: Column(
                     children: [
-                      const Icon(Icons.person_outline, size: 48, color: Colors.grey),
+                      const Icon(
+                        Icons.person_outline,
+                        size: 48,
+                        color: Colors.grey,
+                      ),
                       const SizedBox(height: 8),
                       const Text('No members registered for this household'),
                       const SizedBox(height: 12),
@@ -450,10 +532,7 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
           value,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
         ),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, color: Colors.grey),
-        ),
+        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
       ],
     );
   }
@@ -481,7 +560,9 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
           child: Row(
             children: [
               CircleAvatar(
-                backgroundColor: m.sex == 'F' ? Colors.pink.shade50 : Colors.blue.shade50,
+                backgroundColor: m.sex == 'F'
+                    ? Colors.pink.shade50
+                    : Colors.blue.shade50,
                 child: Icon(
                   m.sex == 'F' ? Icons.woman : Icons.man,
                   color: m.sex == 'F' ? Colors.pink : Colors.blue,
@@ -504,14 +585,20 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
                         if (m.relationshipToHead != null) ...[
                           const SizedBox(width: 6),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.grey.shade200,
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               m.relationshipToHead!,
-                              style: const TextStyle(fontSize: 10, color: Colors.black87),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.black87,
+                              ),
                             ),
                           ),
                         ],
@@ -520,23 +607,34 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
                     const SizedBox(height: 3),
                     Text(
                       '${m.sex == "F" ? "Female" : "Male"} • $ageText${m.phone != null ? " • ${m.phone}" : ""}',
-                      style: const TextStyle(fontSize: 12, color: Colors.black54),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
                         Icon(
-                          m.abhaId != null ? Icons.verified_user : Icons.shield_outlined,
+                          m.abhaId != null
+                              ? Icons.verified_user
+                              : Icons.shield_outlined,
                           size: 13,
                           color: m.abhaId != null ? Colors.teal : Colors.grey,
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          m.abhaId != null ? 'ABHA: ${m.abhaId}' : 'No ABHA Linked',
+                          m.abhaId != null
+                              ? 'ABHA: ${m.abhaId}'
+                              : 'No ABHA Linked',
                           style: TextStyle(
                             fontSize: 11,
-                            color: m.abhaId != null ? Colors.teal.shade800 : Colors.grey.shade600,
-                            fontWeight: m.abhaId != null ? FontWeight.w600 : FontWeight.normal,
+                            color: m.abhaId != null
+                                ? Colors.teal.shade800
+                                : Colors.grey.shade600,
+                            fontWeight: m.abhaId != null
+                                ? FontWeight.w600
+                                : FontWeight.normal,
                           ),
                         ),
                       ],

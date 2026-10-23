@@ -68,7 +68,8 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
   @override
   void initState() {
     super.initState();
-    _claimDeliveryIncentive = widget.isInstitutionalDelivery && widget.visitDay <= 3;
+    _claimDeliveryIncentive =
+        widget.isInstitutionalDelivery && widget.visitDay <= 3;
   }
 
   PncChecklistData _buildChecklist() {
@@ -132,8 +133,10 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
               memberId: widget.motherId,
               triageResult: result.triageResult,
               rawVitals: {
-                if (checklist.temperatureC != null) 'temperature': '${checklist.temperatureC} °C',
-                if (checklist.systolicBp != null) 'bp': '${checklist.systolicBp}/${checklist.diastolicBp} mmHg',
+                if (checklist.temperatureC != null)
+                  'temperature': '${checklist.temperatureC} °C',
+                if (checklist.systolicBp != null)
+                  'bp': '${checklist.systolicBp}/${checklist.diastolicBp} mmHg',
                 'bleeding': checklist.bleedingStatus.label,
               },
             ),
@@ -161,7 +164,9 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                Text('Observations:\n${result.ppdFindings.map((e) => '• $e').join('\n')}'),
+                Text(
+                  'Observations:\n${result.ppdFindings.map((e) => '• $e').join('\n')}',
+                ),
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(8),
@@ -177,7 +182,10 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                       Expanded(
                         child: Text(
                           'Tele-MANAS Toll-Free: 14416 (24x7 National Mental Health Helpline in 20 languages)',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ],
@@ -259,7 +267,10 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('PNC visit', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+            const Text(
+              'PNC visit',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+            ),
           ],
         ),
         backgroundColor: AshaColors.cardSurface,
@@ -290,7 +301,11 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.warning_amber_rounded, color: Colors.red.shade800, size: 28),
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.red.shade800,
+                          size: 28,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -306,12 +321,22 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                     ),
                     const SizedBox(height: 6),
                     ...dangerSigns.map(
-                      (s) => Text('• $s', style: TextStyle(color: Colors.red.shade900, fontSize: 13)),
+                      (s) => Text(
+                        '• $s',
+                        style: TextStyle(
+                          color: Colors.red.shade900,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       'Immediate referral to Community Health Centre (FRU) or District Hospital required. PPH or puerperal sepsis risk.',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red.shade900, fontSize: 12),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red.shade900,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -330,7 +355,11 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                 padding: const EdgeInsets.all(12),
                 child: Row(
                   children: [
-                    Icon(Icons.psychology, color: Colors.purple.shade800, size: 28),
+                    Icon(
+                      Icons.psychology,
+                      color: Colors.purple.shade800,
+                      size: 28,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
@@ -346,7 +375,10 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                           const SizedBox(height: 4),
                           Text(
                             'Provide calm empathetic listening. Offer Tele-MANAS (14416) or PHC counsellor referral upon visit completion.',
-                            style: TextStyle(fontSize: 12, color: Colors.purple.shade900),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.purple.shade900,
+                            ),
                           ),
                         ],
                       ),
@@ -359,29 +391,43 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
           const SizedBox(height: 12),
 
           // ── SECTION 1: Maternal Vitals ─────────────────────────────────────
-          _buildSectionHeader('1. Temperature & Blood Pressure', Icons.thermostat),
+          _buildSectionHeader(
+            '1. Temperature & Blood Pressure',
+            Icons.thermostat,
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                Expanded(
+                SizedBox(
+                  width: 150,
                   child: TextFormField(
                     key: const Key('pnc_temp_field'),
                     initialValue: _temperatureC?.toString(),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: InputDecoration(
                       labelText: 'Temp (°C)',
                       helperText: '>=38.0°C RED',
                       suffixText: '°C',
-                      border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+                      border: OutlineInputBorder(
+                        borderRadius: AshaShapes.searchRadius,
+                        borderSide: BorderSide(color: AshaColors.borderSubtle),
+                      ),
                       filled: true,
-                      fillColor: (_temperatureC ?? 0) >= 38.0 ? Colors.red.shade50 : null,
+                      fillColor: (_temperatureC ?? 0) >= 38.0
+                          ? Colors.red.shade50
+                          : null,
                     ),
-                    onChanged: (v) => setState(() => _temperatureC = double.tryParse(v)),
+                    onChanged: (v) =>
+                        setState(() => _temperatureC = double.tryParse(v)),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
+                SizedBox(
+                  width: 150,
                   child: TextFormField(
                     key: const Key('pnc_systolic_bp_field'),
                     initialValue: _systolicBp?.toString(),
@@ -390,15 +436,21 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                       labelText: 'Systolic BP',
                       helperText: '>=160 RED',
                       suffixText: 'mmHg',
-                      border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+                      border: OutlineInputBorder(
+                        borderRadius: AshaShapes.searchRadius,
+                        borderSide: BorderSide(color: AshaColors.borderSubtle),
+                      ),
                       filled: true,
-                      fillColor: (_systolicBp ?? 0) >= 160 ? Colors.red.shade50 : null,
+                      fillColor: (_systolicBp ?? 0) >= 160
+                          ? Colors.red.shade50
+                          : null,
                     ),
-                    onChanged: (v) => setState(() => _systolicBp = int.tryParse(v)),
+                    onChanged: (v) =>
+                        setState(() => _systolicBp = int.tryParse(v)),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
+                SizedBox(
+                  width: 150,
                   child: TextFormField(
                     key: const Key('pnc_diastolic_bp_field'),
                     initialValue: _diastolicBp?.toString(),
@@ -407,11 +459,17 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                       labelText: 'Diastolic BP',
                       helperText: '>=110 RED',
                       suffixText: 'mmHg',
-                      border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+                      border: OutlineInputBorder(
+                        borderRadius: AshaShapes.searchRadius,
+                        borderSide: BorderSide(color: AshaColors.borderSubtle),
+                      ),
                       filled: true,
-                      fillColor: (_diastolicBp ?? 0) >= 110 ? Colors.red.shade50 : null,
+                      fillColor: (_diastolicBp ?? 0) >= 110
+                          ? Colors.red.shade50
+                          : null,
                     ),
-                    onChanged: (v) => setState(() => _diastolicBp = int.tryParse(v)),
+                    onChanged: (v) =>
+                        setState(() => _diastolicBp = int.tryParse(v)),
                   ),
                 ),
               ],
@@ -450,14 +508,20 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
           const Divider(),
 
           // ── SECTION 2: Postpartum Bleeding & Lochia ─────────────────────────
-          _buildSectionHeader('2. Bleeding & Vaginal Discharge', Icons.water_drop),
+          _buildSectionHeader(
+            '2. Bleeding & Vaginal Discharge',
+            Icons.water_drop,
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: DropdownButtonFormField<PncBleedingStatus>(
               initialValue: _bleedingStatus,
               decoration: const InputDecoration(
                 labelText: 'Maternal Bleeding / Lochia Status',
-                border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+                border: OutlineInputBorder(
+                  borderRadius: AshaShapes.searchRadius,
+                  borderSide: BorderSide(color: AshaColors.borderSubtle),
+                ),
               ),
               items: PncBleedingStatus.values.map((s) {
                 return DropdownMenuItem(value: s, child: Text(s.label));
@@ -471,14 +535,20 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
           const Divider(),
 
           // ── SECTION 3: Breast & Wound Examination ───────────────────────────
-          _buildSectionHeader('3. Breast & Surgical / Episiotomy Wound', Icons.health_and_safety),
+          _buildSectionHeader(
+            '3. Breast & Surgical / Episiotomy Wound',
+            Icons.health_and_safety,
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: DropdownButtonFormField<PncBreastStatus>(
               initialValue: _breastStatus,
               decoration: const InputDecoration(
                 labelText: 'Breast Condition',
-                border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+                border: OutlineInputBorder(
+                  borderRadius: AshaShapes.searchRadius,
+                  borderSide: BorderSide(color: AshaColors.borderSubtle),
+                ),
               ),
               items: PncBreastStatus.values.map((s) {
                 return DropdownMenuItem(value: s, child: Text(s.label));
@@ -495,7 +565,10 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
               initialValue: _woundStatus,
               decoration: const InputDecoration(
                 labelText: 'Episiotomy / Cesarean Wound Healing',
-                border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+                border: OutlineInputBorder(
+                  borderRadius: AshaShapes.searchRadius,
+                  borderSide: BorderSide(color: AshaColors.borderSubtle),
+                ),
               ),
               items: PncWoundStatus.values.map((s) {
                 return DropdownMenuItem(value: s, child: Text(s.label));
@@ -509,29 +582,42 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
           const Divider(),
 
           // ── SECTION 4: Postpartum Depression (PPD) Screening ───────────────
-          _buildSectionHeader('4. Postpartum Emotional Well-Being (PPD Screening)', Icons.sentiment_dissatisfied),
+          _buildSectionHeader(
+            '4. Postpartum Emotional Well-Being (PPD Screening)',
+            Icons.sentiment_dissatisfied,
+          ),
           SwitchListTile(
-            title: const Text('Feeling overwhelmed, hopeless, or empty most of the time'),
+            title: const Text(
+              'Feeling overwhelmed, hopeless, or empty most of the time',
+            ),
             value: _feelsOverwhelmed,
             onChanged: (v) => setState(() => _feelsOverwhelmed = v),
           ),
           SwitchListTile(
-            title: const Text('Frequent persistent crying, sadness, or lack of joy'),
+            title: const Text(
+              'Frequent persistent crying, sadness, or lack of joy',
+            ),
             value: _persistentSadness,
             onChanged: (v) => setState(() => _persistentSadness = v),
           ),
           SwitchListTile(
-            title: const Text('Difficulty bonding with or feeling love towards newborn'),
+            title: const Text(
+              'Difficulty bonding with or feeling love towards newborn',
+            ),
             value: _difficultyBonding,
             onChanged: (v) => setState(() => _difficultyBonding = v),
           ),
           SwitchListTile(
-            title: const Text('Severe anxiety, racing thoughts, or inability to rest'),
+            title: const Text(
+              'Severe anxiety, racing thoughts, or inability to rest',
+            ),
             value: _severeAnxiety,
             onChanged: (v) => setState(() => _severeAnxiety = v),
           ),
           SwitchListTile(
-            title: const Text('Thoughts of hurting self or baby [CRISIS RED FLAG]'),
+            title: const Text(
+              'Thoughts of hurting self or baby [CRISIS RED FLAG]',
+            ),
             value: _thoughtsOfSelfHarm,
             activeTrackColor: Colors.red.shade800,
             onChanged: (v) => setState(() => _thoughtsOfSelfHarm = v),
@@ -540,9 +626,14 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
           const Divider(),
 
           // ── SECTION 5: Nutrition & Family Planning (PPFP) ───────────────────
-          _buildSectionHeader('5. Postpartum Family Planning & Nutrition', Icons.family_restroom),
+          _buildSectionHeader(
+            '5. Postpartum Family Planning & Nutrition',
+            Icons.family_restroom,
+          ),
           SwitchListTile(
-            title: const Text('Maternal nutrition counselled (extra food + IFA/Calcium continuation)'),
+            title: const Text(
+              'Maternal nutrition counselled (extra food + IFA/Calcium continuation)',
+            ),
             value: _nutritionCounsellingGiven,
             onChanged: (v) => setState(() => _nutritionCounsellingGiven = v),
           ),
@@ -552,7 +643,9 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
             onChanged: (v) => setState(() => _restHydrationCounseled = v),
           ),
           SwitchListTile(
-            title: const Text('Postpartum Family Planning (PPFP) methods counselled'),
+            title: const Text(
+              'Postpartum Family Planning (PPFP) methods counselled',
+            ),
             value: _ppfpCounseled,
             onChanged: (v) => setState(() => _ppfpCounseled = v),
           ),
@@ -561,14 +654,38 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: DropdownButtonFormField<String>(
                 initialValue: _chosenContraception,
-                decoration: const InputDecoration(labelText: 'Method Discussed / Selected', border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle))),
+                decoration: const InputDecoration(
+                  labelText: 'Method Discussed / Selected',
+                  border: OutlineInputBorder(
+                    borderRadius: AshaShapes.searchRadius,
+                    borderSide: BorderSide(color: AshaColors.borderSubtle),
+                  ),
+                ),
                 items: const [
-                  DropdownMenuItem(value: 'LAM', child: Text('Lactational Amenorrhea Method (LAM)')),
-                  DropdownMenuItem(value: 'PPIUCD', child: Text('Postpartum IUCD (PPIUCD / Cu-T)')),
-                  DropdownMenuItem(value: 'Chhaya', child: Text('Chhaya (Centchroman non-hormonal pill)')),
-                  DropdownMenuItem(value: 'Antara', child: Text('Antara (DMPA Injection)')),
-                  DropdownMenuItem(value: 'Condoms', child: Text('Nirodh / Condoms')),
-                  DropdownMenuItem(value: 'Female Sterilisation', child: Text('Postpartum Tubectomy')),
+                  DropdownMenuItem(
+                    value: 'LAM',
+                    child: Text('Lactational Amenorrhea Method (LAM)'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'PPIUCD',
+                    child: Text('Postpartum IUCD (PPIUCD / Cu-T)'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Chhaya',
+                    child: Text('Chhaya (Centchroman non-hormonal pill)'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Antara',
+                    child: Text('Antara (DMPA Injection)'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Condoms',
+                    child: Text('Nirodh / Condoms'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Female Sterilisation',
+                    child: Text('Postpartum Tubectomy'),
+                  ),
                 ],
                 onChanged: (v) => setState(() => _chosenContraception = v),
               ),
@@ -578,12 +695,20 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
 
           // ── SECTION 6: Institutional Delivery Incentive (Requirement 15.6) ─
           if (widget.isInstitutionalDelivery) ...[
-            _buildSectionHeader('6. Facilitated Institutional Delivery Incentive', Icons.currency_rupee),
+            _buildSectionHeader(
+              '6. Facilitated Institutional Delivery Incentive',
+              Icons.currency_rupee,
+            ),
             CheckboxListTile(
-              title: const Text('Facilitated Institutional Delivery Escort (JSY Scheme)'),
-              subtitle: const Text('ASHA escorted and supported mother at health facility delivery'),
+              title: const Text(
+                'Facilitated Institutional Delivery Escort (JSY Scheme)',
+              ),
+              subtitle: const Text(
+                'ASHA escorted and supported mother at health facility delivery',
+              ),
               value: _claimDeliveryIncentive,
-              onChanged: (v) => setState(() => _claimDeliveryIncentive = v ?? false),
+              onChanged: (v) =>
+                  setState(() => _claimDeliveryIncentive = v ?? false),
             ),
             const Divider(),
           ],
@@ -603,13 +728,21 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                 ? const SizedBox(
                     height: 20,
                     width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : Text(
                     hasRed
                         ? 'Record Maternal Danger Signs & Proceed to Referral'
-                        : (hasPpd ? 'Complete PNC Visit & Review Tele-MANAS Referral' : 'Save & Complete PNC Visit'),
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        : (hasPpd
+                              ? 'Complete PNC Visit & Review Tele-MANAS Referral'
+                              : 'Save & Complete PNC Visit'),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
           ),
           const SizedBox(height: 32),

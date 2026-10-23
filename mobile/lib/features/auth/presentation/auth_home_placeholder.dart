@@ -1,23 +1,19 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../services/auth_service.dart';
 
-/// Home placeholder screen displaying authenticated user details
-/// and logout button per specification.
+/// Authenticated Supabase session handoff screen.
 class AuthHomePlaceholder extends StatelessWidget {
   final User user;
 
-  const AuthHomePlaceholder({
-    super.key,
-    required this.user,
-  });
+  const AuthHomePlaceholder({super.key, required this.user});
 
   @override
   Widget build(BuildContext context) {
     final authService = AuthService();
-    final phone = user.phoneNumber ?? 'No Phone Number';
+    final phone = user.phone ?? 'No Phone Number';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAF9),
@@ -51,7 +47,10 @@ class AuthHomePlaceholder extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: const Color(0xFFEBF7F2),
                     shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFFCDEEE0), width: 2),
+                    border: Border.all(
+                      color: const Color(0xFFCDEEE0),
+                      width: 2,
+                    ),
                   ),
                   child: const Icon(
                     Icons.check_circle_rounded,
@@ -77,7 +76,10 @@ class AuthHomePlaceholder extends StatelessWidget {
               // Verified Phone Number Display
               Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
@@ -93,7 +95,11 @@ class AuthHomePlaceholder extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.phone_rounded, size: 16, color: Color(0xFF0C5A3E)),
+                      const Icon(
+                        Icons.phone_rounded,
+                        size: 16,
+                        color: Color(0xFF0C5A3E),
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         phone,
@@ -112,12 +118,9 @@ class AuthHomePlaceholder extends StatelessWidget {
 
               // Verification Subtext
               const Text(
-                'Authenticated via Firebase Phone OTP (Android)',
+                'Authenticated via Firebase Phone OTP',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF64748B),
-                ),
+                style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
               ),
               const SizedBox(height: 40),
 

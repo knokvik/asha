@@ -1076,9 +1076,7 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
               },
             ),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
+            Row(
               children: [
                 Expanded(
                   flex: 2,

@@ -76,9 +76,11 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
         db.members,
       )..where((t) => t.id.equals(widget.memberId!))).getSingleOrNull();
     }
-    member ??= await (db.select(db.members)
-      ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])
-      ..limit(1)).getSingleOrNull();
+    member ??=
+        await (db.select(db.members)
+              ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])
+              ..limit(1))
+            .getSingleOrNull();
 
     member ??= Member(
       id: widget.memberId ?? 'unregistered_patient',
@@ -95,14 +97,18 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
     );
 
     if (result == null) {
-      final encounter = await (db.select(db.clinicalEncounters)
-        ..where((t) => t.memberId.equals(member!.id))
-        ..orderBy([(t) => OrderingTerm.desc(t.encounterDate)])
-        ..limit(1)).getSingleOrNull();
+      final encounter =
+          await (db.select(db.clinicalEncounters)
+                ..where((t) => t.memberId.equals(member!.id))
+                ..orderBy([(t) => OrderingTerm.desc(t.encounterDate)])
+                ..limit(1))
+              .getSingleOrNull();
       if (encounter != null) {
-        final trRow = await (db.select(db.triageResults)
-          ..where((t) => t.encounterId.equals(encounter.id))
-          ..limit(1)).getSingleOrNull();
+        final trRow =
+            await (db.select(db.triageResults)
+                  ..where((t) => t.encounterId.equals(encounter.id))
+                  ..limit(1))
+                .getSingleOrNull();
         if (trRow != null) {
           final flag = switch (trRow.flag.toLowerCase()) {
             'red' => TriageFlag.red,
@@ -119,7 +125,8 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
               TriageFinding(
                 ruleId: 'CLINICAL_ENCOUNTER_ASSESSMENT',
                 severity: TriageFlag.red,
-                findingText: 'Identified clinical findings requiring facility care',
+                findingText:
+                    'Identified clinical findings requiring facility care',
                 action: 'REFER_IMMEDIATELY',
                 triggeringValues: {},
               ),
@@ -456,8 +463,9 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      runSpacing: 8,
                       children: [
                         Text(
                           'Destination Facility',
@@ -503,6 +511,7 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
                           ],
                           DropdownButtonFormField<FacilityInfo>(
                             key: const Key('facility_dropdown'),
+                            isExpanded: true,
                             initialValue: _selectedFacility,
                             decoration: const InputDecoration(
                               border: OutlineInputBorder(),
@@ -579,6 +588,7 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
                       key: const Key('transport_dropdown'),
+                      isExpanded: true,
                       initialValue: _selectedTransport,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
@@ -646,7 +656,9 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
             // 5. Formatted Note Summary (Doctor Readout < 30s)
             Card(
               elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -654,7 +666,10 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
                   children: [
                     InkWell(
                       borderRadius: BorderRadius.circular(8),
-                      onTap: () => setState(() => _medicalSummaryExpanded = !_medicalSummaryExpanded),
+                      onTap: () => setState(
+                        () =>
+                            _medicalSummaryExpanded = !_medicalSummaryExpanded,
+                      ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -909,8 +924,12 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
                     runSpacing: 8,
                     children: [
                       _ticketChip('Age · ${note.patient.formattedAge}'),
-                      _ticketChip('Location · ${note.patient.village ?? 'Community'}'),
-                      _ticketChip('Sync · ${_savedRecord?.syncStatus ?? 'pending'}'),
+                      _ticketChip(
+                        'Location · ${note.patient.village ?? 'Community'}',
+                      ),
+                      _ticketChip(
+                        'Sync · ${_savedRecord?.syncStatus ?? 'pending'}',
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -926,8 +945,9 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
 
   Widget _ticketValue(String label, String value, {bool alignEnd = false}) {
     return Column(
-      crossAxisAlignment:
-          alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: alignEnd
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       children: [
         Text(label, style: AshaTypography.subtitleSmall),
         const SizedBox(height: 3),

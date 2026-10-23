@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 
 import '../../core/security/auth_service.dart';
+import '../../services/auth_service.dart' as supabase_auth;
 import 'core_providers.dart';
 
 /// Real authenticated ASHA worker profile model with live statistics.
@@ -281,6 +282,7 @@ class UserProfileNotifier extends AsyncNotifier<UserProfile> {
   }
 
   Future<void> logout(BuildContext context) async {
+    await supabase_auth.AuthService().signOut();
     await _storage.delete(key: 'access_token');
     await _storage.delete(key: 'refresh_token');
     await _storage.delete(key: 'worker_id');
@@ -292,7 +294,7 @@ class UserProfileNotifier extends AsyncNotifier<UserProfile> {
     state = const AsyncLoading();
 
     if (context.mounted) {
-      context.go('/login');
+      context.go('/auth');
     }
   }
 }

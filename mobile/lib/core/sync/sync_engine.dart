@@ -106,21 +106,66 @@ class SyncEngine {
       );
       entry['chain_hash'] = auditEntry.chainHash;
     }
-    await _db
-        .into(_db.syncQueue)
-        .insertOnConflictUpdate(
-          SyncQueueCompanion.insert(
-            id: _uuid.v4(),
-            targetTable: table,
-            recordId: recordId,
-            priority: Value(priority.value),
-            operation: operation,
-            payloadJson: jsonEncode(payload),
-            eventLogJson: Value(jsonEncode(effectiveEventLog)),
-            syncStatus: const Value('pending'),
-            createdAt: now,
-          ),
+    final existing =
+        await (_db.select(_db.syncQueue)
+              ..where(
+                (t) =>
+                    t.targetTable.equals(table) &
+                    t.recordId.equals(recordId) &
+                    t.syncStatus.isNotIn(const ['synced']),
+              )
+              ..orderBy([(t) => OrderingTerm.desc(t.createdAt)])
+              ..limit(1))
+            .getSingleOrNull();
+    if (existing == null) {
+      await _db
+          .into(_db.syncQueue)
+          .insert(
+            SyncQueueCompanion.insert(
+              id: _uuid.v4(),
+              targetTable: table,
+              recordId: recordId,
+              priority: Value(priority.value),
+              operation: operation,
+              payloadJson: jsonEncode(payload),
+              eventLogJson: Value(jsonEncode(effectiveEventLog)),
+              syncStatus: const Value('pending'),
+              createdAt: now,
+            ),
+          );
+    } else {
+      Map<String, dynamic> mergedPayload = {};
+      List<dynamic> previousEvents = [];
+      try {
+        mergedPayload = Map<String, dynamic>.from(
+          jsonDecode(existing.payloadJson) as Map,
         );
+        previousEvents = List<dynamic>.from(
+          jsonDecode(existing.eventLogJson) as List,
+        );
+      } catch (_) {}
+      final mergedEvents = [...previousEvents, ...effectiveEventLog];
+      await (_db.update(
+        _db.syncQueue,
+      )..where((t) => t.id.equals(existing.id))).write(
+        SyncQueueCompanion(
+          priority: Value(
+            priority.value < existing.priority
+                ? priority.value
+                : existing.priority,
+          ),
+          operation: Value(
+            existing.operation == 'insert' ? 'insert' : operation,
+          ),
+          payloadJson: Value(jsonEncode({...mergedPayload, ...payload})),
+          eventLogJson: Value(jsonEncode(mergedEvents)),
+          syncStatus: const Value('pending'),
+          errorMessage: const Value(null),
+          attemptCount: const Value(0),
+          createdAt: Value(now),
+        ),
+      );
+    }
     if (priority == SyncPriority.critical) {
       // Safety-critical records should not wait for the 15-minute periodic
       // window. WorkManager preserves the same device-health constraints.

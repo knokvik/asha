@@ -167,10 +167,17 @@ class SyncWorker {
     final accessToken = await _storage.read(key: 'access_token') ?? '';
     const appVersion = '1.0.0'; // TODO: read from package_info_plus
 
+    debugPrint('[SyncWorker] Starting drain queue. Worker: $workerId, Device: $deviceId, Token: ${accessToken.isEmpty ? 'EMPTY' : 'PRESENT'}');
+
     await _syncEngine.requeueRetryable();
     final batch = await _syncEngine.fetchPendingBatch(limit: 50);
-    if (batch.isEmpty) return;
+    debugPrint('[SyncWorker] Pending batch size: ${batch.length}');
+    if (batch.isEmpty) {
+      debugPrint('[SyncWorker] No pending packets to sync');
+      return;
+    }
     if (accessToken.isEmpty) {
+      debugPrint('[SyncWorker] ERROR: Access token is empty - marking batch as failed');
       await _syncEngine.markFailed(
         batch.map((record) => record.id).toList(),
         'missing_server_session',
@@ -195,6 +202,7 @@ class SyncWorker {
       'Content-Encoding': 'gzip',
       'Authorization': 'Bearer $accessToken',
     };
+    debugPrint('[SyncWorker] Sending batch to $endpoint (${gzipBody.length} bytes)');
     final response = endpoint.scheme == 'https'
         ? await PinnedHttpTransport(sha256Fingerprints: certificatePins)
               .post(endpoint, headers: headers, body: gzipBody)
@@ -202,6 +210,11 @@ class SyncWorker {
         : await http
               .post(endpoint, headers: headers, body: gzipBody)
               .timeout(const Duration(seconds: 30));
+
+    debugPrint('[SyncWorker] Response: ${response.statusCode} ${response.reasonPhrase}');
+    if (response.statusCode != 200) {
+      debugPrint('[SyncWorker] Error response body: ${response.body}');
+    }
 
     if (response.statusCode == 200) {
       final queueIdsByRecordId = {
@@ -253,6 +266,7 @@ class SyncWorker {
     } else if (response.statusCode == 401) {
       // Access tokens are short-lived. Refresh first; only a rejected refresh
       // token is proof of a remote revocation and triggers RemoteWipe.
+      debugPrint('[SyncWorker] 401 Unauthorized - attempting token refresh');
       if (!retriedAfterRefresh) {
         final refresh = await SessionService(
           apiBaseUrl: apiBaseUrl,
@@ -260,26 +274,31 @@ class SyncWorker {
           database: _db,
         ).refreshAccessToken();
         if (refresh == SessionRefreshResult.refreshed) {
+          debugPrint('[SyncWorker] Token refreshed successfully, retrying...');
           await _drainQueue(retriedAfterRefresh: true);
           return;
         }
         if (refresh == SessionRefreshResult.rejected) {
+          debugPrint('[SyncWorker] Token refresh rejected - device revoked');
           throw StateError(
             'Device access was revoked and local data was wiped.',
           );
         }
+        debugPrint('[SyncWorker] Token refresh failed: $refresh');
       }
       final queueIds = batch.map((r) => r.id).toList();
       await _syncEngine.markFailed(queueIds, 'unauthorised');
       throw StateError('Sync is unauthorised; sign in again when online.');
     } else if (response.statusCode == 409) {
       // Conflicts returned — re-enqueue at P2 after conflict resolver runs.
+      debugPrint('[SyncWorker] 409 Conflict - marking as failed for review');
       final queueIds = batch.map((r) => r.id).toList();
       await _syncEngine.markFailed(
         queueIds,
         'conflict: ${response.statusCode}',
       );
     } else {
+      debugPrint('[SyncWorker] HTTP Error ${response.statusCode}: ${response.body}');
       final queueIds = batch.map((r) => r.id).toList();
       await _syncEngine.markFailed(
         queueIds,
@@ -292,12 +311,17 @@ class SyncWorker {
   Future<void> _pullDelta() async {
     final workerId = await _storage.read(key: 'worker_id') ?? '';
     final accessToken = await _storage.read(key: 'access_token') ?? '';
-    if (workerId.isEmpty || accessToken.isEmpty) return;
+    debugPrint('[SyncWorker] Starting pull delta. Worker: $workerId, Token: ${accessToken.isEmpty ? 'EMPTY' : 'PRESENT'}');
+    if (workerId.isEmpty || accessToken.isEmpty) {
+      debugPrint('[SyncWorker] Skipping pull delta - missing workerId or accessToken');
+      return;
+    }
 
     final watermarksJson = await _storage.read(key: 'sync_watermarks') ?? '{}';
     final uri = Uri.parse('$apiBaseUrl/api/v1/sync/pull').replace(
       queryParameters: {'worker_id': workerId, 'watermarks': watermarksJson},
     );
+    debugPrint('[SyncWorker] Pulling delta from $uri');
 
     final headers = {
       'Authorization': 'Bearer $accessToken',
@@ -310,6 +334,7 @@ class SyncWorker {
           .get(uri, headers: headers)
           .timeout(const Duration(seconds: 15));
 
+      debugPrint('[SyncWorker] Pull delta response: ${response.statusCode}');
       if (response.statusCode == 200 && response.body.isNotEmpty) {
         final payload = jsonDecode(response.body) as Map<String, dynamic>;
         final records = payload['records'] as List<dynamic>? ?? [];
@@ -321,10 +346,14 @@ class SyncWorker {
             value: jsonEncode(serverWatermarks),
           );
         }
+        debugPrint('[SyncWorker] Applying ${records.length} incoming records');
         await _applyIncomingRecords(records);
+      } else {
+        debugPrint('[SyncWorker] Pull delta failed: ${response.statusCode} ${response.body}');
       }
       await _pullHotspotContext(accessToken);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[SyncWorker] Pull delta error: $e');
       // Pull failure must not disrupt overall sync execution
     }
   }
@@ -333,11 +362,15 @@ class SyncWorker {
   /// response is cached in secure storage so the next offline triage session
   /// can activate the same area modules without network access.
   Future<void> _pullHotspotContext(String accessToken) async {
+    debugPrint('[SyncWorker] Pulling hotspot context');
     final uri = Uri.parse('$apiBaseUrl/api/v1/sync/hotspots');
     final response = await http
         .get(uri, headers: {'Authorization': 'Bearer $accessToken'})
         .timeout(const Duration(seconds: 15));
-    if (response.statusCode != 200 || response.body.isEmpty) return;
+    if (response.statusCode != 200 || response.body.isEmpty) {
+      debugPrint('[SyncWorker] Hotspot context pull failed: ${response.statusCode}');
+      return;
+    }
     final decoded = jsonDecode(response.body);
     if (decoded is! Map<String, dynamic>) return;
     await _storage.write(
@@ -351,11 +384,17 @@ class SyncWorker {
         value: jsonEncode(notifications),
       );
     }
+    debugPrint('[SyncWorker] Hotspot context pulled successfully');
   }
 
   Future<void> _pushAsrFeedback(String accessToken) async {
+    debugPrint('[SyncWorker] Pushing ASR feedback');
     final records = await AsrFeedbackStore.pending();
-    if (records.isEmpty) return;
+    if (records.isEmpty) {
+      debugPrint('[SyncWorker] No ASR feedback to push');
+      return;
+    }
+    debugPrint('[SyncWorker] Pushing ${records.length} ASR feedback records');
     final response = await http
         .post(
           Uri.parse('$apiBaseUrl/api/v1/sync/asr-feedback'),
@@ -366,16 +405,21 @@ class SyncWorker {
           body: jsonEncode({'records': records}),
         )
         .timeout(const Duration(seconds: 15));
-    if (response.statusCode != 200) return;
+    if (response.statusCode != 200) {
+      debugPrint('[SyncWorker] ASR feedback push failed: ${response.statusCode} ${response.body}');
+      return;
+    }
     final decoded = jsonDecode(response.body);
     if (decoded is Map && decoded['accepted_ids'] is List) {
       await AsrFeedbackStore.removeIds(
         (decoded['accepted_ids'] as List).map((item) => item.toString()),
       );
+      debugPrint('[SyncWorker] ASR feedback pushed successfully, removed accepted IDs');
     }
   }
 
   Future<void> _applyIncomingRecords(List<dynamic> records) async {
+    debugPrint('[SyncWorker] Applying ${records.length} incoming records');
     final now = DateTime.now().millisecondsSinceEpoch;
     for (final raw in records) {
       if (raw is! Map<String, dynamic>) continue;
@@ -500,7 +544,9 @@ class SyncWorker {
                 ),
               );
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[SyncWorker] Error applying record for table $table: $e');
+      }
     }
   }
 

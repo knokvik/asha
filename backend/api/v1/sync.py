@@ -143,24 +143,50 @@ async def sync_activity(
             select(TriageTicket).where(TriageTicket.id.in_(ticket_ids))
         )
         tickets = {ticket.id: ticket for ticket in ticket_rows.scalars()}
+    seen_record_keys: set[tuple[str, str]] = set()
+    packets = []
+    for row in rows:
+        record_key = (row.table_name, row.record_id)
+        if record_key in seen_record_keys:
+            continue
+        seen_record_keys.add(record_key)
+        activity = _clinical_activity(row.table_name, row.new_value)
+        packets.append({
+            "id": row.id, "table": row.table_name, "record_id": row.record_id,
+            "worker_id": row.changed_by, "device_id": row.device_id,
+            "app_version": row.app_version, "received_at": row.server_timestamp,
+            "device_timestamp": row.device_timestamp,
+            "operation": row.new_value if row.field_name == "__packet__" else "update",
+            "status": "synced", **activity, **_ticket_activity(tickets.get(row.record_id)),
+        })
     return {
-        "packets": [
-            {
-                "id": row.id,
-                "table": row.table_name,
-                "record_id": row.record_id,
-                "worker_id": row.changed_by,
-                "device_id": row.device_id,
-                "app_version": row.app_version,
-                "received_at": row.server_timestamp,
-                "device_timestamp": row.device_timestamp,
-                "operation": row.new_value if row.field_name == "__packet__" else "update",
-                "status": "synced",
-                **_ticket_activity(tickets.get(row.record_id)),
-            }
-            for row in rows
-        ]
+        "packets": packets
     }
+
+
+def _clinical_activity(table_name: str, raw_value: str | None) -> dict[str, str]:
+    """Attach a stable program label to every clinical packet shown on the web."""
+    try:
+        payload = json.loads(raw_value or "")
+    except (TypeError, json.JSONDecodeError):
+        payload = {}
+    program_code = str(payload.get("program_code", "")).lower() if isinstance(payload, dict) else ""
+    table = table_name.lower()
+    if program_code in {"ncd", "ncd_screening"} or "ncd" in table:
+        return {"program": "NCD", "activity_name": "NCD clinical activity"}
+    if program_code in {"immunization", "immunisation"} or "immun" in table or "vaccine" in table:
+        return {"program": "Immunization", "activity_name": "Immunization activity"}
+    if program_code == "anc" or "anc" in table:
+        return {"program": "ANC", "activity_name": "ANC clinical activity"}
+    if program_code == "pnc" or "pnc" in table:
+        return {"program": "PNC", "activity_name": "PNC clinical activity"}
+    if program_code == "hbnc" or "hbnc" in table:
+        return {"program": "HBNC", "activity_name": "HBNC home visit"}
+    if program_code == "hbyc" or "hbyc" in table:
+        return {"program": "HBYC", "activity_name": "HBYC home visit"}
+    if program_code == "tb" or table.startswith("tb") or "tuberculosis" in table:
+        return {"program": "TB", "activity_name": "TB clinical activity"}
+    return {}
 
 
 @router.post("/asr-feedback")
@@ -433,6 +459,12 @@ def _ticket_activity(ticket: TriageTicket | None) -> dict:
     if ticket is None:
         return {}
     attachments = _ticket_attachments(ticket)
+    try:
+        modules = json.loads(ticket.modules_json or "[]")
+    except json.JSONDecodeError:
+        modules = []
+    module_text = ", ".join(str(item) for item in modules) if isinstance(modules, list) else ""
+    program = "ANC" if "anc" in module_text.lower() or "maternal" in module_text.lower() else "Triage"
     return {
         "ticket": {
             "id": ticket.id,
@@ -441,6 +473,8 @@ def _ticket_activity(ticket: TriageTicket | None) -> dict:
             "flag": ticket.flag,
             "ward_id": ticket.ward_id,
             "details": ticket.additional_details,
+            "program": program,
+            "activity_name": f"{program} — {ticket.additional_details or 'clinical review'}",
             "attachments": [
                 {
                     "index": index,

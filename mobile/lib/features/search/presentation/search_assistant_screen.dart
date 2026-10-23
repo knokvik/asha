@@ -367,6 +367,16 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
 
   /// Disease / Clinical Condition Card (Tapping opens the full Clinical Dictionary)
   Widget _diseaseCard(ClinicalDisease disease, String lang) {
+    final title = disease.nameEn
+        .split('(')
+        .first
+        .trim()
+        .split('/')
+        .first
+        .trim();
+    final alias = disease.nameEn.contains('(')
+        ? disease.nameEn.split('(').skip(1).join('(').split(')').first.trim()
+        : disease.nameLocal;
     return Card(
       key: Key('disease_card_${disease.id}'),
       margin: const EdgeInsets.only(bottom: 10),
@@ -406,7 +416,7 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          disease.nameEn,
+                          title,
                           style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
@@ -414,7 +424,7 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
                           ),
                         ),
                         Text(
-                          disease.nameLocal,
+                          alias,
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -424,41 +434,8 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
                       ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: disease.badgeColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: disease.badgeColor.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Text(
-                      disease.severityBadge,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: disease.badgeColor,
-                      ),
-                    ),
-                  ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                disease.shortDescription,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AshaColors.textSecondary,
-                  height: 1.35,
-                ),
-              ),
-              const SizedBox(height: 10),
             ],
           ),
         ),
@@ -853,7 +830,6 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
         decoration: BoxDecoration(
           color: AshaColors.cardSurface,
           borderRadius: BorderRadius.circular(26),
-          border: Border.all(color: const Color(0xFFD1D5DB), width: 1.2),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),

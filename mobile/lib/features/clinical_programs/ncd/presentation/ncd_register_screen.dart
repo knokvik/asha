@@ -13,10 +13,7 @@ import '../domain/cbac_models.dart';
 class NcdRegisterScreen extends ConsumerStatefulWidget {
   final String ashaId;
 
-  const NcdRegisterScreen({
-    super.key,
-    required this.ashaId,
-  });
+  const NcdRegisterScreen({super.key, required this.ashaId});
 
   @override
   ConsumerState<NcdRegisterScreen> createState() => _NcdRegisterScreenState();
@@ -77,18 +74,29 @@ class _NcdRegisterScreenState extends ConsumerState<NcdRegisterScreen> {
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.monitor_heart, color: theme.colorScheme.primary),
+                            Icon(
+                              Icons.monitor_heart,
+                              color: theme.colorScheme.primary,
+                            ),
                             const SizedBox(width: 8),
-                            const Text(
-                              'Hypertension & Diabetes Follow-up',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            const Expanded(
+                              child: Text(
+                                'Hypertension & Diabetes Follow-up',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 8),
                         const Text(
                           'Track monthly medication refills, adherence check visits, and repeat BP / Blood Glucose measurements.',
-                          style: TextStyle(fontSize: 13, color: Colors.blueGrey),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.blueGrey,
+                          ),
                         ),
                       ],
                     ),
@@ -104,14 +112,23 @@ class _NcdRegisterScreenState extends ConsumerState<NcdRegisterScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
-                              const Icon(Icons.check_circle, color: Colors.green),
+                              const Icon(
+                                Icons.check_circle,
+                                color: Colors.green,
+                              ),
                               const SizedBox(width: 8),
-                              const Text('National NCD Portal CSV Generated', style: TextStyle(fontWeight: FontWeight.bold)),
-                              const Spacer(),
+                              const Text(
+                                'National NCD Portal CSV Generated',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
                               TextButton(
-                                onPressed: () => setState(() => _exportedCsv = null),
+                                onPressed: () =>
+                                    setState(() => _exportedCsv = null),
                                 child: const Text('Dismiss'),
                               ),
                             ],
@@ -139,8 +156,13 @@ class _NcdRegisterScreenState extends ConsumerState<NcdRegisterScreen> {
                     backgroundColor: Colors.teal,
                     child: Icon(Icons.medication, color: Colors.white),
                   ),
-                  title: const Text('Monthly Refill & Adherence Check', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: const Text('Record repeat BP, sugar, refill distribution & adherence status'),
+                  title: const Text(
+                    'Monthly Refill & Adherence Check',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: const Text(
+                    'Record repeat BP, sugar, refill distribution & adherence status',
+                  ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => _showRecordFollowUpDialog(context),
                 ),
@@ -156,8 +178,13 @@ class _NcdRegisterScreenState extends ConsumerState<NcdRegisterScreen> {
                     backgroundColor: Colors.amber,
                     child: Icon(Icons.person_search, color: Colors.white),
                   ),
-                  title: const Text('Overdue Defaulter Tracing', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: const Text('Scan patients overdue for refills > 14 days and create priority due tasks'),
+                  title: const Text(
+                    'Overdue Defaulter Tracing',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: const Text(
+                    'Scan patients overdue for refills > 14 days and create priority due tasks',
+                  ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: _runOverdueTracing,
                 ),
@@ -173,8 +200,13 @@ class _NcdRegisterScreenState extends ConsumerState<NcdRegisterScreen> {
                     backgroundColor: Colors.indigo,
                     child: Icon(Icons.file_download, color: Colors.white),
                   ),
-                  title: const Text('Export to National NCD Portal', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: const Text('Export CBAC screening CSV format (Requirement 19.6, 35)'),
+                  title: const Text(
+                    'Export to National NCD Portal',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: const Text(
+                    'Export CBAC screening CSV format (Requirement 19.6, 35)',
+                  ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: _exportNationalCsv,
                 ),
@@ -187,7 +219,9 @@ class _NcdRegisterScreenState extends ConsumerState<NcdRegisterScreen> {
     setState(() => _isLoading = true);
     try {
       final repo = ref.read(ncdRepositoryProvider);
-      final tasks = await repo.generateOverdueTracingTasks(overdueDaysThreshold: 14);
+      final tasks = await repo.generateOverdueTracingTasks(
+        overdueDaysThreshold: 14,
+      );
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -203,7 +237,10 @@ class _NcdRegisterScreenState extends ConsumerState<NcdRegisterScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error running tracing: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Error running tracing: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -227,7 +264,10 @@ class _NcdRegisterScreenState extends ConsumerState<NcdRegisterScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error exporting CSV: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Error exporting CSV: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -254,7 +294,13 @@ class _NcdRegisterScreenState extends ConsumerState<NcdRegisterScreen> {
               children: [
                 TextField(
                   controller: memberIdController,
-                  decoration: const InputDecoration(labelText: 'Beneficiary Member ID', border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle))),
+                  decoration: const InputDecoration(
+                    labelText: 'Beneficiary Member ID',
+                    border: OutlineInputBorder(
+                      borderRadius: AshaShapes.searchRadius,
+                      borderSide: BorderSide(color: AshaColors.borderSubtle),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -263,7 +309,16 @@ class _NcdRegisterScreenState extends ConsumerState<NcdRegisterScreen> {
                       child: TextField(
                         controller: sbpController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'SBP', hintText: '120', border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle))),
+                        decoration: const InputDecoration(
+                          labelText: 'SBP',
+                          hintText: '120',
+                          border: OutlineInputBorder(
+                            borderRadius: AshaShapes.searchRadius,
+                            borderSide: BorderSide(
+                              color: AshaColors.borderSubtle,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -271,7 +326,16 @@ class _NcdRegisterScreenState extends ConsumerState<NcdRegisterScreen> {
                       child: TextField(
                         controller: dbpController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'DBP', hintText: '80', border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle))),
+                        decoration: const InputDecoration(
+                          labelText: 'DBP',
+                          hintText: '80',
+                          border: OutlineInputBorder(
+                            borderRadius: AshaShapes.searchRadius,
+                            borderSide: BorderSide(
+                              color: AshaColors.borderSubtle,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -279,15 +343,31 @@ class _NcdRegisterScreenState extends ConsumerState<NcdRegisterScreen> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: glucoseController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Blood Glucose (mg/dL)', border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle))),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: 'Blood Glucose (mg/dL)',
+                    border: OutlineInputBorder(
+                      borderRadius: AshaShapes.searchRadius,
+                      borderSide: BorderSide(color: AshaColors.borderSubtle),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<MedicationAdherence>(
                   initialValue: adherence,
-                  decoration: const InputDecoration(labelText: 'Medication Adherence', border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle))),
+                  decoration: const InputDecoration(
+                    labelText: 'Medication Adherence',
+                    border: OutlineInputBorder(
+                      borderRadius: AshaShapes.searchRadius,
+                      borderSide: BorderSide(color: AshaColors.borderSubtle),
+                    ),
+                  ),
                   items: MedicationAdherence.values
-                      .map((a) => DropdownMenuItem(value: a, child: Text(a.label)))
+                      .map(
+                        (a) => DropdownMenuItem(value: a, child: Text(a.label)),
+                      )
                       .toList(),
                   onChanged: (val) {
                     if (val != null) setDialogState(() => adherence = val);
@@ -320,7 +400,9 @@ class _NcdRegisterScreenState extends ConsumerState<NcdRegisterScreen> {
                     memberId: memberId,
                     systolicBp: int.tryParse(sbpController.text.trim()),
                     diastolicBp: int.tryParse(dbpController.text.trim()),
-                    bloodGlucoseMgDl: double.tryParse(glucoseController.text.trim()),
+                    bloodGlucoseMgDl: double.tryParse(
+                      glucoseController.text.trim(),
+                    ),
                     glucoseType: GlucoseType.random,
                     adherence: adherence,
                     medicinesRefilled: refilled,
@@ -329,12 +411,18 @@ class _NcdRegisterScreenState extends ConsumerState<NcdRegisterScreen> {
                   );
                   if (!mounted) return;
                   messenger.showSnackBar(
-                    const SnackBar(content: Text('NCD Follow-Up Visit Recorded!'), backgroundColor: Colors.teal),
+                    const SnackBar(
+                      content: Text('NCD Follow-Up Visit Recorded!'),
+                      backgroundColor: Colors.teal,
+                    ),
                   );
                 } catch (e) {
                   if (!mounted) return;
                   messenger.showSnackBar(
-                    SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                    SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: Colors.red,
+                    ),
                   );
                 }
               },

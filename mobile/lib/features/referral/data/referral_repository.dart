@@ -29,19 +29,33 @@ class ReferralRepository {
     final qrData = note.toQrPayload();
     final noteText = note.formatSummary(english: true);
 
+    // A clinical encounter can have only one referral on the backend. Reusing
+    // the existing local record makes repeated taps/reopens idempotent and
+    // prevents duplicate referral packets from being rejected during sync.
+    final existingForEncounter = await (_db.select(
+      _db.referralRecords,
+    )..where((t) => t.encounterId.equals(note.encounterId))).getSingleOrNull();
+    if (existingForEncounter != null) return existingForEncounter;
+
     // Ensure parent encounter exists in DB to satisfy foreign key constraint
-    final encounter = await (_db.select(_db.clinicalEncounters)
-          ..where((t) => t.id.equals(note.encounterId)))
-        .getSingleOrNull();
+    final encounter = await (_db.select(
+      _db.clinicalEncounters,
+    )..where((t) => t.id.equals(note.encounterId))).getSingleOrNull();
 
     if (encounter == null) {
       final memberId = note.patient.memberId;
-      final member = await (_db.select(_db.members)..where((t) => t.id.equals(memberId))).getSingleOrNull();
+      final member = await (_db.select(
+        _db.members,
+      )..where((t) => t.id.equals(memberId))).getSingleOrNull();
       if (member == null) {
         final hhId = note.patient.householdId ?? 'hh_ref_default';
-        final hh = await (_db.select(_db.households)..where((t) => t.id.equals(hhId))).getSingleOrNull();
+        final hh = await (_db.select(
+          _db.households,
+        )..where((t) => t.id.equals(hhId))).getSingleOrNull();
         if (hh == null) {
-          await _db.into(_db.households).insert(
+          await _db
+              .into(_db.households)
+              .insert(
                 HouseholdsCompanion.insert(
                   id: hhId,
                   village: note.patient.village ?? 'Community',
@@ -53,7 +67,9 @@ class ReferralRepository {
                 mode: InsertMode.insertOrIgnore,
               );
         }
-        await _db.into(_db.members).insert(
+        await _db
+            .into(_db.members)
+            .insert(
               MembersCompanion.insert(
                 id: memberId,
                 householdId: hhId,
@@ -67,7 +83,9 @@ class ReferralRepository {
             );
       }
 
-      await _db.into(_db.clinicalEncounters).insert(
+      await _db
+          .into(_db.clinicalEncounters)
+          .insert(
             ClinicalEncountersCompanion.insert(
               id: note.encounterId,
               memberId: memberId,
@@ -99,10 +117,9 @@ class ReferralRepository {
       syncStatus: const Value('pending'),
     );
 
-    await _db.into(_db.referralRecords).insert(
-          companion,
-          mode: InsertMode.insertOrReplace,
-        );
+    await _db
+        .into(_db.referralRecords)
+        .insert(companion, mode: InsertMode.insertOrReplace);
 
     // Enqueue to SyncEngine: RED is P1 Critical, other flags are P2 Clinical
     if (_syncEngine != null) {
@@ -133,7 +150,9 @@ class ReferralRepository {
       );
     }
 
-    return (await (_db.select(_db.referralRecords)..where((t) => t.id.equals(note.referralId))).getSingle());
+    return (await (_db.select(
+      _db.referralRecords,
+    )..where((t) => t.id.equals(note.referralId))).getSingle());
   }
 
   /// Updates referral status (e.g. en_route or arrived).
@@ -142,7 +161,9 @@ class ReferralRepository {
     required ReferralStatus newStatus,
   }) async {
     final now = DateTime.now().millisecondsSinceEpoch;
-    await (_db.update(_db.referralRecords)..where((t) => t.id.equals(referralId))).write(
+    await (_db.update(
+      _db.referralRecords,
+    )..where((t) => t.id.equals(referralId))).write(
       ReferralRecordsCompanion(
         status: Value(newStatus.value),
         updatedAt: Value(now),
@@ -174,7 +195,9 @@ class ReferralRepository {
   }) async {
     final now = (recordedAt ?? DateTime.now()).millisecondsSinceEpoch;
 
-    await (_db.update(_db.referralRecords)..where((t) => t.id.equals(referralId))).write(
+    await (_db.update(
+      _db.referralRecords,
+    )..where((t) => t.id.equals(referralId))).write(
       ReferralRecordsCompanion(
         status: const Value('outcome_recorded'),
         outcome: Value(outcomeType.value),
@@ -205,7 +228,9 @@ class ReferralRepository {
 
   /// Retrieves a referral by ID.
   Future<ReferralRecord?> getReferral(String id) async {
-    return (_db.select(_db.referralRecords)..where((t) => t.id.equals(id))).getSingleOrNull();
+    return (_db.select(
+      _db.referralRecords,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
   /// Retrieves all referrals for a given beneficiary member.

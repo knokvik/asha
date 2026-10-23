@@ -39,7 +39,9 @@ class SyncQueueScreen extends ConsumerWidget {
     String lang,
   ) {
     final snapshot = coordinator.snapshot;
-    final totalSynced = snapshot.records.where((r) => r.syncStatus == 'synced').length;
+    final totalSynced = snapshot.records
+        .where((r) => r.syncStatus == 'synced')
+        .length;
     final pendingCount = snapshot.pendingCount;
     final failedCount = snapshot.failedCount;
 
@@ -142,11 +144,17 @@ class SyncQueueScreen extends ConsumerWidget {
                   children: [
                     Text(
                       shellText(lang, 'peerSyncTitle'),
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFDCFCE7),
                         borderRadius: BorderRadius.circular(6),
@@ -165,9 +173,16 @@ class SyncQueueScreen extends ConsumerWidget {
                 ),
                 subtitle: Text(
                   shellText(lang, 'peerSyncSub'),
-                  style: const TextStyle(fontSize: 12, color: AshaColors.textSecondary),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AshaColors.textSecondary,
+                  ),
                 ),
-                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF9CA3AF)),
+                trailing: const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 14,
+                  color: Color(0xFF9CA3AF),
+                ),
                 onTap: () => context.push('/peer-sync'),
               ),
             ),
@@ -188,12 +203,19 @@ class SyncQueueScreen extends ConsumerWidget {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.warning_amber_rounded, size: 18, color: Color(0xFFDC2626)),
+                      const Icon(
+                        Icons.warning_amber_rounded,
+                        size: 18,
+                        color: Color(0xFFDC2626),
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           snapshot.errorMessage!,
-                          style: const TextStyle(color: Color(0xFF991B1B), fontSize: 12),
+                          style: const TextStyle(
+                            color: Color(0xFF991B1B),
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ],
@@ -244,11 +266,16 @@ class SyncQueueScreen extends ConsumerWidget {
             ? const SizedBox(
                 width: 18,
                 height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
               )
             : const Icon(Icons.cloud_upload_outlined, size: 20),
         label: Text(
-          snapshot.state == SyncConnectionState.syncing ? 'Syncing…' : 'Sync Now',
+          snapshot.state == SyncConnectionState.syncing
+              ? 'Syncing…'
+              : 'Sync Now',
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
         ),
       ),
@@ -368,10 +395,16 @@ class _SyncSummaryCard extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: isHealthy ? const Color(0xFFE8F5E9) : statusColor.withValues(alpha: 0.1),
+                color: isHealthy
+                    ? const Color(0xFFE8F5E9)
+                    : statusColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(statusIcon, color: isHealthy ? const Color(0xFF1B5E20) : statusColor, size: 26),
+              child: Icon(
+                statusIcon,
+                color: isHealthy ? const Color(0xFF1B5E20) : statusColor,
+                size: 26,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -420,10 +453,12 @@ class _QueuePacketTile extends StatelessWidget {
     final lower = table.toLowerCase();
     if (lower.contains('triage')) return Icons.local_hospital_rounded;
     if (lower.contains('encounter')) return Icons.medical_services_rounded;
-    if (lower.contains('schedule') || lower.contains('visit')) return Icons.event_available_rounded;
+    if (lower.contains('schedule') || lower.contains('visit'))
+      return Icons.event_available_rounded;
     if (lower.contains('household')) return Icons.home_work_rounded;
     if (lower.contains('member')) return Icons.person_rounded;
-    if (lower.contains('incentive') || lower.contains('claim')) return Icons.payments_rounded;
+    if (lower.contains('incentive') || lower.contains('claim'))
+      return Icons.payments_rounded;
     if (lower.contains('referral')) return Icons.share_location_rounded;
     return Icons.folder_shared_rounded;
   }
@@ -432,10 +467,12 @@ class _QueuePacketTile extends StatelessWidget {
     final lower = table.toLowerCase();
     if (lower.contains('triage')) return const Color(0xFFDC2626);
     if (lower.contains('encounter')) return const Color(0xFF0D9488);
-    if (lower.contains('schedule') || lower.contains('visit')) return const Color(0xFF2563EB);
+    if (lower.contains('schedule') || lower.contains('visit'))
+      return const Color(0xFF2563EB);
     if (lower.contains('household')) return const Color(0xFF7C3AED);
     if (lower.contains('member')) return const Color(0xFF4F46E5);
-    if (lower.contains('incentive') || lower.contains('claim')) return const Color(0xFFD97706);
+    if (lower.contains('incentive') || lower.contains('claim'))
+      return const Color(0xFFD97706);
     return const Color(0xFF4B5563);
   }
 
@@ -449,14 +486,14 @@ class _QueuePacketTile extends StatelessWidget {
     final statusColor = isFailed
         ? const Color(0xFFDC2626)
         : isSynced
-            ? const Color(0xFF16A34A)
-            : const Color(0xFF2563EB);
+        ? const Color(0xFF16A34A)
+        : const Color(0xFF2563EB);
 
     final statusBg = isFailed
         ? const Color(0xFFFEF2F2)
         : isSynced
-            ? const Color(0xFFF0FDF4)
-            : const Color(0xFFEFF6FF);
+        ? const Color(0xFFF0FDF4)
+        : const Color(0xFFEFF6FF);
 
     final tableIcon = _getIconForTable(record.targetTable);
     final tableColor = _getColorForTable(record.targetTable);
@@ -517,11 +554,16 @@ class _QueuePacketTile extends StatelessWidget {
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
                               color: statusBg,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                              border: Border.all(
+                                color: statusColor.withValues(alpha: 0.3),
+                              ),
                             ),
                             child: Text(
                               record.syncStatus.toUpperCase(),
@@ -548,7 +590,10 @@ class _QueuePacketTile extends StatelessWidget {
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: const Color(0xFFF3F4F6),
                               borderRadius: BorderRadius.circular(6),
@@ -563,7 +608,11 @@ class _QueuePacketTile extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Icon(Icons.schedule_rounded, size: 12, color: Colors.grey.shade500),
+                          Icon(
+                            Icons.schedule_rounded,
+                            size: 12,
+                            color: Colors.grey.shade500,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             _formatTime(timestamp),
@@ -650,7 +699,19 @@ class _PacketSummary {
       final name = _text(payload['name'], fallback: 'unnamed patient');
       return 'Triage ticket · $name';
     }
-    return '${operation.toUpperCase()} ${targetTable.replaceAll('_', ' ')}';
+    final program = _text(payload['program_code'], fallback: '');
+    final name = _text(
+      payload['name'] ??
+          payload['beneficiary_name'] ??
+          payload['head_name'] ??
+          payload['patient_name'],
+      fallback: '',
+    );
+    final subject = name.isNotEmpty
+        ? name
+        : (recordId.isNotEmpty ? recordId : 'record');
+    final table = targetTable.replaceAll('_', ' ');
+    return '${operation.toUpperCase()} ${program.isNotEmpty ? '$program ' : ''}$table · $subject';
   }
 
   String get subtitle {
@@ -930,8 +991,7 @@ class _ConflictSummarySection extends StatelessWidget {
           style: TextStyle(fontSize: 11, color: AshaColors.textSecondary),
         ),
         const SizedBox(height: 8),
-        for (final record in conflicts)
-          _ConflictTile(record: record),
+        for (final record in conflicts) _ConflictTile(record: record),
       ],
     );
   }
@@ -1005,8 +1065,8 @@ class _ConflictTile extends StatelessWidget {
             Text(
               isDuplicate
                   ? 'A beneficiary with matching identity already exists on '
-                    'the server. This cannot be auto-merged. Please contact '
-                    'your supervisor to resolve the duplicate manually.'
+                        'the server. This cannot be auto-merged. Please contact '
+                        'your supervisor to resolve the duplicate manually.'
                   : errorMsg,
               style: const TextStyle(fontSize: 11, color: Color(0xFF78350F)),
             ),

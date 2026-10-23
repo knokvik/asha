@@ -47,14 +47,16 @@ class ProfileScreen extends ConsumerWidget {
 
     final initials = profile?.initials ?? 'AS';
     final rawName = profile?.name ?? '';
-    final isDefaultName = rawName.isEmpty ||
+    final isDefaultName =
+        rawName.isEmpty ||
         rawName == 'Sunita Devi' ||
         rawName == 'Sunita Sharma' ||
         rawName == 'ASHA Worker';
     final name = isDefaultName ? shellText(lang, 'workerName') : rawName;
     final ashaId = profile?.ashaId ?? '';
     final facilityDisplay = profile?.facilityDisplay ?? '';
-    final isDefaultFacility = facilityDisplay.isEmpty ||
+    final isDefaultFacility =
+        facilityDisplay.isEmpty ||
         facilityDisplay == 'ASHA Worker • Primary Health Centre' ||
         facilityDisplay.contains('ASHA Worker');
     final roleFacility = isDefaultFacility
@@ -175,7 +177,8 @@ class ProfileScreen extends ConsumerWidget {
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFF166534).withValues(alpha: 0.25),
+                                  color: const Color(0xFF166534)
+                                      .withValues(alpha: 0.25),
                                   blurRadius: 8,
                                   offset: const Offset(0, 3),
                                 ),
@@ -204,7 +207,10 @@ class ProfileScreen extends ConsumerWidget {
                                     ? const Color(0xFF16A34A)
                                     : const Color(0xFFF59E0B),
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
                               ),
                             ),
                           ),
@@ -398,16 +404,6 @@ class ProfileScreen extends ConsumerWidget {
                   title: shellText(lang, 'allTools'),
                   subtitle: shellText(lang, 'allToolsSub'),
                   onTap: () => context.push('/tools'),
-                ),
-                const SizedBox(height: 10),
-
-                _buildListOption(
-                  icon: Icons.map_outlined,
-                  iconColor: const Color(0xFF059669),
-                  iconBgColor: const Color(0xFFD1FAE5),
-                  title: 'Offline Map & Routes',
-                  subtitle: 'Route planning, hamlet boundaries and GIS layers',
-                  onTap: () => context.push('/route-map'),
                 ),
                 const SizedBox(height: 10),
 

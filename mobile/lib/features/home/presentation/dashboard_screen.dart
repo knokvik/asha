@@ -460,35 +460,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         .watch(offlinePackProvider)
         .interpreterLanguageCodes
         .isNotEmpty;
-    return Column(
+    return GridView.count(
+      crossAxisCount: 2,
+      crossAxisSpacing: 10,
+      mainAxisSpacing: 10,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      childAspectRatio: 1.65,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildQuickActionCard(
-                title: shellText(_lang, 'addHousehold'),
-                iconWidget: _quickActionIcon(
-                  Icons.group_add_rounded,
-                  const Color(0xFF15803D),
-                ),
-                onTap: () => context.push('/households/new'),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildQuickActionCard(
-                key: const Key('home_triage_button'),
-                title: shellText(_lang, 'triage'),
-                iconWidget: _quickActionIcon(
-                  Icons.emergency_rounded,
-                  const Color(0xFFDC2626),
-                ),
-                onTap: () => context.push('/triage'),
-              ),
-            ),
-          ],
+        _buildQuickActionCard(
+          title: shellText(_lang, 'addHousehold'),
+          iconWidget: _quickActionIcon(
+            Icons.group_add_rounded,
+            const Color(0xFF15803D),
+          ),
+          onTap: () => context.push('/households/new'),
         ),
-        const SizedBox(height: 10),
+        _buildQuickActionCard(
+          key: const Key('home_triage_button'),
+          title: shellText(_lang, 'triage'),
+          iconWidget: _quickActionIcon(
+            Icons.emergency_rounded,
+            const Color(0xFFDC2626),
+          ),
+          onTap: () => context.push('/triage'),
+        ),
         _buildQuickActionCard(
           title: 'Bhasha Interpreter',
           iconWidget: _quickActionIcon(
@@ -497,7 +493,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
           onTap: () => context.push(hasInterpreter ? '/interpreter' : '/packs'),
         ),
-        const SizedBox(height: 10),
         _buildQuickActionCard(
           title: shellText(_lang, 'programs'),
           iconWidget: _quickActionIcon(
@@ -506,34 +501,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
           onTap: () => context.push('/clinical-programs'),
         ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _buildQuickActionCard(
-                title: 'Tracking',
-                iconWidget: _quickActionIcon(
-                  Icons.track_changes_rounded,
-                  const Color(0xFF0F766E),
-                ),
-                onTap: () => context.push('/tracking'),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildQuickActionCard(
-                key: const Key('home_revenue_button'),
-                title: shellText(_lang, 'revenue'),
-                iconWidget: _quickActionIcon(
-                  Icons.payments_outlined,
-                  const Color(0xFF15803D),
-                ),
-                onTap: () => context.push('/incentives'),
-              ),
-            ),
-          ],
+        _buildQuickActionCard(
+          title: 'Tracking',
+          iconWidget: _quickActionIcon(
+            Icons.track_changes_rounded,
+            const Color(0xFF0F766E),
+          ),
+          onTap: () => context.push('/tracking'),
         ),
-        const SizedBox(height: 10),
+        _buildQuickActionCard(
+          key: const Key('home_revenue_button'),
+          title: shellText(_lang, 'revenue'),
+          iconWidget: _quickActionIcon(
+            Icons.payments_outlined,
+            const Color(0xFF15803D),
+          ),
+          onTap: () => context.push('/incentives'),
+        ),
         _buildQuickActionCard(
           key: const Key('home_reports_button'),
           title: shellText(_lang, 'reports'),
@@ -752,10 +736,14 @@ class AshaNavigationDrawer extends ConsumerWidget {
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: isConnected ? const Color(0xFFF0FDF4) : const Color(0xFFFEF3C7),
+                      color: isConnected
+                          ? const Color(0xFFF0FDF4)
+                          : const Color(0xFFFEF3C7),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isConnected ? const Color(0xFFBBF7D0) : const Color(0xFFFDE68A),
+                        color: isConnected
+                            ? const Color(0xFFBBF7D0)
+                            : const Color(0xFFFDE68A),
                         width: 1,
                       ),
                     ),
@@ -767,7 +755,9 @@ class AshaNavigationDrawer extends ConsumerWidget {
                               ? Icons.cloud_done_rounded
                               : Icons.lock_rounded,
                           size: 13,
-                          color: isConnected ? const Color(0xFF16A34A) : const Color(0xFFD97706),
+                          color: isConnected
+                              ? const Color(0xFF16A34A)
+                              : const Color(0xFFD97706),
                         ),
                         const SizedBox(width: 6),
                         Text(
@@ -775,7 +765,9 @@ class AshaNavigationDrawer extends ConsumerWidget {
                               ? shellText(lang, 'serverOnline')
                               : shellText(lang, 'encrypted'),
                           style: TextStyle(
-                            color: isConnected ? const Color(0xFF15803D) : const Color(0xFFB45309),
+                            color: isConnected
+                                ? const Color(0xFF15803D)
+                                : const Color(0xFFB45309),
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                             fontFamily: 'SF Pro Display',

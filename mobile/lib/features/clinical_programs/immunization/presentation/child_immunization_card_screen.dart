@@ -24,10 +24,12 @@ class ChildImmunizationCardScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<ChildImmunizationCardScreen> createState() => _ChildImmunizationCardScreenState();
+  ConsumerState<ChildImmunizationCardScreen> createState() =>
+      _ChildImmunizationCardScreenState();
 }
 
-class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationCardScreen> {
+class _ChildImmunizationCardScreenState
+    extends ConsumerState<ChildImmunizationCardScreen> {
   final _dateFormat = DateFormat('dd MMM yyyy');
   bool _isLoading = true;
   List<ImmunizationCardItem> _items = [];
@@ -68,7 +70,16 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
   }
 
   void _showRecordDoseSheet([VaccineDefinition? preselected]) {
-    final defaultDef = preselected ?? _items.firstWhere((it) => it.status == VaccineDoseStatus.due || it.status == VaccineDoseStatus.overdue, orElse: () => _items.first).definition;
+    final defaultDef =
+        preselected ??
+        _items
+            .firstWhere(
+              (it) =>
+                  it.status == VaccineDoseStatus.due ||
+                  it.status == VaccineDoseStatus.overdue,
+              orElse: () => _items.first,
+            )
+            .definition;
 
     String selectedVaccineCode = defaultDef.code;
     AdministrationSite selectedSite = defaultDef.standardSite;
@@ -101,7 +112,10 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
                   children: [
                     const Text(
                       'Record Vaccine Dose',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.close),
@@ -117,13 +131,20 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
                   initialValue: selectedVaccineCode,
                   decoration: const InputDecoration(
                     labelText: 'Vaccine Dose',
-                    border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+                    border: OutlineInputBorder(
+                      borderRadius: AshaShapes.searchRadius,
+                      borderSide: BorderSide(color: AshaColors.borderSubtle),
+                    ),
                   ),
                   items: NationalImmunizationCatalog.infantAndChildSchedule
-                      .map((v) => DropdownMenuItem(
-                            value: v.code,
-                            child: Text('${v.code} (${v.name.split("(").first.trim()})'),
-                          ))
+                      .map(
+                        (v) => DropdownMenuItem(
+                          value: v.code,
+                          child: Text(
+                            '${v.code} (${v.name.split("(").first.trim()})',
+                          ),
+                        ),
+                      )
                       .toList(),
                   onChanged: (val) {
                     if (val != null) {
@@ -143,7 +164,10 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Date Administered'),
-                  subtitle: Text(_dateFormat.format(administeredDate), style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(
+                    _dateFormat.format(administeredDate),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   trailing: const Icon(Icons.calendar_today),
                   onTap: () async {
                     final picked = await showDatePicker(
@@ -164,13 +188,21 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
                   initialValue: selectedSite,
                   decoration: const InputDecoration(
                     labelText: 'Administration Site',
-                    border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+                    border: OutlineInputBorder(
+                      borderRadius: AshaShapes.searchRadius,
+                      borderSide: BorderSide(color: AshaColors.borderSubtle),
+                    ),
                   ),
                   items: AdministrationSite.values
-                      .map((site) => DropdownMenuItem(
-                            value: site,
-                            child: Text(site.displayName, style: const TextStyle(fontSize: 13)),
-                          ))
+                      .map(
+                        (site) => DropdownMenuItem(
+                          value: site,
+                          child: Text(
+                            site.displayName,
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                      )
                       .toList(),
                   onChanged: (val) => setSheetState(() => selectedSite = val!),
                 ),
@@ -181,15 +213,21 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
                   initialValue: selectedSession,
                   decoration: const InputDecoration(
                     labelText: 'Session Type',
-                    border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+                    border: OutlineInputBorder(
+                      borderRadius: AshaShapes.searchRadius,
+                      borderSide: BorderSide(color: AshaColors.borderSubtle),
+                    ),
                   ),
                   items: ImmunizationSessionType.values
-                      .map((st) => DropdownMenuItem(
-                            value: st,
-                            child: Text(st.displayName),
-                          ))
+                      .map(
+                        (st) => DropdownMenuItem(
+                          value: st,
+                          child: Text(st.displayName),
+                        ),
+                      )
                       .toList(),
-                  onChanged: (val) => setSheetState(() => selectedSession = val!),
+                  onChanged: (val) =>
+                      setSheetState(() => selectedSession = val!),
                 ),
                 const SizedBox(height: 12),
 
@@ -198,7 +236,10 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
                   controller: batchController,
                   decoration: const InputDecoration(
                     labelText: 'Vaccine Batch Number (Optional)',
-                    border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+                    border: OutlineInputBorder(
+                      borderRadius: AshaShapes.searchRadius,
+                      borderSide: BorderSide(color: AshaColors.borderSubtle),
+                    ),
                     hintText: 'e.g. BATCH-2024-X4',
                   ),
                 ),
@@ -209,14 +250,19 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
                   controller: notesController,
                   decoration: const InputDecoration(
                     labelText: 'Notes / ANM Remarks (Optional)',
-                    border: OutlineInputBorder(borderRadius: AshaShapes.searchRadius, borderSide: BorderSide(color: AshaColors.borderSubtle)),
+                    border: OutlineInputBorder(
+                      borderRadius: AshaShapes.searchRadius,
+                      borderSide: BorderSide(color: AshaColors.borderSubtle),
+                    ),
                   ),
                   maxLines: 2,
                 ),
                 const SizedBox(height: 20),
 
                 FilledButton.icon(
-                  style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
                   icon: const Icon(Icons.check_circle),
                   label: const Text('Save Dose Administration'),
                   onPressed: () async {
@@ -231,15 +277,20 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
                           administeredDate: administeredDate,
                           bodySite: selectedSite,
                           sessionType: selectedSession,
-                          batchNumber: batchController.text.trim().isNotEmpty ? batchController.text.trim() : null,
-                          notes: notesController.text.trim().isNotEmpty ? notesController.text.trim() : null,
+                          batchNumber: batchController.text.trim().isNotEmpty
+                              ? batchController.text.trim()
+                              : null,
+                          notes: notesController.text.trim().isNotEmpty
+                              ? notesController.text.trim()
+                              : null,
                         ),
                         ashaId: widget.ashaId,
                       );
                       if (mounted) {
                         messenger.showSnackBar(
                           clinicalSavedSnackBar(
-                            message: '$selectedVaccineCode saved on this phone.',
+                            message:
+                                '$selectedVaccineCode saved on this phone.',
                           ),
                         );
                         _loadImmunizationData();
@@ -280,7 +331,9 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
     final completedCount = _items.where((i) => i.isCompleted).length;
     final totalCount = _items.length;
     final progress = totalCount > 0 ? (completedCount / totalCount) : 0.0;
-    final defaulters = _items.where((i) => i.isDefaulter || i.isOverdue).toList();
+    final defaulters = _items
+        .where((i) => i.isDefaulter || i.isOverdue)
+        .toList();
 
     return Scaffold(
       backgroundColor: AshaColors.screenBg,
@@ -291,7 +344,10 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Immunization', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            const Text(
+              'Immunization',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            ),
           ],
         ),
         actions: [
@@ -309,116 +365,150 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
       body: _isLoading
           ? const Center(child: Text('Loading immunization card...'))
           : _errorMessage != null
-              ? Center(child: Text('Error: $_errorMessage'))
-              : ListView(
-                  padding: const EdgeInsets.all(12),
-                  children: [
-                    ClinicalPatientContextCard(
-                      name: widget.childName,
-                      details: 'DOB: ${_dateFormat.format(widget.dateOfBirth)} · ${_computeAge(widget.dateOfBirth)}',
-                      contextLabel: 'Child immunization card',
-                    ),
-                    const SizedBox(height: 12),
-                    // Coverage Progress Summary Card
-                    Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  'Vaccination Progress',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: completedCount == totalCount ? Colors.green.shade100 : Colors.blue.shade100,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    '$completedCount / $totalCount Given',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: completedCount == totalCount ? Colors.green.shade900 : Colors.blue.shade900,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            LinearProgressIndicator(
-                              value: progress,
-                              minHeight: 8,
-                              borderRadius: BorderRadius.circular(4),
-                              backgroundColor: Colors.grey.shade300,
-                              color: completedCount == totalCount ? Colors.green : Colors.teal,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              completedCount >= 16
-                                  ? '🎉 Full Immunization (1 Year) Milestone Achieved'
-                                  : 'Targeting complete immunization per National Schedule',
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // Defaulter / Catch-Up Advice Banner (Requirement 16.3)
-                    if (defaulters.isNotEmpty) ...[
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.red.shade200),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.error_outline, color: Colors.red, size: 22),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Catch-Up Schedule Required (${defaulters.length} Missed/Overdue)',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            ...defaulters.take(3).map((d) => Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Text(
-                                    '• ${d.definition.code}: ${d.catchUpGuidance ?? "Administer as soon as possible"}',
-                                    style: TextStyle(fontSize: 12, color: Colors.red.shade900),
-                                  ),
-                                )),
-                          ],
-                        ),
-                      ),
-                    ],
-
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Mother-Child Protection (MCP) Matrix',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Grouped List by Period
-                    ..._buildGroupedCards(),
-                  ],
+          ? Center(child: Text('Error: $_errorMessage'))
+          : ListView(
+              padding: const EdgeInsets.all(12),
+              children: [
+                ClinicalPatientContextCard(
+                  name: widget.childName,
+                  details:
+                      'DOB: ${_dateFormat.format(widget.dateOfBirth)} · ${_computeAge(widget.dateOfBirth)}',
+                  contextLabel: 'Child immunization card',
                 ),
+                const SizedBox(height: 12),
+                // Coverage Progress Summary Card
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Vaccination Progress',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: completedCount == totalCount
+                                    ? Colors.green.shade100
+                                    : Colors.blue.shade100,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '$completedCount / $totalCount Given',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: completedCount == totalCount
+                                      ? Colors.green.shade900
+                                      : Colors.blue.shade900,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 8,
+                          borderRadius: BorderRadius.circular(4),
+                          backgroundColor: Colors.grey.shade300,
+                          color: completedCount == totalCount
+                              ? Colors.green
+                              : Colors.teal,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          completedCount >= 16
+                              ? '🎉 Full Immunization (1 Year) Milestone Achieved'
+                              : 'Targeting complete immunization per National Schedule',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Defaulter / Catch-Up Advice Banner (Requirement 16.3)
+                if (defaulters.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.error_outline,
+                              color: Colors.red,
+                              size: 22,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Catch-Up Schedule Required (${defaulters.length} Missed/Overdue)',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        ...defaulters
+                            .take(3)
+                            .map(
+                              (d) => Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  '• ${d.definition.code}: ${d.catchUpGuidance ?? "Administer as soon as possible"}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.red.shade900,
+                                  ),
+                                ),
+                              ),
+                            ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 12),
+                const Text(
+                  'Mother-Child Protection (MCP) Matrix',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+
+                // Grouped List by Period
+                ..._buildGroupedCards(),
+              ],
+            ),
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add),
         label: const Text('Record Dose'),
@@ -459,7 +549,11 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
             children: [
               Text(
                 title,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.indigo),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: Colors.indigo,
+                ),
               ),
               const Divider(height: 16),
               ...items.map((item) => _buildDoseRow(item)),
@@ -517,7 +611,9 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
       decoration: BoxDecoration(
         color: status == VaccineDoseStatus.given
             ? Colors.green.shade50.withValues(alpha: 0.5)
-            : (status == VaccineDoseStatus.defaulter ? Colors.red.shade50.withValues(alpha: 0.5) : Colors.grey.shade50),
+            : (status == VaccineDoseStatus.defaulter
+                  ? Colors.red.shade50.withValues(alpha: 0.5)
+                  : Colors.grey.shade50),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: statusColor.withValues(alpha: 0.3)),
       ),
@@ -531,7 +627,10 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
               children: [
                 Text(
                   item.definition.code,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
                 ),
                 Text(
                   item.definition.name,
@@ -542,12 +641,17 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
                     'Batch: ${item.doseRecord!.batchNumber} | Site: ${item.doseRecord!.bodySite.name}',
                     style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
                   ),
-                if (item.catchUpGuidance != null && (item.isOverdue || item.isDefaulter))
+                if (item.catchUpGuidance != null &&
+                    (item.isOverdue || item.isDefaulter))
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
                       item.catchUpGuidance!,
-                      style: const TextStyle(fontSize: 11, color: Colors.red, fontWeight: FontWeight.w500),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.red,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
               ],
@@ -565,7 +669,11 @@ class _ChildImmunizationCardScreenState extends ConsumerState<ChildImmunizationC
                 ),
                 child: Text(
                   statusLabel,
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: statusColor),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: statusColor,
+                  ),
                 ),
               ),
               if (!item.isCompleted && !item.isExpired)

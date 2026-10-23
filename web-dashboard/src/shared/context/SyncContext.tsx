@@ -14,7 +14,7 @@ export interface FrontlineSyncActivity {
   workerName: string;
   workerPhone: string;
   village: string;
-  category: 'Maternal (ANC)' | 'Child (IMNCI)' | 'Postnatal (PNC)' | 'NCD Screening' | 'Immunization';
+  category: 'Maternal (ANC)' | 'Child (IMNCI)' | 'Postnatal (PNC)' | 'NCD Screening' | 'Immunization' | 'HBNC' | 'HBYC' | 'TB';
   details: string;
   clinicalPayload: string;
   vitalsSummary?: string;
@@ -535,14 +535,40 @@ function relativeTime(timestamp: number): string {
   return `${hours} hr${hours === 1 ? '' : 's'} ago`;
 }
 
+function readableSyncLabel(table: string, operation: unknown, recordId: unknown, program?: unknown, activityName?: unknown): string {
+  const labels: Record<string, string> = {
+    visit_schedules: 'ANC',
+    clinical_encounters: 'Clinical encounter',
+    clinical_observations: 'Clinical observation',
+    triage_results: 'Triage result',
+    households: 'Household registration',
+    members: 'Beneficiary profile',
+  };
+  const base = activityName || (program ? `${String(program)} activity` : labels[table] || table.replaceAll('_', ' '));
+  return `${base} — ${String(operation || 'updated')} · ${String(recordId || '')}`;
+}
+
 function mapPacket(packet: any): FrontlineSyncActivity {
   const timestamp = Number(packet.received_at || packet.device_timestamp || Date.now());
   const table = String(packet.table || 'sync packet');
-  const category = table.includes('encounter') || table.includes('triage')
-    ? 'NCD Screening'
-    : table.includes('member') || table.includes('household')
-      ? 'Child (IMNCI)'
-      : 'Immunization';
+  const program = String(packet.program || '').toLowerCase();
+  const category = program === 'anc'
+    ? 'Maternal (ANC)'
+    : program === 'pnc'
+      ? 'Postnatal (PNC)'
+      : program === 'immunization'
+        ? 'Immunization'
+        : program === 'hbnc'
+          ? 'HBNC'
+          : program === 'hbyc'
+            ? 'HBYC'
+            : program === 'tb'
+              ? 'TB'
+        : table.includes('encounter') || table.includes('triage')
+          ? 'NCD Screening'
+          : table.includes('member') || table.includes('household')
+            ? 'Child (IMNCI)'
+            : 'Immunization';
   const ticket = packet.ticket;
   const attachments: TriageEvidence[] = Array.isArray(ticket?.attachments)
     ? ticket.attachments.map((attachment: any) => ({
@@ -560,8 +586,8 @@ function mapPacket(packet: any): FrontlineSyncActivity {
     village: String(ticket?.location || packet.device_id || 'Field device'),
     category,
     details: ticket
-      ? `TRIAGE ${String(ticket.flag || 'SUBMITTED')} · ${String(ticket.id || packet.record_id)}`
-      : `${String(packet.operation || 'update').toUpperCase()} ${table} · ${packet.record_id}`,
+      ? `${String(ticket.activity_name || `${ticket.program || 'TRIAGE'} — ${ticket.flag || 'SUBMITTED'}`)} · ${String(ticket.id || packet.record_id)}`
+      : readableSyncLabel(table, packet.operation, packet.record_id, packet.program, packet.activity_name),
     clinicalPayload: ticket?.details
       ? String(ticket.details)
       : ticket

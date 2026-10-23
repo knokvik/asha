@@ -167,14 +167,14 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
 
   Widget _buildCreateTaskFab() {
     final lang = ref.watch(languageProvider).languageCode;
-    return FloatingActionButton.extended(
+    return FloatingActionButton(
       key: const Key('create_task_button'),
       heroTag: widget.embedded ? 'embedded-create-task' : 'create-task',
       onPressed: _showCreateTaskSheet,
       backgroundColor: const Color(0xFF166534),
       foregroundColor: Colors.white,
-      icon: const Icon(Icons.add_task_rounded),
-      label: Text(_dueCopy(lang, 'createTask')),
+      tooltip: _dueCopy(lang, 'createTask'),
+      child: const Icon(Icons.add_task_rounded),
     );
   }
 

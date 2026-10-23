@@ -70,7 +70,6 @@ import '../features/reports/presentation/register_viewer_screen.dart';
 import '../core/pdf/register_models.dart';
 import '../features/vhsnd/presentation/health_education_library_screen.dart';
 import '../features/vhsnd/domain/vhsnd_models.dart';
-import '../features/due_list/presentation/route_map_screen.dart';
 import '../features/due_list/presentation/coverage_analysis_screen.dart';
 import '../features/due_list/domain/route_models.dart';
 import '../features/teleconsultation/presentation/teleconsultation_screen.dart';
@@ -137,8 +136,14 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
           ref?.read(databaseKeyProvider) == null ? '/auth' : '/home',
     ),
     GoRoute(path: '/auth', builder: (context, state) => const AuthGate()),
-    GoRoute(path: '/phone-auth', builder: (context, state) => const PhoneAuthScreen()),
-    GoRoute(path: '/pin-auth', builder: (context, state) => const PinSetupScreen()),
+    GoRoute(
+      path: '/phone-auth',
+      builder: (context, state) => const PhoneAuthScreen(),
+    ),
+    GoRoute(
+      path: '/pin-auth',
+      builder: (context, state) => const PinSetupScreen(),
+    ),
     GoRoute(
       path: '/home',
       pageBuilder: (context, state) =>
@@ -671,42 +676,6 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
       ),
     ),
 
-    // ── Offline Route & Hamlet Map ─────────────────────────────────────────
-    GoRoute(
-      path: '/route-map',
-      builder: (context, state) => const RouteMapScreen(
-        route: PlannedRoute(
-          isOptInGpsUsed: true,
-          startLocation: GeoCoordinate(latitude: 25.3176, longitude: 82.9739),
-          orderedWaypoints: [
-            HamletWaypoint(
-              hamlet: 'Ward 2 (Purwa Tola)',
-              village: 'Rampur',
-              coordinate: GeoCoordinate(latitude: 25.3190, longitude: 82.9750),
-              landmarkNotes: ['Near Primary School', 'Old Banyan Tree'],
-              tasks: [],
-            ),
-            HamletWaypoint(
-              hamlet: 'Ward 1 (Main Village)',
-              village: 'Rampur',
-              coordinate: GeoCoordinate(latitude: 25.3210, longitude: 82.9780),
-              landmarkNotes: ['Anganwadi Centre 1', 'Panchayat Bhavan'],
-              tasks: [],
-            ),
-            HamletWaypoint(
-              hamlet: 'Ward 3 (Basti)',
-              village: 'Rampur',
-              coordinate: GeoCoordinate(latitude: 25.3250, longitude: 82.9810),
-              landmarkNotes: ['Community Handpump', 'Hanuman Mandir'],
-              tasks: [],
-            ),
-          ],
-          totalEstimatedDistanceKm: 3.5,
-          estimatedWalkingDuration: Duration(minutes: 75),
-          blockedWaypoints: [],
-        ),
-      ),
-    ),
     GoRoute(path: '/map-packs', redirect: (context, state) => '/packs'),
     GoRoute(
       path: '/india-map',
