@@ -122,7 +122,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-
   /// Top App Bar matching Screen 1:
   /// Far-left hamburger menu ☰, centered 'asha' wordmark, notification bell 🔔 with unread badge.
   Widget _buildTopBar(BuildContext context) {
@@ -490,9 +489,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
         const SizedBox(height: 10),
         _buildQuickActionCard(
-          title: hasInterpreter
-              ? shellText(_lang, 'interpreter')
-              : shellText(_lang, 'voicePacks'),
+          title: 'Bhasha Interpreter',
           iconWidget: _quickActionIcon(
             hasInterpreter ? Icons.translate_rounded : Icons.download_rounded,
             const Color(0xFF2563EB),

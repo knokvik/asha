@@ -299,6 +299,11 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
     ),
     GoRoute(
       path: '/interpreter',
+      pageBuilder: (context, state) =>
+          _buildSlidePage(state: state, child: const LanguageBridgeScreen()),
+    ),
+    GoRoute(
+      path: '/interpreter/model',
       pageBuilder: (context, state) => _buildSlidePage(
         state: state,
         child: HomePage(
