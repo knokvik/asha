@@ -273,6 +273,30 @@ class HouseholdRepository {
         syncVersion: (companion.serverVersion.value ?? 1) + 1,
         updatedAt: now,
       );
+
+      if (syncEngine != null) {
+        final payload = <String, dynamic>{
+          'id': id,
+          'updated_at': now,
+          'dirty_flag': 1,
+        };
+        if (companion.name.present) payload['name'] = companion.name.value;
+        if (companion.sex.present) payload['sex'] = companion.sex.value;
+        if (companion.relationshipToHead.present) payload['relationship_to_head'] = companion.relationshipToHead.value;
+        if (companion.dobApprox.present) payload['dob_approx'] = companion.dobApprox.value;
+        if (companion.phone.present) payload['phone'] = companion.phone.value;
+        if (companion.abhaId.present) payload['abha_id'] = companion.abhaId.value;
+        if (companion.socialCategory.present) payload['social_category'] = companion.socialCategory.value;
+        if (companion.isBpl.present) payload['is_bpl'] = companion.isBpl.value;
+
+        await syncEngine!.enqueue(
+          table: 'members',
+          recordId: id,
+          operation: 'update',
+          priority: SyncPriority.metadata,
+          payload: payload,
+        );
+      }
     }
     return success;
   }

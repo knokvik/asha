@@ -35,7 +35,6 @@ export function HouseholdsPage() {
             <Card key={`${item.id}-${item.workerName}`} className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div><h2 className="text-sm font-black text-slate-900 dark:text-white">{item.patientName}</h2><p className="text-xs text-slate-500">{item.patientAge || 'Age not provided'} · {item.patientGender || 'Gender not provided'}</p></div>
-                <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">Synced</span>
               </div>
               <dl className="mt-4 grid grid-cols-2 gap-3 text-xs">
                 <div><dt className="text-slate-400">Household Head</dt><dd className="font-semibold text-slate-700 dark:text-slate-200">{item.householdHead || item.patientName || '—'}</dd></div>

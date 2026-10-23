@@ -5,8 +5,10 @@ import 'package:uuid/uuid.dart';
 import 'package:drift/drift.dart' as drift;
 
 import '../../../core/database/app_database.dart';
+import '../../../core/sync/sync_engine.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../data/household_dao.dart';
+import '../data/household_repository.dart';
 import '../data/member_dao.dart';
 
 /// Screen displaying household details, location, BPL status, and family members.
@@ -245,9 +247,206 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
         _resolvedHouseholdId ?? widget.householdId,
         _members.length + 1,
       );
+
+      // Enqueue sync for new member
+      try {
+        final syncEngine = ref.read(syncEngineProvider);
+        await syncEngine.enqueue(
+          table: 'members',
+          recordId: memberId,
+          operation: 'insert',
+          priority: SyncPriority.metadata,
+          payload: {
+            'id': memberId,
+            'household_id': _resolvedHouseholdId ?? widget.householdId,
+            'name': nameCtrl.text.trim(),
+            'sex': sex,
+            'relationship_to_head': relationship,
+            'dob_approx': dobApprox,
+            'is_dob_approx': true,
+            'phone': phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(),
+            'abha_id': abhaCtrl.text.trim().isEmpty ? null : abhaCtrl.text.trim(),
+            'lifecycle_status': 'active',
+            'consent_status': 'pending',
+            'created_at': now,
+            'updated_at': now,
+            'created_by': 'asha-01',
+            'dirty_flag': 1,
+            'sync_version': 1,
+          },
+        );
+      } catch (_) {}
+
       _loadHouseholdData();
       if (mounted) {
         await context.push('/beneficiary/$memberId/consent');
+      }
+    }
+  }
+
+  Future<void> _showEditMemberDialog(Member m) async {
+    final currentAge = m.dobApprox != null
+        ? (DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(m.dobApprox!)).inDays / 365.25).floor()
+        : 20;
+
+    final nameCtrl = TextEditingController(text: m.name);
+    final ageCtrl = TextEditingController(text: currentAge.toString());
+    final phoneCtrl = TextEditingController(text: m.phone ?? '');
+    final abhaCtrl = TextEditingController(text: m.abhaId ?? '');
+    String sex = m.sex;
+    String relationship = m.relationshipToHead ?? 'Other';
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Edit ${m.name}'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Full Name *',
+                    prefixIcon: Icon(Icons.person),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: ageCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Age (Years) *',
+                          prefixIcon: Icon(Icons.calendar_today),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: sex,
+                        decoration: const InputDecoration(labelText: 'Gender'),
+                        items: const [
+                          DropdownMenuItem(value: 'F', child: Text('Female')),
+                          DropdownMenuItem(value: 'M', child: Text('Male')),
+                          DropdownMenuItem(
+                            value: 'Other',
+                            child: Text('Other'),
+                          ),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) setDialogState(() => sex = val);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: relationship,
+                  decoration: const InputDecoration(
+                    labelText: 'Relation to Head',
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'Head',
+                      child: Text('Head of Household'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Spouse',
+                      child: Text('Spouse / Wife / Husband'),
+                    ),
+                    DropdownMenuItem(value: 'Son', child: Text('Son')),
+                    DropdownMenuItem(
+                      value: 'Daughter',
+                      child: Text('Daughter'),
+                    ),
+                    DropdownMenuItem(value: 'Mother', child: Text('Mother')),
+                    DropdownMenuItem(value: 'Father', child: Text('Father')),
+                    DropdownMenuItem(
+                      value: 'Daughter-in-law',
+                      child: Text('Daughter-in-law'),
+                    ),
+                    DropdownMenuItem(value: 'Other', child: Text('Other')),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) setDialogState(() => relationship = val);
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: abhaCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'ABHA Number / Address',
+                    hintText: '14 digits or name@abdm',
+                    prefixIcon: Icon(Icons.badge),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'Phone Number',
+                    hintText: '10 digits',
+                    prefixIcon: Icon(Icons.phone),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (nameCtrl.text.trim().isEmpty) return;
+                Navigator.pop(ctx, true);
+              },
+              child: const Text('Save Changes'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == true) {
+      final repo = ref.read(householdRepositoryProvider);
+      final ageYears = int.tryParse(ageCtrl.text.trim()) ?? currentAge;
+      final dobApprox = DateTime.now()
+          .subtract(Duration(days: ageYears * 365))
+          .millisecondsSinceEpoch;
+
+      await repo.updateMember(
+        MembersCompanion(
+          id: drift.Value(m.id),
+          name: drift.Value(nameCtrl.text.trim()),
+          sex: drift.Value(sex),
+          relationshipToHead: drift.Value(relationship),
+          dobApprox: drift.Value(dobApprox),
+          phone: drift.Value(
+            phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(),
+          ),
+          abhaId: drift.Value(
+            abhaCtrl.text.trim().isEmpty ? null : abhaCtrl.text.trim(),
+          ),
+        ),
+      );
+
+      _loadHouseholdData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${nameCtrl.text.trim()} updated and queued for server sync.'),
+            backgroundColor: const Color(0xFF1E4231),
+          ),
+        );
       }
     }
   }
@@ -349,61 +548,29 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
                                   color: Colors.grey.shade700,
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: h.isBpl
-                                          ? Colors.green.shade50
-                                          : Colors.blue.shade50,
-                                      borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(
-                                        color: h.isBpl
-                                            ? Colors.green.shade300
-                                            : Colors.blue.shade300,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      h.isBpl ? 'BPL Card' : 'General / APL',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: h.isBpl
-                                            ? Colors.green.shade800
-                                            : Colors.blue.shade800,
-                                      ),
+                              if (h.socialCategory != null) ...[
+                                const SizedBox(height: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
                                     ),
                                   ),
-                                  if (h.socialCategory != null) ...[
-                                    const SizedBox(width: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade100,
-                                        borderRadius: BorderRadius.circular(4),
-                                        border: Border.all(
-                                          color: Colors.grey.shade300,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        h.socialCategory!,
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
+                                  child: Text(
+                                    h.socialCategory!,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
                                     ),
-                                  ],
-                                ],
-                              ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -422,11 +589,6 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
                           'Contact',
                           h.contactPhone ?? 'No Phone',
                           Icons.phone,
-                        ),
-                        _buildStatColumn(
-                          'Sync',
-                          h.syncStatus.toUpperCase(),
-                          Icons.cloud_done,
                         ),
                       ],
                     ),
@@ -642,8 +804,15 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
                   ],
                 ),
               ),
-              Column(
+              Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 20),
+                    color: Colors.blueGrey,
+                    tooltip: 'Edit details',
+                    onPressed: () => _showEditMemberDialog(m),
+                  ),
                   IconButton(
                     icon: const Icon(Icons.arrow_forward_ios, size: 16),
                     color: theme.colorScheme.primary,

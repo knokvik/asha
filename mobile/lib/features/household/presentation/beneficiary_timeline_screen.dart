@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:drift/drift.dart' as drift;
 
 import '../../../core/database/app_database.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../data/household_repository.dart';
 import '../data/timeline_repository.dart';
 import 'schedule_visit_sheet.dart';
 
@@ -675,6 +677,14 @@ class _BeneficiaryTimelineScreenState
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Edit beneficiary details'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _showEditMemberDialog(context);
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.qr_code_2_rounded),
               title: const Text('Show beneficiary ID'),
               onTap: () {
@@ -718,6 +728,175 @@ class _BeneficiaryTimelineScreenState
         ),
       ),
     );
+  }
+
+  Future<void> _showEditMemberDialog(BuildContext dialogCtx) async {
+    final m = _member;
+    if (m == null) return;
+
+    final currentAge = m.dobApprox != null
+        ? (DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(m.dobApprox!)).inDays / 365.25).floor()
+        : 20;
+
+    final nameCtrl = TextEditingController(text: m.name);
+    final ageCtrl = TextEditingController(text: currentAge.toString());
+    final phoneCtrl = TextEditingController(text: m.phone ?? '');
+    final abhaCtrl = TextEditingController(text: m.abhaId ?? '');
+    String sex = m.sex;
+    String relationship = m.relationshipToHead ?? 'Other';
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Edit ${m.name}'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Full Name *',
+                    prefixIcon: Icon(Icons.person),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: ageCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Age (Years) *',
+                          prefixIcon: Icon(Icons.calendar_today),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: sex,
+                        decoration: const InputDecoration(labelText: 'Gender'),
+                        items: const [
+                          DropdownMenuItem(value: 'F', child: Text('Female')),
+                          DropdownMenuItem(value: 'M', child: Text('Male')),
+                          DropdownMenuItem(
+                            value: 'Other',
+                            child: Text('Other'),
+                          ),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) setDialogState(() => sex = val);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: relationship,
+                  decoration: const InputDecoration(
+                    labelText: 'Relation to Head',
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'Head',
+                      child: Text('Head of Household'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Spouse',
+                      child: Text('Spouse / Wife / Husband'),
+                    ),
+                    DropdownMenuItem(value: 'Son', child: Text('Son')),
+                    DropdownMenuItem(
+                      value: 'Daughter',
+                      child: Text('Daughter'),
+                    ),
+                    DropdownMenuItem(value: 'Mother', child: Text('Mother')),
+                    DropdownMenuItem(value: 'Father', child: Text('Father')),
+                    DropdownMenuItem(
+                      value: 'Daughter-in-law',
+                      child: Text('Daughter-in-law'),
+                    ),
+                    DropdownMenuItem(value: 'Other', child: Text('Other')),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) setDialogState(() => relationship = val);
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: abhaCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'ABHA Number / Address',
+                    hintText: '14 digits or name@abdm',
+                    prefixIcon: Icon(Icons.badge),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    labelText: 'Phone Number',
+                    hintText: '10 digits',
+                    prefixIcon: Icon(Icons.phone),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (nameCtrl.text.trim().isEmpty) return;
+                Navigator.pop(ctx, true);
+              },
+              child: const Text('Save Changes'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == true) {
+      final repo = ref.read(householdRepositoryProvider);
+      final ageYears = int.tryParse(ageCtrl.text.trim()) ?? currentAge;
+      final dobApprox = DateTime.now()
+          .subtract(Duration(days: ageYears * 365))
+          .millisecondsSinceEpoch;
+
+      await repo.updateMember(
+        MembersCompanion(
+          id: drift.Value(m.id),
+          name: drift.Value(nameCtrl.text.trim()),
+          sex: drift.Value(sex),
+          relationshipToHead: drift.Value(relationship),
+          dobApprox: drift.Value(dobApprox),
+          phone: drift.Value(
+            phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(),
+          ),
+          abhaId: drift.Value(
+            abhaCtrl.text.trim().isEmpty ? null : abhaCtrl.text.trim(),
+          ),
+        ),
+      );
+
+      await _loadBeneficiary();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${nameCtrl.text.trim()} details updated and queued for server sync.'),
+          backgroundColor: const Color(0xFF1E4231),
+        ),
+      );
+    }
   }
 
   void _showIdDialog(BuildContext context) {
