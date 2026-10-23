@@ -48,6 +48,10 @@ class RefreshRequest(BaseModel):
     device_id: str
 
 
+class SupabaseExchangeRequest(BaseModel):
+    device_id: str = Field(default="mobile", min_length=1, max_length=128)
+
+
 class RevokeRequest(BaseModel):
     worker_id: str
     reason: str | None = Field(None, min_length=1, max_length=500)

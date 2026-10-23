@@ -82,6 +82,11 @@ class Settings(BaseSettings):
     # ── Sync ─────────────────────────────────────────────────────────────────
     SYNC_BATCH_MAX_RECORDS: int = 500
 
+    # Phone sign-in is Supabase. Sync still needs an API JWT, so
+    # POST /api/v1/auth/supabase checks this project before minting one.
+    SUPABASE_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

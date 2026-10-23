@@ -34,6 +34,7 @@ from models.schemas.schemas import (
     PasswordResetResponse,
     RefreshRequest,
     RevokeRequest,
+    SupabaseExchangeRequest,
     TokenResponse,
 )
 
@@ -166,6 +167,132 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> Token
         role=user.role,
         name=user.name,
     )
+
+
+async def _supabase_identity(token: str) -> dict | None:
+    """Confirm the bearer with Supabase Auth. A bad token returns None."""
+    settings = get_settings()
+    base = settings.SUPABASE_URL.strip().rstrip("/")
+    if not base or not token:
+        return None
+    apikey = settings.SUPABASE_ANON_KEY.strip() or token
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                f"{base}/auth/v1/user",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "apikey": apikey,
+                },
+            )
+    except httpx.HTTPError:
+        return None
+    if response.status_code != 200:
+        return None
+    try:
+        payload = response.json()
+    except ValueError:
+        return None
+    if not isinstance(payload, dict) or not payload.get("id"):
+        return None
+    return payload
+
+
+def _tokens_for(user: User, *, device_id: str, pin: str) -> TokenResponse:
+    area_villages: list[str] = []
+    if user.area_village:
+        area_villages = [v.strip() for v in user.area_village.split(",") if v.strip()]
+    access_token = create_token(
+        sub=user.id,
+        role=user.role,
+        state_code=user.state_code or "",
+        district_code=user.district_code or "",
+        block_code=user.area_block or "",
+        area_villages=area_villages,
+        token_type="access",
+    )
+    refresh_token = create_token(
+        sub=user.id,
+        role=user.role,
+        state_code=user.state_code or "",
+        district_code=user.district_code or "",
+        block_code=user.area_block or "",
+        area_villages=area_villages,
+        token_type="refresh",
+    )
+    settings = get_settings()
+    now_epoch = int(time.time())
+    offline_expires = now_epoch + settings.OFFLINE_CREDENTIAL_EXPIRE_DAYS * 86400
+    offline_hash = create_offline_credential_hash(
+        worker_id=user.id,
+        device_id=device_id,
+        pin=pin,
+        expires_at=offline_expires,
+    )
+    user.offline_credential_hash = offline_hash
+    user.offline_cred_expires_at = offline_expires
+    user.jwt_refresh_token = refresh_token
+    user.last_jwt_refresh_at = now_epoch
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        offline_credential_hash=offline_hash,
+        offline_cred_expires_at=offline_expires,
+        worker_id=user.id,
+        role=user.role,
+        name=user.name,
+    )
+
+
+@router.post("/supabase", response_model=TokenResponse, status_code=status.HTTP_200_OK)
+async def exchange_supabase_session(
+    body: SupabaseExchangeRequest,
+    authorization: str = Header(...),
+    db: AsyncSession = Depends(get_db),
+) -> TokenResponse:
+    """Mint an API JWT for a worker who already signed in with Supabase.
+
+    Sync rejects the Supabase session token. This checks that token with
+    Supabase, then returns the access and refresh tokens the sync client uses.
+    """
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing Bearer token")
+    identity = await _supabase_identity(authorization.removeprefix("Bearer ").strip())
+    if identity is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Supabase session could not be confirmed.",
+        )
+
+    supabase_id = str(identity["id"])[:36]
+    email = identity.get("email")
+    email = email.strip().lower() if isinstance(email, str) and email.strip() else None
+    meta = identity.get("user_metadata") if isinstance(identity.get("user_metadata"), dict) else {}
+    name = meta.get("name") or meta.get("full_name") or email or "ASHA worker"
+    if not isinstance(name, str) or not name.strip():
+        name = "ASHA worker"
+
+    user = await _get_user_by_id(db, supabase_id)
+    if user is None and email:
+        found = await db.execute(select(User).where(func.lower(User.email) == email))
+        user = found.scalar_one_or_none()
+    if user is None:
+        user = User(
+            id=supabase_id,
+            asha_id=supabase_id,
+            name=name.strip()[:255],
+            email=email,
+            role="ASHA",
+            is_active=True,
+        )
+        db.add(user)
+        await db.flush()
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
+
+    tokens = _tokens_for(user, device_id=body.device_id, pin="supabase-session")
+    await db.commit()
+    return tokens
 
 
 def _hash_reset_code(code: str) -> str:
