@@ -16,6 +16,7 @@ import { NotificationsPage } from '@/features/notifications/NotificationsPage';
 import { AshaWorkerDetailPage } from '@/features/af-supervision/AshaWorkerDetailPage';
 import { LiveTriagePage } from '@/features/af-supervision/LiveTriagePage';
 import { SystemLogsPage } from '@/features/system-logs/SystemLogsPage';
+import { HouseholdsPage } from '@/features/households/HouseholdsPage';
 
 export const router = createBrowserRouter([
   {
@@ -45,6 +46,10 @@ export const router = createBrowserRouter([
       {
         path: 'clinical-programs',
         element: <ClinicalProgramsPage />,
+      },
+      {
+        path: 'households',
+        element: <HouseholdsPage />,
       },
       {
         path: 'notifications',

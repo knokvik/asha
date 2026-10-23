@@ -6,7 +6,6 @@ import 'package:latlong2/latlong.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../core/l10n/language_provider.dart';
-import '../../../core/packs/pack_manager.dart';
 import '../../../core/sync/sync_coordinator.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/providers/user_profile_provider.dart';
@@ -450,16 +449,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  /// Quick Actions 2x2 Grid matching Screen 1:
-  /// - Add Household (green group icon)
-  /// - Triage Assessment (red emergency square)
-  /// - Speak / Interpreter (green translation icon)
-  /// - Clinical Programs (blue medical bag)
+  /// Quick Actions grid for the primary field workflows.
   Widget _buildQuickActionsGrid(BuildContext context) {
-    final hasInterpreter = ref
-        .watch(offlinePackProvider)
-        .interpreterLanguageCodes
-        .isNotEmpty;
     return GridView.count(
       crossAxisCount: 2,
       crossAxisSpacing: 10,
@@ -469,37 +460,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       childAspectRatio: 1.65,
       children: [
         _buildQuickActionCard(
-          title: shellText(_lang, 'addHousehold'),
+          title: 'Household',
           iconWidget: _quickActionIcon(
             Icons.group_add_rounded,
             const Color(0xFF15803D),
           ),
-          onTap: () => context.push('/households/new'),
-        ),
-        _buildQuickActionCard(
-          key: const Key('home_triage_button'),
-          title: shellText(_lang, 'triage'),
-          iconWidget: _quickActionIcon(
-            Icons.emergency_rounded,
-            const Color(0xFFDC2626),
-          ),
-          onTap: () => context.push('/triage'),
-        ),
-        _buildQuickActionCard(
-          title: 'Bhasha Interpreter',
-          iconWidget: _quickActionIcon(
-            hasInterpreter ? Icons.translate_rounded : Icons.download_rounded,
-            const Color(0xFF2563EB),
-          ),
-          onTap: () => context.push(hasInterpreter ? '/interpreter' : '/packs'),
-        ),
-        _buildQuickActionCard(
-          title: shellText(_lang, 'programs'),
-          iconWidget: _quickActionIcon(
-            Icons.medical_services_rounded,
-            const Color(0xFF7C3AED),
-          ),
-          onTap: () => context.push('/clinical-programs'),
+          onTap: () => context.push('/households'),
         ),
         _buildQuickActionCard(
           title: 'Tracking',
@@ -508,24 +474,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             const Color(0xFF0F766E),
           ),
           onTap: () => context.push('/tracking'),
-        ),
-        _buildQuickActionCard(
-          key: const Key('home_revenue_button'),
-          title: shellText(_lang, 'revenue'),
-          iconWidget: _quickActionIcon(
-            Icons.payments_outlined,
-            const Color(0xFF15803D),
-          ),
-          onTap: () => context.push('/incentives'),
-        ),
-        _buildQuickActionCard(
-          key: const Key('home_reports_button'),
-          title: shellText(_lang, 'reports'),
-          iconWidget: _quickActionIcon(
-            Icons.assessment_outlined,
-            const Color(0xFF2563EB),
-          ),
-          onTap: () => context.push('/reports'),
         ),
       ],
     );
@@ -648,7 +596,6 @@ class AshaNavigationDrawer extends ConsumerWidget {
     final initials = isDefaultName
         ? (lang == 'en' ? 'SS' : name.characters.take(2).toString())
         : (profile?.initials ?? 'AS');
-    final pendingCount = profile?.pendingVisits ?? 0;
 
     return Drawer(
       backgroundColor: Colors.white,
@@ -803,61 +750,7 @@ class AshaNavigationDrawer extends ConsumerWidget {
                     ),
                     const SizedBox(height: 6),
 
-                    // 2. Today's Due List with badge
-                    _buildDrawerItem(
-                      context: context,
-                      icon: Icons.checklist_rounded,
-                      title: shellText(lang, 'drawerDue'),
-                      subtitle: shellText(lang, 'drawerDueSub'),
-                      badgeCount: pendingCount > 0 ? '$pendingCount' : null,
-                      onTap: () {
-                        Navigator.pop(context);
-                        ref.read(shellTabProvider.notifier).select(2);
-                      },
-                    ),
-                    const SizedBox(height: 6),
-
-                    // 3. Household Registry
-                    _buildDrawerItem(
-                      context: context,
-                      icon: Icons.people_alt_outlined,
-                      title: shellText(lang, 'drawerHomes'),
-                      subtitle: shellText(lang, 'drawerHomesSub'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.push('/households');
-                      },
-                    ),
-                    const SizedBox(height: 6),
-
-                    // 4. Clinical Programs
-                    _buildDrawerItem(
-                      context: context,
-                      icon: Icons.medical_information_outlined,
-                      title: shellText(lang, 'drawerPrograms'),
-                      subtitle: shellText(lang, 'drawerProgramsSub'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.push('/clinical-programs');
-                      },
-                    ),
-                    const SizedBox(height: 6),
-
-                    // 5. Emergency Triage (Red asterisk icon)
-                    _buildDrawerItem(
-                      context: context,
-                      icon: Icons.emergency_rounded,
-                      title: shellText(lang, 'drawerTriage'),
-                      subtitle: shellText(lang, 'drawerTriageSub'),
-                      iconColor: const Color(0xFFEF4444),
-                      onTap: () {
-                        Navigator.pop(context);
-                        context.push('/triage');
-                      },
-                    ),
-                    const SizedBox(height: 6),
-
-                    // 6. Interpreter
+                    // Secondary tools remain available from the sidebar.
                     _buildDrawerItem(
                       context: context,
                       icon: Icons.translate_rounded,
@@ -870,7 +763,7 @@ class AshaNavigationDrawer extends ConsumerWidget {
                     ),
                     const SizedBox(height: 6),
 
-                    // 7. Reports & Incentives
+                    // Reports & incentives remain available from the sidebar.
                     _buildDrawerItem(
                       context: context,
                       icon: Icons.receipt_long_outlined,

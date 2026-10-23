@@ -50,8 +50,6 @@ import '../features/clinical_programs/immunization/presentation/child_immunizati
 import '../features/clinical_programs/immunization/presentation/vhsnd_session_screen.dart';
 import '../features/clinical_programs/nutrition/presentation/growth_monitoring_screen.dart';
 import '../features/clinical_programs/tb/presentation/presumptive_tb_screen.dart';
-import '../features/clinical_programs/tb/presentation/tb_treatment_card_screen.dart';
-import '../features/clinical_programs/tb/domain/tb_models.dart';
 
 // Operations, Ledger & Inventory
 import '../features/learning/presentation/learning_screen.dart';
@@ -246,6 +244,11 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
       pageBuilder: (context, state) =>
           _buildSlidePage(state: state, child: const HouseholdFormScreen()),
     ),
+    // Backwards-compatible alias for older clinical-program links.
+    GoRoute(
+      path: '/household/add',
+      redirect: (context, state) => '/household/new',
+    ),
     GoRoute(
       path: '/household/:id',
       pageBuilder: (context, state) => _buildSlidePage(
@@ -352,8 +355,8 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
         GoRoute(
           path: 'anc-register',
           builder: (context, state) => AncRegistrationScreen(
-            womanId: state.uri.queryParameters['memberId'] ?? 'mem_pooja_01',
-            womanName: state.uri.queryParameters['name'] ?? 'Pooja Devi',
+            womanId: state.uri.queryParameters['memberId'] ?? '',
+            womanName: state.uri.queryParameters['name'] ?? '',
             maternalAgeYears: 24,
             ashaId: _workerId(ref),
           ),
@@ -361,8 +364,8 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
         GoRoute(
           path: 'anc-visit',
           builder: (context, state) => AncVisitScreen(
-            womanId: state.uri.queryParameters['memberId'] ?? 'mem_pooja_01',
-            womanName: state.uri.queryParameters['name'] ?? 'Pooja Devi',
+            womanId: state.uri.queryParameters['memberId'] ?? '',
+            womanName: state.uri.queryParameters['name'] ?? '',
             visitScheduleId:
                 state.uri.queryParameters['visitId'] ?? 'sched_anc_01',
             contactNumber:
@@ -375,8 +378,8 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
         GoRoute(
           path: 'pnc-visit',
           builder: (context, state) => PncVisitScreen(
-            motherId: state.uri.queryParameters['memberId'] ?? 'mem_kavita_02',
-            motherName: state.uri.queryParameters['name'] ?? 'Kavita Singh',
+            motherId: state.uri.queryParameters['memberId'] ?? '',
+            motherName: state.uri.queryParameters['name'] ?? '',
             visitScheduleId:
                 state.uri.queryParameters['visitId'] ?? 'sched_pnc_01',
             visitDay:
@@ -388,8 +391,8 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
         GoRoute(
           path: 'hbnc-visit',
           builder: (context, state) => HbncVisitScreen(
-            newbornId: state.uri.queryParameters['memberId'] ?? 'mem_aarav_02',
-            motherId: 'mem_kavita_02',
+            newbornId: state.uri.queryParameters['memberId'] ?? '',
+            motherId: state.uri.queryParameters['motherId'] ?? '',
             visitScheduleId:
                 state.uri.queryParameters['visitId'] ?? 'sched_hbnc_01',
             visitDay:
@@ -403,8 +406,8 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
         GoRoute(
           path: 'hbyc-visit',
           builder: (context, state) => HbycVisitScreen(
-            childId: state.uri.queryParameters['memberId'] ?? 'mem_aarav_02',
-            childName: state.uri.queryParameters['name'] ?? 'Baby Aarav',
+            childId: state.uri.queryParameters['memberId'] ?? '',
+            childName: state.uri.queryParameters['name'] ?? '',
             childDob: DateTime.now().subtract(const Duration(days: 90)),
             visitScheduleId:
                 state.uri.queryParameters['visitId'] ?? 'sched_hbyc_01',
@@ -416,9 +419,9 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
           path: 'cbac',
           builder: (context, state) => CbacScreeningScreen(
             memberId:
-                state.uri.queryParameters['memberId'] ?? 'mem_ramprasad_03',
+                state.uri.queryParameters['memberId'] ?? '',
             beneficiaryName:
-                state.uri.queryParameters['name'] ?? 'Ramprasad Verma',
+                state.uri.queryParameters['name'] ?? '',
             ageYears:
                 int.tryParse(state.uri.queryParameters['age'] ?? '62') ?? 62,
             sex: state.uri.queryParameters['sex'] ?? 'M',
@@ -433,8 +436,8 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
         GoRoute(
           path: 'immunization',
           builder: (context, state) => ChildImmunizationCardScreen(
-            memberId: state.uri.queryParameters['memberId'] ?? 'mem_aarav_02',
-            childName: state.uri.queryParameters['name'] ?? 'Baby Aarav',
+            memberId: state.uri.queryParameters['memberId'] ?? '',
+            childName: state.uri.queryParameters['name'] ?? '',
             dateOfBirth: DateTime.now().subtract(const Duration(days: 90)),
             ashaId: _workerId(ref),
           ),
@@ -442,8 +445,8 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
         GoRoute(
           path: 'growth',
           builder: (context, state) => GrowthMonitoringScreen(
-            memberId: state.uri.queryParameters['memberId'] ?? 'mem_aarav_02',
-            childName: state.uri.queryParameters['name'] ?? 'Baby Aarav',
+            memberId: state.uri.queryParameters['memberId'] ?? '',
+            childName: state.uri.queryParameters['name'] ?? '',
             dateOfBirth: DateTime.now().subtract(const Duration(days: 90)),
             sex: 'M',
             ashaId: _workerId(ref),
@@ -453,34 +456,18 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
           path: 'tb-presumptive',
           builder: (context, state) => PresumptiveTbScreen(
             memberId:
-                state.uri.queryParameters['memberId'] ?? 'mem_ramprasad_03',
+                state.uri.queryParameters['memberId'] ?? '',
             beneficiaryName:
-                state.uri.queryParameters['name'] ?? 'Ramprasad Verma',
+                state.uri.queryParameters['name'] ?? '',
             ashaId: _workerId(ref),
           ),
         ),
         GoRoute(
           path: 'tb-card',
-          builder: (context, state) => TbTreatmentCardScreen(
-            patient: TbTreatmentPatient(
-              id: 'tb_pat_01',
-              memberId: 'mem_ramprasad_03',
-              beneficiaryName: 'Ramprasad Verma',
-              nikshayId: 'NK-2026-8819',
-              site: TbSite.pulmonary,
-              regimen: TbRegimenType.dsTbDailyFdc,
-              startDate: DateTime.now().subtract(const Duration(days: 35)),
-              treatmentSupporterName: 'Sunita Sharma',
-              treatmentSupporterPhone: '9876543210',
-              supporterRelationship: 'ASHA Care Supporter',
-              totalDosesPrescribed: 168,
-              dosesCompleted: 33,
-              consecutiveMissedDoses: 0,
-              nikshayPoshanStatus: NikshayPoshanStatus.installmentReceived,
-              ashaId: _workerId(ref),
-            ),
-            ashaId: _workerId(ref),
-          ),
+          redirect: (context, state) =>
+              state.uri.queryParameters['memberId']?.isNotEmpty == true
+                  ? '/programs'
+                  : '/programs',
         ),
         GoRoute(
           path: 'vhsnd',

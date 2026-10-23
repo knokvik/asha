@@ -607,10 +607,10 @@ function mapPacket(packet: any): FrontlineSyncActivity {
 }
 
 export function SyncProvider({ children }: { children: React.ReactNode }) {
-  const [lastSyncTime, setLastSyncTime] = useState('12 mins ago');
+  const [lastSyncTime, setLastSyncTime] = useState('Not synced yet');
   const [isSyncing, setIsSyncing] = useState(false);
   const [toasts, setToasts] = useState<SyncToastItem[]>([]);
-  const [syncActivities, setSyncActivities] = useState<FrontlineSyncActivity[]>(DEFAULT_SYNC_ACTIVITIES);
+  const [syncActivities, setSyncActivities] = useState<FrontlineSyncActivity[]>([]);
   const [activeHotspot, setActiveHotspot] = useState<ActiveHotspotData | null>(() => {
     try {
       const saved = localStorage.getItem('asha_active_hotspot');
@@ -762,11 +762,11 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
           return;
         }
       }
-      setSyncActivities(DEFAULT_SYNC_ACTIVITIES);
-      setLastSyncTime('12 mins ago');
+      setSyncActivities([]);
+      setLastSyncTime('Not synced yet');
     } catch {
-      setSyncActivities(DEFAULT_SYNC_ACTIVITIES);
-      setLastSyncTime('12 mins ago');
+      setSyncActivities([]);
+      setLastSyncTime('Not synced yet');
     } finally {
       setIsSyncing(false);
     }
@@ -799,7 +799,7 @@ export function useSync() {
     lastSyncTime: '12 mins ago',
     isSyncing: false,
     toasts: [],
-    syncActivities: DEFAULT_SYNC_ACTIVITIES,
+    syncActivities: [],
     triggerManualSync: () => undefined,
     dismissToast: () => undefined,
     recordDoctorOutcomeSync: () => undefined,

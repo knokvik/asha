@@ -64,7 +64,7 @@ const NAV_ITEMS = [
   },
   {
     label: 'Household Registry',
-    path: '/anm',
+    path: '/households',
     icon: Layers,
     srLabel: 'ANM / Sub-Centre',
   },

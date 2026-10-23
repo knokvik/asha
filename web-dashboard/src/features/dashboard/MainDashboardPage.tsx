@@ -30,7 +30,6 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useSync } from '@/shared/context/SyncContext';
-import { JudgeTriageTriggerModal } from '@/features/triage-trigger/JudgeTriageTriggerModal';
 import { useGeolocation } from '@/shared/hooks/useGeolocation';
 
 export function MainDashboardPage() {
@@ -40,7 +39,6 @@ export function MainDashboardPage() {
   const userMarkerLayerRef = useRef<L.LayerGroup | null>(null);
   const [emergencyWindowCollapsed, setEmergencyWindowCollapsed] = useState(true);
   const [activeKpi, setActiveKpi] = useState<'referrals' | 'workers' | 'visits' | 'beds' | null>(null);
-  const [judgeDemoOpen, setJudgeDemoOpen] = useState(false);
   const { syncActivities } = useSync();
 
   const { location, isLocating, requestLocation } = useGeolocation({ autoLocateDefault: false });
@@ -282,15 +280,6 @@ export function MainDashboardPage() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setJudgeDemoOpen(true)}
-          className="inline-flex items-center gap-2 self-start rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 shadow-sm hover:bg-amber-100"
-        >
-          <AlertTriangle className="h-4 w-4" />
-          Judge demo triage
-        </button>
-
         {/* 3 Top Metadata Cards */}
         <div className="flex items-center gap-2.5 flex-wrap">
           {/* Date Card */}
@@ -345,11 +334,6 @@ export function MainDashboardPage() {
           </div>
         </div>
       </div>
-
-      <JudgeTriageTriggerModal
-        open={judgeDemoOpen}
-        onClose={() => setJudgeDemoOpen(false)}
-      />
 
       {/* 2. Live Health Bulletin News Marquee (Directly below Title Bar) */}
       <div className="w-full bg-white dark:bg-[#1E1E1E] border border-slate-200 dark:border-[#2E2E2E] rounded-xl px-3 py-1.5 flex items-center gap-3 overflow-hidden shadow-2xs">

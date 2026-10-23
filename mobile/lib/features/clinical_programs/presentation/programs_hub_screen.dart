@@ -118,7 +118,7 @@ class ProgramsHubScreen extends ConsumerWidget {
                 title: 'Child Immunization',
                 subtitle: shellText(lang, 'immunizationSubtitle'),
                 type: ClinicalProgramType.immunization,
-                registrationRoute: '/household/add',
+                registrationRoute: '/household/new',
                 visitRouteBase: '/programs/immunization',
               ),
             ),
@@ -133,7 +133,7 @@ class ProgramsHubScreen extends ConsumerWidget {
                 title: 'NCD & CBAC Screening',
                 subtitle: shellText(lang, 'ncdSubtitle'),
                 type: ClinicalProgramType.ncd,
-                registrationRoute: '/household/add',
+                registrationRoute: '/household/new',
                 visitRouteBase: '/programs/cbac',
               ),
             ),
@@ -163,7 +163,7 @@ class ProgramsHubScreen extends ConsumerWidget {
                 title: 'TB Screening & Nikshay',
                 subtitle: shellText(lang, 'tbSubtitle'),
                 type: ClinicalProgramType.tb,
-                registrationRoute: '/household/add',
+                registrationRoute: '/household/new',
                 visitRouteBase: '/programs/tb-presumptive',
               ),
             ),
@@ -231,18 +231,14 @@ class _ProgramEntrySelectionSheetState
         });
         return;
       }
-    } catch (_) {}
+    } catch (_) {
+      // The encrypted local database is the only source of beneficiaries.
+      // Do not show demo patients when it is unavailable or empty.
+    }
 
-    // Fallback default field beneficiaries
+    if (!mounted) return;
     setState(() {
-      _beneficiaries = [
-        {'id': 'mem_pooja_01', 'name': 'Pooja Devi', 'sex': 'F', 'phone': '9876501122', 'rch': 'RCH-2026-90123 · ANC Contact 3 Due'},
-        {'id': 'mem_kavita_02', 'name': 'Kavita Singh', 'sex': 'F', 'phone': '9876512345', 'rch': 'RCH-2026-88124 · Postpartum Day 7'},
-        {'id': 'mem_aarav_02', 'name': 'Baby Aarav', 'sex': 'M', 'phone': '9876512345', 'rch': 'HBNC Series · Day 7 Newborn'},
-        {'id': 'mem_priya_04', 'name': 'Priya Yadav', 'sex': 'F', 'phone': '9876543210', 'rch': 'RCH-2025-44551 · Immunization MR-1'},
-        {'id': 'mem_ramprasad_03', 'name': 'Ramprasad Verma', 'sex': 'M', 'phone': '9811223344', 'rch': 'NCD CBAC Screening · Age 48'},
-        {'id': 'mem_shanti_05', 'name': 'Shanti Devi', 'sex': 'F', 'phone': '9833445566', 'rch': 'Presumptive TB Follow-up'},
-      ];
+      _beneficiaries = const [];
       _loading = false;
     });
   }

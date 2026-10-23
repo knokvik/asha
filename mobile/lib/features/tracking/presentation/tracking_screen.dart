@@ -9,7 +9,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../core/database/app_database.dart';
-import '../../../core/database/demo_data_seeder.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/widgets/asha_bottom_nav.dart';
 
@@ -57,7 +56,6 @@ class TrackingScreen extends ConsumerWidget {
 
   Future<_TrackingSnapshot> _load(AppDatabase db) async {
     // Seed rich rural demo dataset if DB is fresh
-    await DemoDataSeeder.seedIfEmpty(db);
 
     final households = await (db.select(db.households)..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])).get();
     final members = await (db.select(db.members)..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])).get();

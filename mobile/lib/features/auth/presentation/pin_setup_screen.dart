@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/l10n/language_selector_dialog.dart';
+import '../../../../shared/widgets/asha_svg_illustrations.dart';
 import '../../../../services/auth_service.dart';
 
 /// Phone-only Supabase OTP login screen.
@@ -15,22 +18,43 @@ class PinSetupScreen extends StatefulWidget {
 
 class _PinSetupScreenState extends State<PinSetupScreen> {
   final _phoneController = TextEditingController();
+  final _captchaController = TextEditingController();
   final _otpControllers = List.generate(6, (_) => TextEditingController());
   final _otpFocusNodes = List.generate(6, (_) => FocusNode());
   final _auth = AuthService();
   Timer? _timer;
   int _seconds = 0;
   bool _otpRequested = false;
+  String _captchaCode = '';
   bool _busy = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshCaptcha();
+  }
 
   @override
   void dispose() {
     _timer?.cancel();
     _phoneController.dispose();
+    _captchaController.dispose();
     for (final controller in _otpControllers) controller.dispose();
     for (final node in _otpFocusNodes) node.dispose();
     super.dispose();
+  }
+
+  void _refreshCaptcha() {
+    const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+    final random = Random.secure();
+    setState(() {
+      _captchaCode = List.generate(
+        5,
+        (_) => chars[random.nextInt(chars.length)],
+      ).join();
+      _captchaController.clear();
+    });
   }
 
   void _startTimer() {
@@ -56,6 +80,11 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
     final raw = _phoneController.text.trim().replaceAll(RegExp(r'\s+'), '');
     if (!RegExp(r'^(\+91)?[6-9]\d{9}$').hasMatch(raw)) {
       setState(() => _error = 'Enter a valid 10-digit Indian mobile number.');
+      return;
+    }
+    if (_captchaController.text.trim().toUpperCase() != _captchaCode) {
+      setState(() => _error = 'Enter the captcha correctly.');
+      _refreshCaptcha();
       return;
     }
     setState(() {
@@ -128,6 +157,20 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAF9),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            tooltip: 'Language',
+            icon: const Icon(Icons.language),
+            onPressed: () => showDialog<void>(
+              context: context,
+              builder: (_) => const LanguageSelectorDialog(),
+            ),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -140,11 +183,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Icon(
-                        Icons.phone_android_rounded,
-                        size: 56,
-                        color: Color(0xFF0C5A3E),
-                      ),
+                      const AshaLogo(height: 64),
                       const SizedBox(height: 16),
                       const Text(
                         'ASHA Digital Platform',
@@ -156,10 +195,11 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'Login with your registered mobile number',
+                        'Secure sign-in for ASHA field work',
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 18),
+                      const SizedBox(height: 8),
                       TextField(
                         controller: _phoneController,
                         enabled: !_otpRequested && !_busy,
@@ -170,6 +210,56 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
                           border: OutlineInputBorder(),
                         ),
                       ),
+                      if (!_otpRequested) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _captchaController,
+                                textCapitalization:
+                                    TextCapitalization.characters,
+                                decoration: const InputDecoration(
+                                  labelText: 'Captcha',
+                                  prefixIcon: Icon(
+                                    Icons.verified_user_outlined,
+                                  ),
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.only(left: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade50,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: Colors.green.shade200,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _captchaCode,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 2,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    visualDensity: VisualDensity.compact,
+                                    onPressed: _refreshCaptcha,
+                                    icon: const Icon(Icons.refresh, size: 18),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       if (_otpRequested) ...[
                         const SizedBox(height: 12),
                         AutofillGroup(
@@ -186,7 +276,10 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
                                   autofocus: index == 0,
                                   keyboardType: TextInputType.number,
                                   textAlign: TextAlign.center,
-                                  maxLength: 1,
+                                  // The first box accepts the complete SMS
+                                  // autofill value; the handler distributes it
+                                  // across all six visible boxes.
+                                  maxLength: index == 0 ? 6 : 1,
                                   autofillHints: const [
                                     AutofillHints.oneTimeCode,
                                   ],

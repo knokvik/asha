@@ -110,7 +110,7 @@ class UserProfileNotifier extends AsyncNotifier<UserProfile> {
   final FlutterSecureStorage _storage;
 
   UserProfileNotifier([FlutterSecureStorage? storage])
-      : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? const FlutterSecureStorage();
 
   @override
   Future<UserProfile> build() async {
@@ -124,9 +124,11 @@ class UserProfileNotifier extends AsyncNotifier<UserProfile> {
     final name = await _storage.read(key: 'server_user_name') ?? 'Sunita Devi';
     final role = await _storage.read(key: 'server_user_role') ?? 'ASHA';
     final phc = await _storage.read(key: 'server_phc_id') ?? 'phc-shahpur';
-    final subcentre = await _storage.read(key: 'server_subcentre_id') ?? 'sc-shahpur';
+    final subcentre =
+        await _storage.read(key: 'server_subcentre_id') ?? 'sc-shahpur';
     final village = await _storage.read(key: 'server_village') ?? 'Shahpur';
-    final apiBaseUrl = await _storage.read(key: 'sync_api_base_url') ?? defaultAshaApiBaseUrl;
+    final apiBaseUrl =
+        await _storage.read(key: 'sync_api_base_url') ?? defaultAshaApiBaseUrl;
 
     int completed = 0;
     int pending = 0;
@@ -139,10 +141,16 @@ class UserProfileNotifier extends AsyncNotifier<UserProfile> {
 
       final schedules = await db.select(db.visitSchedules).get();
       completed = schedules.where((s) => s.status == 'completed').length;
-      pending = schedules.where((s) => s.status == 'pending' || s.status == 'rescheduled').length;
-      overdue = schedules.where((s) => s.status == 'pending' && s.dueDate < nowMs).length;
+      pending = schedules
+          .where((s) => s.status == 'pending' || s.status == 'rescheduled')
+          .length;
+      overdue = schedules
+          .where((s) => s.status == 'pending' && s.dueDate < nowMs)
+          .length;
 
-      final userRow = await (db.select(db.users)..where((u) => u.role.equals('ASHA'))).getSingleOrNull();
+      final userRow = await (db.select(
+        db.users,
+      )..where((u) => u.role.equals('ASHA'))).getSingleOrNull();
       if (userRow != null) {
         _triggerBackgroundServerFetch();
         return UserProfile(
@@ -224,21 +232,25 @@ class UserProfileNotifier extends AsyncNotifier<UserProfile> {
     final accessToken = await _storage.read(key: 'access_token');
     if (accessToken == null || accessToken.isEmpty) return;
 
-    final apiBaseUrl = await _storage.read(key: 'sync_api_base_url') ?? defaultAshaApiBaseUrl;
-    final meUri = Uri.parse('${apiBaseUrl.replaceFirst(RegExp(r"/+$"), "")}/api/v1/auth/me');
+    final apiBaseUrl =
+        await _storage.read(key: 'sync_api_base_url') ?? defaultAshaApiBaseUrl;
+    final meUri = Uri.parse(
+      '${apiBaseUrl.replaceFirst(RegExp(r"/+$"), "")}/api/v1/auth/me',
+    );
 
     try {
-      final res = await http.get(
-        meUri,
-        headers: {'Authorization': 'Bearer $accessToken'},
-      ).timeout(const Duration(seconds: 4));
+      final res = await http
+          .get(meUri, headers: {'Authorization': 'Bearer $accessToken'})
+          .timeout(const Duration(seconds: 4));
 
       if (res.statusCode == 200 && res.body.isNotEmpty) {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
         final newName = data['name']?.toString();
-        final newAshaId = data['username']?.toString() ?? data['asha_id']?.toString();
+        final newAshaId =
+            data['username']?.toString() ?? data['asha_id']?.toString();
         final newRole = data['role']?.toString();
-        final newPhc = data['phcId']?.toString() ?? data['facility']?.toString();
+        final newPhc =
+            data['phcId']?.toString() ?? data['facility']?.toString();
         final newSubcentre = data['subcentreId']?.toString();
         final newVillage = data['village']?.toString();
 
@@ -301,5 +313,5 @@ class UserProfileNotifier extends AsyncNotifier<UserProfile> {
 
 final userProfileProvider =
     AsyncNotifierProvider<UserProfileNotifier, UserProfile>(
-  UserProfileNotifier.new,
-);
+      UserProfileNotifier.new,
+    );

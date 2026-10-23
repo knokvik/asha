@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../core/database/app_database.dart';
-import '../../core/database/demo_data_seeder.dart';
 import '../../core/security/auth_service.dart';
 import '../../core/security/idle_lock_service.dart';
 import '../../core/security/key_manager.dart';
@@ -41,7 +40,6 @@ AppDatabase appDatabase(Ref ref) {
     throw StateError('Database access requires an unlocked PIN session.');
   }
   final db = AppDatabase(openEncryptedDatabase(encryptionKey: encryptionKey));
-  DemoDataSeeder.seedIfEmpty(db);
   return db;
 }
 

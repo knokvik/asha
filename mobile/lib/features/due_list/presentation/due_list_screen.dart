@@ -617,7 +617,11 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
                           color: AshaColors.primaryLight,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.add_task_rounded, color: AshaColors.primary, size: 22),
+                        child: const Icon(
+                          Icons.add_task_rounded,
+                          color: AshaColors.primary,
+                          size: 22,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Column(
@@ -625,11 +629,18 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
                         children: [
                           Text(
                             _dueCopy(_currentLanguage, 'createTask'),
-                            style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: AshaColors.textPrimary),
+                            style: const TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w800,
+                              color: AshaColors.textPrimary,
+                            ),
                           ),
                           Text(
                             _dueCopy(_currentLanguage, 'createTaskSub'),
-                            style: const TextStyle(fontSize: 12, color: AshaColors.textSecondary),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AshaColors.textSecondary,
+                            ),
                           ),
                         ],
                       ),
@@ -640,7 +651,11 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
                   // Quick Template Chips
                   const Text(
                     'Quick Templates',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AshaColors.textSecondary),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AshaColors.textSecondary,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   SingleChildScrollView(
@@ -650,12 +665,24 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
                         return Padding(
                           padding: const EdgeInsets.only(right: 6),
                           child: ActionChip(
-                            avatar: const Icon(Icons.bolt_rounded, size: 14, color: AshaColors.primary),
+                            avatar: const Icon(
+                              Icons.bolt_rounded,
+                              size: 14,
+                              color: AshaColors.primary,
+                            ),
                             label: Text(tpl.$1),
-                            labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AshaColors.textPrimary),
+                            labelStyle: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AshaColors.textPrimary,
+                            ),
                             backgroundColor: AshaColors.surfaceMuted,
-                            side: const BorderSide(color: AshaColors.borderSubtle),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            side: const BorderSide(
+                              color: AshaColors.borderSubtle,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                             onPressed: () {
                               setSheetState(() {
                                 titleController.text = tpl.$1;
@@ -712,13 +739,34 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
                             isDense: true,
                           ),
                           items: const [
-                            DropdownMenuItem(value: 'General Home Visit', child: Text('General Visit')),
-                            DropdownMenuItem(value: 'Maternal Health (ANC/PNC)', child: Text('ANC / PNC')),
-                            DropdownMenuItem(value: 'Child Immunization', child: Text('Immunization')),
-                            DropdownMenuItem(value: 'NCD Surveillance', child: Text('NCD Check')),
-                            DropdownMenuItem(value: 'Newborn Care', child: Text('Newborn (HBNC)')),
-                            DropdownMenuItem(value: 'Nutrition & Supplies', child: Text('Nutrition/IFA')),
-                            DropdownMenuItem(value: 'Fever Surveillance', child: Text('Fever/IDSP')),
+                            DropdownMenuItem(
+                              value: 'General Home Visit',
+                              child: Text('General Visit'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Maternal Health (ANC/PNC)',
+                              child: Text('ANC / PNC'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Child Immunization',
+                              child: Text('Immunization'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'NCD Surveillance',
+                              child: Text('NCD Check'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Newborn Care',
+                              child: Text('Newborn (HBNC)'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Nutrition & Supplies',
+                              child: Text('Nutrition/IFA'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Fever Surveillance',
+                              child: Text('Fever/IDSP'),
+                            ),
                           ],
                           onChanged: (val) {
                             if (val != null && sheetContext.mounted) {
@@ -750,7 +798,9 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
                         child: OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
                           onPressed: () async {
                             if (!sheetContext.mounted) return;
@@ -819,9 +869,18 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
                       isDense: true,
                     ),
                     items: const [
-                      DropdownMenuItem(value: 'Morning (8 AM - 12 PM)', child: Text('Morning (8 AM - 12 PM)')),
-                      DropdownMenuItem(value: 'Afternoon (12 PM - 4 PM)', child: Text('Afternoon (12 PM - 4 PM)')),
-                      DropdownMenuItem(value: 'Evening (4 PM - 7 PM)', child: Text('Evening (4 PM - 7 PM)')),
+                      DropdownMenuItem(
+                        value: 'Morning (8 AM - 12 PM)',
+                        child: Text('Morning (8 AM - 12 PM)'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Afternoon (12 PM - 4 PM)',
+                        child: Text('Afternoon (12 PM - 4 PM)'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Evening (4 PM - 7 PM)',
+                        child: Text('Evening (4 PM - 7 PM)'),
+                      ),
                     ],
                     onChanged: (val) {
                       if (val != null && sheetContext.mounted) {
@@ -836,7 +895,10 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
                     tilePadding: EdgeInsets.zero,
                     title: Text(
                       _dueCopy(_currentLanguage, 'additionalDetails'),
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
                     ),
                     children: [
                       TextField(
@@ -860,7 +922,9 @@ class _DueListScreenState extends ConsumerState<DueListScreen> {
                       backgroundColor: AshaColors.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: const RoundedRectangleBorder(borderRadius: AshaShapes.buttonRadius),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: AshaShapes.buttonRadius,
+                      ),
                     ),
                     onPressed: titleController.text.trim().isEmpty
                         ? null
