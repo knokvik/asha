@@ -40,7 +40,8 @@ class RoadGraph {
 
     void link(int a, int b, int kind) {
       if (a == b) return;
-      final metres = haversineMetres(points[a], points[b]) * (kind == 2 ? 4 : 1);
+      final metres =
+          haversineMetres(points[a], points[b]) * (kind == 2 ? 4 : 1);
       ensure(a);
       ensure(b);
       edges[a].add(b);
@@ -74,7 +75,8 @@ class RoadGraph {
     return RoadGraph._(points, edges, weights, grid);
   }
 
-  static int _cell(LatLon point) => (point.latitude * 400).floor() * 100000 + (point.longitude * 400).floor();
+  static int _cell(LatLon point) =>
+      (point.latitude * 400).floor() * 100000 + (point.longitude * 400).floor();
 
   int _nearest(LatLon target, {double maxDistanceMetres = 5000}) {
     if (points.isEmpty) return -1;
@@ -202,7 +204,8 @@ List<LatLon> walkRoute(RoadGraph? graph, List<LatLon> stops) {
   if (stops.length < 2) return stops;
   final path = <LatLon>[];
   for (var i = 0; i < stops.length - 1; i++) {
-    final leg = graph?.route(stops[i], stops[i + 1]) ?? [stops[i], stops[i + 1]];
+    final leg =
+        graph?.route(stops[i], stops[i + 1]) ?? [stops[i], stops[i + 1]];
     if (path.isEmpty) {
       path.addAll(leg);
     } else if (leg.length > 1) {
@@ -226,7 +229,10 @@ List<LatLon> walkRoadRoute(
     final leg = graph.routeOnRoads(stops[i], stops[i + 1]);
     if (leg == null) {
       onUnroutableLeg?.call();
-      continue;
+      // A single Polyline cannot represent a gap safely: appending a later
+      // leg would make Flutter draw a false line across the missing section.
+      // Stop at the first gap and let the UI clearly report the limitation.
+      break;
     }
     if (path.isEmpty) {
       path.addAll(leg);
@@ -265,8 +271,12 @@ class _Heap {
         final left = i * 2 + 1;
         final right = left + 1;
         var smallest = i;
-        if (left < _items.length && _items[left].d < _items[smallest].d) smallest = left;
-        if (right < _items.length && _items[right].d < _items[smallest].d) smallest = right;
+        if (left < _items.length && _items[left].d < _items[smallest].d) {
+          smallest = left;
+        }
+        if (right < _items.length && _items[right].d < _items[smallest].d) {
+          smallest = right;
+        }
         if (smallest == i) break;
         final swap = _items[smallest];
         _items[smallest] = _items[i];

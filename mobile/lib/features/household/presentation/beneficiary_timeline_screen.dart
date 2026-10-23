@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:drift/drift.dart' show Value;
-import 'package:uuid/uuid.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../data/timeline_repository.dart';
+import 'schedule_visit_sheet.dart';
 
 /// Screen 5: Beneficiary Profile (Savitri Devi) matching master reference image.
 /// Top Bar: [ < ]  [ ⋮ ]
@@ -27,7 +27,6 @@ class BeneficiaryTimelineScreen extends ConsumerStatefulWidget {
 
 class _BeneficiaryTimelineScreenState
     extends ConsumerState<BeneficiaryTimelineScreen> {
-  static const _uuid = Uuid();
   int _selectedTab = 0; // 0: Profile, 1: Visits, 2: Triage, 3: Family
   Member? _member;
   Household? _household;
@@ -434,7 +433,7 @@ class _BeneficiaryTimelineScreenState
                               label: 'Call Family',
                               bgColor: const Color(0xFFF3F4F6),
                               iconColor: const Color(0xFF374151),
-                              onTap: () => _callFamily(context),
+                              onTap: _callFamily,
                             ),
                           ],
                         ),
@@ -738,58 +737,32 @@ class _BeneficiaryTimelineScreenState
   }
 
   void _showAddVisitSheet(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: Wrap(
-          children: [
-            const ListTile(
-              title: Text('Add visit record'),
-              subtitle: Text('Choose the visit type to save locally.'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.home_outlined),
-              title: const Text('Home visit'),
-              onTap: () => _saveVisit(sheetContext, 'Home visit'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.medical_services_outlined),
-              title: const Text('ANC follow-up'),
-              onTap: () => _saveVisit(sheetContext, 'ANC follow-up'),
-            ),
-          ],
-        ),
-      ),
+    ScheduleVisitBottomSheet.show(
+      context,
+      beneficiaryName: _member?.name ?? 'Beneficiary',
+      memberId: widget.memberId,
+      onSaved: () {
+        if (mounted) setState(() {});
+      },
     );
   }
 
-  Future<void> _saveVisit(BuildContext sheetContext, String type) async {
-    Navigator.pop(sheetContext);
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final db = ref.read(appDatabaseProvider);
-    await db.into(db.clinicalEncounters).insert(
-      ClinicalEncountersCompanion.insert(
-        id: _uuid.v4(),
-        memberId: widget.memberId,
-        encounterType: type.toUpperCase().replaceAll(' ', '_'),
-        programCode: type.toLowerCase().contains('anc') ? 'anc' : 'general_visit',
-        encounterDate: now,
-        ashaId: 'local_worker',
-        status: const Value('completed'),
-        visitNotes: const Value('Visit recorded from beneficiary profile'),
-        createdAt: now,
-        updatedAt: now,
-        syncStatus: const Value('pending'),
-      ),
-    );
+  Future<void> _callFamily() async {
+    final phone = _member?.phone;
+    if (phone != null && phone.trim().isNotEmpty) {
+      final clean = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+      final uri = Uri.parse('tel:$clean');
+      try {
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+          return;
+        } else {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          return;
+        }
+      } catch (_) {}
+    }
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$type saved locally and queued for sync.')),
-    );
-  }
-
-  Future<void> _callFamily(BuildContext context) async {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text(

@@ -1,16 +1,21 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../domain/teleconsultation_service.dart';
 
 class TeleconsultationScreen extends StatefulWidget {
   final String ashaName;
   final String anmPhone;
   final String moPhone;
+  final String afPhone;
 
   const TeleconsultationScreen({
     super.key,
-    this.ashaName = 'Meena Sharma',
+    this.ashaName = 'Sunita Sharma',
     this.anmPhone = '+91 98765 44332',
     this.moPhone = '+91 98765 88776',
+    this.afPhone = '+91 94150 11201',
   });
 
   @override
@@ -19,17 +24,21 @@ class TeleconsultationScreen extends StatefulWidget {
 
 class _TeleconsultationScreenState extends State<TeleconsultationScreen> {
   final _service = TeleconsultationService();
+  static const _storage = FlutterSecureStorage();
+  static const _kPeerMessagesKey = 'clinical_peer_messages_v1';
+
   bool _consentChecked = false;
   String _patientCodedId = 'MEM-RCH-8921';
   String _chiefComplaint = 'Fever with respiratory rate 62/min in 25-day infant';
   String? _generatedNote;
 
-  final List<PeerMessage> _peerMessages = [
+  List<PeerMessage> _peerMessages = [
     PeerMessage(
       id: 'p1',
       senderName: 'Sunita Devi (Majra)',
       senderRole: 'ASHA',
-      contentText: 'Has anyone faced hesitancy with MR vaccine in Ward 4? Mother worried about slight fever.',
+      contentText:
+          'Has anyone faced hesitancy with MR vaccine in Ward 4? Mother worried about slight fever.',
       sentAt: DateTime.now().subtract(const Duration(hours: 3)),
       isModerated: true,
     ),
@@ -37,13 +46,109 @@ class _TeleconsultationScreenState extends State<TeleconsultationScreen> {
       id: 'p2',
       senderName: 'Sarita Singh (AF)',
       senderRole: 'Facilitator',
-      contentText: 'Remember module on supportive counselling: acknowledge her care first, then explain paracetamol drops.',
+      contentText:
+          'Remember module on supportive counselling: acknowledge her care first, then explain paracetamol drops.',
       sentAt: DateTime.now().subtract(const Duration(hours: 2)),
+      isModerated: true,
+    ),
+    PeerMessage(
+      id: 'p3',
+      senderName: 'Dr. Verma (PHC MO)',
+      senderRole: 'Medical Officer',
+      contentText:
+          'Active dengue surveillance in Ward 3. Refer any high fever with petechiae/rash immediately via 108.',
+      sentAt: DateTime.now().subtract(const Duration(minutes: 45)),
       isModerated: true,
     ),
   ];
 
   final _textController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStoredPeerMessages();
+  }
+
+  Future<void> _loadStoredPeerMessages() async {
+    try {
+      final raw = await _storage.read(key: _kPeerMessagesKey);
+      if (raw != null && raw.isNotEmpty) {
+        final decoded = jsonDecode(raw) as List;
+        if (decoded.isNotEmpty && mounted) {
+          setState(() {
+            _peerMessages = decoded.map((m) {
+              return PeerMessage(
+                id: m['id'] ?? 'p_${DateTime.now().millisecondsSinceEpoch}',
+                senderName: m['senderName'] ?? widget.ashaName,
+                senderRole: m['senderRole'] ?? 'ASHA',
+                contentText: m['contentText'] ?? '',
+                sentAt: DateTime.tryParse(m['sentAt'] ?? '') ?? DateTime.now(),
+                isModerated: m['isModerated'] ?? true,
+              );
+            }).toList();
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _persistPeerMessages() async {
+    try {
+      final encoded = jsonEncode(
+        _peerMessages.map((m) => {
+          'id': m.id,
+          'senderName': m.senderName,
+          'senderRole': m.senderRole,
+          'contentText': m.contentText,
+          'sentAt': m.sentAt.toIso8601String(),
+          'isModerated': m.isModerated,
+        }).toList(),
+      );
+      await _storage.write(key: _kPeerMessagesKey, value: encoded);
+    } catch (_) {}
+  }
+
+  Future<void> _dialPhone(String phone, {String? label}) async {
+    final clean = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    final uri = Uri.parse('tel:$clean');
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Dialing ${label ?? clean} ($phone) on phone dialer...',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _sendSmsTo(String phone, String body) async {
+    final clean = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    final encodedBody = Uri.encodeComponent(body);
+    final uri = Uri.parse('sms:$clean?body=$encodedBody');
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Opening SMS to $phone...')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +189,7 @@ class _TeleconsultationScreenState extends State<TeleconsultationScreen> {
             children: [
               Expanded(
                 child: _buildHelplineButton(
-                  title: '104 Health Helpline',
+                  title: '104 Health Advice',
                   subtitle: 'Clinical Guidance',
                   color: Colors.blue,
                   type: HelplineType.healthAdvice104,
@@ -101,21 +206,55 @@ class _TeleconsultationScreenState extends State<TeleconsultationScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildHelplineButton(
+                  title: '1098 Childline',
+                  subtitle: 'Child Emergency',
+                  color: Colors.orange,
+                  type: HelplineType.childlineEmergency,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildHelplineButton(
+                  title: '112 Unified Police/FRU',
+                  subtitle: 'All-in-One Helpline',
+                  color: Colors.indigo,
+                  type: HelplineType.nationalEmergency112,
+                ),
+              ),
+            ],
+          ),
           const Divider(height: 32),
 
           // 2. Direct Assigned Health Staff (Req 38.1)
           const Text('Assigned Facility Clinical Team', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           const SizedBox(height: 8),
           Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             child: Column(
               children: [
                 ListTile(
                   leading: const CircleAvatar(backgroundColor: Colors.green, child: Icon(Icons.person, color: Colors.white)),
                   title: const Text('Sub-centre ANM (Kavita Kumari)'),
                   subtitle: Text(widget.anmPhone),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.phone, color: Colors.green),
-                    onPressed: () => _showDialToast(widget.anmPhone),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.chat_bubble_outline, color: Colors.teal),
+                        tooltip: 'Send SMS',
+                        onPressed: () => _sendSmsTo(widget.anmPhone, 'Namaste ANM Didi, need urgent clinical advice from Sunita Sharma.'),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.phone, color: Colors.green),
+                        tooltip: 'Call ANM',
+                        onPressed: () => _dialPhone(widget.anmPhone, label: 'ANM Kavita Kumari'),
+                      ),
+                    ],
                   ),
                 ),
                 const Divider(height: 1),
@@ -123,9 +262,41 @@ class _TeleconsultationScreenState extends State<TeleconsultationScreen> {
                   leading: const CircleAvatar(backgroundColor: Colors.indigo, child: Icon(Icons.local_hospital, color: Colors.white)),
                   title: const Text('PHC Medical Officer (Dr. Verma)'),
                   subtitle: Text(widget.moPhone),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.phone, color: Colors.indigo),
-                    onPressed: () => _showDialToast(widget.moPhone),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.chat_bubble_outline, color: Colors.teal),
+                        tooltip: 'Send SMS',
+                        onPressed: () => _sendSmsTo(widget.moPhone, 'Respected Doctor, clinical consultation request regarding patient in Ward 3.'),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.phone, color: Colors.indigo),
+                        tooltip: 'Call MO',
+                        onPressed: () => _dialPhone(widget.moPhone, label: 'Dr. Verma (PHC MO)'),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const CircleAvatar(backgroundColor: Colors.amber, child: Icon(Icons.supervisor_account, color: Colors.white)),
+                  title: const Text('ASHA Facilitator (Sarita Singh)'),
+                  subtitle: Text(widget.afPhone),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.chat_bubble_outline, color: Colors.teal),
+                        tooltip: 'Send SMS',
+                        onPressed: () => _sendSmsTo(widget.afPhone, 'Didi, submitting monthly register queries.'),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.phone, color: Colors.amber.shade800),
+                        tooltip: 'Call AF',
+                        onPressed: () => _dialPhone(widget.afPhone, label: 'Sarita Singh (AF)'),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -258,8 +429,9 @@ class _TeleconsultationScreenState extends State<TeleconsultationScreen> {
                         contentText: _textController.text.trim(),
                         containsPatientData: false,
                       ));
-                      _textController.clear();
                     });
+                    _persistPeerMessages();
+                    _textController.clear();
                   }
                 },
               ),
@@ -276,7 +448,9 @@ class _TeleconsultationScreenState extends State<TeleconsultationScreen> {
     required Color color,
     required HelplineType type,
   }) {
+    final phone = TeleconsultationService.helplineNumbers[type] ?? '108';
     return Card(
+      key: Key('dial_${phone}_button'),
       color: color.withOpacity(0.08),
       shape: RoundedRectangleBorder(
         side: BorderSide(color: color.withOpacity(0.4)),
@@ -285,8 +459,7 @@ class _TeleconsultationScreenState extends State<TeleconsultationScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          final uri = _service.getHelplineUri(type);
-          _showDialToast(uri);
+          _dialPhone(phone, label: title);
         },
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
@@ -300,12 +473,6 @@ class _TeleconsultationScreenState extends State<TeleconsultationScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  void _showDialToast(String phone) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Dialing $phone over cellular voice network (Zero data required)...')),
     );
   }
 }

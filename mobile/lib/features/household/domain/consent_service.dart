@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,11 +12,7 @@ import '../data/member_dao.dart';
 
 /// Method used to record beneficiary or guardian acknowledgment.
 /// Requirements: 5.2
-enum WitnessType {
-  tapAck,
-  thumbprintPhoto,
-  voiceHash,
-}
+enum WitnessType { tapAck, thumbprintPhoto, voiceHash }
 
 /// Plain-language consent statement provider for multilingual audio and text.
 /// Requirements: 5.1
@@ -46,11 +43,7 @@ class ConsentService {
   final SyncEngine? syncEngine;
   static const _uuid = Uuid();
 
-  ConsentService({
-    required this.db,
-    required this.memberDao,
-    this.syncEngine,
-  });
+  ConsentService({required this.db, required this.memberDao, this.syncEngine});
 
   /// Computes a tamper-evident SHA-256 signature hash of:
   /// (memberId + consentVersion + timestamp + ashaId)
@@ -105,6 +98,8 @@ class ConsentService {
     String consentVersion = ConsentTextProvider.currentVersion,
     WitnessType witnessType = WitnessType.tapAck,
     String? voiceAckAudioHash,
+    String? voiceAckAudioBase64,
+    String? thumbprintPhotoBase64,
     bool isGuardianConsent = false,
     String? guardianRelationship,
     int? timestamp,
@@ -163,7 +158,7 @@ class ConsentService {
       ),
     );
 
-    // Enqueue to BitChat SyncEngine
+    // Enqueue to BitChat SyncEngine with media payloads
     if (syncEngine != null) {
       await syncEngine!.enqueue(
         table: 'consent_records',
@@ -179,6 +174,11 @@ class ConsentService {
           'witness_type': witnessType.name.toUpperCase(),
           'signature_hash': sigHash,
           'voice_ack_audio_hash': voiceAckAudioHash,
+          'voice_ack_audio_base64': voiceAckAudioBase64,
+          'media_base64': thumbprintPhotoBase64,
+          'thumbprint_photo_url': thumbprintPhotoBase64 != null
+              ? 'data:image/jpeg;base64,$thumbprintPhotoBase64'
+              : null,
           'is_guardian_consent': effectiveGuardian,
           'guardian_relationship': guardianRelationship,
           'dirty_flag': 1,
@@ -187,8 +187,14 @@ class ConsentService {
       );
     }
 
-    return (await (db.select(db.consentRecords)..where((t) => t.id.equals(recordId)))
-        .getSingle());
+    final saved = await (db.select(
+      db.consentRecords,
+    )..where((t) => t.id.equals(recordId))).getSingleOrNull();
+    if (saved != null) return saved;
+
+    return (await (db.select(
+      db.consentRecords,
+    )..where((t) => t.memberId.equals(memberId))).get()).last;
   }
 
   /// Declines consent, placing the record into Emergency-Only Mode.
@@ -259,12 +265,12 @@ class ConsentService {
     await (db.update(db.consentRecords)
           ..where((t) => t.memberId.equals(memberId) & t.withdrawnAt.isNull()))
         .write(
-      ConsentRecordsCompanion(
-        withdrawnAt: Value(ts),
-        withdrawalReason: Value(reason),
-        syncStatus: const Value('pending'),
-      ),
-    );
+          ConsentRecordsCompanion(
+            withdrawnAt: Value(ts),
+            withdrawalReason: Value(reason),
+            syncStatus: const Value('pending'),
+          ),
+        );
 
     // 2. Update member consent_status to 'withdrawn'
     await (db.update(db.members)..where((t) => t.id.equals(memberId))).write(
@@ -348,9 +354,5 @@ final consentServiceProvider = Provider<ConsentService>((ref) {
   final memberDao = MemberDao(db);
   final syncEngine = ref.watch(syncEngineProvider);
 
-  return ConsentService(
-    db: db,
-    memberDao: memberDao,
-    syncEngine: syncEngine,
-  );
+  return ConsentService(db: db, memberDao: memberDao, syncEngine: syncEngine);
 });

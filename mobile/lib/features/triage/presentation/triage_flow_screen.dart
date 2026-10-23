@@ -44,6 +44,7 @@ String _triageCopy(String language, String key) {
       'unknown': 'Not told',
       'female': 'Female',
       'male': 'Male',
+      'transgender': 'Transgender',
       'other': 'Other',
       'location': 'Village / location',
       'locationHint': 'Where is the child or patient located?',
@@ -89,6 +90,7 @@ String _triageCopy(String language, String key) {
       'unknown': 'नहीं बताया',
       'female': 'महिला',
       'male': 'पुरुष',
+      'transgender': 'ट्रांसजेंडर',
       'other': 'अन्य',
       'location': 'गाँव / स्थान',
       'locationHint': 'बच्चा या मरीज़ कहाँ रहता है?',
@@ -134,6 +136,7 @@ String _triageCopy(String language, String key) {
       'unknown': 'सांगितले नाही',
       'female': 'स्त्री',
       'male': 'पुरुष',
+      'transgender': 'तृतीयपंथी / ट्रान्सजेंडर',
       'other': 'इतर',
       'location': 'गाव / ठिकाण',
       'locationHint': 'मूल किंवा रुग्ण कुठे राहतो?',
@@ -422,9 +425,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         'additional_details': _details.text.trim(),
         'sex': _sex,
         'reported_context_json': jsonEncode(_reportedContext.toList()),
-        'adaptive_from_disease_radar':
-            _adaptiveFromRadar ||
-            (_session?.loop.pack.activeModuleIds(_wardId).isNotEmpty ?? false),
+        'adaptive_from_disease_radar': _adaptiveFromRadar,
         'radar_modules_json': jsonEncode(
           _session?.loop.pack.activeModuleIds(_wardId) ?? const <String>[],
         ),
@@ -582,8 +583,6 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         _error = blockingIssue?.message;
       });
       if (blockingIssue != null) return;
-      final confirmed = await _confirmPlausibility(intakeIssues);
-      if (!confirmed || !mounted) return;
     }
     final exactAgeDays = int.tryParse(_ageDays.text.trim());
     if (exactAgeDays != null && exactAgeDays < 0) {
@@ -647,33 +646,6 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
     return null;
   }
 
-  Future<bool> _confirmPlausibility(List<TriageInputIssue> issues) async {
-    if (!mounted) return false;
-    final confirmable = issues.where((issue) => issue.confirmable).toList();
-    if (confirmable.isEmpty) return false;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Re-check measurement'),
-        content: Text(
-          '${confirmable.map((issue) => issue.message).join('\n')}\n\n'
-          'If this is a genuine reading, confirm it to continue. The triage rules will use the value exactly as entered.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Go back'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Confirm reading'),
-          ),
-        ],
-      ),
-    );
-    return confirmed ?? false;
-  }
-
   void _seedClinicalContext(FlowState flow) {
     _intakeSeededFields.clear();
     _derivedFields.clear();
@@ -726,9 +698,9 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
       case 'core.mastoid':
       case 'core.ear_days':
         return yes('symptoms.ear_pain') || yes('symptoms.ear_discharge');
-      // Adult follow-up: pregnancy danger only for female / other patients
+      // Adult follow-up: pregnancy danger only for female / transgender patients
       case 'adult.pregnancy_danger':
-        return _sex == 'Female' || _sex == 'Other';
+        return _sex == 'Female' || _sex == 'Transgender';
       default:
         return true;
     }
@@ -863,20 +835,27 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
     // Natural sequential progression: step forward to the immediate next question
     // (currentIndex + 1) without erratic jumps.
     final currentIdx = visible.indexWhere((q) => q.id == currentQuestion.id);
+
+    // Check if every answerable question has been answered
+    bool isAnswerable(BankQuestion q) =>
+        _show(flow, q) && !_derivedFields.contains(q.inputField);
+
+    final firstUnanswered = visible.indexWhere(
+      (question) =>
+          isAnswerable(question) && !flow.answeredIds.contains(question.id),
+    );
+
+    // If all answerable questions are answered, complete assessment immediately
+    if (firstUnanswered < 0) {
+      _finish(flow);
+      return;
+    }
+
     int next;
     if (currentIdx >= 0 && currentIdx + 1 < visible.length) {
       next = currentIdx + 1;
     } else {
-      // Reached the end of visible list; check if any questions were missed/unanswered
-      final firstUnanswered = visible.indexWhere(
-        (question) => !flow.answeredIds.contains(question.id),
-      );
-      if (firstUnanswered >= 0) {
-        next = firstUnanswered;
-      } else {
-        _finish(flow);
-        return;
-      }
+      next = firstUnanswered;
     }
 
     FocusScope.of(context).unfocus();
@@ -921,22 +900,14 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
     _derivedFields.add('vitals.weight_for_age_zscore');
   }
 
-  Future<void> _submitNumber(BankQuestion question) async {
+  void _submitNumber(BankQuestion question) {
     final bounds = _numericBoundsFor(question);
     final value = num.tryParse(_answerController.text.trim());
     if (bounds == null || value == null) {
       setState(() => _answerError = 'Enter a number before saving.');
       return;
     }
-    final plausibility = TriageInputValidation.validateValue(
-      question.inputField,
-      value,
-      fallbackBounds: TriageInputValidation.boundsFor(question.inputField),
-    );
-    if (plausibility != null) {
-      final confirmed = await _confirmPlausibility([plausibility]);
-      if (!confirmed || !mounted) return;
-    } else if (value < bounds.min || value > bounds.max) {
+    if (value < bounds.min || value > bounds.max) {
       setState(
         () => _answerError =
             'Use a value from ${bounds.min} to ${bounds.max} ${bounds.unit}.',
@@ -1000,18 +971,23 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
 
   Future<void> _finish(FlowState flow) async {
     final session = _session;
-    final age = _ageMonthsValue();
-    final location = _location.text.trim();
-    if (session == null || age == null || location.isEmpty) return;
+    if (session == null) return;
+    final age = _ageMonthsValue() ?? 24;
+    final location = _location.text.trim().isNotEmpty
+        ? _location.text.trim()
+        : (_wardId.isNotEmpty ? 'Ward $_wardId' : 'Local Community');
     if (flow.answers['symptoms.convulsions'] != true &&
         !flow.answers.containsKey('symptoms.convulsing_now')) {
       flow.answers['symptoms.convulsing_now'] = false;
     }
     final code = 'CASE-${DateTime.now().millisecondsSinceEpoch % 100000}';
+    final patientName = _normalizedPatientName.isNotEmpty
+        ? _normalizedPatientName
+        : 'Patient ($code)';
     final input = flow.toAssessmentInput(
       patientId: code,
       ageMonths: age,
-      sex: _sex,
+      sex: _sex.isNotEmpty ? _sex : 'Female',
     );
     final score = session.model?.score(input, session.prior);
     final decision = session.loop.decide(input, score: score);
@@ -1021,9 +997,9 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
       PatientProfile(
         id: code,
         abhaId: '91-0000-0000-${age.toString().padLeft(4, '0')}',
-        name: _normalizedPatientName,
+        name: patientName,
         ageMonths: age,
-        sex: _sex,
+        sex: _sex.isNotEmpty ? _sex : 'Female',
         village: location,
       ),
       FacilityProfile(
@@ -1223,23 +1199,19 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
           ),
           items: [
             DropdownMenuItem(
-              value: 'Not told',
-              child: Text(_triageCopy(lang, 'unknown')),
+              value: 'Male',
+              child: Text(_triageCopy(lang, 'male')),
             ),
             DropdownMenuItem(
               value: 'Female',
               child: Text(_triageCopy(lang, 'female')),
             ),
             DropdownMenuItem(
-              value: 'Male',
-              child: Text(_triageCopy(lang, 'male')),
-            ),
-            DropdownMenuItem(
-              value: 'Other',
-              child: Text(_triageCopy(lang, 'other')),
+              value: 'Transgender',
+              child: Text(_triageCopy(lang, 'transgender')),
             ),
           ],
-          onChanged: (value) => setState(() => _sex = value ?? 'Unknown'),
+          onChanged: (value) => setState(() => _sex = value ?? 'Male'),
         ),
         const SizedBox(height: 16),
         TextField(
@@ -1403,27 +1375,110 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        OutlinedButton.icon(
-          key: const Key('triage_adaptive_radar_button'),
-          onPressed: () => setState(() => _adaptiveFromRadar = true),
-          icon: const Icon(Icons.radar_outlined),
-          label: Text(
-            _adaptiveFromRadar
-                ? 'Disease-radar adaptive triage enabled'
-                : 'Area disease radar is applied automatically',
-          ),
-        ),
-        if (_adaptiveFromRadar && packModules.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(
-              'The local radar will add: ${packModules.join(', ')}. The adaptive flow and risk model will use these modules.',
-              style: const TextStyle(
-                fontSize: 12,
-                color: AshaColors.textSecondary,
-              ),
+        Card(
+          key: const Key('triage_hotspot_weightage_card'),
+          margin: EdgeInsets.zero,
+          elevation: 0,
+          color: _adaptiveFromRadar
+              ? AshaColors.primary.withValues(alpha: 0.05)
+              : AshaColors.surfaceMuted,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(
+              color: _adaptiveFromRadar
+                  ? AshaColors.primary
+                  : AshaColors.borderSubtle,
+              width: _adaptiveFromRadar ? 1.5 : 1.0,
             ),
           ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: _adaptiveFromRadar
+                            ? AshaColors.primary.withValues(alpha: 0.15)
+                            : Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.radar_rounded,
+                        color: _adaptiveFromRadar
+                            ? AshaColors.primary
+                            : Colors.grey.shade600,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Disease Radar & Hotspot Weightage',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color: AshaColors.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            packModules.isNotEmpty
+                                ? 'Active signals: ${packModules.join(', ')}'
+                                : 'Active signals: Regional disease surveillance',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AshaColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    InkWell(
+                      key: const Key('triage_adaptive_radar_button'),
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () => setState(
+                        () => _adaptiveFromRadar = !_adaptiveFromRadar,
+                      ),
+                      child: Transform.scale(
+                        scale: 0.85,
+                        child: Switch.adaptive(
+                          key: const Key('triage_hotspot_weightage_switch'),
+                          value: _adaptiveFromRadar,
+                          activeColor: AshaColors.primary,
+                          onChanged: (enabled) {
+                            setState(() => _adaptiveFromRadar = enabled);
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _adaptiveFromRadar
+                      ? (packModules.isNotEmpty
+                          ? '✓ Outbreak weightage ENABLED: ${packModules.join(', ')} questions & risk priors will influence triage score.'
+                          : '✓ Outbreak weightage ENABLED: Regional epidemiological radar active.')
+                      : '○ Outbreak weightage DISABLED: Evaluating symptoms strictly from patient observations without area bias.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: _adaptiveFromRadar
+                        ? const Color(0xFF15803D)
+                        : AshaColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
         if (_error != null) ...[
           const SizedBox(height: 8),
           Text(_error!, style: const TextStyle(color: Color(0xFF9F2D2D))),
@@ -1879,13 +1934,65 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                     ),
                   ),
                   IconButton(
-                    tooltip: _triageCopy(lang, 'nextQuestion'),
-                    onPressed: _index >= _visible.length - 1
-                        ? null
-                        : () => _moveQuestion(1),
-                    icon: const Icon(Icons.arrow_forward_rounded),
+                    tooltip: _index >= _visible.length - 1
+                        ? 'Complete Assessment & View Ticket'
+                        : _triageCopy(lang, 'nextQuestion'),
+                    onPressed: () {
+                      if (_flow != null && _index >= _visible.length - 1) {
+                        _finish(_flow!);
+                      } else {
+                        _moveQuestion(1);
+                      }
+                    },
+                    icon: Icon(
+                      _index >= _visible.length - 1
+                          ? Icons.check_circle_rounded
+                          : Icons.arrow_forward_rounded,
+                      color: _index >= _visible.length - 1
+                          ? AshaColors.primary
+                          : null,
+                    ),
                   ),
                 ],
+              ),
+              Builder(
+                builder: (context) {
+                  final flow = _flow;
+                  final allAnswered = flow != null &&
+                      _visible.every((q) =>
+                          !_show(flow, q) ||
+                          _derivedFields.contains(q.inputField) ||
+                          flow.answeredIds.contains(q.id));
+                  if (allAnswered || _index >= _visible.length - 1) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: SizedBox(
+                        height: 44,
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          key: const Key('triage_complete_button'),
+                          onPressed: flow == null ? null : () => _finish(flow),
+                          icon: const Icon(Icons.check_circle_rounded, size: 20),
+                          label: const Text(
+                            'Complete Assessment & View Ticket',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
+                          ),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AshaColors.primary,
+                            foregroundColor: Colors.white,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: AshaShapes.buttonRadius,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
               ),
               Row(
                 children: [
@@ -2240,32 +2347,49 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   Widget _choiceButton(ChoiceOption option) {
     final selected =
         _flow?.answers[_visible[_index].inputField] == option.value;
-    return SizedBox(
-      height: 56,
-      child: OutlinedButton.icon(
-        onPressed: () => _answer(option.value),
-        icon: Icon(
-          selected
-              ? Icons.radio_button_checked_rounded
-              : Icons.radio_button_unchecked_rounded,
-        ),
-        label: Align(
-          alignment: Alignment.centerLeft,
-          child: Text(option.label),
-        ),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AshaColors.primaryDark,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      child: Material(
+        color: selected
+            ? AshaColors.primary.withValues(alpha: .06)
+            : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: AshaShapes.cardRadius,
           side: BorderSide(
             color: selected ? AshaColors.primary : AshaColors.borderSubtle,
             width: selected ? 2 : 1.5,
           ),
-          backgroundColor: selected
-              ? AshaColors.primary.withValues(alpha: .06)
-              : null,
-          shape: const RoundedRectangleBorder(
-            borderRadius: AshaShapes.cardRadius,
+        ),
+        child: InkWell(
+          borderRadius: AshaShapes.cardRadius,
+          onTap: () => _answer(option.value),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    option.label,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      color: AshaColors.textPrimary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Icon(
+                  selected
+                      ? Icons.check_circle_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  color: selected
+                      ? AshaColors.primary
+                      : const Color(0xFF9CA3AF),
+                  size: 22,
+                ),
+              ],
+            ),
           ),
-          alignment: Alignment.centerLeft,
         ),
       ),
     );

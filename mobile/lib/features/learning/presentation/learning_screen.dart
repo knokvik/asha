@@ -353,9 +353,16 @@ class _LearningScreenState extends ConsumerState<LearningScreen>
                             ),
                           ),
                           Chip(
+                            backgroundColor: const Color(0xFFE8F5E9),
+                            side: const BorderSide(color: Color(0xFFA5D6A7)),
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
                             label: Text(
                               card.programCategory,
-                              style: const TextStyle(fontSize: 10),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF1E4231),
+                              ),
                             ),
                           ),
                         ],
@@ -393,48 +400,254 @@ class _LearningScreenState extends ConsumerState<LearningScreen>
         .where((r) => r.status == 'completed')
         .length;
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Card(
-          elevation: 0,
-          shape: const RoundedRectangleBorder(
-            borderRadius: AshaShapes.cardRadius,
-            side: BorderSide(color: AshaColors.borderSubtle),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+      child: Column(
+        children: [
+          // Certificate Preview Container
+          Container(
+            key: const Key('certificate_preview_card'),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEFDF9),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFD97706), width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.amber.withOpacity(0.12),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Stack(
               children: [
-                const Icon(Icons.military_tech, size: 56, color: Colors.amber),
-                const SizedBox(height: 8),
-                const Text(
-                  'Verifiable ASHA Skill Certificate',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Worker ID: ${widget.workerId}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                const Divider(height: 24),
-                Text(
-                  'Total Micro-Modules Completed: $completedCount',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                // Inner decorative border
+                Positioned.fill(
+                  child: Container(
+                    margin: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Official NHM ASHA Module 6/7 Alignment',
-                  style: TextStyle(fontSize: 12, color: Colors.green.shade800),
+                Padding(
+                  padding: const EdgeInsets.all(22.0),
+                  child: Column(
+                    children: [
+                      // Header with National Health Mission seal
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF3C7),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: const Color(0xFFF59E0B)),
+                            ),
+                            child: const Icon(
+                              Icons.health_and_safety_rounded,
+                              size: 26,
+                              color: Color(0xFFB45309),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'NATIONAL HEALTH MISSION',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.8,
+                                  color: Color(0xFF1E4231),
+                                ),
+                              ),
+                              Text(
+                                'Ministry of Health & Family Welfare · Govt. of India',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF6B7280),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      const Divider(color: Color(0xFFFDE68A), thickness: 1.5),
+                      const SizedBox(height: 8),
+
+                      // Title
+                      const Text(
+                        'CERTIFICATE OF CLINICAL COMPETENCY',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.1,
+                          color: Color(0xFFB45309),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'OFFICIAL VERIFIABLE MICRO-CREDENTIAL',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                          color: Color(0xFF15803D),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      const Text(
+                        'This is to certify that accredited frontline worker',
+                        style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Color(0xFF4B5563)),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Sunita Sharma',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF1E4231),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'ASHA Worker ID: ${widget.workerId} · Sub-Centre Majra',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF4B5563)),
+                      ),
+                      const SizedBox(height: 12),
+
+                      const Text(
+                        'has successfully demonstrated practical competency in:',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 11, color: Color(0xFF4B5563)),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0FDF4),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFBBF7D0)),
+                        ),
+                        child: const Text(
+                          'Maternal & Neonatal IMCI Triage Protocols\nNHM ASHA Modules 6 & 7 Clinical Standards',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF166534),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Verification Badge & Hash
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.verified_user_rounded, color: Color(0xFF16A34A), size: 28),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Text(
+                                        'Verified Record',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF15803D),
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      Text(
+                                        'Modules: $completedCount Completed',
+                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                  const Text(
+                                    'SHA-256: 4e9a...b18f · Offline Cryptographic Seal',
+                                    style: TextStyle(fontFamily: 'monospace', fontSize: 9, color: Color(0xFF64748B)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Signatories row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                'Dr. Verma, MD',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                'Medical Officer I/C (PHC)',
+                                style: TextStyle(fontSize: 9, color: Color(0xFF6B7280)),
+                              ),
+                            ],
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: const [
+                              Text(
+                                'Sarita Singh',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                'ASHA Facilitator & Trainer',
+                                style: TextStyle(fontSize: 9, color: Color(0xFF6B7280)),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.share),
-                  label: const Text('Share with Facilitator & Training Portal'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Actions
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  key: const Key('share_certificate_button'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E4231),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.share, size: 18),
+                  label: const Text('Share Certificate'),
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -445,10 +658,29 @@ class _LearningScreenState extends ConsumerState<LearningScreen>
                     );
                   },
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: const Key('download_certificate_pdf_button'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.picture_as_pdf, size: 18),
+                  label: const Text('Download PDF'),
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('ASHA Skill Certificate PDF downloaded to device storage.'),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-        ),
+        ],
       ),
     );
   }

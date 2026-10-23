@@ -434,8 +434,21 @@ class _RegisterViewerScreenState extends State<RegisterViewerScreen> {
             }).toList(),
           ),
           ElevatedButton.icon(
+            key: const Key('register_share_pdf_button'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1E4231),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
             icon: const Icon(Icons.share, size: 16),
-            label: const Text('Share PDF'),
+            label: const Text(
+              'Share PDF',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
             onPressed: _shareCurrentRegister,
           ),
         ],
@@ -543,13 +556,29 @@ class _FamilyCardSelectorSheetState extends State<_FamilyCardSelectorSheet> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               ChoiceChip(
-                label: const Text('Hindi (हिन्दी)'),
+                label: Text(
+                  'Hindi (हिन्दी)',
+                  style: TextStyle(
+                    color: _language == 'hi' ? Colors.white : const Color(0xFF1E4231),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                selectedColor: const Color(0xFF1E4231),
+                backgroundColor: const Color(0xFFF1F5F9),
                 selected: _language == 'hi',
                 onSelected: (s) => setState(() => _language = 'hi'),
               ),
               const SizedBox(width: 8),
               ChoiceChip(
-                label: const Text('English'),
+                label: Text(
+                  'English',
+                  style: TextStyle(
+                    color: _language == 'en' ? Colors.white : const Color(0xFF1E4231),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                selectedColor: const Color(0xFF1E4231),
+                backgroundColor: const Color(0xFFF1F5F9),
                 selected: _language == 'en',
                 onSelected: (s) => setState(() => _language = 'en'),
               ),
@@ -559,6 +588,15 @@ class _FamilyCardSelectorSheetState extends State<_FamilyCardSelectorSheet> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1E4231),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               icon: _isGenerating
                   ? const SizedBox(
                       width: 16,
@@ -573,6 +611,7 @@ class _FamilyCardSelectorSheetState extends State<_FamilyCardSelectorSheet> {
                 _isGenerating
                     ? 'Generating...'
                     : 'Share Card to Family (WhatsApp)',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
               onPressed: _isGenerating ? null : _shareCard,
             ),

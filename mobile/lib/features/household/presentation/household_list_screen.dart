@@ -30,6 +30,8 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String? _selectedHamletFilter;
+  bool? _bplFilter;
+  String? _syncFilter;
 
   @override
   void initState() {
@@ -196,8 +198,7 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
           );
           final totalMembers = groupedMap.values.fold<int>(
             0,
-            (sum, list) =>
-                sum + list.fold<int>(0, (s, h) => s + h.memberCount),
+            (sum, list) => sum + list.fold<int>(0, (s, h) => s + h.memberCount),
           );
           final totalHamlets = groupedMap.keys.length;
 
@@ -211,6 +212,9 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
             }
 
             final matching = households.where((h) {
+              if (_bplFilter != null && h.isBpl != _bplFilter) return false;
+              if (_syncFilter != null && h.syncStatus != _syncFilter)
+                return false;
               if (_searchQuery.isEmpty) return true;
               final head = h.headName.toLowerCase();
               final village = h.village.toLowerCase();
@@ -316,8 +320,9 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                               isSelected: isSelected,
                               onSelected: (selected) {
                                 setState(() {
-                                  _selectedHamletFilter =
-                                      selected ? hamlet : null;
+                                  _selectedHamletFilter = selected
+                                      ? hamlet
+                                      : null;
                                 });
                               },
                             ),
@@ -328,6 +333,32 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                   ),
                   const SizedBox(height: 14),
                 ],
+
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    FilterChip(
+                      label: const Text('BPL'),
+                      selected: _bplFilter == true,
+                      onSelected: (v) =>
+                          setState(() => _bplFilter = v ? true : null),
+                    ),
+                    FilterChip(
+                      label: const Text('Pending sync'),
+                      selected: _syncFilter == 'pending',
+                      onSelected: (v) =>
+                          setState(() => _syncFilter = v ? 'pending' : null),
+                    ),
+                    FilterChip(
+                      label: const Text('Synced'),
+                      selected: _syncFilter == 'synced',
+                      onSelected: (v) =>
+                          setState(() => _syncFilter = v ? 'synced' : null),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
 
                 // Grouped sections by hamlet
                 ...filteredMap.entries.map((entry) {
@@ -365,12 +396,14 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color:
-                                    AshaColors.vitalNormal.withValues(alpha: 0.12),
+                                color: AshaColors.vitalNormal.withValues(
+                                  alpha: 0.12,
+                                ),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: AshaColors.vitalNormal
-                                      .withValues(alpha: 0.28),
+                                  color: AshaColors.vitalNormal.withValues(
+                                    alpha: 0.28,
+                                  ),
                                 ),
                               ),
                               child: Text(
@@ -549,9 +582,7 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
         color: isSelected ? AshaColors.primary : AshaColors.borderSubtle,
         width: 1,
       ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       onSelected: onSelected,
     );
@@ -685,6 +716,19 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
                               color: AshaColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            household.syncStatus == 'synced'
+                                ? '✓ Synced'
+                                : '● Saved on phone · pending sync',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: household.syncStatus == 'synced'
+                                  ? Colors.green.shade700
+                                  : Colors.orange.shade800,
                             ),
                           ),
                           const SizedBox(height: 3),

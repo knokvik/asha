@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'dart:math';
+import 'dart:async';
 
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,6 +15,7 @@ import '../../../../core/security/auth_service.dart';
 import '../../../../core/security/session_service.dart';
 import '../../../../shared/providers/core_providers.dart';
 import '../../../../shared/widgets/asha_svg_illustrations.dart';
+import '../../../services/auth_service.dart' as phone_auth;
 
 /// Screen presenting PIN setup or PIN unlock flow.
 ///
@@ -43,6 +46,14 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
   int _pinLength = 4;
   String? _errorMessage;
   String _captchaCode = '';
+  final _mobileController = TextEditingController();
+  final _mobileOtpController = TextEditingController();
+  final _phoneAuth = phone_auth.AuthService();
+  bool _showMobileLogin = false;
+  bool _sendingMobileOtp = false;
+  String? _mobileVerificationId;
+  int _mobileOtpSeconds = 0;
+  Timer? _mobileTimer;
 
   @override
   void initState() {
@@ -57,6 +68,9 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
     _pinController.dispose();
     _confirmPinController.dispose();
     _captchaController.dispose();
+    _mobileController.dispose();
+    _mobileOtpController.dispose();
+    _mobileTimer?.cancel();
     super.dispose();
   }
 
@@ -70,6 +84,88 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
       ).join();
       _captchaController.clear();
     });
+  }
+
+  void _startMobileTimer() {
+    _mobileTimer?.cancel();
+    setState(
+      () => _mobileOtpSeconds = phone_auth.AuthService.cooldownDurationSeconds,
+    );
+    _mobileTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return timer.cancel();
+      if (_mobileOtpSeconds <= 1) {
+        timer.cancel();
+        setState(() => _mobileOtpSeconds = 0);
+      } else {
+        setState(() => _mobileOtpSeconds--);
+      }
+    });
+  }
+
+  Future<void> _sendMobileOtp() async {
+    final number = _mobileController.text.trim();
+    if (!RegExp(r'^\d{10}$').hasMatch(number)) {
+      setState(() => _errorMessage = 'Enter a valid 10-digit mobile number.');
+      return;
+    }
+    setState(() {
+      _sendingMobileOtp = true;
+      _errorMessage = null;
+    });
+    try {
+      await _phoneAuth.sendOtp(
+        '+91$number',
+        onCodeSent: (verificationId, _) {
+          if (!mounted) return;
+          setState(() {
+            _mobileVerificationId = verificationId;
+            _sendingMobileOtp = false;
+          });
+          _startMobileTimer();
+        },
+        onVerificationFailed: (message) {
+          if (mounted) {
+            setState(() {
+              _sendingMobileOtp = false;
+              _errorMessage = message;
+            });
+          }
+        },
+        onVerificationCompleted: (_) {},
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _sendingMobileOtp = false;
+          _errorMessage = e.toString();
+        });
+      }
+    }
+  }
+
+  Future<void> _verifyMobileOtp() async {
+    if (_mobileVerificationId == null ||
+        _mobileOtpController.text.trim().length != 6) {
+      setState(() => _errorMessage = 'Enter the complete 6-digit OTP.');
+      return;
+    }
+    setState(() {
+      _sendingMobileOtp = true;
+      _errorMessage = null;
+    });
+    try {
+      await _phoneAuth.verifyOtp(_mobileOtpController.text.trim());
+      if (mounted) context.go('/home');
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _sendingMobileOtp = false;
+          _errorMessage = e is FirebaseAuthException
+              ? _phoneAuth.mapAuthException(e)
+              : e.toString();
+        });
+      }
+    }
   }
 
   Future<void> _checkStatus() async {
@@ -505,6 +601,68 @@ class _PinSetupScreenState extends ConsumerState<PinSetupScreen> {
                             ),
                           ),
                         ],
+                      ),
+                    ],
+                  ],
+                  const SizedBox(height: 18),
+                  const Divider(),
+                  TextButton.icon(
+                    key: const Key('mobile_login_option'),
+                    onPressed: _isSubmitting
+                        ? null
+                        : () => setState(
+                            () => _showMobileLogin = !_showMobileLogin,
+                          ),
+                    icon: const Icon(Icons.phone_android_outlined),
+                    label: const Text('Or login with mobile number + OTP'),
+                  ),
+                  if (_showMobileLogin) ...[
+                    TextField(
+                      key: const Key('mobile_login_field'),
+                      controller: _mobileController,
+                      keyboardType: TextInputType.phone,
+                      enabled: !_sendingMobileOtp,
+                      decoration: const InputDecoration(
+                        labelText: 'Registered mobile number',
+                        prefixText: '+91  ',
+                        prefixIcon: Icon(Icons.phone_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    if (_mobileVerificationId == null)
+                      FilledButton.icon(
+                        onPressed: _sendingMobileOtp ? null : _sendMobileOtp,
+                        icon: const Icon(Icons.sms_outlined),
+                        label: Text(
+                          _sendingMobileOtp ? 'Sending OTP…' : 'Send OTP',
+                        ),
+                      )
+                    else ...[
+                      TextField(
+                        key: const Key('mobile_otp_field'),
+                        controller: _mobileOtpController,
+                        keyboardType: TextInputType.number,
+                        enabled: !_sendingMobileOtp,
+                        maxLength: 6,
+                        decoration: const InputDecoration(
+                          labelText: 'Enter 6-digit OTP',
+                          prefixIcon: Icon(Icons.lock_clock_outlined),
+                          counterText: '',
+                        ),
+                      ),
+                      Text(
+                        _mobileOtpSeconds > 0
+                            ? 'Resend OTP in ${_mobileOtpSeconds}s'
+                            : 'You can request a new OTP',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey.shade600),
+                      ),
+                      const SizedBox(height: 8),
+                      FilledButton(
+                        onPressed: _sendingMobileOtp ? null : _verifyMobileOtp,
+                        child: Text(
+                          _sendingMobileOtp ? 'Verifying…' : 'Verify OTP',
+                        ),
                       ),
                     ],
                   ],

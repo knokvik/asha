@@ -62,8 +62,12 @@ class SyncEngine {
     SyncPriority priority = SyncPriority.metadata,
   }) async {
     final now = DateTime.now().millisecondsSinceEpoch;
-    final workerId = await _storage.read(key: 'worker_id') ?? 'offline-worker';
-    final deviceId = await _storage.read(key: 'device_id') ?? 'offline-device';
+    String workerId = 'offline-worker';
+    String deviceId = 'offline-device';
+    try {
+      workerId = await _storage.read(key: 'worker_id') ?? 'offline-worker';
+      deviceId = await _storage.read(key: 'device_id') ?? 'offline-device';
+    } catch (_) {}
     final effectiveEventLog = <Map<String, dynamic>>[];
     if (eventLog.isEmpty) {
       effectiveEventLog.add({

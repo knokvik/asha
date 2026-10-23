@@ -2,7 +2,7 @@ name: asha_platform
 description: "ASHA Digital Platform — offline-first health information system for ASHA workers."
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.0+2005
 
 environment:
   sdk: ^3.13.1
@@ -92,6 +92,9 @@ dependencies:
 
   cupertino_icons: ^2.0.0
   flutter_svg: ^2.3.0
+  firebase_core: ^5.1.0
+  firebase_auth: ^7.0.1
+  cloud_firestore: ^7.1.0
 
 dependency_overrides:
   http: ^1.2.2

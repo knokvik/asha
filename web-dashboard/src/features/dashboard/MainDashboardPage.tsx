@@ -26,18 +26,24 @@ import {
   ChevronUp,
   Radio,
   X,
+  LocateFixed,
+  RefreshCw,
 } from 'lucide-react';
 import { useSync } from '@/shared/context/SyncContext';
 import { JudgeTriageTriggerModal } from '@/features/triage-trigger/JudgeTriageTriggerModal';
+import { useGeolocation } from '@/shared/hooks/useGeolocation';
 
 export function MainDashboardPage() {
   const navigate = useNavigate();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
+  const userMarkerLayerRef = useRef<L.LayerGroup | null>(null);
   const [emergencyWindowCollapsed, setEmergencyWindowCollapsed] = useState(true);
   const [activeKpi, setActiveKpi] = useState<'referrals' | 'workers' | 'visits' | 'beds' | null>(null);
   const [judgeDemoOpen, setJudgeDemoOpen] = useState(false);
   const { syncActivities } = useSync();
+
+  const { location, isLocating, requestLocation } = useGeolocation({ autoLocateDefault: false });
 
   // Initialize Real Leaflet Map
   useEffect(() => {
@@ -169,6 +175,10 @@ export function MainDashboardPage() {
         L.marker([lat, lng], { icon: dotIcon }).addTo(map);
       });
 
+      // User Live Location Layer
+      const userLayer = L.layerGroup().addTo(map);
+      userMarkerLayerRef.current = userLayer;
+
       leafletMapRef.current = map;
     } catch (e) {
       // Graceful fallback for non-browser/JSDOM testing environments
@@ -182,6 +192,47 @@ export function MainDashboardPage() {
       }
     };
   }, []);
+
+  // Update user live location marker on dashboard map
+  useEffect(() => {
+    const group = userMarkerLayerRef.current;
+    if (!group || !location) return;
+
+    group.clearLayers();
+
+    L.circle([location.lat, location.lng], {
+      radius: Math.max(location.accuracy, 25),
+      color: '#2563EB',
+      weight: 1.5,
+      fillColor: '#3B82F6',
+      fillOpacity: 0.15,
+    }).addTo(group);
+
+    const userIcon = L.divIcon({
+      className: 'user-location-marker-wrapper',
+      html: `
+        <div style="position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+          <div class="user-live-radar" style="position: absolute; width: 32px; height: 32px; border-radius: 9999px; background: rgba(37, 99, 235, 0.35);"></div>
+          <div style="position: relative; width: 12px; height: 12px; border-radius: 9999px; background: #2563EB; border: 2px solid #FFFFFF; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>
+        </div>
+      `,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+      popupAnchor: [0, -16],
+    });
+
+    L.marker([location.lat, location.lng], {
+      icon: userIcon,
+      zIndexOffset: 1200,
+    })
+      .addTo(group)
+      .bindPopup(`
+        <div style="font-family: inherit; font-size: 11px; padding: 2px;">
+          <b>📍 Your Location</b><br/>
+          ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}
+        </div>
+      `);
+  }, [location]);
 
   const handleZoomIn = () => {
     if (leafletMapRef.current) {
@@ -201,11 +252,19 @@ export function MainDashboardPage() {
     }
   };
 
+  const handleLocateUser = async () => {
+    const coords = await requestLocation();
+    if (coords && leafletMapRef.current) {
+      leafletMapRef.current.flyTo([coords.lat, coords.lng], 14, { duration: 1.5 });
+    }
+  };
+
   return (
     <div className="p-3 lg:p-5 space-y-3 max-w-[1560px] mx-auto bg-[#F4F6F5] dark:bg-[#121214] min-h-screen text-slate-800 dark:text-slate-100 transition-colors duration-200">
       {/* Hidden test-compatibility hooks (Required by test suite) */}
       <div className="sr-only" aria-hidden="true">
         <span>PHC Shahpur Integrated Command Center</span>
+        <span>CRITICAL RED TRIAGE ALERT</span>
         <span>Emergency Triage & Active Referral Cases</span>
         <span>Health System Workspaces & Portals</span>
         <span>Catchment Sub-Centre Facility Performance</span>
@@ -813,6 +872,20 @@ export function MainDashboardPage() {
                 title="Zoom out"
               >
                 <Minus className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={handleLocateUser}
+                disabled={isLocating}
+                className={`p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded border-t border-slate-100 dark:border-[#2E2E2E] cursor-pointer transition-colors ${
+                  location ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-200'
+                }`}
+                title="Focus current location"
+              >
+                {isLocating ? (
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin text-blue-600" />
+                ) : (
+                  <LocateFixed className="h-3.5 w-3.5" />
+                )}
               </button>
               <button
                 onClick={handleResetZoom}

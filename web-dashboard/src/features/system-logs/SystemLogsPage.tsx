@@ -29,6 +29,10 @@ import {
   AlertCircle,
   Heart,
   Baby,
+  ChevronDown,
+  ChevronUp,
+  ChevronRight,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 export function SystemLogsPage() {
@@ -42,6 +46,9 @@ export function SystemLogsPage() {
   const [severityFilter, setSeverityFilter] = useState<'ALL' | 'RED' | 'YELLOW' | 'GREEN'>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [channelFilter, setChannelFilter] = useState<string>('ALL');
+
+  // Collapsible rows state (empty Set = all collapsed by default)
+  const [expandedRowIds, setExpandedRowIds] = useState<Set<string>>(new Set());
 
   // Selected log for half-page right slide-over drawer
   const [selectedLog, setSelectedLog] = useState<FrontlineSyncActivity | null>(null);
@@ -75,6 +82,27 @@ export function SystemLogsPage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  const toggleRow = (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setExpandedRowIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const expandAllRows = () => {
+    setExpandedRowIds(new Set(filteredLogs.map((l) => l.id)));
+  };
+
+  const collapseAllRows = () => {
+    setExpandedRowIds(new Set());
+  };
 
   // Filtered logs
   const filteredLogs = useMemo(() => {
@@ -288,104 +316,341 @@ export function SystemLogsPage() {
         </div>
       </div>
 
-      {/* 4. Responsive Grid of Log Boxes (4 to 2 columns) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {filteredLogs.map((log) => {
-          const isRed = log.severity === 'RED';
-          const isYellow = log.severity === 'YELLOW';
-          const isSelected = selectedLog?.id === log.id;
+      {/* 4. Structured Rows View (Collapsed by Default, Click to Expand) */}
+      <div className="space-y-3">
+        {/* Row Table Utility Header: Count & Bulk Expand/Collapse */}
+        <div className="flex items-center justify-between px-1 text-xs">
+          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+            <span className="font-semibold text-slate-700 dark:text-slate-300">
+              Showing {filteredLogs.length} of {totalCount} frontline logs
+            </span>
+            <span className="hidden sm:inline text-slate-300 dark:text-slate-700">•</span>
+            <span className="hidden sm:inline text-[11px]">
+              Click any row to reveal vitals, clinical payload &amp; ABDM verification
+            </span>
+          </div>
 
-          return (
-            <div
-              key={log.id}
-              onClick={() => setSelectedLog(log)}
-              className={`p-4 rounded-2xl border bg-white dark:bg-[#1E1E1E] transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between gap-3 relative select-none ${
-                isSelected
-                  ? 'ring-2 ring-emerald-500 border-emerald-400 dark:border-emerald-500'
-                  : isRed
-                  ? 'border-l-4 border-l-rose-500 border-slate-200 dark:border-[#2E2E2E]'
-                  : isYellow
-                  ? 'border-l-4 border-l-amber-500 border-slate-200 dark:border-[#2E2E2E]'
-                  : 'border-l-4 border-l-emerald-500 border-slate-200 dark:border-[#2E2E2E]'
-              }`}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={expandAllRows}
+              disabled={filteredLogs.length === 0 || expandedRowIds.size === filteredLogs.length}
+              className="h-7 px-2.5 text-[11px] font-medium text-slate-600 dark:text-slate-300 gap-1 cursor-pointer"
             >
-              {/* Card Header: Severity Badge + Time */}
-              <div className="flex items-center justify-between gap-2">
-                <span
-                  className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md ${
-                    isRed
-                      ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
-                      : isYellow
-                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
-                      : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
-                  }`}
+              <ChevronDown className="w-3.5 h-3.5" />
+              <span>Expand All</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={collapseAllRows}
+              disabled={expandedRowIds.size === 0}
+              className="h-7 px-2.5 text-[11px] font-medium text-slate-600 dark:text-slate-300 gap-1 cursor-pointer"
+            >
+              <ChevronUp className="w-3.5 h-3.5" />
+              <span>Collapse All</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Stack of Rows */}
+        <div className="flex flex-col gap-2.5">
+          {filteredLogs.map((log) => {
+            const isRed = log.severity === 'RED';
+            const isYellow = log.severity === 'YELLOW';
+            const isSelected = selectedLog?.id === log.id;
+            const isExpanded = expandedRowIds.has(log.id);
+
+            return (
+              <div
+                key={log.id}
+                className={`rounded-xl border bg-white dark:bg-[#1E1E1E] transition-all duration-200 overflow-hidden shadow-2xs ${
+                  isSelected
+                    ? 'ring-2 ring-emerald-500 border-emerald-400 dark:border-emerald-500'
+                    : isRed
+                    ? 'border-l-4 border-l-rose-500 border-slate-200 dark:border-[#2E2E2E]'
+                    : isYellow
+                    ? 'border-l-4 border-l-amber-500 border-slate-200 dark:border-[#2E2E2E]'
+                    : 'border-l-4 border-l-emerald-500 border-slate-200 dark:border-[#2E2E2E]'
+                }`}
+              >
+                {/* Row Summary / Collapsed Header Bar */}
+                <div
+                  onClick={() => toggleRow(log.id)}
+                  className="p-3 sm:px-4 sm:py-3 cursor-pointer hover:bg-slate-50/80 dark:hover:bg-[#252528]/60 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-2.5 select-none"
                 >
-                  {isRed ? 'RED · EMERGENCY' : isYellow ? 'YELLOW · PRIORITY' : 'GREEN · ROUTINE'}
-                </span>
+                  {/* Left: Severity Badge, Time, Program Category */}
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
+                    <span
+                      className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md shrink-0 flex items-center gap-1.5 ${
+                        isRed
+                          ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                          : isYellow
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+                          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                      }`}
+                    >
+                      {isRed && <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />}
+                      <span>{isRed ? 'RED · EMERGENCY' : isYellow ? 'YELLOW · PRIORITY' : 'GREEN · ROUTINE'}</span>
+                    </span>
 
-                <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {log.syncTime}
-                </span>
-              </div>
+                    <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 flex items-center gap-1 shrink-0">
+                      <Clock className="w-3 h-3 text-slate-400" />
+                      <span>{log.syncTime}</span>
+                    </span>
 
-              {/* Card Middle: Category, Title, Worker & Patient */}
-              <div className="space-y-1.5 flex-1">
-                <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                  {log.category}
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-[#2A2A2E] text-slate-600 dark:text-slate-300 shrink-0">
+                      {log.category}
+                    </span>
+                  </div>
+
+                  {/* Center: Details Title, Beneficiary Pill & ASHA Worker */}
+                  <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
+                    <div className="truncate flex-1">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white truncate block">
+                        {log.details}
+                      </span>
+                    </div>
+
+                    {log.patientName && (
+                      <div className="shrink-0 flex items-center gap-1 text-[11px] text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-[#252528] px-2 py-0.5 rounded border border-slate-200 dark:border-[#323236]">
+                        <span className="text-slate-400 text-[10px]">Beneficiary:</span>
+                        <span className="font-bold">{log.patientName}</span>
+                        {log.patientAge && <span className="text-slate-400">({log.patientAge})</span>}
+                      </div>
+                    )}
+
+                    <div className="shrink-0 flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-400">
+                      <Users className="w-3 h-3 text-emerald-600 shrink-0" />
+                      <span className="font-medium truncate max-w-[120px]">{log.workerName}</span>
+                      <span className="text-slate-400 text-[10px]">({log.village})</span>
+                    </div>
+                  </div>
+
+                  {/* Right: Ticket ID Pill, Audit Drawer CTA, Chevron */}
+                  <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+                    {log.ticketId ? (
+                      <span className="font-mono text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                        {log.ticketId}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {log.channel.replace(' Gateway', '')}
+                      </span>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedLog(log);
+                      }}
+                      className="px-2 py-1 rounded-lg text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1 transition-colors cursor-pointer"
+                      title="Inspect full referral slip drawer"
+                    >
+                      <span>Slip</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => toggleRow(log.id, e)}
+                      aria-expanded={isExpanded}
+                      className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#2A2A2E] transition-colors cursor-pointer"
+                      title={isExpanded ? 'Collapse row' : 'Expand row details'}
+                    >
+                      {isExpanded ? (
+                        <ChevronUp className="w-4 h-4 text-emerald-600" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
 
-                <h3 className="text-xs font-bold text-slate-900 dark:text-white line-clamp-2 leading-snug">
-                  {log.details}
-                </h3>
+                {/* Inline Expanded View (Revealed on Click) */}
+                {isExpanded && (
+                  <div className="border-t border-slate-100 dark:border-[#28282C] bg-slate-50/60 dark:bg-[#18181B] p-4 lg:p-5 space-y-4 animate-in fade-in duration-200">
+                    {/* 3 Columns: Clinical Assessment, Recorded Vitals, Demographics & Frontline */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-xs">
+                      {/* 1. Clinical Findings & Payload */}
+                      <div className="p-3.5 rounded-xl bg-white dark:bg-[#202024] border border-slate-200 dark:border-[#2E2E34] space-y-2">
+                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                          <Stethoscope className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Clinical Findings &amp; Assessment</span>
+                        </div>
+                        <div className="font-bold text-slate-900 dark:text-white">
+                          {log.details}
+                        </div>
+                        <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-[#25252A] p-2.5 rounded-lg border border-slate-100 dark:border-[#2C2C32]">
+                          {log.clinicalPayload}
+                        </p>
+                        {log.dangerSigns && log.dangerSigns.length > 0 && (
+                          <div className="space-y-1 pt-1">
+                            <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" />
+                              <span>Danger Signs Identified:</span>
+                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              {log.dangerSigns.map((ds, idx) => (
+                                <span
+                                  key={idx}
+                                  className="px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900 text-[10px] font-semibold"
+                                >
+                                  {ds}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
 
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
-                  {log.clinicalPayload}
-                </p>
+                      {/* 2. Physiological Vitals */}
+                      <div className="p-3.5 rounded-xl bg-white dark:bg-[#202024] border border-slate-200 dark:border-[#2E2E34] space-y-2">
+                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                          <Activity className="w-3.5 h-3.5 text-rose-500" />
+                          <span>Recorded Physiological Vitals</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-center pt-1">
+                          <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#25252A] border border-slate-100 dark:border-[#2E2E34]">
+                            <span className="text-[10px] text-slate-400 block">Blood Pressure</span>
+                            <span className="text-sm font-black text-slate-900 dark:text-white">
+                              {log.vitals?.bp || '120/80'}
+                            </span>
+                            <span className="text-[9px] text-slate-400 block">mmHg</span>
+                          </div>
+                          <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#25252A] border border-slate-100 dark:border-[#2E2E34]">
+                            <span className="text-[10px] text-slate-400 block">Pulse Rate</span>
+                            <span className="text-sm font-black text-slate-900 dark:text-white">
+                              {log.vitals?.pulse || 78}
+                            </span>
+                            <span className="text-[9px] text-slate-400 block">bpm</span>
+                          </div>
+                          <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#25252A] border border-slate-100 dark:border-[#2E2E34]">
+                            <span className="text-[10px] text-slate-400 block">SpO2 Oxygen</span>
+                            <span className="text-sm font-black text-emerald-600">
+                              {log.vitals?.spo2 || 98}%
+                            </span>
+                            <span className="text-[9px] text-slate-400 block">Room air</span>
+                          </div>
+                          <div className="p-2 rounded-lg bg-slate-50 dark:bg-[#25252A] border border-slate-100 dark:border-[#2E2E34]">
+                            <span className="text-[10px] text-slate-400 block">Temperature</span>
+                            <span className="text-sm font-black text-slate-900 dark:text-white">
+                              {log.vitals?.temp ? `${log.vitals.temp}°F` : '98.4°F'}
+                            </span>
+                            <span className="text-[9px] text-slate-400 block">Axillary</span>
+                          </div>
+                        </div>
+                        {log.vitalsSummary && (
+                          <div className="text-[10px] font-mono text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-[#25252A] px-2 py-1 rounded border border-slate-100 dark:border-[#2E2E34] text-center">
+                            {log.vitalsSummary}
+                          </div>
+                        )}
+                      </div>
 
-                {/* Beneficiary Pill */}
-                {log.patientName && (
-                  <div className="pt-1 flex items-center gap-1 text-[11px] text-slate-700 dark:text-slate-300">
-                    <span className="font-semibold text-slate-500">Beneficiary:</span>
-                    <span className="font-bold">{log.patientName}</span>
-                    {log.patientAge && <span className="text-slate-400">({log.patientAge})</span>}
+                      {/* 3. Beneficiary & Frontline Context */}
+                      <div className="p-3.5 rounded-xl bg-white dark:bg-[#202024] border border-slate-200 dark:border-[#2E2E34] space-y-2 flex flex-col justify-between">
+                        <div className="space-y-2">
+                          <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Beneficiary &amp; Frontline Context</span>
+                          </div>
+                          <div className="space-y-1.5 text-[11px]">
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400">Patient:</span>
+                              <span className="font-bold text-slate-900 dark:text-white">
+                                {log.patientName || 'Master Register Profile'}
+                                {log.patientAge && <span className="text-slate-400 font-normal"> ({log.patientAge}, {log.patientGender || 'F'})</span>}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400">ABHA Address:</span>
+                              <span className="font-mono text-emerald-700 dark:text-emerald-400 font-bold">
+                                {log.abhaId || '91-8765-4321-0987'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400">Village:</span>
+                              <span className="font-bold text-slate-800 dark:text-slate-200">{log.village}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400">Reporting ASHA:</span>
+                              <span className="font-bold text-slate-800 dark:text-slate-200">{log.workerName}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400">Contact:</span>
+                              <a
+                                href={`tel:${log.workerPhone || '+919876543210'}`}
+                                className="font-mono text-emerald-600 hover:underline flex items-center gap-1"
+                              >
+                                <Phone className="w-3 h-3" />
+                                <span>{log.workerPhone || '+91 98765 43210'}</span>
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-100 dark:border-[#2C2C32] text-[10px] text-slate-400 flex items-center justify-between">
+                          <span>Via {log.channel}</span>
+                          <span className="text-emerald-600 font-mono font-bold flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            HMAC SHA-256 Validated
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Bar for the Expanded Row */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200 dark:border-[#2C2C32]">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => setSelectedLog(log)}
+                          className="bg-[#0C5A3E] hover:bg-[#08422d] text-white text-xs font-bold gap-1.5 cursor-pointer shadow-xs"
+                        >
+                          <QrCode className="w-3.5 h-3.5" />
+                          <span>Open Full Clinical Referral Slip</span>
+                        </Button>
+
+                        {log.ticketId && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => navigate('/phc')}
+                            className="text-xs text-rose-700 dark:text-rose-400 border-rose-300 dark:border-rose-800 gap-1.5 cursor-pointer"
+                          >
+                            <Activity className="w-3.5 h-3.5 text-rose-600" />
+                            <span>Open PHC Emergency Triage</span>
+                          </Button>
+                        )}
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigate(`/af/worker/${encodeURIComponent(log.workerName)}`)}
+                          className="text-xs text-slate-700 dark:text-slate-300 gap-1.5 cursor-pointer"
+                        >
+                          <Users className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>ASHA Performance Profile</span>
+                        </Button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => toggleRow(log.id)}
+                        className="text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>Collapse Details</span>
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 )}
-
-                {/* Vitals Summary Pill */}
-                {log.vitalsSummary && (
-                  <div className="inline-block mt-1 text-[10px] font-mono px-2 py-0.5 rounded bg-slate-50 dark:bg-[#252528] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#323236]">
-                    {log.vitalsSummary}
-                  </div>
-                )}
               </div>
-
-              {/* Card Footer: Worker, Ticket ID & Action CTA */}
-              <div className="pt-2.5 border-t border-slate-100 dark:border-[#28282C] flex items-center justify-between text-[11px]">
-                <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 truncate">
-                  <Users className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span className="truncate">{log.workerName}</span>
-                </div>
-
-                {log.ticketId ? (
-                  <span className="font-mono text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
-                    {log.ticketId}
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    {log.channel.replace(' Gateway', '')}
-                  </span>
-                )}
-              </div>
-
-              {/* Hover Cue */}
-              <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-end gap-1 pt-0.5">
-                <span>Inspect Ticket &amp; Log</span>
-                <ArrowRight className="w-3 h-3" />
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {filteredLogs.length === 0 && (

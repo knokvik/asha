@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useSync, FrontlineSyncActivity, TriageEvidence } from '@/shared/context/SyncContext';
 import { Button } from '@/components/ui/button';
+import { apiClient } from '@/shared/api/client';
 
 export function LiveTriagePage() {
   const navigate = useNavigate();
@@ -372,7 +373,35 @@ function TriageRowCard({
   onPreviewImage,
 }: TriageRowCardProps) {
   const [copied, setCopied] = useState(false);
+  const [attachmentUrls, setAttachmentUrls] = useState<Record<number, string>>({});
   const isRed = item.severity === 'RED';
+
+  useEffect(() => {
+    let active = true;
+    const objectUrls: string[] = [];
+    const attachments = item.attachments ?? [];
+    void Promise.all(
+      attachments.map(async (attachment) => {
+        try {
+          const response = await apiClient.get(attachment.url, { responseType: 'blob' });
+          const objectUrl = URL.createObjectURL(response.data);
+          objectUrls.push(objectUrl);
+          return [attachment.index, objectUrl] as const;
+        } catch {
+          return null;
+        }
+      }),
+    ).then((results) => {
+      if (!active) return;
+      setAttachmentUrls(Object.fromEntries(
+        results.filter((result): result is readonly [number, string] => result !== null),
+      ));
+    });
+    return () => {
+      active = false;
+      objectUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [item.attachments]);
 
   const copyTicketId = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -389,9 +418,10 @@ function TriageRowCard({
 
     if (item.attachments && item.attachments.length > 0) {
       item.attachments.forEach((att) => {
+        const resolvedUrl = attachmentUrls[att.index];
         if (att.type === 'image') {
           images.push({
-            url: att.url,
+            url: resolvedUrl ?? '',
             title: 'Field Photo Capture',
             caption: `Captured by ${item.workerName} · ${item.syncTime}`,
           });
@@ -400,7 +430,7 @@ function TriageRowCard({
             title: `Voice Note (${item.workerName})`,
             duration: '0:42',
             transcript: item.clinicalPayload || item.details,
-            url: att.url,
+            url: resolvedUrl,
           });
         }
       });
@@ -438,7 +468,7 @@ function TriageRowCard({
     }
 
     return { images, audios };
-  }, [item]);
+  }, [item, attachmentUrls]);
 
   return (
     <div
@@ -739,11 +769,17 @@ function TriageRowCard({
                   className="bg-white dark:bg-[#1E1E1E] rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs group"
                 >
                   <div className="relative h-44 bg-slate-900 overflow-hidden">
-                    <img
-                      src={img.url}
-                      alt={img.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-90"
-                    />
+                    {img.url ? (
+                      <img
+                        src={img.url}
+                        alt={img.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-90"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-xs text-slate-400">
+                        Loading field photo…
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
                     <button
                       onClick={() => onPreviewImage(img)}

@@ -5,6 +5,8 @@ enum HelplineType {
   obstetricTransport, // 102 (Janani Shishu Suraksha)
   healthAdvice104,    // 104 National Health Helpline
   mentalHealthKiran,  // 14416 (Tele-MANAS)
+  childlineEmergency, // 1098
+  nationalEmergency112, // 112
 }
 
 @immutable
@@ -34,6 +36,8 @@ class TeleconsultationService {
     HelplineType.obstetricTransport: '102',
     HelplineType.healthAdvice104: '104',
     HelplineType.mentalHealthKiran: '14416',
+    HelplineType.childlineEmergency: '1098',
+    HelplineType.nationalEmergency112: '112',
   };
 
   /// Generates a standardized tel: URI for one-tap voice dialing without internet (Requirement 38.1)

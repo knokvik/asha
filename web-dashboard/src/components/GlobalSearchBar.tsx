@@ -251,16 +251,7 @@ export function GlobalSearchBar() {
     <div ref={containerRef} className="relative w-full">
       {/* Search Input Bar */}
       <div className="relative flex items-center">
-        <svg
-          className="absolute left-3.5 h-4 w-4 text-[#39B37D] pointer-events-none transition-colors"
-          viewBox="0 0 22 22"
-          aria-hidden="true"
-        >
-          <path
-            fill="currentColor"
-            d="M9.6 0h2.8v6.8l6-3.45 1.4 2.42-5.9 3.4 5.9 3.4-1.4 2.42-6-3.45V22H9.6v-6.46l-6 3.45-1.4-2.42 5.9-3.4-5.9-3.4L3.6 3.35l6 3.45V0Z"
-          />
-        </svg>
+        <Search className="absolute left-3.5 h-4 w-4 text-slate-400 dark:text-slate-500 pointer-events-none transition-colors" />
         
         <input
           ref={inputRef}

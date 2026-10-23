@@ -87,6 +87,7 @@ Language choices from the design document:
     - JWT payload includes `sub`, `role`, `state_code`, `district_code`, `block_code`, `area_villages[]`
     - Implement offline credential as bcrypt hash of `(worker_id + device_id + expiry)` stored in `flutter_secure_storage` on device
     - _Requirements: 2.1, 2.6, 2.7_
+    - Progress: Mobile main login now presents ASHA ID + PIN and registered mobile + OTP as two selectable methods. The existing Firebase OTP flow and backend ASHA-ID session flow are reused from one entry screen.
 
   - [x] 2.3 Implement multi-tenant row-level isolation middleware
     - Create `core/multi_tenant.py`: SQLAlchemy event listener `do_orm_execute` that appends area filter for ASHA and AF roles based on JWT claims
@@ -488,6 +489,7 @@ Language choices from the design document:
     - _Requirements: 25.1, 25.2, 25.3, 25.4, 25.5_
     - Progress: the all-India geo payload is no longer declared as a mobile asset. The server build produces an allowlisted, SHA-256-verified `map-india` archive; the worker installs it on demand to protected app storage, where the map and route views read it. Old map-pack deep links now open the unified Offline Packs screen.
     - Progress: state-level facility views keep the existing pin design while using debounced camera updates, viewport filtering, zoom-aware render budgets, and nearest-first selection; this prevents a state tap or pinch gesture from materialising thousands of Flutter markers and freezing the map.
+    - Progress: map routes now use only a graph-verified offline road path or live road-service geometry. When pack coverage is missing, the map deliberately draws no fabricated line, reports the limitation, and offers opt-in heading guidance along the first verified road segment.
 
   - [x] 12.3 Implement VHSND session planning and health education library
     - VHSND: session beneficiary list per service (immunization/ANC/CBAC/FP) + mobilisation checklist + session summary form; attendance + services recording → update individual beneficiary timelines; VHSNC meeting log

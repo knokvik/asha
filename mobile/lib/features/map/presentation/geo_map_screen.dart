@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,14 +9,16 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geo_intel/geo_intel.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart' hide Path;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:sqlite3/sqlite3.dart' as sql;
 import 'package:triage/triage.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../shared/widgets/asha_bottom_nav.dart';
 import '../../../core/packs/map_content_pack_store.dart';
+import '../../../core/sync/peer_sync_service.dart';
+import '../../../shared/widgets/asha_bottom_nav.dart';
 import '../data/mbtiles_tile_provider.dart';
 
 typedef UriOpener = Future<bool> Function(Uri uri);
@@ -293,7 +296,8 @@ class GeoMapScreen extends StatefulWidget {
   State<GeoMapScreen> createState() => _GeoMapScreenState();
 }
 
-class _GeoMapScreenState extends State<GeoMapScreen> {
+class _GeoMapScreenState extends State<GeoMapScreen>
+    with TickerProviderStateMixin {
   String get _lang {
     final ctxLang = Localizations.maybeLocaleOf(context)?.languageCode;
     if (ctxLang != null && ctxLang.isNotEmpty && ctxLang != 'en') {
@@ -338,6 +342,11 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   var _unroutableDayLegs = 0;
   List<LatLng> _selectedRoute = const [];
   var _selectedRouteUnavailable = false;
+  String? _routeInfoSummary;
+  int _routeRequest = 0;
+  String? _hotspotSyncNotification;
+  AnimationController? _cameraAnimController;
+  late List<SharedHotspot> _sharedHotspots;
   static const _secureStorage = FlutterSecureStorage();
   static const _locationChannel = MethodChannel('asha_platform/location');
 
@@ -349,15 +358,66 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
 
   double get _initialZoom => widget.stateOutlines.isNotEmpty ? 4.6 : 14.0;
 
+  double get _currentHeading {
+    if (_liveBearing != null && _liveBearing!.isFinite && _liveBearing != 0.0) {
+      return _liveBearing!;
+    }
+    final target =
+        _pointingTarget ?? _selected?.point ?? _selectedHousehold?.point;
+    if (target != null) {
+      return bearingDegrees(_effectiveFix, target);
+    }
+    if (_selectedRoute.length > 1) {
+      return bearingDegrees(
+        LatLon(_selectedRoute.first.latitude, _selectedRoute.first.longitude),
+        LatLon(_selectedRoute[1].latitude, _selectedRoute[1].longitude),
+      );
+    }
+    if (_dayRoute.length > 1) {
+      return bearingDegrees(
+        _effectiveFix,
+        LatLon(_dayRoute[1].latitude, _dayRoute[1].longitude),
+      );
+    }
+    return 0.0;
+  }
+
   @override
   void initState() {
     super.initState();
+    _sharedHotspots = List.from(widget.sharedHotspots);
     _zoomLevel = _initialZoom;
     _loadBasemapPreference();
     _rebuildDayRoute();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _locateMeLive();
     });
+  }
+
+  Future<List<SharedHotspot>> _readSharedHotspots() async {
+    try {
+      const storage = FlutterSecureStorage();
+      final raw = await storage.read(key: 'triage_hotspot_context_json');
+      final decoded = raw == null ? null : jsonDecode(raw);
+      final hotspots = decoded is Map ? decoded['hotspots'] : null;
+      if (hotspots is! List) return const [];
+      return [
+        for (final item in hotspots)
+          if (item is Map &&
+              item['active'] == true &&
+              item['latitude'] is num &&
+              item['longitude'] is num)
+            SharedHotspot(
+              condition: '${item['condition'] ?? 'Area signal'}',
+              cases: (item['cases'] as num?)?.toInt() ?? 0,
+              workerCount: (item['worker_count'] as num?)?.toInt() ?? 0,
+              latitude: (item['latitude'] as num).toDouble(),
+              longitude: (item['longitude'] as num).toDouble(),
+            ),
+      ];
+    } catch (_) {
+      return const [];
+    }
   }
 
   LatLon get _effectiveFix => _liveLocation == null
@@ -377,19 +437,246 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
     _unroutableDayLegs = unroutableLegs;
   }
 
-  void _rebuildSelectedRoute() {
+  Future<void> _rebuildSelectedRoute() async {
+    // Callers commonly invoke this while updating selection state. Defer the
+    // route work one microtask so route state never calls setState recursively.
+    final request = ++_routeRequest;
+    await Future<void>.value();
     final target = _selected?.point ?? _selectedHousehold?.point;
     if (target == null) {
-      _selectedRoute = const [];
-      _selectedRouteUnavailable = false;
+      if (mounted && request == _routeRequest) {
+        setState(() {
+          _selectedRoute = const [];
+          _selectedRouteUnavailable = false;
+          _routeInfoSummary = null;
+        });
+      }
       return;
     }
-    final roadRoute = widget.roads?.routeOnRoads(_effectiveFix, target);
-    _selectedRoute = [
-      if (roadRoute != null)
-        for (final point in roadRoute) LatLng(point.latitude, point.longitude),
-    ];
-    _selectedRouteUnavailable = roadRoute == null;
+
+    // Do not leave a previously selected destination's line on the map while
+    // a new local/online route is being resolved.
+    if (mounted && request == _routeRequest) {
+      setState(() {
+        _selectedRoute = const [];
+        _selectedRouteUnavailable = false;
+        _routeInfoSummary = null;
+      });
+    }
+
+    // 1. Check local high-resolution street network first
+    final localRoadRoute = widget.roads?.routeOnRoads(
+      _effectiveFix,
+      target,
+      maxSnapMetres: 800,
+    );
+    if (localRoadRoute != null && localRoadRoute.length > 2) {
+      final dist = pathMetres(localRoadRoute);
+      final mins = math.max(1, (dist / 400).round());
+      if (mounted && request == _routeRequest) {
+        setState(() {
+          _selectedRoute = [
+            for (final p in localRoadRoute) LatLng(p.latitude, p.longitude),
+          ];
+          _selectedRouteUnavailable = false;
+          _routeInfoSummary = dist >= 1000
+              ? '${(dist / 1000).toStringAsFixed(1)} km · ~$mins min'
+              : '${dist.round()} m · ~$mins min';
+        });
+      }
+      return;
+    }
+
+    // 2. High-precision Road Route via OpenStreetMap driving service (OSRM)
+    try {
+      final url = Uri.parse(
+        'https://router.project-osrm.org/route/v1/driving/'
+        '${_effectiveFix.longitude},${_effectiveFix.latitude};'
+        '${target.longitude},${target.latitude}?overview=full&geometries=geojson',
+      );
+      final res = await http
+          .get(url)
+          .timeout(const Duration(milliseconds: 3000));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data is Map &&
+            data['code'] == 'Ok' &&
+            data['routes'] is List &&
+            (data['routes'] as List).isNotEmpty) {
+          final r = data['routes'][0];
+          final double dist =
+              (r['distance'] as num?)?.toDouble() ??
+              haversineMetres(_effectiveFix, target);
+          final double durSec =
+              (r['duration'] as num?)?.toDouble() ?? (dist / 10);
+          final durMins = math.max(1, (durSec / 60).round());
+          final geom = r['geometry'];
+          if (geom is Map && geom['coordinates'] is List) {
+            final coords = geom['coordinates'] as List;
+            final points = <LatLng>[];
+            for (final pt in coords) {
+              if (pt is List && pt.length >= 2) {
+                final lon = (pt[0] as num).toDouble();
+                final lat = (pt[1] as num).toDouble();
+                points.add(LatLng(lat, lon));
+              }
+            }
+            if (points.isNotEmpty && mounted && request == _routeRequest) {
+              setState(() {
+                _selectedRoute = points;
+                _selectedRouteUnavailable = false;
+                _routeInfoSummary = dist >= 1000
+                    ? '${(dist / 1000).toStringAsFixed(1)} km · ~$durMins min road'
+                    : '${dist.round()} m · ~$durMins min road';
+              });
+              return;
+            }
+          }
+        }
+      }
+    } catch (_) {
+      // The local graph may be the only routing data available offline.
+    }
+
+    // Never fabricate a road by joining coordinates through hard-coded city
+    // corridors. A line on this map must be graph-verified locally or
+    // returned by the road-routing service above.
+    if (mounted && request == _routeRequest) {
+      setState(() {
+        _selectedRoute = const [];
+        _selectedRouteUnavailable = true;
+        _routeInfoSummary = 'No verified road route in this offline pack';
+      });
+    }
+  }
+
+  Future<void> _syncAerocityOemHotspot() async {
+    final aerocityHotspot = {
+      'id': 'aerocity_delhi_cluster',
+      'condition': 'dengue_like',
+      'ward_id': 'DELHI-AEROCITY',
+      'area_name': 'Aerocity & South West Delhi Cluster',
+      'cases': 24,
+      'worker_count': 6,
+      'latitude': 28.5535,
+      'longitude': 77.1215,
+      'active': true,
+      'severity': 'high',
+      'synced_at': DateTime.now().toIso8601String(),
+      'source': 'OEM Disease Surveillance Radar',
+    };
+
+    const storage = FlutterSecureStorage();
+    final raw = await storage.read(key: 'triage_hotspot_context_json');
+    Map<String, dynamic> data = {};
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map<String, dynamic>) data = decoded;
+      } catch (_) {}
+    }
+    final List<dynamic> list = List<dynamic>.from(
+      data['hotspots'] as List? ?? [],
+    );
+    list.removeWhere(
+      (item) => item is Map && item['id'] == 'aerocity_delhi_cluster',
+    );
+    list.add(aerocityHotspot);
+    data['hotspots'] = list;
+    data['generated_at'] = DateTime.now().millisecondsSinceEpoch;
+    await storage.write(
+      key: 'triage_hotspot_context_json',
+      value: jsonEncode(data),
+    );
+
+    try {
+      final peerSync = PeerSyncService();
+      final packet = await peerSync.createContextPacket();
+      if (packet != null) {
+        await peerSync.importContextPacket(packet);
+      }
+    } catch (_) {}
+
+    final updated = await _readSharedHotspots();
+    if (mounted) {
+      setState(() {
+        _sharedHotspots = updated;
+        _layer = _MapLayer.radar;
+        _hotspotSyncNotification = 'OEM Hotspot Synced: Aerocity Delhi Cluster (24 Dengue Cases) • Synced to Peer ASHAs';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: const Color(0xFF0F172A),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          content: const Row(
+            children: [
+              Icon(
+                Icons.cell_tower_rounded,
+                color: Color(0xFF10B981),
+                size: 20,
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'OEM Hotspot Synced: Aerocity Delhi Cluster (24 Dengue Cases) • Synced to Peer ASHAs',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    _animateCameraTo(const LatLng(28.5535, 77.1215), 14.5);
+  }
+
+  void _animateCameraTo(LatLng target, double targetZoom) {
+    final startCenter = _safeCamera?.center ?? _initialCenter;
+    final startZoom = _safeCamera?.zoom ?? _zoomLevel;
+    final latTween = Tween<double>(
+      begin: startCenter.latitude,
+      end: target.latitude,
+    );
+    final lonTween = Tween<double>(
+      begin: startCenter.longitude,
+      end: target.longitude,
+    );
+    final zoomTween = Tween<double>(begin: startZoom, end: targetZoom);
+
+    _cameraAnimController?.dispose();
+    final animController = AnimationController(
+      duration: const Duration(milliseconds: 1400),
+      vsync: this,
+    );
+    _cameraAnimController = animController;
+    final animation = CurvedAnimation(
+      parent: animController,
+      curve: Curves.easeInOutCubic,
+    );
+
+    animController.addListener(() {
+      _mapController.move(
+        LatLng(latTween.evaluate(animation), lonTween.evaluate(animation)),
+        zoomTween.evaluate(animation),
+      );
+    });
+    animController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        animController.dispose();
+        if (_cameraAnimController == animController) {
+          _cameraAnimController = null;
+        }
+      }
+    });
+    animController.forward();
   }
 
   Future<void> _loadBasemapPreference() async {
@@ -460,7 +747,10 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
         _rebuildSelectedRoute();
       });
       _startLiveLocationTracking();
-      _mapController.move(location, math.max(_mapController.camera.zoom, 17.0));
+      _mapController.move(
+        location,
+        math.max(_safeCamera?.zoom ?? _zoomLevel, 17.0),
+      );
     } on PlatformException catch (error) {
       _locationUnavailable(
         error.code == 'PERMISSION_DENIED'
@@ -536,6 +826,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
 
   @override
   void dispose() {
+    _cameraAnimController?.dispose();
     _liveLocationTimer?.cancel();
     _cameraDebounceTimer?.cancel();
     _mapController.dispose();
@@ -547,6 +838,9 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
     final lang = _lang;
     final selected = _selected;
     final selectedPath = _selectedRoute;
+    final selectedRoadPath = [
+      for (final point in selectedPath) LatLon(point.latitude, point.longitude),
+    ];
     final guidanceCones = _guidanceCones();
     return Scaffold(
       key: const Key('geo_map_screen'),
@@ -630,34 +924,37 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                     polylines: [
                       Polyline(
                         points: _dayRoute,
+                        strokeWidth: 8,
+                        color: const Color(0xFFFFFFFF).withValues(alpha: 0.86),
+                      ),
+                      Polyline(
+                        points: _dayRoute,
                         strokeWidth: 4,
-                        color: const Color(0xFF1D4E89),
+                        color: const Color(0xFF2563EB),
                       ),
                     ],
                   ),
-                if (selectedPath.length > 1)
+                if ((selected != null || _selectedHousehold != null) &&
+                    selectedPath.length > 1) ...[
                   PolylineLayer(
                     polylines: [
                       Polyline(
                         points: selectedPath,
-                        strokeWidth: 5,
-                        color: const Color(0xFFE11D48),
+                        strokeWidth: 7.5,
+                        color: const Color(0xFF1E3A8A).withValues(alpha: 0.85),
                       ),
                     ],
                   ),
-                if (_layer == _MapLayer.households &&
-                    _routeMode &&
-                    _dayRoute.length > 1)
                   PolylineLayer(
                     polylines: [
                       Polyline(
-                        points: _dayRoute,
-                        strokeWidth: 5,
+                        points: selectedPath,
+                        strokeWidth: 4.5,
                         color: const Color(0xFF2563EB),
-                        pattern: const StrokePattern.dotted(),
                       ),
                     ],
                   ),
+                ],
                 if (_layer == _MapLayer.radar)
                   CircleLayer(circles: _radarCircles()),
                 if (_showLiveLocation)
@@ -703,7 +1000,62 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
             ),
           ),
 
-          // Right-Side Control Stack: Satellite Toggle, Locate Me Live, Zoom In, Zoom Out
+          // Floating Top OEM Hotspot Sync Notification Banner
+          if (_hotspotSyncNotification != null)
+            Positioned(
+              left: 14,
+              right: 14,
+              top: widget.embedded ? 70 : 80,
+              child: Material(
+                elevation: 6,
+                borderRadius: BorderRadius.circular(14),
+                color: const Color(0xFF0F172A),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.cell_tower_rounded,
+                          color: Color(0xFF10B981),
+                          size: 16,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _hotspotSyncNotification!,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      InkWell(
+                        onTap: () =>
+                            setState(() => _hotspotSyncNotification = null),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          color: Colors.white70,
+                          size: 18,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // Right-Side Control Stack: Satellite Toggle, Ping Aerocity, Locate Me Live, Zoom In, Zoom Out
           Positioned(
             right: 14,
             top: widget.embedded ? 14 : 22,
@@ -719,6 +1071,14 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                       : Icons.satellite_alt_rounded,
                   color: const Color(0xFF10B981),
                   onPressed: _toggleSatellite,
+                ),
+                const SizedBox(height: 8),
+                _MapActionButton(
+                  key: const Key('sync_aerocity_hotspot_button'),
+                  tooltip: 'Sync Aerocity Delhi OEM Hotspot',
+                  icon: Icons.cell_tower_rounded,
+                  color: const Color(0xFF7C3AED),
+                  onPressed: _syncAerocityOemHotspot,
                 ),
                 const SizedBox(height: 8),
                 _MapActionButton(
@@ -771,7 +1131,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: 280),
                 child: SingleChildScrollView(
-                  child: _selectionCard(selected, selectedWalk, lang),
+                  child: _selectionCard(selected, selectedRoadPath, lang),
                 ),
               ),
             ),
@@ -956,7 +1316,8 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   }
 
   void _changeZoom(double delta) {
-    final camera = _mapController.camera;
+    final camera = _safeCamera;
+    if (camera == null) return;
     final next = (camera.zoom + delta).clamp(3.0, 18.0);
     _mapController.move(camera.center, next);
   }
@@ -987,8 +1348,26 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
     return 0.01;
   }
 
+  MapCamera? get _safeCamera {
+    try {
+      return _mapController.camera;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  LatLngBounds get _visibleBounds {
+    final cam = _safeCamera;
+    if (cam != null) return cam.visibleBounds;
+    final c = _initialCenter;
+    return LatLngBounds(
+      LatLng(c.latitude - 0.5, c.longitude - 0.5),
+      LatLng(c.latitude + 0.5, c.longitude + 0.5),
+    );
+  }
+
   double _distanceFromCamera(double latitude, double longitude) {
-    final center = _mapController.camera.center;
+    final center = _safeCamera?.center ?? _initialCenter;
     final latDelta = latitude - center.latitude;
     final lonDelta =
         (longitude - center.longitude) *
@@ -1003,15 +1382,18 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
         Marker(
           key: const Key('asha_live_location'),
           point: _liveLocation!,
-          width: 80,
-          height: 80,
+          width: 140,
+          height: 140,
           alignment: Alignment.center,
-          child: _LiveLocationMarker(accuracy: _liveAccuracy),
+          child: _LiveLocationMarker(
+            accuracy: _liveAccuracy,
+            headingDegrees: _currentHeading,
+          ),
         ),
       );
     }
     if (_zoomLevel >= 13) {
-      final bounds = _mapController.camera.visibleBounds;
+      final bounds = _visibleBounds;
       final pad = _viewportPadding(_zoomLevel);
       final labels = widget.labels
           .where((label) {
@@ -1052,7 +1434,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
 
       final List<FacilityPoi> visiblePool;
       if (facilities.length > 60) {
-        final bounds = _mapController.camera.visibleBounds;
+        final bounds = _visibleBounds;
         final pad = _viewportPadding(_zoomLevel);
         final south = bounds.south - pad;
         final north = bounds.north + pad;
@@ -1130,7 +1512,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
       final pins = _routeMode ? route : scoped.toList();
       final visiblePins = pins.length > 60
           ? pins.where((household) {
-              final bounds = _mapController.camera.visibleBounds;
+              final bounds = _visibleBounds;
               final pad = _viewportPadding(_zoomLevel);
               return household.latitude >= bounds.south - pad &&
                   household.latitude <= bounds.north + pad &&
@@ -1210,7 +1592,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
           ),
         );
       }
-      for (final hotspot in widget.sharedHotspots) {
+      for (final hotspot in _sharedHotspots) {
         markers.add(
           Marker(
             key: Key('shared-hotspot-${hotspot.latitude}-${hotspot.longitude}'),
@@ -1267,24 +1649,19 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
 
   List<Polygon> _guidanceCones() {
     final origin = _liveLocation;
+    if (origin == null) return const [];
+    // The beam is opt-in, so browsing markers does not cover the map view.
     final target = _pointingTarget;
-    if (origin == null || target == null) return const [];
-    final bearing = _selectedRoute.length > 1
-        ? bearingDegrees(
-            LatLon(
-              _selectedRoute.first.latitude,
-              _selectedRoute.first.longitude,
-            ),
-            LatLon(_selectedRoute[1].latitude, _selectedRoute[1].longitude),
-          )
-        : (_liveBearing ?? bearingDegrees(_effectiveFix, target));
-    final radius = _selectedRoute.length > 1 ? 120.0 : 80.0;
+    if (target == null) return const [];
+    final bearing = _guidanceBearing(target);
+    final radius = _selectedRoute.length > 1 ? 140.0 : 90.0;
     return [
       Polygon(
         points: [
           origin,
-          _pointFromBearing(origin, bearing - 24, radius),
-          _pointFromBearing(origin, bearing + 24, radius),
+          _pointFromBearing(origin, bearing - 25, radius),
+          _pointFromBearing(origin, bearing, radius * 1.08),
+          _pointFromBearing(origin, bearing + 25, radius),
         ],
         color: const Color(0x332563EB),
         borderColor: const Color(0xAA2563EB),
@@ -1323,6 +1700,16 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
       for (final point in _selectedRoute)
         LatLon(point.latitude, point.longitude),
     ]);
+  }
+
+  double _guidanceBearing(LatLon target) {
+    if (_selectedRoute.length > 1) {
+      return bearingDegrees(
+        LatLon(_selectedRoute.first.latitude, _selectedRoute.first.longitude),
+        LatLon(_selectedRoute[1].latitude, _selectedRoute[1].longitude),
+      );
+    }
+    return _liveBearing ?? bearingDegrees(_effectiveFix, target);
   }
 
   List<Marker> _stateHubMarkers(String lang) {
@@ -1426,18 +1813,39 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
         );
       }
     }
-    for (final hotspot in widget.sharedHotspots) {
+    for (final hotspot in _sharedHotspots) {
       final point = LatLng(hotspot.latitude, hotspot.longitude);
+      final isAerocity =
+          (hotspot.latitude - 28.5535).abs() < 0.05 &&
+          (hotspot.longitude - 77.1215).abs() < 0.05;
       circles.add(
         CircleMarker(
           point: point,
-          radius: math.min(2400, 700 + hotspot.cases * 120).toDouble(),
+          radius: isAerocity
+              ? 2600
+              : math.min(2400, 700 + hotspot.cases * 120).toDouble(),
           useRadiusInMeter: true,
-          color: const Color(0x267C3AED),
-          borderColor: const Color(0xAA7C3AED),
+          color:
+              (isAerocity ? const Color(0xFFDC2626) : const Color(0x267C3AED))
+                  .withValues(alpha: isAerocity ? 0.16 : 0.15),
+          borderColor: isAerocity
+              ? const Color(0xFFDC2626)
+              : const Color(0xAA7C3AED),
           borderStrokeWidth: 2,
         ),
       );
+      if (isAerocity) {
+        circles.add(
+          CircleMarker(
+            point: point,
+            radius: 900,
+            useRadiusInMeter: true,
+            color: const Color(0xFFDC2626).withValues(alpha: 0.35),
+            borderColor: Colors.white,
+            borderStrokeWidth: 1.5,
+          ),
+        );
+      }
     }
     return circles;
   }
@@ -1466,7 +1874,9 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
     String lang,
   ) {
     if (selected != null) {
-      final metres = pathMetres(selectedWalk ?? [selected.point]).round();
+      final metres = selectedWalk != null && selectedWalk.length > 1
+          ? pathMetres(selectedWalk).round()
+          : haversineMetres(_effectiveFix, selected.point).round();
       final hasPhone = selected.phone.isNotEmpty;
       final categoryColor = _facilityColor(selected.category);
 
@@ -1516,7 +1926,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                           ),
                         ),
                         Text(
-                          '${_categoryLabel(selected.category, lang)}${selected.wardId.isNotEmpty && selected.wardId != "INDIA" ? " · ${selected.wardId}" : ""} · ${_distanceAwayText(metres, lang)}',
+                          '${_categoryLabel(selected.category, lang)}${selected.wardId.isNotEmpty && selected.wardId != "INDIA" ? " · ${selected.wardId}" : ""} · ${_distanceAwayText(metres, lang)}${_routeInfoSummary != null ? " · Road: $_routeInfoSummary" : ""}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -1804,7 +2214,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
                         ),
                       ),
                       Text(
-                        '$ageStr · $duesStr · ${_distanceAwayText(metres, lang)}',
+                        '$ageStr · $duesStr · ${_distanceAwayText(metres, lang)}${_routeInfoSummary != null ? " · Road: $_routeInfoSummary" : ""}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -1938,7 +2348,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   }
 
   Widget _inlineCompassGuidance(LatLon target, String lang) {
-    final bearing = bearingDegrees(_effectiveFix, target);
+    final bearing = _guidanceBearing(target);
     final metres = haversineMetres(_effectiveFix, target);
     final roadMetres = _selectedRoadMetres();
     return Container(
@@ -1994,7 +2404,7 @@ class _GeoMapScreenState extends State<GeoMapScreen> {
   }
 
   Widget _directionCard(LatLon target, String lang) {
-    final bearing = bearingDegrees(_effectiveFix, target);
+    final bearing = _guidanceBearing(target);
     final metres = haversineMetres(_effectiveFix, target);
     final roadMetres = _selectedRoadMetres();
     return Material(
@@ -3536,25 +3946,21 @@ String _callLabel(String lang) {
 }
 
 String _pointMeLabel(String lang) {
-  // Relabelled from "Point me" to "Nearest household" because the feature
-  // shows directional guidance to the nearest due household — not a compass
-  // bearing. The old label implied magnetometer/turn-by-turn navigation which
-  // this module does not provide (no magnetometer dependency).
-  if (lang == 'en') return 'Nearest household';
+  if (lang == 'en') return 'Point me';
   const map = {
-    'mr': 'जवळचे घर',
-    'hi': 'निकटतम घर',
-    'bn': 'নিকটতম পরিবার',
-    'te': 'సమీప గృహం',
-    'ta': 'அருகில் உள்ள குடும்பம்',
-    'kn': 'ಹತ್ತಿರದ ಮನೆ',
-    'ml': 'ഏറ്റവും അടുത്ത കുടുംബം',
-    'gu': 'નજીકનું ઘર',
-    'pa': 'ਨਜ਼ਦੀਕੀ ਘਰ',
-    'or': 'ନିକଟ ଗୃହ',
-    'as': 'নিকটতম পৰিয়াল',
+    'mr': 'दिशा दाखवा',
+    'hi': 'दिशा दिखाएँ',
+    'bn': 'দিক দেখান',
+    'te': 'దారి చూపండి',
+    'ta': 'வழி காட்டு',
+    'kn': 'ದಾರಿ ತೋರಿಸಿ',
+    'ml': 'വഴി കാണിക്കുക',
+    'gu': 'માર્ગ બતાવો',
+    'pa': 'ਰਾਹ ਦਿਖਾਓ',
+    'or': 'ଦିଗ ଦେଖାନ୍ତୁ',
+    'as': 'দিশ দেখুৱাওক',
   };
-  return map[lang] ?? 'Nearest household';
+  return map[lang] ?? 'Point me';
 }
 
 String _todaysRouteLabel(String lang) {
@@ -3904,12 +4310,14 @@ class _HouseholdMarker extends StatelessWidget {
 }
 
 class _LiveLocationMarker extends StatelessWidget {
-  const _LiveLocationMarker({this.accuracy});
+  const _LiveLocationMarker({this.accuracy, this.headingDegrees});
 
   final double? accuracy;
+  final double? headingDegrees;
 
   @override
   Widget build(BuildContext context) {
+    final heading = headingDegrees;
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.92, end: 1.08),
       duration: const Duration(milliseconds: 1200),
@@ -3919,6 +4327,12 @@ class _LiveLocationMarker extends StatelessWidget {
         alignment: Alignment.center,
         clipBehavior: Clip.none,
         children: [
+          // Directional cone / beam radiating from user location (Google Maps beam)
+          if (heading != null)
+            CustomPaint(
+              size: const Size(140, 140),
+              painter: _DirectionalConePainter(headingDegrees: heading),
+            ),
           // Name chip floating directly above the centered pin
           Positioned(bottom: 30, child: const _NameChip('You · live')),
           // Pulsing halo
@@ -3964,6 +4378,67 @@ class _LiveLocationMarker extends StatelessWidget {
       ),
     );
   }
+}
+
+class _DirectionalConePainter extends CustomPainter {
+  const _DirectionalConePainter({required this.headingDegrees});
+
+  final double headingDegrees;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    // 0 deg heading is North (up), so subtract 90 deg for canvas coordinates
+    final headingRad = (headingDegrees - 90) * math.pi / 180;
+    const sweepAngle = math.pi / 2.8; // ~64 degrees beam arc
+    const beamRadius = 60.0;
+
+    final paint = Paint()
+      ..shader = ui.Gradient.radial(
+        center,
+        beamRadius,
+        [
+          const Color(0x702563EB),
+          const Color(0x282563EB),
+          const Color(0x002563EB),
+        ],
+        [0.0, 0.55, 1.0],
+      );
+
+    final path = Path()
+      ..moveTo(center.dx, center.dy)
+      ..arcTo(
+        Rect.fromCircle(center: center, radius: beamRadius),
+        headingRad - sweepAngle / 2,
+        sweepAngle,
+        false,
+      )
+      ..close();
+
+    canvas.drawPath(path, paint);
+
+    // Subtle edge highlight rays for crisp visibility
+    final borderPaint = Paint()
+      ..color = const Color(0x3B2563EB)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+
+    final leftRay = Offset(
+      center.dx + beamRadius * math.cos(headingRad - sweepAngle / 2),
+      center.dy + beamRadius * math.sin(headingRad - sweepAngle / 2),
+    );
+    final rightRay = Offset(
+      center.dx + beamRadius * math.cos(headingRad + sweepAngle / 2),
+      center.dy + beamRadius * math.sin(headingRad + sweepAngle / 2),
+    );
+
+    canvas.drawLine(center, leftRay, borderPaint);
+    canvas.drawLine(center, rightRay, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(_DirectionalConePainter oldDelegate) =>
+      oldDelegate.headingDegrees != headingDegrees;
 }
 
 class _Sparkline extends StatelessWidget {
@@ -4169,6 +4644,7 @@ class _LocationStatusPill extends StatelessWidget {
 
 class _MapActionButton extends StatelessWidget {
   const _MapActionButton({
+    super.key,
     required this.tooltip,
     required this.icon,
     required this.color,

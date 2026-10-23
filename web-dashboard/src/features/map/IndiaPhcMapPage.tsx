@@ -23,11 +23,14 @@ import {
   ChevronRight,
   Droplet,
   Phone,
+  X,
+  AlertTriangle,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useGeolocation } from '@/shared/hooks/useGeolocation';
 
 export interface PhcRecord {
   id: string;
@@ -191,7 +194,9 @@ export function IndiaPhcMapPage() {
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const pinMarkersLayerRef = useRef<L.LayerGroup | null>(null);
   const stateHubsLayerRef = useRef<L.LayerGroup | null>(null);
+  const userLocationLayerRef = useRef<L.LayerGroup | null>(null);
   const selectedPinMarkerRef = useRef<L.Marker | null>(null);
+  const hasAutoCenteredRef = useRef(false);
 
   // Data states
   const [facilities, setFacilities] = useState<PhcRecord[]>([]);
@@ -199,6 +204,17 @@ export function IndiaPhcMapPage() {
   const [stateBounds, setStateBounds] = useState<Record<string, { center: [number, number]; bounds: [[number, number], [number, number]]; count: number }>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [locationToast, setLocationToast] = useState<string | null>(null);
+
+  const {
+    location: userLocation,
+    isLocating,
+    error: locationError,
+    autoLocate,
+    setAutoLocate,
+    requestLocation,
+    clearError: clearLocationError,
+  } = useGeolocation({ autoLocateDefault: false });
 
   // Filters — default to 'ALL' so blood banks, yellow (DH) and blue (CHC) are visible immediately!
   const [selectedState, setSelectedState] = useState<string>('ALL');
@@ -275,6 +291,9 @@ export function IndiaPhcMapPage() {
 
     const hubGroup = L.layerGroup().addTo(map);
     stateHubsLayerRef.current = hubGroup;
+
+    const userLocationGroup = L.layerGroup().addTo(map);
+    userLocationLayerRef.current = userLocationGroup;
 
     // Listen to zoom events for progressive Level of Detail (LOD)
     const onZoom = () => {
@@ -360,6 +379,104 @@ export function IndiaPhcMapPage() {
     }).addTo(map);
     selectedPinMarkerRef.current = marker;
   }, []);
+
+  // Compute nearest facility from user's live coordinates
+  const nearestFacility = useMemo(() => {
+    if (!userLocation || !facilities.length) return null;
+    let nearest: PhcRecord | null = null;
+    let minDist = Infinity;
+    const userLat = userLocation.lat;
+    const userLng = userLocation.lng;
+
+    for (let i = 0; i < facilities.length; i++) {
+      const f = facilities[i];
+      const dLat = (f.lat - userLat) * (Math.PI / 180);
+      const dLon = (f.lng - userLng) * (Math.PI / 180);
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(userLat * (Math.PI / 180)) *
+          Math.cos(f.lat * (Math.PI / 180)) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const dist = 6371 * c; // Earth radius in km
+      if (dist < minDist) {
+        minDist = dist;
+        nearest = f;
+      }
+    }
+    return nearest ? { facility: nearest, distanceKm: Math.round(minDist * 10) / 10 } : null;
+  }, [userLocation, facilities]);
+
+  // Update user live location marker and accuracy circle
+  useEffect(() => {
+    const group = userLocationLayerRef.current;
+    const map = mapInstanceRef.current;
+    if (!group || !map) return;
+
+    group.clearLayers();
+    if (!userLocation) return;
+
+    L.circle([userLocation.lat, userLocation.lng], {
+      radius: Math.max(userLocation.accuracy, 20),
+      color: '#2563EB',
+      weight: 1.5,
+      fillColor: '#3B82F6',
+      fillOpacity: 0.12,
+      dashArray: '4, 4',
+    }).addTo(group);
+
+    const userIcon = L.divIcon({
+      className: 'user-location-marker-wrapper',
+      html: `
+        <div style="position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
+          <div class="user-live-radar" style="position: absolute; width: 36px; height: 36px; border-radius: 9999px; background: rgba(37, 99, 235, 0.35);"></div>
+          <div style="position: absolute; width: 22px; height: 22px; border-radius: 9999px; background: rgba(37, 99, 235, 0.5);"></div>
+          <div style="position: relative; width: 14px; height: 14px; border-radius: 9999px; background: #2563EB; border: 2.5px solid #FFFFFF; box-shadow: 0 2px 8px rgba(0,0,0,0.4);"></div>
+        </div>
+      `,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+      popupAnchor: [0, -18],
+    });
+
+    const marker = L.marker([userLocation.lat, userLocation.lng], {
+      icon: userIcon,
+      zIndexOffset: 1200,
+    }).addTo(group);
+
+    marker.bindPopup(`
+      <div style="font-family: inherit; font-size: 12px; min-width: 170px; padding: 2px;">
+        <div style="font-weight: 700; color: #1E40AF; margin-bottom: 4px;">📍 Your Current Location</div>
+        <div style="color: #475569; font-size: 11px;">Coordinates: <b>${userLocation.lat.toFixed(5)}, ${userLocation.lng.toFixed(5)}</b></div>
+        <div style="color: #64748B; font-size: 10px; margin-top: 2px;">Accuracy: ±${Math.round(userLocation.accuracy)}m</div>
+      </div>
+    `);
+  }, [userLocation]);
+
+  // Auto-center map on initial location acquisition if autoLocate is enabled
+  useEffect(() => {
+    if (userLocation && autoLocate && !hasAutoCenteredRef.current && mapInstanceRef.current) {
+      hasAutoCenteredRef.current = true;
+      mapInstanceRef.current.flyTo([userLocation.lat, userLocation.lng], 13, { duration: 1.5 });
+      setLocationToast(`Auto-focused on your location (${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)})`);
+      setTimeout(() => setLocationToast(null), 4000);
+    }
+  }, [userLocation, autoLocate]);
+
+  // Focus current location handler
+  const handleLocateCurrentPosition = async () => {
+    const coords = await requestLocation();
+    if (coords && mapInstanceRef.current) {
+      mapInstanceRef.current.flyTo([coords.lat, coords.lng], 13, {
+        duration: 1.5,
+      });
+      setLocationToast(
+        `Focused on your location (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)} • ±${Math.round(coords.accuracy)}m)`
+      );
+      setTimeout(() => setLocationToast(null), 4500);
+    }
+  };
 
   // 6. Draw State Hubs when Zoomed Out (Zoom 4–6)
   useEffect(() => {
@@ -725,6 +842,39 @@ export function IndiaPhcMapPage() {
             ))}
           </div>
 
+          {/* Current Location Focus & Auto-detect */}
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant={userLocation ? 'default' : 'outline'}
+              onClick={handleLocateCurrentPosition}
+              disabled={isLocating}
+              className={`h-9 px-3 gap-1.5 text-xs font-bold transition-all shadow-xs ${
+                userLocation
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                  : 'bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900 hover:bg-blue-50'
+              }`}
+              title="Detect your GPS position and center map"
+            >
+              {isLocating ? (
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <LocateFixed className="h-3.5 w-3.5" />
+              )}
+              <span>{userLocation ? 'My Location Active' : 'Focus Current Location'}</span>
+            </Button>
+
+            <label className="hidden md:flex items-center gap-1.5 cursor-pointer text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 select-none">
+              <input
+                type="checkbox"
+                checked={autoLocate}
+                onChange={(e) => setAutoLocate(e.target.checked)}
+                className="rounded text-blue-600 focus:ring-0"
+              />
+              <span>Auto-detect</span>
+            </label>
+          </div>
+
       {/* Map Layer Switcher — 100% Free layers, No API Key needed */}
       <div className="ml-auto flex items-center gap-1.5">
         <select
@@ -761,6 +911,56 @@ export function IndiaPhcMapPage() {
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 max-w-md w-full p-4 rounded-xl bg-red-50 text-red-800 border border-red-200 shadow-lg flex items-center gap-3">
             <Info className="h-5 w-5 text-red-600 shrink-0" />
             <p className="text-xs">{loadError}</p>
+          </div>
+        )}
+
+        {/* Floating Location Toast / Error */}
+        {locationToast && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 px-3.5 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold shadow-lg flex items-center gap-2 animate-in fade-in duration-200">
+            <LocateFixed className="w-4 h-4 shrink-0" />
+            <span>{locationToast}</span>
+            <button
+              onClick={() => setLocationToast(null)}
+              className="ml-1 p-0.5 hover:bg-blue-700 rounded-md cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+        {locationError && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 px-3.5 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/80 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-800 text-xs shadow-lg flex items-center gap-2 animate-in fade-in duration-200">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
+            <span>{locationError}</span>
+            <button
+              onClick={clearLocationError}
+              className="ml-1 p-0.5 hover:bg-amber-200 dark:hover:bg-amber-900 rounded-md cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Floating Nearest Facility to My Location Pill */}
+        {userLocation && nearestFacility && (
+          <div className="absolute top-16 left-4 z-20 flex items-center gap-2 max-w-lg bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl px-3 py-2 border border-blue-200 dark:border-blue-900 shadow-xl text-xs">
+            <span className="flex h-2.5 w-2.5 rounded-full bg-blue-600 animate-pulse shrink-0" />
+            <div className="flex-1 truncate">
+              <span className="text-slate-500 font-medium">Nearest Centre: </span>
+              <span className="font-bold text-slate-900 dark:text-white">
+                {nearestFacility.facility.n}
+              </span>{' '}
+              <span className="text-blue-600 dark:text-blue-400 font-extrabold">
+                ({nearestFacility.distanceKm} km away)
+              </span>
+            </div>
+            <Button
+              size="xs"
+              variant="default"
+              className="h-6 text-[11px] bg-blue-600 hover:bg-blue-700 text-white shrink-0 px-2.5 rounded-lg"
+              onClick={() => handleSelectFacility(nearestFacility.facility)}
+            >
+              Inspect
+            </Button>
           </div>
         )}
 

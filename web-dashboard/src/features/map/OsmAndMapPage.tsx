@@ -23,11 +23,15 @@ import {
   Flame,
   ArrowRight,
   Plane,
+  LocateFixed,
+  RefreshCw,
+  X,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useSync } from '@/shared/context/SyncContext';
+import { useGeolocation } from '@/shared/hooks/useGeolocation';
 import { PCMC_FACILITIES, PCMC_WARDS } from '@/shared/api/mockData';
 import { getDiseaseHotspots, getMapFacilities, getMapSources, type MapFacility, type MapSource } from '@/shared/api/mapApi';
 import { PcmcHeatPanel, type HeatView } from '@/features/map/PcmcHeatPanel';
@@ -299,6 +303,24 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
   });
   const onHeatView = useCallback((view: HeatView) => setHeatView(view), []);
 
+  const [locationSuccessToast, setLocationSuccessToast] = useState<string | null>(null);
+  const hasAutoCenteredRef = useRef(false);
+
+  const {
+    location: userLocation,
+    isLocating,
+    error: locationError,
+    autoLocate,
+    setAutoLocate,
+    isWatching,
+    requestLocation,
+    startWatching,
+    stopWatching,
+    clearError: clearLocationError,
+  } = useGeolocation({
+    autoLocateDefault: false,
+  });
+
   useEffect(() => {
     let active = true;
     getMapFacilities()
@@ -353,6 +375,7 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
     const pcmcLayer = L.layerGroup().addTo(map);
     const facilitiesLayer = L.layerGroup().addTo(map);
     const hotspotLayer = L.layerGroup().addTo(map);
+    const userLocationLayer = L.layerGroup().addTo(map);
 
     layerGroupsRef.current = {
       subcentres: subcentreLayer,
@@ -363,6 +386,7 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
       pcmc: pcmcLayer,
       facilities: facilitiesLayer,
       hotspots: hotspotLayer,
+      userLocation: userLocationLayer,
     };
 
     // Auto-resize observer to handle any DOM changes or flex calculations
@@ -840,6 +864,78 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
     map.flyTo([activeHotspot.lat, activeHotspot.lng], 13, { duration: 1.5 });
   }, [activeHotspot]);
 
+  // Render / Update User Live Location Marker
+  useEffect(() => {
+    const group = layerGroupsRef.current.userLocation;
+    const map = mapInstanceRef.current;
+    if (!group || !map) return;
+
+    group.clearLayers();
+    if (!userLocation) return;
+
+    // Accuracy Circle
+    L.circle([userLocation.lat, userLocation.lng], {
+      radius: Math.max(userLocation.accuracy, 15),
+      color: '#2563EB',
+      weight: 1.5,
+      fillColor: '#3B82F6',
+      fillOpacity: 0.12,
+      dashArray: '4, 4',
+    }).addTo(group);
+
+    // Glowing Radar Live Location DivIcon
+    const userIcon = L.divIcon({
+      className: 'user-location-marker-wrapper',
+      html: `
+        <div style="position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
+          <div class="user-live-radar" style="position: absolute; width: 36px; height: 36px; border-radius: 9999px; background: rgba(37, 99, 235, 0.35);"></div>
+          <div style="position: absolute; width: 22px; height: 22px; border-radius: 9999px; background: rgba(37, 99, 235, 0.5);"></div>
+          <div style="position: relative; width: 14px; height: 14px; border-radius: 9999px; background: #2563EB; border: 2.5px solid #FFFFFF; box-shadow: 0 2px 8px rgba(0,0,0,0.4);"></div>
+        </div>
+      `,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+      popupAnchor: [0, -18],
+    });
+
+    const marker = L.marker([userLocation.lat, userLocation.lng], {
+      icon: userIcon,
+      zIndexOffset: 1200,
+    }).addTo(group);
+
+    const popupContent = `
+      <div style="font-family: inherit; font-size: 12px; min-width: 170px; padding: 2px;">
+        <div style="display: flex; align-items: center; gap: 6px; font-weight: 700; color: #1E40AF; margin-bottom: 4px;">
+          <span>📍 Your Current Location</span>
+        </div>
+        <div style="color: #475569; font-size: 11px; margin-bottom: 3px;">
+          Coordinates: <b>${userLocation.lat.toFixed(5)}, ${userLocation.lng.toFixed(5)}</b>
+        </div>
+        <div style="color: #64748B; font-size: 10px;">
+          GPS Accuracy: ±${Math.round(userLocation.accuracy)} meters
+        </div>
+      </div>
+    `;
+    marker.bindPopup(popupContent);
+  }, [userLocation]);
+
+  // Auto-center map on initial location acquisition if autoLocate is enabled
+  useEffect(() => {
+    if (userLocation && autoLocate && !hasAutoCenteredRef.current && mapInstanceRef.current) {
+      hasAutoCenteredRef.current = true;
+      mapInstanceRef.current.flyTo([userLocation.lat, userLocation.lng], 14, { duration: 1.5 });
+      setLocationSuccessToast(`Auto-focused on your location (${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)})`);
+      setTimeout(() => setLocationSuccessToast(null), 4000);
+    }
+  }, [userLocation, autoLocate]);
+
+  // Keep map focused if continuous GPS watching is active
+  useEffect(() => {
+    if (isWatching && userLocation && mapInstanceRef.current) {
+      mapInstanceRef.current.panTo([userLocation.lat, userLocation.lng], { animate: true });
+    }
+  }, [isWatching, userLocation]);
+
   // Center Map on PHC
   const handleCenterPHC = () => {
     mapInstanceRef.current?.setView(PHC_COORDINATES, 13, { animate: true });
@@ -848,6 +944,20 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
   // Focus Emergency Cases
   const handleFocusEmergency = () => {
     mapInstanceRef.current?.setView([25.3340, 82.9850], 14, { animate: true });
+  };
+
+  // Manual Focus on Current Location
+  const handleLocateCurrentPosition = async () => {
+    const coords = await requestLocation();
+    if (coords && mapInstanceRef.current) {
+      mapInstanceRef.current.flyTo([coords.lat, coords.lng], 15, {
+        duration: 1.5,
+      });
+      setLocationSuccessToast(
+        `Focused on your location (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)} • ±${Math.round(coords.accuracy)}m)`
+      );
+      setTimeout(() => setLocationSuccessToast(null), 4500);
+    }
   };
 
   return (
@@ -893,6 +1003,32 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
 
       {/* 2. Main Workspace: Map Canvas + Floating Overlay Controls */}
       <div className="flex-1 relative min-h-0 w-full h-full">
+        {/* Floating Location Toast / Error Notifications */}
+        {locationSuccessToast && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 px-3.5 py-2 rounded-xl bg-blue-600 text-white text-xs font-semibold shadow-lg flex items-center gap-2 animate-in fade-in duration-200">
+            <LocateFixed className="w-4 h-4 shrink-0" />
+            <span>{locationSuccessToast}</span>
+            <button
+              onClick={() => setLocationSuccessToast(null)}
+              className="ml-1 p-0.5 hover:bg-blue-700 rounded-md cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+        {locationError && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 px-3.5 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/80 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-800 text-xs shadow-lg flex items-center gap-2 animate-in fade-in duration-200">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
+            <span>{locationError}</span>
+            <button
+              onClick={clearLocationError}
+              className="ml-1 p-0.5 hover:bg-amber-200 dark:hover:bg-amber-900 rounded-md cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* Floating Hotspot Outbreak Indicator Banner */}
         {activeHotspot && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 w-[92%] max-w-2xl bg-white/95 dark:bg-[#1E1E22]/95 border-2 border-rose-500 rounded-2xl p-3.5 shadow-2xl backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
@@ -1068,11 +1204,70 @@ export function OsmAndMapPage({ mode = 'field' }: { mode?: 'field' | 'heatmap' }
                   className="rounded text-red-600 focus:ring-0"
                 />
               </label>
+
+              {/* My Location & Auto-focus Options */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-semibold text-slate-800 dark:text-slate-200">
+                  <span className="flex items-center gap-1.5">
+                    <LocateFixed className="w-3.5 h-3.5 text-blue-600" />
+                    <span>My Location GPS</span>
+                  </span>
+                  {userLocation ? (
+                    <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold">
+                      Active (±{Math.round(userLocation.accuracy)}m)
+                    </span>
+                  ) : isLocating ? (
+                    <span className="text-[10px] text-blue-500 animate-pulse">Locating...</span>
+                  ) : (
+                    <span className="text-[10px] text-slate-400">Not detected</span>
+                  )}
+                </div>
+                <label className="flex items-center justify-between cursor-pointer hover:opacity-80 text-[11px] text-slate-600 dark:text-slate-400">
+                  <span>Auto-detect & focus on start</span>
+                  <input
+                    type="checkbox"
+                    checked={autoLocate}
+                    onChange={(e) => setAutoLocate(e.target.checked)}
+                    className="rounded text-blue-600 focus:ring-0"
+                  />
+                </label>
+                <label className="flex items-center justify-between cursor-pointer hover:opacity-80 text-[11px] text-slate-600 dark:text-slate-400">
+                  <span>Continuous live GPS tracking</span>
+                  <input
+                    type="checkbox"
+                    checked={isWatching}
+                    onChange={(e) => {
+                      if (e.target.checked) startWatching();
+                      else stopWatching();
+                    }}
+                    className="rounded text-blue-600 focus:ring-0"
+                  />
+                </label>
+              </div>
             </div>
           </Card>
 
           {/* Quick Focus Controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              size="xs"
+              variant={userLocation ? 'default' : 'outline'}
+              onClick={handleLocateCurrentPosition}
+              disabled={isLocating}
+              className={`gap-1 text-[11px] font-semibold transition-all shadow-xs ${
+                userLocation
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                  : 'bg-white dark:bg-[#1E1E1E] border-[#E5E7EB] dark:border-[#2E2E2E] text-blue-600 dark:text-blue-400 hover:bg-blue-50'
+              }`}
+              title="Detect and focus map on current live GPS location"
+            >
+              {isLocating ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <LocateFixed className="w-3.5 h-3.5" />
+              )}
+              <span>{userLocation ? 'Focus My Location' : 'Locate Me'}</span>
+            </Button>
             <Button
               size="xs"
               variant="outline"

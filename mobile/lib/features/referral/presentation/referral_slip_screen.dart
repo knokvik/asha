@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:printing/printing.dart';
@@ -50,6 +51,7 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
   FacilityInfo? _selectedFacility;
   String _selectedTransport = '108 — National Emergency Ambulance';
   bool _isSaving = false;
+  bool _medicalSummaryExpanded = false;
   ReferralRecord? _savedRecord;
 
   Member? _activeMember;
@@ -74,6 +76,10 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
         db.members,
       )..where((t) => t.id.equals(widget.memberId!))).getSingleOrNull();
     }
+    member ??= await (db.select(db.members)
+      ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])
+      ..limit(1)).getSingleOrNull();
+
     member ??= Member(
       id: widget.memberId ?? 'unregistered_patient',
       householdId: 'hh_emergency',
@@ -87,6 +93,41 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
       lifecycleStatus: 'active',
       consentStatus: 'emergency_only',
     );
+
+    if (result == null) {
+      final encounter = await (db.select(db.clinicalEncounters)
+        ..where((t) => t.memberId.equals(member!.id))
+        ..orderBy([(t) => OrderingTerm.desc(t.encounterDate)])
+        ..limit(1)).getSingleOrNull();
+      if (encounter != null) {
+        final trRow = await (db.select(db.triageResults)
+          ..where((t) => t.encounterId.equals(encounter.id))
+          ..limit(1)).getSingleOrNull();
+        if (trRow != null) {
+          final flag = switch (trRow.flag.toLowerCase()) {
+            'red' => TriageFlag.red,
+            'yellow' => TriageFlag.yellow,
+            _ => TriageFlag.green,
+          };
+          result = TriageResult(
+            id: trRow.id,
+            flag: flag,
+            ruleFlag: flag,
+            ruleVersionId: trRow.ruleVersionId,
+            evaluatedAt: DateTime.fromMillisecondsSinceEpoch(trRow.evaluatedAt),
+            findings: const [
+              TriageFinding(
+                ruleId: 'CLINICAL_ENCOUNTER_ASSESSMENT',
+                severity: TriageFlag.red,
+                findingText: 'Identified clinical findings requiring facility care',
+                action: 'REFER_IMMEDIATELY',
+                triggeringValues: {},
+              ),
+            ],
+          );
+        }
+      }
+    }
 
     result ??= TriageResult(
       id: 'res_emergency',
@@ -332,6 +373,8 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
     if (_isLoading || _note == null || _activeTriageResult == null) {
       return Scaffold(
         appBar: AppBar(
+          iconTheme: const IconThemeData(color: Colors.white),
+          actionsIconTheme: const IconThemeData(color: Colors.white),
           title: const Text(
             'Referral ticket',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
@@ -348,6 +391,8 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        iconTheme: const IconThemeData(color: Colors.white),
+        actionsIconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
           'Referral ticket',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
@@ -357,7 +402,7 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
         actions: [
           IconButton(
             key: const Key('referral_qr_button'),
-            icon: const Icon(Icons.qr_code_2),
+            icon: const Icon(Icons.qr_code_2, color: Colors.white),
             tooltip: 'Show QR Code',
             onPressed: _showQrDialog,
           ),
@@ -423,9 +468,14 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
                         const Chip(
                           label: Text(
                             'Offline Directory',
-                            style: TextStyle(fontSize: 10),
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1E4231),
+                            ),
                           ),
                           backgroundColor: Color(0xFFE8F5E9),
+                          side: BorderSide(color: Color(0xFFA5D6A7)),
                         ),
                       ],
                     ),
@@ -596,34 +646,55 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
             // 5. Formatted Note Summary (Doctor Readout < 30s)
             Card(
               elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Structured Medical Summary (< 30s Readout)',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+                    InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () => setState(() => _medicalSummaryExpanded = !_medicalSummaryExpanded),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Structured Medical Summary (< 30s Readout)',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          Icon(
+                            _medicalSummaryExpanded
+                                ? Icons.keyboard_arrow_up_rounded
+                                : Icons.keyboard_arrow_down_rounded,
+                            color: Colors.blueGrey.shade700,
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.blueGrey.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blueGrey.shade200),
-                      ),
-                      child: Text(
-                        note.formatSummary(english: _useEnglish),
-                        key: const Key('formatted_note_summary_text'),
-                        style: const TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 11,
+                    if (_medicalSummaryExpanded) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blueGrey.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blueGrey.shade200),
+                        ),
+                        child: Text(
+                          note.formatSummary(english: _useEnglish),
+                          key: const Key('formatted_note_summary_text'),
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 11,
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -631,43 +702,74 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
             const SizedBox(height: 16),
 
             // 6. Share & Print Output Actions (Requirement 10.2)
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final buttonWidth = (constraints.maxWidth - 16) / 3;
-                return Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    SizedBox(
-                      width: buttonWidth,
-                      child: OutlinedButton.icon(
-                        key: const Key('sms_share_button'),
-                        onPressed: _sendSms,
-                        icon: const Icon(Icons.sms),
-                        label: const Text('SMS'),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    key: const Key('sms_share_button'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFF0FDF4),
+                      foregroundColor: const Color(0xFF166534),
+                      elevation: 0,
+                      side: const BorderSide(color: Color(0xFFBBF7D0)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    SizedBox(
-                      width: buttonWidth,
-                      child: OutlinedButton.icon(
-                        key: const Key('thermal_print_button'),
-                        onPressed: () => _printPdf(thermal: true),
-                        icon: const Icon(Icons.receipt_long),
-                        label: const Text('Thermal'),
+                    onPressed: _sendSms,
+                    icon: const Icon(Icons.sms_rounded, size: 18),
+                    label: const Text(
+                      'SMS',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    key: const Key('thermal_print_button'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFF8FAFC),
+                      foregroundColor: const Color(0xFF334155),
+                      elevation: 0,
+                      side: const BorderSide(color: Color(0xFFCBD5E1)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    SizedBox(
-                      width: buttonWidth,
-                      child: OutlinedButton.icon(
-                        key: const Key('standard_pdf_button'),
-                        onPressed: () => _printPdf(thermal: false),
-                        icon: const Icon(Icons.picture_as_pdf),
-                        label: const Text('A4 PDF'),
+                    onPressed: () => _printPdf(thermal: true),
+                    icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                    label: const Text(
+                      'Thermal',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    key: const Key('standard_pdf_button'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFEFF6FF),
+                      foregroundColor: const Color(0xFF1D4ED8),
+                      elevation: 0,
+                      side: const BorderSide(color: Color(0xFFBFDBFE)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                  ],
-                );
-              },
+                    onPressed: () => _printPdf(thermal: false),
+                    icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                    label: const Text(
+                      'A4 PDF',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
 
@@ -845,15 +947,18 @@ class _ReferralSlipScreenState extends ConsumerState<ReferralSlipScreen> {
       constraints: const BoxConstraints(maxWidth: 230),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: AshaColors.surfaceMuted,
-        borderRadius: AshaShapes.chipBorderRadius,
+        color: const Color(0xFFE8F5E9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFA5D6A7)),
       ),
       child: Text(
         text,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: AshaTypography.subtitleSmall.copyWith(
-          color: AshaColors.primaryDark,
+        style: const TextStyle(
+          color: Color(0xFF1E4231),
+          fontWeight: FontWeight.w700,
+          fontSize: 12,
         ),
       ),
     );

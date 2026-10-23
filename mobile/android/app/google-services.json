@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "960136473356",
+    "project_id": "asha-setu-4f2cc",
+    "storage_bucket": "asha-setu-4f2cc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:960136473356:android:804b7d3cbadbfa4ecdf729",
+        "android_client_info": {
+          "package_name": "com.nhm.asha.asha_platform"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD1-eyOGLucD_MIs0dREilUli8T5xuZy48"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

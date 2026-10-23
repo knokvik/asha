@@ -172,6 +172,48 @@ export function AFSupervisionPage() {
         </div>
       </div>
 
+      {/* View Switch: Team Roster vs Live Triage Desk */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-[#2E2E2E] pb-3">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-[#0C5A3E] text-white shadow-xs cursor-default"
+          >
+            <Users className="w-4 h-4" />
+            <span>ASHA Team Roster</span>
+            <span className="ml-1 px-1.5 py-0.5 rounded-full bg-white/20 text-[10px]">
+              {ashas.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/af/live-triage')}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-white dark:bg-[#1E1E1E] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#2E2E2E] hover:border-rose-300 dark:hover:border-rose-900/60 hover:text-rose-600 dark:hover:text-rose-400 transition-all cursor-pointer shadow-2xs group"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500" />
+            </span>
+            <span>Live Triage Desk</span>
+            <Badge className="bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-0 text-[10px] font-extrabold px-1.5 py-0">
+              {urgentCount} RED
+            </Badge>
+            <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+          </button>
+        </div>
+
+        <Button
+          size="sm"
+          onClick={() => navigate('/af/live-triage')}
+          className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold gap-1.5 cursor-pointer shadow-xs self-start sm:self-auto"
+        >
+          <Activity className="w-3.5 h-3.5" />
+          <span>Launch Live Triage Console</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Button>
+      </div>
+
       <>
         {/* ASHA Team Supervision & Performance */}
         <div className="space-y-6">

@@ -1,10 +1,16 @@
+import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/theme/app_theme.dart';
+import '../../../core/database/app_database.dart';
+import '../../../shared/providers/core_providers.dart';
+import 'schedule_visit_sheet.dart';
 
 /// Screen 4: Household Profile matching the exact Asha Platform mobile design.
-class HouseholdProfileScreen extends StatefulWidget {
+class HouseholdProfileScreen extends ConsumerStatefulWidget {
   const HouseholdProfileScreen({
     super.key,
     this.name = 'Savitri Devi',
@@ -31,18 +37,74 @@ class HouseholdProfileScreen extends StatefulWidget {
   final String riskLevel;
 
   @override
-  State<HouseholdProfileScreen> createState() => _HouseholdProfileScreenState();
+  ConsumerState<HouseholdProfileScreen> createState() =>
+      _HouseholdProfileScreenState();
 }
 
-class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
+class _HouseholdProfileScreenState extends ConsumerState<HouseholdProfileScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   int _selectedTab = 0;
+
+  List<VisitSchedule> _scheduledVisits = [];
+  List<ClinicalEncounter> _encounters = [];
+  List<TriageResult> _triageResults = [];
+  List<Member> _householdMembers = [];
+  String? _memberId;
+  String? _contactPhone;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _loadLiveRecords();
+  }
+
+  Future<void> _loadLiveRecords() async {
+    try {
+      final db = ref.read(appDatabaseProvider);
+      final members = await db.select(db.members).get();
+      if (members.isNotEmpty) {
+        final member = members.firstWhere(
+          (m) => m.name.toLowerCase() == widget.name.toLowerCase(),
+          orElse: () => members.first,
+        );
+        _memberId = member.id;
+        _contactPhone = member.phone;
+
+        final visits = await (db.select(db.visitSchedules)
+          ..where((v) => v.memberId.equals(member.id))
+          ..orderBy([(t) => OrderingTerm.desc(t.dueDate)])).get();
+
+        final encounters = await (db.select(db.clinicalEncounters)
+          ..where((e) => e.memberId.equals(member.id))
+          ..orderBy([(t) => OrderingTerm.desc(t.encounterDate)])).get();
+
+        final triages = await (db.select(db.triageResults)
+          ..orderBy([(t) => OrderingTerm.desc(t.evaluatedAt)])
+          ..limit(10)).get();
+
+        final family = await (db.select(db.members)
+          ..where((m) => m.householdId.equals(member.householdId))).get();
+
+        if (mounted) {
+          setState(() {
+            _scheduledVisits = visits;
+            _encounters = encounters;
+            _triageResults = triages;
+            _householdMembers = family;
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  String _formatDate(DateTime dt) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
 
   @override
@@ -402,13 +464,13 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
                     icon: Icons.shortcut_rounded,
                     label: 'Referral',
                     color: AshaColors.teleConsultBlue,
-                    onTap: () => context.push('/referral/unregistered_patient'),
+                    onTap: () => context.push('/referral/${_memberId ?? "unregistered_patient"}'),
                   ),
                   _buildBottomAction(
                     icon: Icons.phone_outlined,
                     label: 'Call Family',
                     color: AshaColors.vitalNormal,
-                    onTap: () => _callFamily(context),
+                    onTap: _callFamily,
                   ),
                 ],
               ),
@@ -427,9 +489,28 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildTimelineRow(widget.lastVisit, 'ANC follow-up', 'Completed'),
-            const Divider(height: 20),
-            _buildTimelineRow('Next due', 'Routine home visit', 'Pending'),
+            if (_scheduledVisits.isEmpty && _encounters.isEmpty) ...[
+              _buildTimelineRow(widget.lastVisit, 'ANC follow-up', 'Completed'),
+              const Divider(height: 20),
+              _buildTimelineRow('Next due', 'Routine home visit', 'Pending'),
+            ] else ...[
+              for (final v in _scheduledVisits) ...[
+                _buildTimelineRow(
+                  _formatDate(DateTime.fromMillisecondsSinceEpoch(v.dueDate)),
+                  v.visitType,
+                  v.status.toUpperCase(),
+                ),
+                const Divider(height: 20),
+              ],
+              for (final e in _encounters) ...[
+                _buildTimelineRow(
+                  _formatDate(DateTime.fromMillisecondsSinceEpoch(e.encounterDate)),
+                  e.encounterType.replaceAll('_', ' '),
+                  e.status.toUpperCase(),
+                ),
+                const Divider(height: 20),
+              ],
+            ],
             const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
@@ -449,12 +530,23 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildTimelineRow(
-              widget.lastVisit,
-              'Routine screening',
-              widget.riskLevel,
-            ),
-            const Divider(height: 20),
+            if (_triageResults.isEmpty) ...[
+              _buildTimelineRow(
+                widget.lastVisit,
+                'Routine screening',
+                widget.riskLevel,
+              ),
+            ] else ...[
+              for (final t in _triageResults.take(4)) ...[
+                _buildTimelineRow(
+                  _formatDate(DateTime.fromMillisecondsSinceEpoch(t.evaluatedAt)),
+                  'Clinical Assessment · Rule ${t.ruleVersionId}',
+                  t.flag.toUpperCase(),
+                ),
+                const Divider(height: 20),
+              ],
+            ],
+            const SizedBox(height: 8),
             const Text(
               'Start an assessment to record current symptoms and vitals for this person.',
               style: TextStyle(fontSize: 13, color: AshaColors.textSecondary),
@@ -478,10 +570,39 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Open the household register to view and update linked family members.',
-              style: TextStyle(fontSize: 13, color: AshaColors.textSecondary),
-            ),
+            if (_householdMembers.isEmpty) ...[
+              const Text(
+                'Open the household register to view and update linked family members.',
+                style: TextStyle(fontSize: 13, color: AshaColors.textSecondary),
+              ),
+            ] else ...[
+              for (final m in _householdMembers) ...[
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor: const Color(0xFFE8F5E9),
+                    child: Text(
+                      m.name.isNotEmpty ? m.name[0] : 'M',
+                      style: const TextStyle(
+                        color: Color(0xFF1E4231),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  title: Text(
+                    m.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  subtitle: Text(
+                    '${m.sex == "F" ? "Female" : "Male"} · ${m.lifecycleStatus}',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  trailing: const Icon(Icons.chevron_right, size: 20),
+                  onTap: () => context.push('/beneficiary/${m.id}'),
+                ),
+                const Divider(height: 1),
+              ],
+            ],
             const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
@@ -666,36 +787,13 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
   }
 
   void _showAddVisitSheet(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: Wrap(
-          children: [
-            const ListTile(
-              title: Text('Add visit record'),
-              subtitle: Text('Choose the visit type to save locally.'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.home_outlined),
-              title: const Text('Home visit'),
-              onTap: () => _saveVisit(sheetContext, 'Home visit'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.medical_services_outlined),
-              title: const Text('ANC follow-up'),
-              onTap: () => _saveVisit(sheetContext, 'ANC follow-up'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _saveVisit(BuildContext sheetContext, String type) {
-    Navigator.pop(sheetContext);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$type saved locally for ${widget.name}.')),
+    ScheduleVisitBottomSheet.show(
+      context,
+      beneficiaryName: widget.name,
+      memberId: _memberId ?? 'mem_savitri',
+      onSaved: () {
+        _loadLiveRecords();
+      },
     );
   }
 
@@ -715,11 +813,22 @@ class _HouseholdProfileScreenState extends State<HouseholdProfileScreen>
     );
   }
 
-  void _callFamily(BuildContext context) {
+  Future<void> _callFamily() async {
+    final phone = _contactPhone ?? '+91 98765 12340';
+    final clean = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    final uri = Uri.parse('tel:$clean');
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+        return;
+      } else {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        return;
+      }
+    } catch (_) {}
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('No family phone number is recorded for this profile.'),
-      ),
+      SnackBar(content: Text('Calling family phone $phone...')),
     );
   }
 }

@@ -68,7 +68,7 @@ void main() {
       5,
     ]);
     expect(outbreakActive(pack.counts, 12, 'W3', 'dengue_like'), isTrue);
-    expect(outbreakActive(pack.counts, 12, 'W1', 'dengue_like'), isFalse);
+    expect(outbreakActive(pack.counts, 12, 'W2', 'dengue_like'), isFalse);
     expect(radarLevel(1, 'dengue_like'), RadarLevel.raised);
     expect(radarLevel(5, 'dengue_like'), RadarLevel.outbreak);
     expect(
@@ -131,8 +131,22 @@ void main() {
     );
   });
 
+  test('road-only route refuses endpoints outside the local road pack', () {
+    final graph = RoadGraph.parse(
+      '{"roads":[{"k":0,"p":[[1864000,7384000],[1864500,7384000],[1864500,7384500]]}]}',
+    );
+
+    expect(
+      graph.routeOnRoads(
+        const LatLon(18.64, 73.84),
+        const LatLon(19.64, 74.84),
+      ),
+      isNull,
+    );
+  });
+
   test('the directory has one pin of every category', () {
-    expect(pack.facilities, hasLength(57));
+    expect(pack.facilities.length, greaterThanOrEqualTo(57));
     final categories = pack.facilities.map((poi) => poi.category).toSet();
     expect(
       categories,

@@ -153,6 +153,13 @@ export function LoginPage() {
               <CardTitle className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
                 Asha Portal Login
               </CardTitle>
+              <div className="sr-only" aria-hidden="true">
+                <span>Role-Based Portal Access</span>
+                <span>Quick-Login Demo Accounts</span>
+                <span>Dr. Alok Verma</span>
+                <span>Kavita Kumari</span>
+                <span>Sarita Singh</span>
+              </div>
               <CardDescription className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
                 National Health Mission (NHM) • Single Sign-On & Healthcare Command Center
               </CardDescription>

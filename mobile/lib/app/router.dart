@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/presentation/pin_setup_screen.dart';
+import '../features/auth/presentation/auth_gate.dart';
+import '../features/auth/presentation/phone_auth_screen.dart';
 import '../core/l10n/language_provider.dart';
 import '../features/due_list/presentation/due_list_screen.dart';
 import '../features/home/presentation/tools_screen.dart';
@@ -134,7 +136,9 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
       redirect: (context, state) =>
           ref?.read(databaseKeyProvider) == null ? '/auth' : '/home',
     ),
-    GoRoute(path: '/auth', builder: (context, state) => const PinSetupScreen()),
+    GoRoute(path: '/auth', builder: (context, state) => const AuthGate()),
+    GoRoute(path: '/phone-auth', builder: (context, state) => const PhoneAuthScreen()),
+    GoRoute(path: '/pin-auth', builder: (context, state) => const PinSetupScreen()),
     GoRoute(
       path: '/home',
       pageBuilder: (context, state) =>

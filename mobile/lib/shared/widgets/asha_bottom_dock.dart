@@ -40,9 +40,9 @@ class AshaBottomDock extends StatelessWidget {
             border: const Border(top: BorderSide(color: Color(0xFFE5E7EB))),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             child: SizedBox(
-              height: 44,
+              height: 56,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: List.generate(items.length, (idx) {
@@ -69,9 +69,9 @@ class AshaBottomDock extends StatelessWidget {
                               duration: const Duration(milliseconds: 220),
                               curve: Curves.easeOutCubic,
                               width: item.isAction
-                                  ? 38
-                                  : (isSelected ? 42 : 38),
-                              height: item.isAction ? 38 : 34,
+                                  ? 46
+                                  : (isSelected ? 52 : 44),
+                              height: item.isAction ? 46 : 42,
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
                                 color: item.isAction
@@ -84,7 +84,7 @@ class AshaBottomDock extends StatelessWidget {
                                     : BoxShape.rectangle,
                                 borderRadius: item.isAction
                                     ? null
-                                    : BorderRadius.circular(10),
+                                    : BorderRadius.circular(12),
                               ),
                               child: AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 180),
@@ -97,8 +97,8 @@ class AshaBottomDock extends StatelessWidget {
                                   item.icon,
                                   key: ValueKey('${item.icon}_$isSelected'),
                                   size: item.isAction
-                                      ? 22
-                                      : (isSelected ? 20 : 22),
+                                      ? 26
+                                      : (isSelected ? 24 : 24),
                                   color: item.isAction || isSelected
                                       ? Colors.white
                                       : inactiveColor,
