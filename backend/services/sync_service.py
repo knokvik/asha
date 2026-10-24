@@ -186,6 +186,15 @@ class SyncService:
             for entry in record.event_log:
                 client_timestamps[entry.field] = entry.device_timestamp
 
+            # A worker may edit the same household/member repeatedly while
+            # offline. Those are normal successive edits, not a concurrent
+            # conflict. Only flag differing values when the existing server
+            # row belongs to another worker.
+            existing_worker_id = getattr(existing, "worker_id", None)
+            is_cross_worker_update = (
+                existing_worker_id is not None and existing_worker_id != worker_id
+            )
+
             for field_name, new_val in payload.items():
                 if field_name in ("id", "worker_id", "block_code", "server_received_at", "server_seq"):
                     continue
@@ -196,7 +205,11 @@ class SyncService:
                 # Check if there's a timestamp conflict.
                 # We use device_timestamp as a proxy for server event_log timestamp.
                 # (Full event_log comparison requires per-field timestamps on server.)
-                if current_val is not None and current_val != new_val:
+                if (
+                    is_cross_worker_update
+                    and current_val is not None
+                    and current_val != new_val
+                ):
                     # Values differ: last-write-wins by device_timestamp
                     # For same timestamps, flag for review
                     conflict_fields.append({
