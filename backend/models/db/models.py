@@ -314,7 +314,7 @@ class AsrFeedback(Base):
 class ReferralRecord(Base):
     __tablename__ = "referral_records"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)
     encounter_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("clinical_encounters.id"), unique=True)
     member_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("members.id"))
     triage_flag: Mapped[str | None] = mapped_column(String(10))
