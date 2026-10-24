@@ -227,6 +227,12 @@ class SyncService:
             is_cross_worker_update = (
                 existing_worker_id is not None and existing_worker_id != worker_id
             )
+            # Consent packets are captured by the current worker and may be
+            # replayed after a server-seeded/previously synced copy exists.
+            # Replaying the same consent must not create a manual conflict
+            # merely because the original row has a different worker owner.
+            if record.table == "consent_records":
+                is_cross_worker_update = False
             existing_updated_at = getattr(existing, "updated_at", None) or 0
             client_updated_at = record.device_timestamp or 0
 
