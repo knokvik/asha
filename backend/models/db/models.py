@@ -422,7 +422,7 @@ class SyncQueue(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     table_name: Mapped[str] = mapped_column(String(50), nullable=False)
-    record_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    record_id: Mapped[str] = mapped_column(String(100), nullable=False)
     priority: Mapped[int] = mapped_column(Integer, nullable=False)
     operation: Mapped[str] = mapped_column(String(10), nullable=False)
     payload_json: Mapped[str | None] = mapped_column(Text)
@@ -454,7 +454,7 @@ class AuditLog(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     table_name: Mapped[str] = mapped_column(String(50), nullable=False)
-    record_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    record_id: Mapped[str] = mapped_column(String(100), nullable=False)
     field_name: Mapped[str | None] = mapped_column(String(100))
     old_value: Mapped[str | None] = mapped_column(Text)
     new_value: Mapped[str | None] = mapped_column(Text)
@@ -562,7 +562,7 @@ class ConflictReview(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     table_name: Mapped[str] = mapped_column(String(50), nullable=False)
-    record_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    record_id: Mapped[str] = mapped_column(String(100), nullable=False)
     conflict_type: Mapped[str] = mapped_column(String(50), nullable=False)
     both_values: Mapped[str] = mapped_column(Text, nullable=False)  # JSON
     assigned_to: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"))
@@ -616,7 +616,7 @@ class OutboundSharingLog(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     target_system: Mapped[str] = mapped_column(String(50), nullable=False)
     record_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    record_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    record_id: Mapped[str] = mapped_column(String(100), nullable=False)
     recipient: Mapped[str | None] = mapped_column(String(100))
     consent_artifact_id: Mapped[str | None] = mapped_column(String(36))
     payload_hash: Mapped[str | None] = mapped_column(String(64))
