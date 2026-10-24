@@ -8,6 +8,8 @@ import 'package:uuid/uuid.dart';
 import 'package:workmanager/workmanager.dart';
 
 import '../database/app_database.dart';
+import '../security/api_token.dart';
+import '../security/api_session_bridge.dart';
 import '../security/key_manager.dart';
 import '../security/session_service.dart';
 import '../voice/asr_feedback_store.dart';
@@ -156,7 +158,7 @@ class SyncWorker {
   // ── Core drain logic ──────────────────────────────────────────────────────
 
   Future<void> _drainQueue({bool retriedAfterRefresh = false}) async {
-    final workerId = await _storage.read(key: 'worker_id') ?? '';
+    var workerId = await _storage.read(key: 'worker_id') ?? '';
     // The local auth flow historically used the namespaced device key while
     // the network session used the shorter key. Accept both so an existing
     // installed app keeps the same device identity after upgrading.
@@ -164,11 +166,14 @@ class SyncWorker {
         await _storage.read(key: 'device_id') ??
         await _storage.read(key: 'asha_device_id_v1') ??
         '';
-    final accessToken = await _storage.read(key: 'access_token') ?? '';
+    var accessToken = await _storage.read(key: 'access_token') ?? '';
     const appVersion = '1.0.0'; // TODO: read from package_info_plus
 
-    debugPrint('[SyncWorker] Starting drain queue. Worker: $workerId, Device: $deviceId, Token: ${accessToken.isEmpty ? 'EMPTY' : 'PRESENT'}');
+    debugPrint(
+      '[SyncWorker] Starting drain queue. Worker: $workerId, Device: $deviceId, Token: ${accessToken.isEmpty ? 'EMPTY' : 'PRESENT'}',
+    );
 
+    await _syncEngine.requeueAuthFailures();
     await _syncEngine.requeueRetryable();
     final batch = await _syncEngine.fetchPendingBatch(limit: 50);
     debugPrint('[SyncWorker] Pending batch size: ${batch.length}');
@@ -176,15 +181,27 @@ class SyncWorker {
       debugPrint('[SyncWorker] No pending packets to sync');
       return;
     }
-    if (accessToken.isEmpty) {
-      debugPrint('[SyncWorker] ERROR: Access token is empty - marking batch as failed');
-      await _syncEngine.markFailed(
-        batch.map((record) => record.id).toList(),
-        'missing_server_session',
-      );
-      throw StateError(
-        'Sync needs an online server session. Sign in once while connected, then retry.',
-      );
+    // A Supabase session is not an API JWT. Exchange it for the backend API
+    // session before deciding that the queue must remain pending. This is
+    // needed after phone OTP login and also covers a fresh app installation
+    // where the foreground auth gate has not completed the exchange yet.
+    if (!isApiAccessToken(accessToken)) {
+      final supabaseToken =
+          await _storage.read(key: 'supabase_access_token') ?? '';
+      if (supabaseToken.isNotEmpty) {
+        final exchanged = await ApiSessionBridge(storage: _storage)
+            .adoptSupabaseSession(apiBaseUrl: apiBaseUrl);
+        if (exchanged) {
+          accessToken = await _storage.read(key: 'access_token') ?? '';
+          workerId = await _storage.read(key: 'worker_id') ?? workerId;
+        }
+      }
+      if (!isApiAccessToken(accessToken)) {
+        debugPrint(
+          '[SyncWorker] No backend API session yet. Packets stay queued until sign-in is accepted by the server.',
+        );
+        return;
+      }
     }
 
     final batchId = _uuid.v4();
@@ -202,7 +219,9 @@ class SyncWorker {
       'Content-Encoding': 'gzip',
       'Authorization': 'Bearer $accessToken',
     };
-    debugPrint('[SyncWorker] Sending batch to $endpoint (${gzipBody.length} bytes)');
+    debugPrint(
+      '[SyncWorker] Sending batch to $endpoint (${gzipBody.length} bytes)',
+    );
     final response = endpoint.scheme == 'https'
         ? await PinnedHttpTransport(sha256Fingerprints: certificatePins)
               .post(endpoint, headers: headers, body: gzipBody)
@@ -211,7 +230,9 @@ class SyncWorker {
               .post(endpoint, headers: headers, body: gzipBody)
               .timeout(const Duration(seconds: 30));
 
-    debugPrint('[SyncWorker] Response: ${response.statusCode} ${response.reasonPhrase}');
+    debugPrint(
+      '[SyncWorker] Response: ${response.statusCode} ${response.reasonPhrase}',
+    );
     if (response.statusCode != 200) {
       debugPrint('[SyncWorker] Error response body: ${response.body}');
     }
@@ -285,10 +306,31 @@ class SyncWorker {
           );
         }
         debugPrint('[SyncWorker] Token refresh failed: $refresh');
+
+        // A phone OTP session can remain valid even when the short-lived
+        // backend access/refresh pair is stale. Re-exchange the Supabase
+        // session so queued records are not stranded behind an old token.
+        final supabaseToken =
+            await _storage.read(key: 'supabase_access_token') ?? '';
+        if (supabaseToken.isNotEmpty) {
+          final exchanged = await ApiSessionBridge(storage: _storage)
+              .adoptSupabaseSession(apiBaseUrl: apiBaseUrl);
+          if (exchanged) {
+            debugPrint(
+              '[SyncWorker] Supabase session exchanged after API refresh failure; retrying push.',
+            );
+            await _drainQueue(retriedAfterRefresh: true);
+            return;
+          }
+        }
       }
-      final queueIds = batch.map((r) => r.id).toList();
-      await _syncEngine.markFailed(queueIds, 'unauthorised');
-      throw StateError('Sync is unauthorised; sign in again when online.');
+      // Keep the packets pending. Marking them unauthorised is what the
+      // field screen shows as "Sync failed — unauthorized" when the stored
+      // bearer is a Supabase session or an expired API token without a refresh.
+      debugPrint(
+        '[SyncWorker] Push was not accepted. Packets stay queued for the next API session.',
+      );
+      return;
     } else if (response.statusCode == 409) {
       // Conflicts returned — re-enqueue at P2 after conflict resolver runs.
       debugPrint('[SyncWorker] 409 Conflict - marking as failed for review');
@@ -298,7 +340,9 @@ class SyncWorker {
         'conflict: ${response.statusCode}',
       );
     } else {
-      debugPrint('[SyncWorker] HTTP Error ${response.statusCode}: ${response.body}');
+      debugPrint(
+        '[SyncWorker] HTTP Error ${response.statusCode}: ${response.body}',
+      );
       final queueIds = batch.map((r) => r.id).toList();
       await _syncEngine.markFailed(
         queueIds,
@@ -311,9 +355,11 @@ class SyncWorker {
   Future<void> _pullDelta() async {
     final workerId = await _storage.read(key: 'worker_id') ?? '';
     final accessToken = await _storage.read(key: 'access_token') ?? '';
-    debugPrint('[SyncWorker] Starting pull delta. Worker: $workerId, Token: ${accessToken.isEmpty ? 'EMPTY' : 'PRESENT'}');
-    if (workerId.isEmpty || accessToken.isEmpty) {
-      debugPrint('[SyncWorker] Skipping pull delta - missing workerId or accessToken');
+    debugPrint(
+      '[SyncWorker] Starting pull delta. Worker: $workerId, Token: ${accessToken.isEmpty ? 'EMPTY' : 'PRESENT'}',
+    );
+    if (workerId.isEmpty || !isApiAccessToken(accessToken)) {
+      debugPrint('[SyncWorker] Skipping pull delta - no API session');
       return;
     }
 
@@ -349,7 +395,9 @@ class SyncWorker {
         debugPrint('[SyncWorker] Applying ${records.length} incoming records');
         await _applyIncomingRecords(records);
       } else {
-        debugPrint('[SyncWorker] Pull delta failed: ${response.statusCode} ${response.body}');
+        debugPrint(
+          '[SyncWorker] Pull delta failed: ${response.statusCode} ${response.body}',
+        );
       }
       await _pullHotspotContext(accessToken);
     } catch (e) {
@@ -368,7 +416,9 @@ class SyncWorker {
         .get(uri, headers: {'Authorization': 'Bearer $accessToken'})
         .timeout(const Duration(seconds: 15));
     if (response.statusCode != 200 || response.body.isEmpty) {
-      debugPrint('[SyncWorker] Hotspot context pull failed: ${response.statusCode}');
+      debugPrint(
+        '[SyncWorker] Hotspot context pull failed: ${response.statusCode}',
+      );
       return;
     }
     final decoded = jsonDecode(response.body);
@@ -406,7 +456,9 @@ class SyncWorker {
         )
         .timeout(const Duration(seconds: 15));
     if (response.statusCode != 200) {
-      debugPrint('[SyncWorker] ASR feedback push failed: ${response.statusCode} ${response.body}');
+      debugPrint(
+        '[SyncWorker] ASR feedback push failed: ${response.statusCode} ${response.body}',
+      );
       return;
     }
     final decoded = jsonDecode(response.body);
@@ -414,7 +466,9 @@ class SyncWorker {
       await AsrFeedbackStore.removeIds(
         (decoded['accepted_ids'] as List).map((item) => item.toString()),
       );
-      debugPrint('[SyncWorker] ASR feedback pushed successfully, removed accepted IDs');
+      debugPrint(
+        '[SyncWorker] ASR feedback pushed successfully, removed accepted IDs',
+      );
     }
   }
 
@@ -541,6 +595,58 @@ class SyncWorker {
                       raw['rule_version_id']?.toString() ?? 'v1.0-mohfw',
                   findingsJson: raw['findings_json']?.toString() ?? '[]',
                   evaluatedAt: (raw['evaluated_at'] as num?)?.toInt() ?? now,
+                ),
+              );
+        } else if (table == 'referral_records') {
+          // PHC actions change the referral status on the server. Apply the
+          // full record locally so Tracking and the ASHA timeline show the
+          // same status after the next pull.
+          final encounterId = raw['encounter_id']?.toString();
+          final memberId = raw['member_id']?.toString();
+          if (encounterId == null || memberId == null) continue;
+          final encounter = await (_db.select(
+            _db.clinicalEncounters,
+          )..where((t) => t.id.equals(encounterId))).getSingleOrNull();
+          final member = await (_db.select(
+            _db.members,
+          )..where((t) => t.id.equals(memberId))).getSingleOrNull();
+          if (encounter == null || member == null) {
+            debugPrint(
+              '[SyncWorker] Deferring referral ${raw['id']} until its member and encounter are local',
+            );
+            continue;
+          }
+          await _db
+              .into(_db.referralRecords)
+              .insertOnConflictUpdate(
+                ReferralRecordsCompanion.insert(
+                  id: raw['id']?.toString() ?? '',
+                  encounterId: encounterId,
+                  memberId: memberId,
+                  triageFlag: raw['triage_flag']?.toString() ?? 'GREEN',
+                  destinationFacilityId: Value(
+                    raw['destination_facility_id']?.toString(),
+                  ),
+                  destinationLevel: Value(raw['destination_level']?.toString()),
+                  transportArranged: Value(
+                    raw['transport_arranged']?.toString(),
+                  ),
+                  status: Value(raw['status']?.toString() ?? 'created'),
+                  outcome: Value(raw['outcome']?.toString()),
+                  outcomeRecordedBy: Value(
+                    raw['outcome_recorded_by']?.toString(),
+                  ),
+                  outcomeRecordedAt: Value(
+                    (raw['outcome_recorded_at'] as num?)?.toInt(),
+                  ),
+                  referralNoteText: Value(
+                    raw['referral_note_text']?.toString(),
+                  ),
+                  referralPdfPath: Value(raw['referral_pdf_path']?.toString()),
+                  referralQrData: Value(raw['referral_qr_data']?.toString()),
+                  createdAt: (raw['created_at'] as num?)?.toInt() ?? now,
+                  updatedAt: (raw['updated_at'] as num?)?.toInt() ?? now,
+                  syncStatus: const Value('synced'),
                 ),
               );
         }
