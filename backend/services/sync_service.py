@@ -194,6 +194,8 @@ class SyncService:
             is_cross_worker_update = (
                 existing_worker_id is not None and existing_worker_id != worker_id
             )
+            existing_updated_at = getattr(existing, "updated_at", None) or 0
+            client_updated_at = record.device_timestamp or 0
 
             for field_name, new_val in payload.items():
                 if field_name in ("id", "worker_id", "block_code", "server_received_at", "server_seq"):
@@ -209,6 +211,13 @@ class SyncService:
                     is_cross_worker_update
                     and current_val is not None
                     and current_val != new_val
+                    # A newer client edit is a normal last-write-wins update.
+                    # Only an edit that is concurrent with (or older than)
+                    # the server version needs human review. This prevents a
+                    # legitimate household registration from being left in
+                    # "conflict review" just because the row was originally
+                    # created by another ASHA/device.
+                    and client_updated_at <= existing_updated_at
                 ):
                     # Values differ: last-write-wins by device_timestamp
                     # For same timestamps, flag for review
