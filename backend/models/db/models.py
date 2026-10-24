@@ -154,8 +154,11 @@ class Member(Base):
 class ConsentRecord(Base):
     __tablename__ = "consent_records"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    member_id: Mapped[str] = mapped_column(String(36), ForeignKey("members.id"), nullable=False)
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    # Consent may arrive before the member packet during offline replay. Keep
+    # the client member ID for later reconciliation without rejecting the
+    # consent record at the database boundary.
+    member_id: Mapped[str | None] = mapped_column(String(100), ForeignKey("members.id"), nullable=True)
     consent_version: Mapped[str | None] = mapped_column(String(20))
     consented_at: Mapped[int | None] = mapped_column(BigInteger)
     asha_id: Mapped[str | None] = mapped_column(String(50))
