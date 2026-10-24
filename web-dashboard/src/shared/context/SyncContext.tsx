@@ -566,18 +566,38 @@ function readableSyncLabel(table: string, operation: unknown, recordId: unknown,
     members: 'Beneficiary profile',
   };
   const base = activityName || (program ? `${String(program)} activity` : labels[table] || table.replaceAll('_', ' '));
-  return `${base} — ${String(operation || 'updated')} · ${String(recordId || '')}`;
+  return `${base} : ${String(recordId || '')}`;
+}
+
+function activityTitle(packet: any, table: string): string {
+  const record = packet.record && typeof packet.record === 'object' ? packet.record : {};
+  const ticket = packet.ticket && typeof packet.ticket === 'object' ? packet.ticket : {};
+  const person = ticket.patient_name || record.name || record.head_name || record.patient_name || packet.record_id || 'record';
+  if (ticket.patient_name || table.includes('triage') || table.includes('referral')) return `Triage : ${String(person)}`;
+  if (table === 'households') return `Household : ${String(person)}`;
+  if (table === 'members') return `Beneficiary : ${String(person)}`;
+  const program = packet.program || record.program_code || ticket.program;
+  return `${String(program || table.replaceAll('_', ' '))} : ${String(person)}`;
 }
 
 function mapPacket(packet: any): FrontlineSyncActivity {
   const timestamp = Number(packet.received_at || packet.device_timestamp || Date.now());
   const table = String(packet.table || 'sync packet');
-  const program = String(packet.program || '').toLowerCase();
-  const category = program === 'anc'
+  let operationRecord: any = {};
+  if (typeof packet.operation === 'string') {
+    try {
+      const parsed = JSON.parse(packet.operation);
+      operationRecord = parsed?.record && typeof parsed.record === 'object' ? parsed.record : parsed;
+    } catch { /* operation is a human-readable label */ }
+  }
+  const record = packet.record && typeof packet.record === 'object' ? packet.record : operationRecord;
+  const program = String(packet.program || record.program_code || '').toLowerCase();
+  const resolvedProgram = program || (String(record.encounter_type || '').toLowerCase().includes('pnc') ? 'pnc' : '');
+  const category = resolvedProgram === 'anc'
     ? 'Maternal (ANC)'
-    : program === 'pnc'
+    : resolvedProgram === 'pnc'
       ? 'Postnatal (PNC)'
-      : program === 'immunization'
+      : resolvedProgram === 'immunization' || resolvedProgram === 'immunisation'
         ? 'Immunization'
         : program === 'hbnc'
           ? 'HBNC'
@@ -589,7 +609,7 @@ function mapPacket(packet: any): FrontlineSyncActivity {
           ? 'NCD Screening'
           : table.includes('member') || table.includes('household')
             ? 'Child (IMNCI)'
-            : 'Immunization';
+            : 'Child (IMNCI)';
   const ticket = packet.ticket;
   const attachments: TriageEvidence[] = Array.isArray(ticket?.attachments)
     ? ticket.attachments.map((attachment: any) => ({
@@ -610,9 +630,7 @@ function mapPacket(packet: any): FrontlineSyncActivity {
     workerPhone: '',
     village: String(ticket?.location || packet.device_id || 'Field device'),
     category,
-    details: ticket
-      ? `${String(ticket.activity_name || `${ticket.program || 'TRIAGE'} — ${ticket.flag || 'SUBMITTED'}`)} · ${String(ticket.id || packet.record_id)}`
-      : readableSyncLabel(table, packet.operation, packet.record_id, packet.program, packet.activity_name),
+    details: activityTitle(packet, table),
     clinicalPayload: ticket?.details
       ? String(ticket.details)
       : ticket

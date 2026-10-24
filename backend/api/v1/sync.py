@@ -195,7 +195,13 @@ def _clinical_activity(table_name: str, raw_value: str | None) -> dict[str, str]
         payload = json.loads(raw_value or "")
     except (TypeError, json.JSONDecodeError):
         payload = {}
-    program_code = str(payload.get("program_code", "")).lower() if isinstance(payload, dict) else ""
+    if isinstance(payload, dict):
+        record = payload.get("record") if isinstance(payload.get("record"), dict) else payload
+        program_code = str(record.get("program_code", "")).lower()
+        encounter_type = str(record.get("encounter_type", "")).lower()
+    else:
+        program_code = ""
+        encounter_type = ""
     table = table_name.lower()
     if program_code in {"ncd", "ncd_screening"} or "ncd" in table:
         return {"program": "NCD", "activity_name": "NCD clinical activity"}
@@ -203,7 +209,7 @@ def _clinical_activity(table_name: str, raw_value: str | None) -> dict[str, str]
         return {"program": "Immunization", "activity_name": "Immunization activity"}
     if program_code == "anc" or "anc" in table:
         return {"program": "ANC", "activity_name": "ANC clinical activity"}
-    if program_code == "pnc" or "pnc" in table:
+    if program_code == "pnc" or "pnc" in encounter_type or "pnc" in table:
         return {"program": "PNC", "activity_name": "PNC clinical activity"}
     if program_code == "hbnc" or "hbnc" in table:
         return {"program": "HBNC", "activity_name": "HBNC home visit"}
@@ -211,6 +217,8 @@ def _clinical_activity(table_name: str, raw_value: str | None) -> dict[str, str]
         return {"program": "HBYC", "activity_name": "HBYC home visit"}
     if program_code == "tb" or table.startswith("tb") or "tuberculosis" in table:
         return {"program": "TB", "activity_name": "TB clinical activity"}
+    if table == "clinical_encounters":
+        return {"program": "CLINICAL", "activity_name": "Clinical encounter"}
     return {}
 
 
