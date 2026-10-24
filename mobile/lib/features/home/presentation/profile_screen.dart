@@ -342,7 +342,7 @@ class ProfileScreen extends ConsumerWidget {
                   child: OutlinedButton.icon(
                     onPressed: () => context.push('/profile/edit'),
                     icon: const Icon(Icons.edit_outlined),
-                    label: const Text('Edit profile'),
+                    label: Text(shellText(lang, 'editProfile')),
                   ),
                 ),
                 const SizedBox(height: 22),
@@ -396,8 +396,8 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 22),
 
                 // ── SECTION 1: Field Operations & System ───────────────────
-                const Text(
-                  'Field Tools & Operations',
+                Text(
+                  shellText(lang, 'fieldToolsOperations'),
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -429,8 +429,8 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 22),
 
                 // ── SECTION 2: Registry, Knowledge & Support ───────────────
-                const Text(
-                  'Registry, Knowledge & Support',
+                Text(
+                  shellText(lang, 'registryKnowledgeSupport'),
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,

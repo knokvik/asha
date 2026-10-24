@@ -10,6 +10,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/theme/app_theme.dart';
 import '../../../core/database/app_database.dart';
+import '../../../core/l10n/language_provider.dart';
+import '../../../shared/shell/shell_copy.dart';
 import '../../../shared/providers/core_providers.dart';
 import '../../../shared/widgets/asha_bottom_nav.dart';
 
@@ -311,14 +313,15 @@ class TrackingScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final db = ref.watch(appDatabaseProvider);
+    final lang = ref.watch(languageProvider).languageCode;
     return Scaffold(
       backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
+          children: [
             Text(
-              'Real-Time Field Tracking',
+              shellText(lang, 'trackingTitle'),
               style: TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 17,
@@ -326,7 +329,7 @@ class TrackingScreen extends ConsumerWidget {
               ),
             ),
             Text(
-              'Live GPS, Household, Beneficiary & Triage Registry',
+              shellText(lang, 'trackingSubtitle'),
               style: TextStyle(fontSize: 11, color: AshaColors.textMuted),
             ),
           ],

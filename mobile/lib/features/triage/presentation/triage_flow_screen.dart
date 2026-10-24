@@ -237,6 +237,8 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
   final _referralNote = TextEditingController();
   String _referralNoteLanguage = 'en';
   bool _referralVoiceBusy = false;
+  bool _referralTranslateBusy = false;
+  String _referralNoteEnglish = '';
   bool _readingsExpanded = false;
   final _answerController = TextEditingController();
   final _questionScrollController = ScrollController();
@@ -553,6 +555,9 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         'additional_details': _details.text.trim(),
         'referral_note': _referralNote.text.trim(),
         'referral_note_language': _referralNoteLanguage,
+        'referral_note_english': _referralNoteLanguage == 'en'
+            ? _referralNote.text.trim()
+            : _referralNoteEnglish.trim(),
         'sex': _sex,
         'reported_context_json': jsonEncode(_reportedContext.toList()),
         'adaptive_from_disease_radar': _adaptiveFromRadar,
@@ -1939,6 +1944,25 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
+          key: const Key('triage_referral_translate'),
+          icon: _referralTranslateBusy
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.translate_rounded),
+          label: Text(
+            _referralTranslateBusy
+                ? 'Translating with Bhasha…'
+                : 'Translate ${selectedLanguage.nativeName} to English',
+          ),
+          onPressed: _referralBusy
+              ? null
+              : () => _translateReferralNote(selectedLanguage),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
           icon: _referralVoiceBusy
               ? const SizedBox(
                   width: 18,
@@ -1951,12 +1975,80 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
                 ? 'Listening and translating…'
                 : 'Speak in ${selectedLanguage.nativeName} → English',
           ),
-          onPressed: _referralVoiceBusy
+          onPressed: _referralBusy
               ? null
               : () => _captureReferralVoice(selectedLanguage),
         ),
+        if (_referralNoteEnglish.trim().isNotEmpty) ...[
+          const SizedBox(height: 10),
+          InputDecorator(
+            decoration: const InputDecoration(
+              labelText: 'English',
+              border: OutlineInputBorder(),
+              alignLabelWithHint: true,
+            ),
+            child: Text(
+              _referralNoteEnglish.trim(),
+              style: const TextStyle(height: 1.35),
+            ),
+          ),
+        ],
       ],
     );
+  }
+
+  bool get _referralBusy => _referralVoiceBusy || _referralTranslateBusy;
+
+  IndicLanguage? _indicFor(AppLanguage language) {
+    for (final candidate in indicLanguages) {
+      if (candidate.iso == language.code || candidate.code == language.code) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  Future<String> _bhashaToEnglish(String text, AppLanguage language) async {
+    final source = text.trim();
+    if (source.isEmpty) {
+      throw StateError('Write the referral note before translating.');
+    }
+    if (language.code == 'en') return source;
+    final indic = _indicFor(language);
+    if (indic == null) {
+      throw StateError(
+        'Bhasha cannot translate ${language.englishName} to English on this phone.',
+      );
+    }
+    final directory = await getApplicationSupportDirectory();
+    final store = ModelStore(Directory('${directory.path}/bhasha-models'));
+    if (!store.isReady) {
+      throw StateError(
+        'Install the Bhasha interpreter pack before translating.',
+      );
+    }
+    final translator = await IndicTranslator.open(store.mtDirectory);
+    try {
+      return translator.translate(source, indic).trim();
+    } finally {
+      translator.close();
+    }
+  }
+
+  Future<void> _translateReferralNote(AppLanguage language) async {
+    setState(() {
+      _referralTranslateBusy = true;
+      _error = null;
+    });
+    try {
+      final english = await _bhashaToEnglish(_referralNote.text, language);
+      if (!mounted) return;
+      setState(() => _referralNoteEnglish = english);
+    } catch (error) {
+      if (mounted) setState(() => _error = '$error');
+    } finally {
+      if (mounted) setState(() => _referralTranslateBusy = false);
+    }
   }
 
   Future<void> _captureReferralVoice(AppLanguage language) async {
@@ -1975,8 +2067,9 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
     String? path;
     try {
       if (!await recorder.hasPermission()) {
-        if (mounted)
+        if (mounted) {
           setState(() => _error = 'Allow microphone access for voice typing.');
+        }
         return;
       }
       setState(() {
@@ -1992,6 +2085,7 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         ),
         path: path,
       );
+      if (!mounted) return;
       await showDialog<void>(
         context: context,
         barrierDismissible: false,
@@ -2012,27 +2106,22 @@ class _TriageFlowScreenState extends ConsumerState<TriageFlowScreen> {
         modelPath: store.asrModelPath,
         tokensPath: store.asrTokensPath,
       );
-      if (heard.trim().isEmpty)
+      final spoken = heard.trim();
+      if (spoken.isEmpty) {
         throw SpeechException('No speech was detected.');
-      final sourceLanguage = languageByCode('${language.code}-IN');
-      var english = heard;
-      if (sourceLanguage != null && language.code != 'en') {
-        final translator = await IndicTranslator.open(store.mtDirectory);
-        english = translator.translate(heard, sourceLanguage);
-        translator.close();
       }
       if (mounted) {
         setState(() {
-          if (_referralNote.text.trim().isEmpty) {
-            _referralNote.text = english;
-          } else {
-            _referralNote.text = '${_referralNote.text.trim()} $english';
-          }
+          _referralNote.text = _referralNote.text.trim().isEmpty
+              ? spoken
+              : '${_referralNote.text.trim()} $spoken';
           _referralNote.selection = TextSelection.collapsed(
             offset: _referralNote.text.length,
           );
         });
       }
+      final english = await _bhashaToEnglish(spoken, language);
+      if (mounted) setState(() => _referralNoteEnglish = english);
     } catch (error) {
       if (mounted) setState(() => _error = 'Voice typing failed: $error');
     } finally {

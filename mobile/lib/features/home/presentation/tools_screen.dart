@@ -58,7 +58,7 @@ class ToolsScreen extends ConsumerWidget {
       _Tool(
         Icons.menu_book_outlined,
         shellText(lang, 'jobAidsLibrary'),
-        'Multimedia counseling & guidelines',
+        shellText(lang, 'educationSub'),
         '/education',
         const Color(0xFFFCE7F3),
         const Color(0xFFBE185D),
@@ -144,7 +144,11 @@ class ToolsScreen extends ConsumerWidget {
                               color: tool.iconBg,
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Icon(tool.icon, color: tool.iconColor, size: 22),
+                            child: Icon(
+                              tool.icon,
+                              color: tool.iconColor,
+                              size: 22,
+                            ),
                           ),
                           const Spacer(),
                           const Icon(

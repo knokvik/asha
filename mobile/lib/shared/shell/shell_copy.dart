@@ -23,8 +23,93 @@ String shellText(String code, String key) {
   };
   if (localized != null) return localized;
   final table = _copy[code] ?? _copy['en']!;
-  return table[key] ?? _copy['en']![key] ?? key;
+  return table[key] ?? _extraCopy[code]?[key] ?? _copy['en']![key] ?? key;
 }
+
+// Labels used by screens that were previously hard-coded in English. Keep
+// these here so every supported app language updates consistently at runtime.
+const _extraCopy = <String, Map<String, String>>{
+  'hi': {
+    'trackingTitle': 'रीयल-टाइम फील्ड ट्रैकिंग',
+    'trackingSubtitle': 'लाइव GPS, परिवार, लाभार्थी और ट्रायेज रजिस्टर',
+    'fieldToolsOperations': 'फील्ड टूल्स और संचालन',
+    'registryKnowledgeSupport': 'रजिस्टर, ज्ञान और सहायता',
+    'trackingShort': 'ट्रैकिंग',
+    'editProfile': 'प्रोफ़ाइल संपादित करें',
+    'allTools': 'सभी फील्ड टूल्स',
+    'allToolsSub': 'ट्रायेज, आज की सूची, कवरेज, कैलकुलेटर',
+    'registers': 'रजिस्टर',
+    'registersSub': 'सरकारी रजिस्टर और PDF',
+    'education': 'स्वास्थ्य शिक्षा',
+    'educationSub': 'ऑडियो, कार्ड और सामुदायिक संसाधन',
+    'stock': 'स्टॉक और उपकरण',
+    'stockSub': 'दवाइयाँ, सामग्री और उपकरण',
+    'support': 'सहायता और टेली-कंसल्टेशन',
+    'supportSub': 'कॉल, मार्गदर्शन और साथी सहायता',
+    'learning': 'प्रशिक्षण',
+    'learningSub': 'ऑफ़लाइन पाठ और कार्य-सहायता',
+  },
+  'mr': {
+    'trackingTitle': 'रिअल-टाइम फील्ड ट्रॅकिंग',
+    'trackingSubtitle': 'लाइव्ह GPS, कुटुंब, लाभार्थी आणि ट्रायेज नोंदणी',
+    'fieldToolsOperations': 'फील्ड साधने आणि संचालन',
+    'registryKnowledgeSupport': 'नोंदणी, ज्ञान आणि मदत',
+  },
+  'bn': {
+    'trackingTitle': 'রিয়েল-টাইম ফিল্ড ট্র্যাকিং',
+    'trackingSubtitle': 'লাইভ GPS, পরিবার, সুবিধাভোগী ও ট্রায়াজ রেজিস্ট্রি',
+    'fieldToolsOperations': 'ফিল্ড টুল ও কার্যক্রম',
+    'registryKnowledgeSupport': 'রেজিস্ট্রি, জ্ঞান ও সহায়তা',
+  },
+  'gu': {
+    'trackingTitle': 'રીઅલ-ટાઇમ ફીલ્ડ ટ્રેકિંગ',
+    'trackingSubtitle': 'લાઇવ GPS, પરિવાર, લાભાર્થી અને ટ્રાયેજ રજિસ્ટ્રી',
+    'fieldToolsOperations': 'ફીલ્ડ ટૂલ્સ અને કામગીરી',
+    'registryKnowledgeSupport': 'રજિસ્ટ્રી, જ્ઞાન અને સહાય',
+  },
+  'ta': {
+    'trackingTitle': 'நிகழ்நேர கள கண்காணிப்பு',
+    'trackingSubtitle': 'நேரடி GPS, குடும்பம், பயனாளி மற்றும் ட்ரையாஜ் பதிவேடு',
+    'fieldToolsOperations': 'கள கருவிகள் மற்றும் செயல்பாடுகள்',
+    'registryKnowledgeSupport': 'பதிவேடு, அறிவு மற்றும் ஆதரவு',
+  },
+  'te': {
+    'trackingTitle': 'రియల్-టైమ్ ఫీల్డ్ ట్రాకింగ్',
+    'trackingSubtitle': 'లైవ్ GPS, కుటుంబం, లబ్ధిదారు మరియు ట్రయాజ్ రిజిస్ట్రీ',
+    'fieldToolsOperations': 'ఫీల్డ్ టూల్స్ మరియు కార్యకలాపాలు',
+    'registryKnowledgeSupport': 'రిజిస్ట్రీ, జ్ఞానం మరియు సహాయం',
+  },
+  'kn': {
+    'trackingTitle': 'ರಿಯಲ್-ಟೈಮ್ ಫೀಲ್ಡ್ ಟ್ರ್ಯಾಕಿಂಗ್',
+    'trackingSubtitle': 'ಲೈವ್ GPS, ಕುಟುಂಬ, ಫಲಾನುಭವಿ ಮತ್ತು ಟ್ರಯಾಜ್ ನೋಂದಣಿ',
+    'fieldToolsOperations': 'ಫೀಲ್ಡ್ ಸಾಧನಗಳು ಮತ್ತು ಕಾರ್ಯಾಚರಣೆಗಳು',
+    'registryKnowledgeSupport': 'ನೋಂದಣಿ, ಜ್ಞಾನ ಮತ್ತು ಸಹಾಯ',
+  },
+  'ml': {
+    'trackingTitle': 'റിയൽ-ടൈം ഫീൽഡ് ട്രാക്കിംഗ്',
+    'trackingSubtitle': 'ലൈവ് GPS, കുടുംബം, ഗുണഭോക്താവ്, ട്രയാജ് രജിസ്ട്രി',
+    'fieldToolsOperations': 'ഫീൽഡ് ടൂളുകളും പ്രവർത്തനങ്ങളും',
+    'registryKnowledgeSupport': 'രജിസ്ട്രി, അറിവ്, പിന്തുണ',
+  },
+  'pa': {
+    'trackingTitle': 'ਰੀਅਲ-ਟਾਈਮ ਫੀਲਡ ਟ੍ਰੈਕਿੰਗ',
+    'trackingSubtitle': 'ਲਾਈਵ GPS, ਪਰਿਵਾਰ, ਲਾਭਪਾਤਰੀ ਅਤੇ ਟ੍ਰਾਇਜ ਰਜਿਸਟਰੀ',
+    'fieldToolsOperations': 'ਫੀਲਡ ਟੂਲ ਅਤੇ ਕਾਰਜ',
+    'registryKnowledgeSupport': 'ਰਜਿਸਟਰੀ, ਗਿਆਨ ਅਤੇ ਸਹਾਇਤਾ',
+  },
+  'or': {
+    'trackingTitle': 'ରିଅଲ-ଟାଇମ ଫିଲ୍ଡ ଟ୍ରାକିଂ',
+    'trackingSubtitle': 'ଲାଇଭ GPS, ପରିବାର, ହିତାଧିକାରୀ ଏବଂ ଟ୍ରାଏଜ ରେଜିଷ୍ଟ୍ରି',
+    'fieldToolsOperations': 'ଫିଲ୍ଡ ଟୁଲ ଏବଂ କାର୍ଯ୍ୟ',
+    'registryKnowledgeSupport': 'ରେଜିଷ୍ଟ୍ରି, ଜ୍ଞାନ ଏବଂ ସହାୟତା',
+  },
+  'as': {
+    'trackingTitle': 'ৰিয়েল-টাইম ফিল্ড ট্ৰেকিং',
+    'trackingSubtitle': 'লাইভ GPS, পৰিয়াল, হিতাধিকাৰী আৰু ট্ৰায়াজ ৰেজিষ্ট্ৰী',
+    'fieldToolsOperations': 'ফিল্ড টুল আৰু কাৰ্যকলাপ',
+    'registryKnowledgeSupport': 'ৰেজিষ্ট্ৰী, জ্ঞান আৰু সহায়তা',
+  },
+};
 
 const _copy = <String, Map<String, String>>{
   'en': {
@@ -186,6 +271,12 @@ const _copy = <String, Map<String, String>>{
     'drawerSettingsSub': 'App settings, language, help',
     'notif': 'Notifications: 2 pending immunizations & 1 overdue ANC visit.',
     'profile': 'Profile',
+    'trackingTitle': 'Real-Time Field Tracking',
+    'trackingSubtitle': 'Live GPS, Household, Beneficiary & Triage Registry',
+    'trackingShort': 'Tracking',
+    'editProfile': 'Edit profile',
+    'fieldToolsOperations': 'Field Tools & Operations',
+    'registryKnowledgeSupport': 'Registry, Knowledge & Support',
     'mapBasemapStyle': 'Map Basemap Style',
     'mapOfflineCacheNote': 'Offline caching enabled. Previously viewed tiles and local district packs work without network.',
     'interpreterCorePack': 'Interpreter core pack',

@@ -463,7 +463,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       childAspectRatio: 1.15,
       children: [
         _buildQuickActionCard(
-          title: 'Household',
+          title: shellText(_lang, 'householdsTool'),
           iconWidget: _quickActionIcon(
             Icons.group_add_rounded,
             const Color(0xFF15803D),
@@ -488,7 +488,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           onTap: () => context.push('/clinical-programs'),
         ),
         _buildQuickActionCard(
-          title: 'Tracking',
+          title: shellText(_lang, 'trackingShort'),
           iconWidget: _quickActionIcon(
             Icons.track_changes_rounded,
             const Color(0xFF0F766E),
