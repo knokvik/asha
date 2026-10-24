@@ -104,15 +104,34 @@ class SyncService:
         synced: list[str] = []
         conflicts: list[ConflictItem] = []
 
-        for record in request.records:
+        # Process parent records before dependent records. Offline queues can
+        # contain a consent/referral before the member/encounter it references.
+        dependency_order = {
+            "households": 0,
+            "members": 1,
+            "clinical_encounters": 2,
+            "clinical_observations": 3,
+            "consent_records": 4,
+            "referral_records": 5,
+        }
+        records = sorted(
+            request.records,
+            key=lambda item: dependency_order.get(item.table, 10),
+        )
+
+        for record in records:
             try:
-                conflict = await self._apply_record(
-                    record,
-                    worker_id=request.worker_id,
-                    device_id=request.device_id,
-                    app_version=request.app_version,
-                    block_code=block_code,
-                )
+                # A database constraint failure in one packet must not poison
+                # the transaction for all other packets in the batch.
+                async with self._db.begin_nested():
+                    conflict = await self._apply_record(
+                        record,
+                        worker_id=request.worker_id,
+                        device_id=request.device_id,
+                        app_version=request.app_version,
+                        block_code=block_code,
+                    )
+                    await self._db.flush()
                 if conflict:
                     conflicts.append(conflict)
                 else:
@@ -166,6 +185,17 @@ class SyncService:
         # Build field payload for insert/update
         payload = dict(record.payload)
         payload["id"] = record.record_id
+
+        # Referral packets can legitimately reach the server before the
+        # clinical encounter packet that they reference (the mobile queue is
+        # priority-based and retries packets independently). Do not reject the
+        # referral or convert it into a false conflict in that case. The
+        # referral payload and audit trail are retained; a later encounter
+        # packet can be linked by its shared encounter ID.
+        if record.table == "referral_records":
+            encounter_id = payload.get("encounter_id")
+            if encounter_id and await self._db.get(ClinicalEncounter, encounter_id) is None:
+                payload["encounter_id"] = None
 
         # Inject server-side columns
         if hasattr(model_class, "worker_id"):
