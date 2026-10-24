@@ -32,6 +32,33 @@ from services.notification_service import NotificationService
 router = APIRouter(prefix="/referrals", tags=["referrals"])
 
 
+async def _get_optional_tenant(authorization: str | None = Header(None)) -> TenantContext:
+    """Extract tenant context from an optional Authorization header."""
+    if not authorization or not authorization.startswith("Bearer "):
+        ctx = TenantContext(worker_id="facility_mo", role="PHC_MO", block_code="default")
+        set_tenant_context(ctx)
+        return ctx
+
+    token = authorization.removeprefix("Bearer ")
+    try:
+        payload = decode_token(token)
+    except JWTError:
+        ctx = TenantContext(worker_id="facility_mo", role="PHC_MO", block_code="default")
+        set_tenant_context(ctx)
+        return ctx
+
+    ctx = TenantContext(
+        worker_id=payload.get("sub", "facility_mo"),
+        role=payload.get("role", "PHC_MO"),
+        state_code=payload.get("state_code", ""),
+        district_code=payload.get("district_code", ""),
+        block_code=payload.get("block_code", ""),
+        area_villages=payload.get("area_villages", []),
+    )
+    set_tenant_context(ctx)
+    return ctx
+
+
 @router.post("/clinical/{encounter_id}/action", status_code=status.HTTP_200_OK)
 async def record_clinical_program_action(
     encounter_id: str,
@@ -60,33 +87,6 @@ async def record_clinical_program_action(
     encounter.server_seq = now_ms
     await db.commit()
     return {"success": True, "encounter_id": encounter_id, "status": encounter.status, "updated_at": now_ms}
-
-
-async def _get_optional_tenant(authorization: str | None = Header(None)) -> TenantContext:
-    """Extract tenant context from optional Authorization header (allows clinical facility users)."""
-    if not authorization or not authorization.startswith("Bearer "):
-        ctx = TenantContext(worker_id="facility_mo", role="PHC_MO", block_code="default")
-        set_tenant_context(ctx)
-        return ctx
-
-    token = authorization.removeprefix("Bearer ")
-    try:
-        payload = decode_token(token)
-    except JWTError:
-        ctx = TenantContext(worker_id="facility_mo", role="PHC_MO", block_code="default")
-        set_tenant_context(ctx)
-        return ctx
-
-    ctx = TenantContext(
-        worker_id=payload.get("sub", "facility_mo"),
-        role=payload.get("role", "PHC_MO"),
-        state_code=payload.get("state_code", ""),
-        district_code=payload.get("district_code", ""),
-        block_code=payload.get("block_code", ""),
-        area_villages=payload.get("area_villages", []),
-    )
-    set_tenant_context(ctx)
-    return ctx
 
 
 @router.post(
