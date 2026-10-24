@@ -300,6 +300,14 @@ class SyncService:
             )
             self._db.add(audit)
 
+        # Consent is an append/update workflow and may be replayed after a
+        # server-seeded copy or another device's copy already exists. The
+        # latest consent packet has already been applied above, so do not
+        # downgrade a successful consent sync to "review required" merely
+        # because ownership/timestamps differ.
+        if record.table == "consent_records":
+            return None
+
         # If there were same-field conflicts, store in conflict_review
         if conflict_fields:
             review = ConflictReview(
