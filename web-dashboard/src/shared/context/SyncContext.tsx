@@ -33,6 +33,10 @@ export interface FrontlineSyncActivity {
   dangerSigns?: string[];
   preReferralTreatment?: string[];
   facilityName?: string;
+  recordTable?: string;
+  recordId?: string;
+  householdId?: string;
+  record?: Record<string, unknown>;
   vitals?: {
     bp?: string;
     pulse?: number;
@@ -598,6 +602,10 @@ function mapPacket(packet: any): FrontlineSyncActivity {
     : [];
   return {
     id: String(packet.id),
+    recordTable: table,
+    recordId: String(packet.record_id || packet.id),
+    householdId: packet.record?.household_id ? String(packet.record.household_id) : undefined,
+    record: packet.record && typeof packet.record === 'object' ? packet.record : undefined,
     workerName: String(packet.worker_id || 'Field worker'),
     workerPhone: '',
     village: String(ticket?.location || packet.device_id || 'Field device'),

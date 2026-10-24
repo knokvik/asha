@@ -151,13 +151,22 @@ async def sync_activity(
             continue
         seen_record_keys.add(record_key)
         activity = _clinical_activity(row.table_name, row.new_value)
+        record_payload: dict[str, object] | None = None
+        if row.table_name in {"households", "members"}:
+            try:
+                parsed = json.loads(row.new_value or "")
+                if isinstance(parsed, dict):
+                    record_payload = parsed
+            except (TypeError, json.JSONDecodeError):
+                record_payload = None
         packets.append({
             "id": row.id, "table": row.table_name, "record_id": row.record_id,
             "worker_id": row.changed_by, "device_id": row.device_id,
             "app_version": row.app_version, "received_at": row.server_timestamp,
             "device_timestamp": row.device_timestamp,
             "operation": row.new_value if row.field_name == "__packet__" else "update",
-            "status": "synced", **activity, **_ticket_activity(tickets.get(row.record_id)),
+            "status": "synced", "record": record_payload,
+            **activity, **_ticket_activity(tickets.get(row.record_id)),
         })
     return {
         "packets": packets

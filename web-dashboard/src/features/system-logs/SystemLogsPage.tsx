@@ -53,6 +53,7 @@ export function SystemLogsPage() {
   // Selected log for half-page right slide-over drawer
   const [selectedLog, setSelectedLog] = useState<FrontlineSyncActivity | null>(null);
   const [copiedPayload, setCopiedPayload] = useState(false);
+  const [isQrExpanded, setIsQrExpanded] = useState(false);
 
   // Sync search param with searchTerm
   useEffect(() => {
@@ -71,6 +72,10 @@ export function SystemLogsPage() {
       }
     }
   }, [searchParams, syncActivities]);
+
+  useEffect(() => {
+    setIsQrExpanded(false);
+  }, [selectedLog?.id]);
 
   // Close drawer on Escape key
   useEffect(() => {
@@ -751,12 +756,32 @@ export function SystemLogsPage() {
                     </div>
                   </div>
 
-                  {/* QR Code Icon / Badge */}
-                  <div className="p-2 rounded-xl bg-white text-slate-900 flex flex-col items-center justify-center shadow-xs">
-                    <QrCode className="w-8 h-8" />
-                    <span className="text-[8px] font-mono font-bold mt-0.5">ABDM QR</span>
-                  </div>
+                  {/* QR is available on demand and collapsed by default. */}
+                  <button
+                    type="button"
+                    onClick={() => setIsQrExpanded((expanded) => !expanded)}
+                    className="rounded-xl bg-white p-2 text-slate-900 shadow-xs"
+                    aria-expanded={isQrExpanded}
+                    aria-label={isQrExpanded ? 'Collapse ticket QR' : 'Expand ticket QR'}
+                  >
+                    <div className="flex flex-col items-center justify-center">
+                      <QrCode className="h-8 w-8" />
+                      <span className="mt-0.5 text-[8px] font-mono font-bold">{isQrExpanded ? 'Hide QR' : 'Show QR'}</span>
+                    </div>
+                  </button>
                 </div>
+
+                {isQrExpanded && (
+                  <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs dark:border-slate-800 dark:bg-[#25252A]">
+                    <div className="flex items-center gap-2 font-semibold">
+                      <QrCode className="h-4 w-4 text-emerald-700" />
+                      Ticket QR checksum
+                    </div>
+                    <p className="mt-1 font-mono text-[11px] text-slate-500">
+                      {selectedLog.ticketId || `TKT-2026-${selectedLog.id.replace('sync-', '')}`}
+                    </p>
+                  </div>
+                )}
 
                 {/* Severity Priority Banner */}
                 <div

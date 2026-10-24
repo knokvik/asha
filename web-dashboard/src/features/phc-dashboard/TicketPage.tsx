@@ -5,6 +5,7 @@ import { getReferralById, recordClinicalOutcome } from '@/shared/api/referralApi
 import { validateOutcome, type OutcomeAction } from '@/features/clinical-desk/logic';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { RefreshCw } from 'lucide-react';
 
 export function TicketPage() {
   const { id = '' } = useParams();
@@ -14,7 +15,7 @@ export function TicketPage() {
   const [noteForAsha, setNoteForAsha] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
-  const { data: ticket, isLoading, error } = useQuery({
+  const { data: ticket, isLoading, error, isRefetching, refetch } = useQuery({
     queryKey: ['referrals', 'ticket', id],
     queryFn: () => getReferralById(id),
     enabled: id.length > 0,
@@ -27,7 +28,11 @@ export function TicketPage() {
         action: action as OutcomeAction,
         noteForAsha,
       }),
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Refresh the ticket itself so the outcome/status shown on this page is
+      // updated immediately, in addition to the queue and map consumers.
+      await queryClient.invalidateQueries({ queryKey: ['referrals', 'ticket', id] });
+      await queryClient.refetchQueries({ queryKey: ['referrals', 'ticket', id] });
       queryClient.invalidateQueries({ queryKey: ['referrals'] });
       queryClient.invalidateQueries({ queryKey: ['heatmap'] });
       setFormError(null);
@@ -49,9 +54,22 @@ export function TicketPage() {
 
   return (
     <div className="p-4 lg:p-8 max-w-3xl mx-auto space-y-4">
-      <Link to="/queue" className="text-xs font-semibold text-emerald-700">
-        Back to queue
-      </Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link to="/queue" className="text-xs font-semibold text-emerald-700">
+          Back to queue
+        </Link>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => void refetch()}
+          disabled={isRefetching}
+          aria-label="Refresh ticket status"
+        >
+          <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isRefetching ? 'animate-spin' : ''}`} />
+          {isRefetching ? 'Refreshing…' : 'Refresh status'}
+        </Button>
+      </div>
       <Card className="p-5 space-y-3 border-[#E5E7EB] dark:border-[#2E2E2E]">
         <h1 className="text-lg font-bold">Referral {ticket.id}</h1>
         <p className="text-sm">
@@ -60,6 +78,7 @@ export function TicketPage() {
           {ticket.wardId ? ` · ${ticket.village} ${ticket.wardId}` : ` · ${ticket.village}`}
         </p>
         <p className="text-sm font-semibold">{ticket.severity} — {ticket.reason}</p>
+        <p className="text-xs font-semibold text-emerald-700">Status: {ticket.status.replaceAll('_', ' ')}</p>
         {ticket.urgency && <p className="text-xs">{ticket.urgency}</p>}
         {ticket.outbreakContext && <p className="text-xs text-amber-700">{ticket.outbreakContext}</p>}
         {ticket.sms && <p className="font-mono text-xs">{ticket.sms}</p>}
