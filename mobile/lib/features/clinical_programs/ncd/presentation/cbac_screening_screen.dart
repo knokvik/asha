@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/triage/models/models.dart';
@@ -7,6 +8,7 @@ import '../data/ncd_repository.dart';
 import '../domain/cbac_calculator.dart';
 import '../domain/cbac_models.dart';
 import '../../presentation/clinical_form_feedback.dart';
+import '../../tickets/phc_ticket_service.dart';
 
 /// Screen guiding ASHA through the official Community Based Assessment Checklist (CBAC)
 /// for adults >= 30 years, evaluating risk score offline, checking cancer warning signs,
@@ -1072,9 +1074,36 @@ class _CbacScreeningScreenState extends ConsumerState<CbacScreeningScreen>
           ),
           actions: [
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(ctx).pop();
-                Navigator.of(context).pop();
+                // Create PHC review ticket then go to programs hub
+                try {
+                  final ticketService = ref.read(phcTicketServiceProvider);
+                  await ticketService.createTicket(
+                    programCode: 'ncd',
+                    encounterId: assessment.id,
+                    memberId: widget.memberId,
+                    memberName: widget.beneficiaryName.trim().isNotEmpty
+                        ? widget.beneficiaryName
+                        : 'Unknown',
+                    ashaId: widget.ashaId,
+                    ashaName: 'ASHA Worker',
+                    formDataSummary: {
+                      'CBAC Score': '${assessment.totalCbacScore}/10',
+                      'Risk Level': assessment.isHighRiskScore ? 'HIGH RISK' : 'Normal',
+                      'Triage': assessment.triageFlag.name.toUpperCase(),
+                      'BP': (_currentSystolic != null && _currentDiastolic != null)
+                          ? '$_currentSystolic/$_currentDiastolic mmHg'
+                          : 'Not recorded',
+                      'Glucose': _currentGlucose != null
+                          ? '$_currentGlucose mg/dL'
+                          : 'Not recorded',
+                      if (assessment.referralDestination != null)
+                        'Referral': assessment.referralDestination!,
+                    },
+                  );
+                } catch (_) {}
+                if (context.mounted) context.go('/clinical-programs');
               },
               child: const Text('Done & Return'),
             ),

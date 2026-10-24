@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../referral/presentation/referral_slip_screen.dart';
@@ -7,6 +8,7 @@ import '../data/anc_repository.dart';
 import '../domain/anc_models.dart';
 import '../../presentation/clinical_form_feedback.dart';
 import '../../presentation/clinical_card_helpers.dart';
+import '../../tickets/phc_ticket_service.dart';
 
 /// Interactive guided checklist screen for ANC Contacts.
 class AncVisitScreen extends ConsumerStatefulWidget {
@@ -111,6 +113,32 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
       if (!mounted) return;
       setState(() => _isSaving = false);
 
+      // Create PHC review ticket
+      try {
+        final ticketService = ref.read(phcTicketServiceProvider);
+        await ticketService.createTicket(
+          programCode: 'anc',
+          encounterId: result.encounterId,
+          memberId: widget.womanId,
+          memberName: widget.womanName.trim().isNotEmpty
+              ? widget.womanName
+              : 'Unknown',
+          ashaId: widget.ashaId ?? 'asha_local',
+          ashaName: 'ASHA Worker',
+          formDataSummary: {
+            'Contact #': '${widget.contactNumber}',
+            'Gestation': '${widget.gestationWeeks} weeks',
+            if (data.systolicBp != null)
+              'Blood Pressure': '${data.systolicBp}/${data.diastolicBp} mmHg',
+            if (data.haemoglobin != null) 'Haemoglobin': '${data.haemoglobin} g/dL',
+            'IFA Tablets': data.ifaTabletsGiven ? 'Given (${data.ifaCount})' : 'Not given',
+            'Danger Signs': data.clinicalDangerSigns.isNotEmpty
+                ? data.clinicalDangerSigns.join(', ')
+                : 'None',
+          },
+        );
+      } catch (_) {}
+
       if (result.isRedFlag) {
         Navigator.pushReplacement(
           context,
@@ -152,7 +180,7 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
               TextButton(
                 onPressed: () {
                   Navigator.pop(dialogCtx);
-                  Navigator.pop(context, true);
+                  if (context.mounted) context.go('/clinical-programs');
                 },
                 child: const Text('Acknowledge'),
               ),
@@ -162,11 +190,11 @@ class _AncVisitScreenState extends ConsumerState<AncVisitScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('ANC Contact saved successfully.'),
+            content: Text('ANC Contact saved. Sent for PHC review.'),
             backgroundColor: AshaColors.primary,
           ),
         );
-        Navigator.pop(context, true);
+        context.go('/clinical-programs');
       }
     } catch (e) {
       if (mounted) {

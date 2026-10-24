@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../referral/presentation/referral_slip_screen.dart';
@@ -8,6 +9,7 @@ import '../data/hbnc_repository.dart';
 import '../domain/hbnc_models.dart';
 import '../domain/kmc_guidance.dart';
 import '../../presentation/clinical_card_helpers.dart';
+import '../../tickets/phc_ticket_service.dart';
 
 /// Screen presenting the guided Home Based Newborn Care (HBNC) visit checklist.
 class HbncVisitScreen extends ConsumerStatefulWidget {
@@ -106,6 +108,28 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
       if (!mounted) return;
       setState(() => _isSaving = false);
 
+      // Create PHC review ticket
+      try {
+        final ticketService = ref.read(phcTicketServiceProvider);
+        await ticketService.createTicket(
+          programCode: 'hbnc',
+          encounterId: result.encounterId,
+          memberId: widget.newbornId,
+          memberName: widget.newbornName ?? 'Newborn',
+          ashaId: widget.ashaId ?? 'asha_local',
+          ashaName: 'ASHA Worker',
+          formDataSummary: {
+            'Visit Day': 'Day ${widget.visitDay}',
+            'Weight': '${checklist.currentWeightKg ?? widget.birthWeightKg} kg',
+            'Temperature': checklist.temperatureC != null
+                ? '${checklist.temperatureC} °C'
+                : 'Not recorded',
+            'Danger Signs': result.hasDangerSign ? 'Present' : 'None',
+            'Episode Completed': result.isEpisodeCompleted ? 'Yes' : 'No',
+          },
+        );
+      } catch (_) {}
+
       if (result.hasDangerSign) {
         Navigator.pushReplacement(
           context,
@@ -129,12 +153,12 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
             content: Text(
               result.isEpisodeCompleted
                   ? 'HBNC Episode Complete! Incentive registered.'
-                  : 'HBNC Visit successfully saved.',
+                  : 'HBNC Visit saved. Sent for PHC review.',
             ),
             backgroundColor: AshaColors.primary,
           ),
         );
-        Navigator.pop(context, true);
+        context.go('/clinical-programs');
       }
     } catch (e) {
       if (mounted) {

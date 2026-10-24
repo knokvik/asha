@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/l10n/language_provider.dart';
@@ -7,6 +8,7 @@ import '../../../../shared/shell/shell_copy.dart';
 import '../data/tb_repository.dart';
 import '../domain/tb_models.dart';
 import '../../presentation/clinical_card_helpers.dart';
+import '../../tickets/phc_ticket_service.dart';
 
 /// Screen for recording Presumptive TB screening and Sputum sample collection.
 class PresumptiveTbScreen extends ConsumerStatefulWidget {
@@ -280,7 +282,30 @@ class _PresumptiveTbScreenState extends ConsumerState<PresumptiveTbScreen> {
         ),
       );
 
-      Navigator.pop(context, true);
+      // Create PHC review ticket
+      try {
+        final ticketService = ref.read(phcTicketServiceProvider);
+        await ticketService.createTicket(
+          programCode: 'tb',
+          encounterId: assessment.id,
+          memberId: widget.memberId,
+          memberName: widget.beneficiaryName.trim().isNotEmpty
+              ? widget.beneficiaryName
+              : 'Unknown',
+          ashaId: widget.ashaId,
+          ashaName: 'ASHA Worker',
+          formDataSummary: {
+            'Presumptive TB': assessment.isPresumptiveTb ? 'Yes' : 'No',
+            'Cough > 2 wks': _coughGt2Weeks ? 'Yes' : 'No',
+            'Haemoptysis': _haemoptysis ? 'Yes' : 'No',
+            'Night Sweats': _nightSweats ? 'Yes' : 'No',
+            'Weight Loss': _weightLoss ? 'Yes' : 'No',
+            'Sputum Collected': _collectSputumNow ? 'Yes' : 'No',
+          },
+        );
+      } catch (_) {}
+
+      context.go('/clinical-programs');
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);

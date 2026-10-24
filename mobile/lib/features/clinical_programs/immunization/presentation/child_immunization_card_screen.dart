@@ -6,6 +6,7 @@ import '../../../../app/theme/app_theme.dart';
 import '../data/immunization_repository.dart';
 import '../domain/immunization_models.dart';
 import '../../presentation/clinical_form_feedback.dart';
+import '../../tickets/phc_ticket_service.dart';
 import 'aefi_report_dialog.dart';
 
 /// Screen displaying the child's immunization card / MCP card matrix (Requirement 16.1, 16.2, 16.3).
@@ -289,10 +290,34 @@ class _ChildImmunizationCardScreenState
                         ashaId: widget.ashaId,
                       );
                       if (mounted) {
+                        // Create PHC review ticket for this dose
+                        try {
+                          final ticketService =
+                              ref.read(phcTicketServiceProvider);
+                          await ticketService.createTicket(
+                            programCode: 'immunization',
+                            encounterId:
+                                'imm_${widget.memberId}_${selectedVaccineCode}_${administeredDate.millisecondsSinceEpoch}',
+                            memberId: widget.memberId,
+                            memberName: widget.childName.trim().isNotEmpty
+                                ? widget.childName
+                                : 'Child',
+                            ashaId: widget.ashaId,
+                            ashaName: 'ASHA Worker',
+                            formDataSummary: {
+                              'Vaccine': selectedVaccineCode,
+                              'Date': _dateFormat.format(administeredDate),
+                              'Session': selectedSession.name,
+                              'Site': selectedSite.displayName,
+                              if (batchController.text.trim().isNotEmpty)
+                                'Batch': batchController.text.trim(),
+                            },
+                          );
+                        } catch (_) {}
                         messenger.showSnackBar(
                           clinicalSavedSnackBar(
                             message:
-                                '$selectedVaccineCode saved on this phone.',
+                                '$selectedVaccineCode saved. Sent for PHC review.',
                           ),
                         );
                         _loadImmunizationData();

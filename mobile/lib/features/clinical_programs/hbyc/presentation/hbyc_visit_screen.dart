@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/voice/tts_service.dart';
@@ -7,6 +8,7 @@ import '../../../referral/presentation/referral_slip_screen.dart';
 import '../data/hbyc_repository.dart';
 import '../domain/hbyc_models.dart';
 import '../domain/hbyc_storyboards.dart';
+import '../../tickets/phc_ticket_service.dart';
 
 /// Interactive guided checklist screen for Home Based Care for Young Child (HBYC) visits.
 ///
@@ -189,8 +191,30 @@ class _HbycVisitScreenState extends ConsumerState<HbycVisitScreen> {
       if (!mounted) return;
       setState(() => _isSaving = false);
 
+      // Create PHC review ticket
+      try {
+        final ticketService = ref.read(phcTicketServiceProvider);
+        await ticketService.createTicket(
+          programCode: 'hbyc',
+          encounterId: result.encounterId,
+          memberId: widget.childId,
+          memberName: widget.childName.trim().isNotEmpty
+              ? widget.childName
+              : 'Child',
+          ashaId: widget.ashaId ?? 'asha_local',
+          ashaName: 'ASHA Worker',
+          formDataSummary: {
+            'Milestone': widget.milestone.name,
+            'Weight': '${checklist.growth.weightKg} kg',
+            if (checklist.growth.lengthCm != null)
+              'Length': '${checklist.growth.lengthCm} cm',
+            'SAM / Red Flag': result.isRedFlag ? 'Yes' : 'No',
+            'Milestone Delay': result.hasMilestoneDelay ? 'Yes' : 'No',
+          },
+        );
+      } catch (_) {}
+
       if (result.isRedFlag) {
-        // Requirement 13.4: SAM or Danger Sign -> Navigate directly to Referral Slip
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -206,7 +230,6 @@ class _HbycVisitScreenState extends ConsumerState<HbycVisitScreen> {
           ),
         );
       } else if (result.hasMilestoneDelay) {
-        // Requirement 13.3: Show dialog suggesting RBSK/DEIC referral with pre-populated note
         showDialog(
           context: context,
           barrierDismissible: false,
@@ -234,7 +257,7 @@ class _HbycVisitScreenState extends ConsumerState<HbycVisitScreen> {
               TextButton(
                 onPressed: () {
                   Navigator.pop(dialogContext);
-                  Navigator.pop(context, true);
+                  if (context.mounted) context.go('/clinical-programs');
                 },
                 child: const Text('Save & Close'),
               ),
@@ -268,11 +291,11 @@ class _HbycVisitScreenState extends ConsumerState<HbycVisitScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('HBYC Visit successfully completed! Incentive event recorded.'),
+            content: Text('HBYC Visit saved. Sent for PHC review.'),
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context, true);
+        context.go('/clinical-programs');
       }
     } catch (e) {
       if (mounted) {

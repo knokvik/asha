@@ -5,9 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/l10n/language_provider.dart';
 import '../../../shared/providers/core_providers.dart';
+import '../../../shared/providers/user_profile_provider.dart';
 import '../../../shared/shell/shell_copy.dart';
 import '../../../shared/widgets/asha_bottom_nav.dart';
 import '../../../shared/widgets/asha_svg_illustrations.dart';
+import '../tickets/phc_review_ticket.dart';
+import '../tickets/phc_ticket_notification_listener.dart';
+import '../tickets/phc_ticket_service.dart';
 
 /// Screen 7: Clinical Programs matching the exact Asha Platform mobile design.
 class ProgramsHubScreen extends ConsumerWidget {
@@ -39,7 +43,18 @@ class ProgramsHubScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final lang = ref.watch(languageProvider).languageCode;
-    return Scaffold(
+
+    // Get ASHA ID for fetching latest ticket statuses per program
+    final profile = ref.watch(userProfileProvider);
+    final ashaId = profile.maybeWhen(data: (p) => p.ashaId, orElse: () => 'asha-01');
+    final ticketsAsync = ref.watch(latestTicketsPerProgramProvider(ashaId));
+    final ticketMap = ticketsAsync.maybeWhen(
+      data: (m) => m,
+      orElse: () => <String, PhcReviewTicket>{},
+    );
+
+    return PhcTicketNotificationListener(
+      child: Scaffold(
       backgroundColor: AshaColors.screenBg,
       bottomNavigationBar: const AshaBottomNav(index: 2),
       appBar: AppBar(
@@ -75,14 +90,14 @@ class ProgramsHubScreen extends ConsumerWidget {
           crossAxisCount: 2,
           crossAxisSpacing: 14,
           mainAxisSpacing: 14,
-          // Keep enough vertical room for translated program names and subtitles.
-          childAspectRatio: 0.75,
+          childAspectRatio: 0.72,
           children: [
             _ClinicalCard(
               title: 'ANC',
               subtitle: shellText(lang, 'ancSubtitle'),
               type: ClinicalProgramType.anc,
               bgColor: const Color(0xFFF0FDF4),
+              ticket: ticketMap['anc'],
               onTap: () => _openEntryMode(
                 context,
                 ref,
@@ -98,6 +113,7 @@ class ProgramsHubScreen extends ConsumerWidget {
               subtitle: shellText(lang, 'pncSubtitle'),
               type: ClinicalProgramType.pnc,
               bgColor: const Color(0xFFEFF6FF),
+              ticket: ticketMap['pnc'],
               onTap: () => _openEntryMode(
                 context,
                 ref,
@@ -113,6 +129,7 @@ class ProgramsHubScreen extends ConsumerWidget {
               subtitle: shellText(lang, 'immunizationSubtitle'),
               type: ClinicalProgramType.immunization,
               bgColor: const Color(0xFFFEF3C7),
+              ticket: ticketMap['immunization'],
               onTap: () => _openEntryMode(
                 context,
                 ref,
@@ -128,6 +145,7 @@ class ProgramsHubScreen extends ConsumerWidget {
               subtitle: shellText(lang, 'ncdSubtitle'),
               type: ClinicalProgramType.ncd,
               bgColor: const Color(0xFFFEE2E2),
+              ticket: ticketMap['ncd'],
               onTap: () => _openEntryMode(
                 context,
                 ref,
@@ -143,6 +161,7 @@ class ProgramsHubScreen extends ConsumerWidget {
               subtitle: shellText(lang, 'hbncSubtitle'),
               type: ClinicalProgramType.hbnc,
               bgColor: const Color(0xFFECFDF5),
+              ticket: ticketMap['hbnc'],
               onTap: () => _openEntryMode(
                 context,
                 ref,
@@ -158,6 +177,7 @@ class ProgramsHubScreen extends ConsumerWidget {
               subtitle: shellText(lang, 'tbSubtitle'),
               type: ClinicalProgramType.tb,
               bgColor: const Color(0xFFFFF1F2),
+              ticket: ticketMap['tb'],
               onTap: () => _openEntryMode(
                 context,
                 ref,
@@ -171,6 +191,7 @@ class ProgramsHubScreen extends ConsumerWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }
@@ -544,6 +565,7 @@ class _ClinicalCard extends StatelessWidget {
     required this.type,
     required this.bgColor,
     required this.onTap,
+    this.ticket,
   });
 
   final String title;
@@ -551,6 +573,7 @@ class _ClinicalCard extends StatelessWidget {
   final ClinicalProgramType type;
   final Color bgColor;
   final VoidCallback onTap;
+  final PhcReviewTicket? ticket;
 
   @override
   Widget build(BuildContext context) {
@@ -569,7 +592,7 @@ class _ClinicalCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Bundled clinical-program illustration and navigation affordance.
+              // Program illustration + nav icon
               Stack(
                 children: [
                   SizedBox(
@@ -597,8 +620,8 @@ class _ClinicalCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              // Title: ANC, PNC, etc.
+              const SizedBox(height: 8),
+              // Title
               Text(
                 title,
                 maxLines: 1,
@@ -609,7 +632,7 @@ class _ClinicalCard extends StatelessWidget {
                   color: AshaColors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 3),
+              const SizedBox(height: 2),
               // Subtitle
               Expanded(
                 child: Text(
@@ -623,8 +646,74 @@ class _ClinicalCard extends StatelessWidget {
                   ),
                 ),
               ),
+              // Status badge
+              if (ticket != null) ...[
+                const SizedBox(height: 6),
+                _StatusBadge(ticket: ticket!),
+              ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final PhcReviewTicket ticket;
+
+  const _StatusBadge({required this.ticket});
+
+  @override
+  Widget build(BuildContext context) {
+    final Color bg;
+    final Color fg;
+    final IconData icon;
+
+    switch (ticket.status) {
+      case TicketStatus.approved:
+        bg = const Color(0xFFDCFCE7);
+        fg = const Color(0xFF16A34A);
+        icon = Icons.check_circle_outline_rounded;
+      case TicketStatus.rejected:
+        bg = const Color(0xFFFEE2E2);
+        fg = const Color(0xFFDC2626);
+        icon = Icons.error_outline_rounded;
+      case TicketStatus.underReview:
+        bg = const Color(0xFFFEF3C7);
+        fg = const Color(0xFFD97706);
+        icon = Icons.hourglass_top_rounded;
+      case TicketStatus.pending:
+        bg = const Color(0xFFF3F4F6);
+        fg = const Color(0xFF6B7280);
+        icon = Icons.schedule_rounded;
+    }
+
+    return GestureDetector(
+      onTap: () => context.push('/ticket/${ticket.ticketId}'),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 11, color: fg),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                ticket.status.shortLabel,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                  color: fg,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

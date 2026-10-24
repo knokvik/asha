@@ -38,6 +38,7 @@ import '../core/bhasha/settings_store.dart';
 // Clinical Programs Hub & Protocols
 import '../features/clinical_programs/presentation/programs_hub_screen.dart'
     show ProgramsHubScreen;
+import '../features/clinical_programs/tickets/ticket_detail_screen.dart';
 import '../features/clinical_programs/anc_pnc/presentation/anc_registration_screen.dart';
 import '../features/clinical_programs/anc_pnc/presentation/anc_visit_screen.dart';
 import '../features/clinical_programs/anc_pnc/presentation/pnc_visit_screen.dart';
@@ -308,6 +309,15 @@ List<RouteBase> _buildAppRoutes(Ref? ref) {
       path: '/clinical-programs',
       pageBuilder: (context, state) =>
           _buildSlidePage(state: state, child: const ProgramsHubScreen()),
+    ),
+    GoRoute(
+      path: '/ticket/:id',
+      pageBuilder: (context, state) => _buildSlidePage(
+        state: state,
+        child: TicketDetailScreen(
+          ticketId: state.pathParameters['id'] ?? '',
+        ),
+      ),
     ),
     GoRoute(
       path: '/interpreter',

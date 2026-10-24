@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../referral/presentation/referral_slip_screen.dart';
@@ -7,6 +8,7 @@ import '../data/pnc_repository.dart';
 import '../domain/pnc_models.dart';
 import '../../presentation/clinical_form_feedback.dart';
 import '../../presentation/clinical_card_helpers.dart';
+import '../../tickets/phc_ticket_service.dart';
 
 /// Guided postpartum maternal visit checklist screen.
 class PncVisitScreen extends ConsumerStatefulWidget {
@@ -123,6 +125,38 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
       if (!mounted) return;
       setState(() => _isSaving = false);
 
+      // Create PHC review ticket regardless of outcome path
+      try {
+        final ticketService = ref.read(phcTicketServiceProvider);
+        await ticketService.createTicket(
+          programCode: 'pnc',
+          encounterId: result.encounterId,
+          memberId: widget.motherId,
+          memberName: widget.motherName.trim().isNotEmpty
+              ? widget.motherName
+              : 'Unknown',
+          ashaId: widget.ashaId ?? 'asha_local',
+          ashaName: 'ASHA Worker',
+          formDataSummary: {
+            'Visit Day': 'Day ${widget.visitDay}',
+            'Temperature': checklist.temperatureC != null
+                ? '${checklist.temperatureC} °C'
+                : 'Not recorded',
+            'Blood Pressure': checklist.systolicBp != null
+                ? '${checklist.systolicBp}/${checklist.diastolicBp} mmHg'
+                : 'Not recorded',
+            'Bleeding / Lochia': checklist.bleedingStatus.label,
+            'Breast Condition': checklist.breastStatus.label,
+            'PPD Screening': result.hasPpd ? 'Positive' : 'Negative',
+            'Danger Signs': result.dangerSigns.isNotEmpty
+                ? result.dangerSigns.join(', ')
+                : 'None',
+          },
+        );
+      } catch (_) {
+        // Ticket creation failure should not block the clinical workflow
+      }
+
       if (result.isRedFlag) {
         Navigator.pushReplacement(
           context,
@@ -165,7 +199,7 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
               TextButton(
                 onPressed: () {
                   Navigator.pop(dialogContext);
-                  Navigator.pop(context, true);
+                  if (context.mounted) context.go('/clinical-programs');
                 },
                 child: const Text('OK'),
               ),
@@ -175,11 +209,11 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('PNC Visit saved on this phone.'),
+            content: Text('PNC Visit saved. Sent for PHC review.'),
             backgroundColor: AshaColors.primary,
           ),
         );
-        Navigator.pop(context, true);
+        context.go('/clinical-programs');
       }
     } catch (e) {
       if (mounted) {
