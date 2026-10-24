@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -29,24 +30,40 @@ class AncRepository {
     required PregnancyRegistration registration,
     required String ashaId,
   }) async {
+    // Clinical encounters reference a locally registered member. A server
+    // result can be selected before its household/member pull has completed;
+    // validate first so SQLite does not throw opaque error 787 midway through
+    // the registration transaction.
+    final member =
+        await (_db.select(_db.members)
+              ..where((table) => table.id.equals(registration.womanId)))
+            .getSingleOrNull();
+    if (member == null) {
+      throw StateError(
+        'This beneficiary is not available in the local register yet. '
+        'Refresh household data and select the member again.',
+      );
+    }
     final now = DateTime.now().millisecondsSinceEpoch;
     final encounterId = _uuid.v4();
 
     // 1. Create registration ClinicalEncounter
-    await _db.into(_db.clinicalEncounters).insert(
-      ClinicalEncountersCompanion.insert(
-        id: encounterId,
-        memberId: registration.womanId,
-        encounterType: 'ANC_REGISTRATION',
-        programCode: 'anc',
-        encounterDate: now,
-        ashaId: ashaId,
-        status: const Value('completed'),
-        createdAt: now,
-        updatedAt: now,
-        syncStatus: const Value('pending'),
-      ),
-    );
+    await _db
+        .into(_db.clinicalEncounters)
+        .insert(
+          ClinicalEncountersCompanion.insert(
+            id: encounterId,
+            memberId: registration.womanId,
+            encounterType: 'ANC_REGISTRATION',
+            programCode: 'anc',
+            encounterDate: now,
+            ashaId: ashaId,
+            status: const Value('completed'),
+            createdAt: now,
+            updatedAt: now,
+            syncStatus: const Value('pending'),
+          ),
+        );
 
     // 2. Insert discrete ClinicalObservations for baseline obstetric profile
     final observations = <ClinicalObservationsCompanion>[
@@ -124,10 +141,16 @@ class AncRepository {
 
     // 3. Update Member's RCH/ABHA identifiers if provided
     if (registration.rchId != null || registration.abhaId != null) {
-      await (_db.update(_db.members)..where((t) => t.id.equals(registration.womanId))).write(
+      await (_db.update(
+        _db.members,
+      )..where((t) => t.id.equals(registration.womanId))).write(
         MembersCompanion(
-          rchId: registration.rchId != null ? Value(registration.rchId) : const Value.absent(),
-          abhaId: registration.abhaId != null ? Value(registration.abhaId) : const Value.absent(),
+          rchId: registration.rchId != null
+              ? Value(registration.rchId)
+              : const Value.absent(),
+          abhaId: registration.abhaId != null
+              ? Value(registration.abhaId)
+              : const Value.absent(),
         ),
       );
     }
@@ -145,19 +168,24 @@ class AncRepository {
     final isHighRisk = registration.isBaselineHighRisk;
     final highRiskExtraWeeks = isHighRisk ? [26, 34, 38] : <int>[];
 
-    final allContactWeeks = {...standardContactWeeks, ...highRiskExtraWeeks}.toList()..sort();
+    final allContactWeeks = {
+      ...standardContactWeeks,
+      ...highRiskExtraWeeks,
+    }.toList()..sort();
     final generatedSchedules = <VisitSchedule>[];
 
     for (final week in allContactWeeks) {
-      final isExtra = highRiskExtraWeeks.contains(week) && !standardContactWeeks.contains(week);
+      final isExtra =
+          highRiskExtraWeeks.contains(week) &&
+          !standardContactWeeks.contains(week);
       final targetDueMs = lmpMs + (week * weekMs);
       final taskId = 'anc_${registration.womanId}_w$week';
 
       final title = isExtra
           ? 'ANC High-Risk Review ($week Weeks Gestation)'
           : (week == 30
-              ? 'ANC Contact 3 ($week Weeks) — Review & Birth Plan Preparation'
-              : 'ANC Contact ($week Weeks Gestation)');
+                ? 'ANC Contact 3 ($week Weeks) — Review & Birth Plan Preparation'
+                : 'ANC Contact ($week Weeks Gestation)');
 
       // Window margins: ±14 days
       final windowStartMs = targetDueMs - (14 * 24 * 60 * 60 * 1000);
@@ -175,7 +203,9 @@ class AncRepository {
         createdAt: now,
       );
 
-      await _db.into(_db.visitSchedules).insert(companion, mode: InsertMode.insertOrReplace);
+      await _db
+          .into(_db.visitSchedules)
+          .insert(companion, mode: InsertMode.insertOrReplace);
 
       if (_syncEngine != null) {
         await _syncEngine.enqueue(
@@ -194,7 +224,9 @@ class AncRepository {
         );
       }
 
-      final created = await (_db.select(_db.visitSchedules)..where((t) => t.id.equals(taskId))).getSingle();
+      final created = await (_db.select(
+        _db.visitSchedules,
+      )..where((t) => t.id.equals(taskId))).getSingle();
       generatedSchedules.add(created);
     }
 
@@ -213,7 +245,9 @@ class AncRepository {
       status: const Value('pending'),
       createdAt: now,
     );
-    await _db.into(_db.visitSchedules).insert(td1Companion, mode: InsertMode.insertOrReplace);
+    await _db
+        .into(_db.visitSchedules)
+        .insert(td1Companion, mode: InsertMode.insertOrReplace);
 
     final td2Companion = VisitSchedulesCompanion.insert(
       id: 'anc_td2_${registration.womanId}',
@@ -226,7 +260,9 @@ class AncRepository {
       status: const Value('pending'),
       createdAt: now,
     );
-    await _db.into(_db.visitSchedules).insert(td2Companion, mode: InsertMode.insertOrReplace);
+    await _db
+        .into(_db.visitSchedules)
+        .insert(td2Companion, mode: InsertMode.insertOrReplace);
 
     // Schedule Birth Plan prompt at 34 weeks (Requirement 14.5)
     final birthPlanDueMs = lmpMs + (34 * weekMs);
@@ -241,15 +277,27 @@ class AncRepository {
       status: const Value('pending'),
       createdAt: now,
     );
-    await _db.into(_db.visitSchedules).insert(birthPlanCompanion, mode: InsertMode.insertOrReplace);
+    await _db
+        .into(_db.visitSchedules)
+        .insert(birthPlanCompanion, mode: InsertMode.insertOrReplace);
 
-    final createdTd1 = await (_db.select(_db.visitSchedules)..where((t) => t.id.equals('anc_td1_${registration.womanId}'))).getSingle();
+    final createdTd1 =
+        await (_db.select(_db.visitSchedules)
+              ..where((t) => t.id.equals('anc_td1_${registration.womanId}')))
+            .getSingle();
     generatedSchedules.add(createdTd1);
 
-    final createdTd2 = await (_db.select(_db.visitSchedules)..where((t) => t.id.equals('anc_td2_${registration.womanId}'))).getSingle();
+    final createdTd2 =
+        await (_db.select(_db.visitSchedules)
+              ..where((t) => t.id.equals('anc_td2_${registration.womanId}')))
+            .getSingle();
     generatedSchedules.add(createdTd2);
 
-    final createdBirthPlan = await (_db.select(_db.visitSchedules)..where((t) => t.id.equals('anc_birthplan_${registration.womanId}'))).getSingle();
+    final createdBirthPlan =
+        await (_db.select(_db.visitSchedules)..where(
+              (t) => t.id.equals('anc_birthplan_${registration.womanId}'),
+            ))
+            .getSingle();
     generatedSchedules.add(createdBirthPlan);
 
     // 5. If High-Risk at baseline, enqueue alert for ANM & AF (Requirement 14.4)
@@ -285,21 +333,23 @@ class AncRepository {
     final encounterId = _uuid.v4();
 
     // 1. Create ClinicalEncounter
-    await _db.into(_db.clinicalEncounters).insert(
-      ClinicalEncountersCompanion.insert(
-        id: encounterId,
-        memberId: womanId,
-        encounterType: 'ANC_CONTACT',
-        programCode: 'anc',
-        encounterDate: now,
-        ashaId: ashaId,
-        status: const Value('completed'),
-        visitNotes: Value(visitData.generalNotes),
-        createdAt: now,
-        updatedAt: now,
-        syncStatus: const Value('pending'),
-      ),
-    );
+    await _db
+        .into(_db.clinicalEncounters)
+        .insert(
+          ClinicalEncountersCompanion.insert(
+            id: encounterId,
+            memberId: womanId,
+            encounterType: 'ANC_CONTACT',
+            programCode: 'anc',
+            encounterDate: now,
+            ashaId: ashaId,
+            status: const Value('completed'),
+            visitNotes: Value(visitData.generalNotes),
+            createdAt: now,
+            updatedAt: now,
+            syncStatus: const Value('pending'),
+          ),
+        );
 
     // 2. Insert discrete ClinicalObservations
     final observations = <ClinicalObservationsCompanion>[
@@ -378,7 +428,9 @@ class AncRepository {
     }
 
     // 3. Update the VisitSchedule row to completed
-    await (_db.update(_db.visitSchedules)..where((t) => t.id.equals(visitScheduleId))).write(
+    await (_db.update(
+      _db.visitSchedules,
+    )..where((t) => t.id.equals(visitScheduleId))).write(
       VisitSchedulesCompanion(
         status: const Value('completed'),
         completedAt: Value(now),
@@ -398,30 +450,34 @@ class AncRepository {
     String? prePopulatedReferralReason;
 
     if (isRedFlag) {
-      suggestedReferralFacility = 'Community Health Centre (CHC) / District Hospital (FRU)';
-      prePopulatedReferralReason = 'High-Risk Pregnancy Danger Signs: ${dangerSigns.join("; ")}';
+      suggestedReferralFacility =
+          'Community Health Centre (CHC) / District Hospital (FRU)';
+      prePopulatedReferralReason =
+          'High-Risk Pregnancy Danger Signs: ${dangerSigns.join("; ")}';
 
       final triageId = _uuid.v4();
-      await _db.into(_db.triageResults).insert(
-        TriageResultsCompanion.insert(
-          id: triageId,
-          encounterId: encounterId,
-          flag: 'RED',
-          ruleVersionId: '1.0.0',
-          findingsJson: jsonEncode([
-            {
-              'rule_id': 'ANC_DANGER_SIGNS',
-              'severity': 'RED',
-              'finding_text': prePopulatedReferralReason,
-              'action': 'REFER_TO_FRU_IMMEDIATELY',
-              'source_citation': 'Pradhan Mantri Surakshit Matritva Abhiyan (PMSMA), MoHFW',
-            }
-          ]),
-          missingFieldsJson: const Value('[]'),
-          escalatedForMissingData: const Value(false),
-          evaluatedAt: now,
-        ),
-      );
+      await _db
+          .into(_db.triageResults)
+          .insert(
+            TriageResultsCompanion.insert(
+              id: triageId,
+              encounterId: encounterId,
+              flag: 'RED',
+              ruleVersionId: '1.0.0',
+              findingsJson: jsonEncode([
+                {
+                  'rule_id': 'ANC_DANGER_SIGNS',
+                  'severity': 'RED',
+                  'finding_text': prePopulatedReferralReason,
+                  'action': 'REFER_TO_FRU_IMMEDIATELY',
+                  'source_citation': 'Pradhan Mantri Surakshit Matritva Abhiyan (PMSMA), MoHFW',
+                },
+              ]),
+              missingFieldsJson: const Value('[]'),
+              escalatedForMissingData: const Value(false),
+              evaluatedAt: now,
+            ),
+          );
 
       triageResult = TriageResult(
         id: triageId,
@@ -436,7 +492,8 @@ class AncRepository {
             findingText: prePopulatedReferralReason,
             action: 'REFER_TO_FRU_IMMEDIATELY',
             triggeringValues: {'danger_signs': dangerSigns},
-            sourceCitation: 'Pradhan Mantri Surakshit Matritva Abhiyan (PMSMA), MoHFW',
+            sourceCitation:
+                'Pradhan Mantri Surakshit Matritva Abhiyan (PMSMA), MoHFW',
           ),
         ],
         evaluatedAt: DateTime.fromMillisecondsSinceEpoch(now),
@@ -460,7 +517,8 @@ class AncRepository {
       }
     } else if (moderateSigns.isNotEmpty) {
       suggestedReferralFacility = 'Primary Health Centre (PHC) / PMSMA Clinic';
-      prePopulatedReferralReason = 'ANC Moderate High-Risk Signs: ${moderateSigns.join("; ")}';
+      prePopulatedReferralReason =
+          'ANC Moderate High-Risk Signs: ${moderateSigns.join("; ")}';
 
       triageResult = TriageResult(
         id: _uuid.v4(),
@@ -508,27 +566,31 @@ class AncRepository {
     final now = DateTime.now().millisecondsSinceEpoch;
     final encounterId = _uuid.v4();
 
-    await _db.into(_db.clinicalEncounters).insert(
-      ClinicalEncountersCompanion.insert(
-        id: encounterId,
-        memberId: plan.womanId,
-        encounterType: 'BIRTH_PLAN',
-        programCode: 'anc',
-        encounterDate: now,
-        ashaId: ashaId,
-        status: const Value('completed'),
-        createdAt: now,
-        updatedAt: now,
-        syncStatus: const Value('pending'),
-      ),
-    );
+    await _db
+        .into(_db.clinicalEncounters)
+        .insert(
+          ClinicalEncountersCompanion.insert(
+            id: encounterId,
+            memberId: plan.womanId,
+            encounterType: 'BIRTH_PLAN',
+            programCode: 'anc',
+            encounterDate: now,
+            ashaId: ashaId,
+            status: const Value('completed'),
+            createdAt: now,
+            updatedAt: now,
+            syncStatus: const Value('pending'),
+          ),
+        );
 
     final observations = [
       ClinicalObservationsCompanion.insert(
         id: _uuid.v4(),
         encounterId: encounterId,
         observationCode: 'DELIVERY_FACILITY',
-        valueText: Value('${plan.chosenDeliveryFacility} (${plan.facilityType})'),
+        valueText: Value(
+          '${plan.chosenDeliveryFacility} (${plan.facilityType})',
+        ),
         source: const Value('MANUAL'),
         observedAt: now,
       ),
@@ -544,7 +606,9 @@ class AncRepository {
         id: _uuid.v4(),
         encounterId: encounterId,
         observationCode: 'NAMED_ESCORT',
-        valueText: Value('${plan.namedEscortName} (${plan.escortRelationship}) - ${plan.namedEscortPhone}'),
+        valueText: Value(
+          '${plan.namedEscortName} (${plan.escortRelationship}) - ${plan.namedEscortPhone}',
+        ),
         source: const Value('MANUAL'),
         observedAt: now,
       ),
@@ -575,9 +639,9 @@ class AncRepository {
     }
 
     // Mark birth plan visit schedule completed
-    await (_db.update(_db.visitSchedules)
-          ..where((t) => t.id.equals('anc_birthplan_${plan.womanId}')))
-        .write(
+    await (_db.update(
+      _db.visitSchedules,
+    )..where((t) => t.id.equals('anc_birthplan_${plan.womanId}'))).write(
       VisitSchedulesCompanion(
         status: const Value('completed'),
         completedAt: Value(now),
@@ -597,21 +661,23 @@ class AncRepository {
     final encounterId = _uuid.v4();
 
     // 1. Create outcome encounter
-    await _db.into(_db.clinicalEncounters).insert(
-      ClinicalEncountersCompanion.insert(
-        id: encounterId,
-        memberId: outcome.womanId,
-        encounterType: 'PREGNANCY_OUTCOME',
-        programCode: 'anc',
-        encounterDate: now,
-        ashaId: ashaId,
-        status: const Value('completed'),
-        visitNotes: Value(outcome.complicationsNotes),
-        createdAt: now,
-        updatedAt: now,
-        syncStatus: const Value('pending'),
-      ),
-    );
+    await _db
+        .into(_db.clinicalEncounters)
+        .insert(
+          ClinicalEncountersCompanion.insert(
+            id: encounterId,
+            memberId: outcome.womanId,
+            encounterType: 'PREGNANCY_OUTCOME',
+            programCode: 'anc',
+            encounterDate: now,
+            ashaId: ashaId,
+            status: const Value('completed'),
+            visitNotes: Value(outcome.complicationsNotes),
+            createdAt: now,
+            updatedAt: now,
+            syncStatus: const Value('pending'),
+          ),
+        );
 
     // 2. Observations for delivery outcome
     final observations = [
@@ -661,17 +727,18 @@ class AncRepository {
     }
 
     // 3. Cancel remaining pending or overdue ANC visits
-    await (_db.update(_db.visitSchedules)
-          ..where((t) =>
+    await (_db.update(_db.visitSchedules)..where(
+          (t) =>
               t.memberId.equals(outcome.womanId) &
               t.programCode.equals('anc') &
-              (t.status.equals('pending') | t.status.equals('overdue'))))
+              (t.status.equals('pending') | t.status.equals('overdue')),
+        ))
         .write(
-      const VisitSchedulesCompanion(
-        status: Value('cancelled'),
-        skipReason: Value('Pregnancy concluded'),
-      ),
-    );
+          const VisitSchedulesCompanion(
+            status: Value('cancelled'),
+            skipReason: Value('Pregnancy concluded'),
+          ),
+        );
 
     final downstreamResults = <String, dynamic>{
       'encounter_id': encounterId,
@@ -683,22 +750,26 @@ class AncRepository {
       // Trigger HBNC schedule generation if HbncRepository is supplied
       String? newbornId;
       // Fetch mother's household to link newborn
-      final mother = await (_db.select(_db.members)..where((t) => t.id.equals(outcome.womanId))).getSingle();
+      final mother = await (_db.select(
+        _db.members,
+      )..where((t) => t.id.equals(outcome.womanId))).getSingle();
 
       newbornId = 'nb_${outcome.womanId}_${now % 100000}';
-      await _db.into(_db.members).insert(
-        MembersCompanion.insert(
-          id: newbornId,
-          householdId: mother.householdId,
-          name: 'Baby of ${mother.name}',
-          sex: outcome.newbornSex ?? 'M',
-          dobApprox: Value(outcome.outcomeDate.millisecondsSinceEpoch),
-          relationshipToHead: const Value('Child'),
-          createdAt: now,
-          updatedAt: now,
-          createdBy: ashaId,
-        ),
-      );
+      await _db
+          .into(_db.members)
+          .insert(
+            MembersCompanion.insert(
+              id: newbornId,
+              householdId: mother.householdId,
+              name: 'Baby of ${mother.name}',
+              sex: outcome.newbornSex ?? 'M',
+              dobApprox: Value(outcome.outcomeDate.millisecondsSinceEpoch),
+              relationshipToHead: const Value('Child'),
+              createdAt: now,
+              updatedAt: now,
+              createdBy: ashaId,
+            ),
+          );
 
       downstreamResults['newborn_id'] = newbornId;
 
@@ -719,7 +790,9 @@ class AncRepository {
           ashaId: ashaId,
         );
 
-        final hbncSchedules = await _hbncRepository.generateSchedule(hbncRecord);
+        final hbncSchedules = await _hbncRepository.generateSchedule(
+          hbncRecord,
+        );
         downstreamResults['hbnc_visits_scheduled'] = hbncSchedules.length;
       }
     } else if (outcome.outcomeType == PregnancyOutcomeType.maternalDeath) {
@@ -748,22 +821,22 @@ class AncRepository {
   /// 5. Overdue ANC contact tracking (Requirement 14.6).
   Future<List<String>> checkAndMarkOverdueVisits(String womanId) async {
     final now = DateTime.now().millisecondsSinceEpoch;
-    final overdueSchedules = await (_db.select(_db.visitSchedules)
-          ..where((t) =>
-              t.memberId.equals(womanId) &
-              t.programCode.equals('anc') &
-              t.status.equals('pending') &
-              t.dueWindowEnd.isSmallerThanValue(now)))
-        .get();
+    final overdueSchedules =
+        await (_db.select(_db.visitSchedules)..where(
+              (t) =>
+                  t.memberId.equals(womanId) &
+                  t.programCode.equals('anc') &
+                  t.status.equals('pending') &
+                  t.dueWindowEnd.isSmallerThanValue(now),
+            ))
+            .get();
 
     final overdueIds = <String>[];
     for (final schedule in overdueSchedules) {
       overdueIds.add(schedule.id);
-      await (_db.update(_db.visitSchedules)..where((t) => t.id.equals(schedule.id))).write(
-        const VisitSchedulesCompanion(
-          status: Value('overdue'),
-        ),
-      );
+      await (_db.update(_db.visitSchedules)
+            ..where((t) => t.id.equals(schedule.id)))
+          .write(const VisitSchedulesCompanion(status: Value('overdue')));
     }
     return overdueIds;
   }

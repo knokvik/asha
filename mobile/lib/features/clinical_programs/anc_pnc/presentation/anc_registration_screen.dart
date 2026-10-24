@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme/app_theme.dart';
+import '../../../../shared/providers/core_providers.dart';
 import '../data/anc_repository.dart';
 import '../domain/anc_models.dart';
 
@@ -97,6 +98,12 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
       final reg = _buildRegistration();
       final repo = ref.read(ancRepositoryProvider);
 
+      // The beneficiary may have been selected from the live/server list
+      // before its member packet reached the local encrypted store. Pull the
+      // latest household/member data before creating the FK-dependent ANC
+      // encounter, so registration works without a manual app restart.
+      await ref.read(syncCoordinatorProvider)?.syncNow();
+
       final schedules = await repo.registerPregnancy(
         registration: reg,
         ashaId: widget.ashaId ?? 'asha_local',
@@ -117,10 +124,42 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
+        // Never expose SQLite/Drift implementation details to field users.
+        // A member can disappear while a background sync is replacing local
+        // records, so convert FK failures into the same actionable message as
+        // the repository's upfront member validation.
+        final rawMessage = e.toString().toLowerCase();
+        final isLocalReferenceError =
+            rawMessage.contains('foreign key') ||
+            rawMessage.contains('sqlite error 787') ||
+            rawMessage.contains('constraint failed') ||
+            rawMessage.contains('no such row');
+        final message = isLocalReferenceError
+            ? 'Beneficiary data is still syncing. Refresh household data, then select this beneficiary again.'
+            : (e is StateError
+                  ? e.message
+                  : 'Unable to save pregnancy registration. Please try again.');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error registering pregnancy: $e'),
+            content: Text(message),
             backgroundColor: Colors.red,
+            action: isLocalReferenceError
+                ? SnackBarAction(
+                    label: 'REFRESH',
+                    textColor: Colors.white,
+                    onPressed: () async {
+                      await ref.read(syncCoordinatorProvider)?.syncNow();
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Household data refreshed. Please select the beneficiary again.',
+                          ),
+                        ),
+                      );
+                    },
+                  )
+                : null,
           ),
         );
       }
@@ -142,10 +181,14 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
           children: [
             const Text(
               'Register Pregnancy',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
             ),
             Text(
               widget.womanName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 12, color: AshaColors.textMuted),
             ),
           ],
@@ -171,6 +214,7 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Icon(
                           Icons.warning_amber_rounded,
@@ -178,12 +222,15 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
                           size: 26,
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          'HIGH-RISK PREGNANCY (HRP) CRITERIA DETECTED',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.orange.shade900,
-                            fontSize: 14,
+                        Expanded(
+                          child: Text(
+                            'HIGH-RISK PREGNANCY (HRP) CRITERIA DETECTED',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.orange.shade900,
+                              fontSize: 14,
+                              height: 1.25,
+                            ),
                           ),
                         ),
                       ],
@@ -515,7 +562,7 @@ class _AncRegistrationScreenState extends ConsumerState<AncRegistrationScreen> {
                     ),
                   )
                 : const Text(
-                    'Complete Registration & Generate ANC Schedule',
+                    'Save & Generate ANC Schedule',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
           ),

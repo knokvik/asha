@@ -8,7 +8,7 @@ import 'package:http/http.dart' as http;
 
 const defaultAshaApiBaseUrl = String.fromEnvironment(
   'ASHA_API_BASE_URL',
-  defaultValue: 'http://localhost:8000',
+  defaultValue: 'https://asha-backend-1akc.onrender.com',
 );
 
 const defaultAshaPackBaseUrl = String.fromEnvironment(
@@ -21,10 +21,20 @@ Future<String> resolveAshaApiBaseUrl({FlutterSecureStorage? storage}) async {
   final s = storage ?? const FlutterSecureStorage();
   final configured = await s.read(key: 'sync_api_base_url');
   if (configured != null && configured.trim().isNotEmpty) {
-    return configured.trim();
+    final normalized = configured.trim().replaceFirst(RegExp(r'/+$'), '');
+    const legacyHostedUrl = 'https://asha-setu.onrender.com';
+    const currentHostedUrl = 'https://asha-backend-1akc.onrender.com';
+    if (normalized == legacyHostedUrl ||
+        normalized == 'http://localhost:8000' ||
+        normalized == 'http://127.0.0.1:8000' ||
+        normalized == 'http://10.0.2.2:8000') {
+      await s.write(key: 'sync_api_base_url', value: currentHostedUrl);
+      return currentHostedUrl;
+    }
+    return normalized;
   }
   for (final localUrl in [
-    'http://localhost:8000',
+    'https://asha-backend-1akc.onrender.com',
     'http://127.0.0.1:8000',
     'http://10.0.2.2:8000',
   ]) {

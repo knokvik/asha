@@ -40,6 +40,7 @@ dependencies:
   archive: ^3.6.1
 
   # Networking & sync
+  connectivity_plus: ^6.1.4
   http: ^1.2.2
   http_certificate_pinning: ^3.0.2
   workmanager: ^0.10.10

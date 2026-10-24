@@ -572,6 +572,17 @@ class _HouseholdFormScreenState extends ConsumerState<HouseholdFormScreen> {
     return Scaffold(
       backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          tooltip: 'Back',
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/households');
+            }
+          },
+        ),
         title: Text(
           l10n?.registerHousehold ?? 'Register Household',
           style: const TextStyle(

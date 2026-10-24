@@ -186,6 +186,7 @@ class _ChildImmunizationCardScreenState
                 // Administration Site
                 DropdownButtonFormField<AdministrationSite>(
                   initialValue: selectedSite,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Administration Site',
                     border: OutlineInputBorder(
@@ -200,6 +201,7 @@ class _ChildImmunizationCardScreenState
                           child: Text(
                             site.displayName,
                             style: const TextStyle(fontSize: 13),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       )

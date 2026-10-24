@@ -419,16 +419,6 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 10),
 
                 _buildListOption(
-                  icon: Icons.inventory_2_outlined,
-                  iconColor: const Color(0xFF4F46E5),
-                  iconBgColor: const Color(0xFFEEF2FF),
-                  title: 'Offline Packs',
-                  subtitle: 'Language, map tiles and AI model downloads',
-                  onTap: () => context.push('/packs'),
-                ),
-                const SizedBox(height: 10),
-
-                _buildListOption(
                   icon: Icons.settings_outlined,
                   iconColor: const Color(0xFF475569),
                   iconBgColor: const Color(0xFFF1F5F9),

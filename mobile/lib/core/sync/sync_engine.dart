@@ -203,6 +203,38 @@ class SyncEngine {
         .get();
   }
 
+  /// Puts auth-rejected packets back in the queue.
+  ///
+  /// A Supabase session sent as the API bearer used to mark the whole batch
+  /// `unauthorised`. Those rows are still valid local work and should upload
+  /// once a real API session exists.
+  Future<int> requeueAuthFailures() async {
+    final failed = await (_db.select(
+      _db.syncQueue,
+    )..where((t) => t.syncStatus.equals('failed'))).get();
+    var requeued = 0;
+    for (final record in failed) {
+      final message = (record.errorMessage ?? '').toLowerCase();
+      final authFailure =
+          message == 'unauthorised' ||
+          message == 'unauthorized' ||
+          message == 'missing_server_session' ||
+          message.contains('unauthoris') ||
+          message.contains('invalid token');
+      if (!authFailure) continue;
+      await (_db.update(
+        _db.syncQueue,
+      )..where((t) => t.id.equals(record.id))).write(
+        const SyncQueueCompanion(
+          syncStatus: Value('pending'),
+          errorMessage: Value(null),
+        ),
+      );
+      requeued++;
+    }
+    return requeued;
+  }
+
   /// Requeues failed packets whose exponential backoff window has elapsed.
   Future<int> requeueRetryable({DateTime? now}) async {
     final currentMs = (now ?? DateTime.now()).millisecondsSinceEpoch;
@@ -226,6 +258,26 @@ class SyncEngine {
       }
     }
     return requeued;
+  }
+
+  /// Immediately retries failed packets when the worker explicitly presses
+  /// Sync with server. Automatic background sync still respects backoff, but
+  /// a manual retry must not leave the user waiting for the next backoff slot.
+  Future<int> requeueFailedForManualSync() async {
+    final failed = await (_db.select(
+      _db.syncQueue,
+    )..where((t) => t.syncStatus.equals('failed'))).get();
+    for (final record in failed) {
+      await (_db.update(
+        _db.syncQueue,
+      )..where((t) => t.id.equals(record.id))).write(
+        const SyncQueueCompanion(
+          syncStatus: Value('pending'),
+          errorMessage: Value(null),
+        ),
+      );
+    }
+    return failed.length;
   }
 
   /// Returns the newest queue entries for the in-app sync monitor.

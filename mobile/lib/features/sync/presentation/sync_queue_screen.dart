@@ -49,6 +49,18 @@ class SyncQueueScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AshaColors.screenBg,
       appBar: AppBar(
+        leading: IconButton(
+          key: const Key('sync_queue_back_button'),
+          tooltip: 'Back',
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/home');
+            }
+          },
+        ),
         title: Text(
           shellText(lang, 'syncQueueTitle'),
           style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
@@ -127,64 +139,67 @@ class SyncQueueScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-              child: ListTile(
-                leading: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFDCFCE7),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.connect_without_contact_rounded,
-                    color: Color(0xFF15803D),
-                    size: 24,
-                  ),
-                ),
-                title: Row(
-                  children: [
-                    Text(
-                      shellText(lang, 'peerSyncTitle'),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                      ),
+              child: Material(
+                color: Colors.transparent,
+                child: ListTile(
+                  leading: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDCFCE7),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFDCFCE7),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Text(
-                        'OFFLINE',
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF15803D),
-                          letterSpacing: 0.5,
+                    child: const Icon(
+                      Icons.connect_without_contact_rounded,
+                      color: Color(0xFF15803D),
+                      size: 24,
+                    ),
+                  ),
+                  title: Row(
+                    children: [
+                      Text(
+                        shellText(lang, 'peerSyncTitle'),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                subtitle: Text(
-                  shellText(lang, 'peerSyncSub'),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AshaColors.textSecondary,
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDCFCE7),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'OFFLINE',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF15803D),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
+                  subtitle: Text(
+                    shellText(lang, 'peerSyncSub'),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AshaColors.textSecondary,
+                    ),
+                  ),
+                  trailing: const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 14,
+                    color: Color(0xFF9CA3AF),
+                  ),
+                  onTap: () => context.push('/peer-sync'),
                 ),
-                trailing: const Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 14,
-                  color: Color(0xFF9CA3AF),
-                ),
-                onTap: () => context.push('/peer-sync'),
               ),
             ),
             if (snapshot.state == SyncConnectionState.syncing)

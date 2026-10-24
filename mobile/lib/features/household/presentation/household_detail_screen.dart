@@ -104,42 +104,37 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Row(
+                Column(
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: ageCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Age (Years) *',
-                          hintText: '24',
-                          prefixIcon: Icon(Icons.calendar_today),
-                        ),
+                    TextField(
+                      controller: ageCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Age (Years) *',
+                        hintText: '24',
+                        prefixIcon: Icon(Icons.calendar_today),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: sex,
-                        decoration: const InputDecoration(labelText: 'Gender'),
-                        items: const [
-                          DropdownMenuItem(value: 'F', child: Text('Female')),
-                          DropdownMenuItem(value: 'M', child: Text('Male')),
-                          DropdownMenuItem(
-                            value: 'Other',
-                            child: Text('Other'),
-                          ),
-                        ],
-                        onChanged: (val) {
-                          if (val != null) setDialogState(() => sex = val);
-                        },
-                      ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: sex,
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'Gender'),
+                      items: const [
+                        DropdownMenuItem(value: 'F', child: Text('Female')),
+                        DropdownMenuItem(value: 'M', child: Text('Male')),
+                        DropdownMenuItem(value: 'Other', child: Text('Other')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setDialogState(() => sex = val);
+                      },
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: relationship,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Relation to Head',
                   ),
@@ -264,8 +259,12 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
             'relationship_to_head': relationship,
             'dob_approx': dobApprox,
             'is_dob_approx': true,
-            'phone': phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(),
-            'abha_id': abhaCtrl.text.trim().isEmpty ? null : abhaCtrl.text.trim(),
+            'phone': phoneCtrl.text.trim().isEmpty
+                ? null
+                : phoneCtrl.text.trim(),
+            'abha_id': abhaCtrl.text.trim().isEmpty
+                ? null
+                : abhaCtrl.text.trim(),
             'lifecycle_status': 'active',
             'consent_status': 'pending',
             'created_at': now,
@@ -286,7 +285,13 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
 
   Future<void> _showEditMemberDialog(Member m) async {
     final currentAge = m.dobApprox != null
-        ? (DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(m.dobApprox!)).inDays / 365.25).floor()
+        ? (DateTime.now()
+                      .difference(
+                        DateTime.fromMillisecondsSinceEpoch(m.dobApprox!),
+                      )
+                      .inDays /
+                  365.25)
+              .floor()
         : 20;
 
     final nameCtrl = TextEditingController(text: m.name);
@@ -313,41 +318,36 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Row(
+                Column(
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: ageCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Age (Years) *',
-                          prefixIcon: Icon(Icons.calendar_today),
-                        ),
+                    TextField(
+                      controller: ageCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Age (Years) *',
+                        prefixIcon: Icon(Icons.calendar_today),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: sex,
-                        decoration: const InputDecoration(labelText: 'Gender'),
-                        items: const [
-                          DropdownMenuItem(value: 'F', child: Text('Female')),
-                          DropdownMenuItem(value: 'M', child: Text('Male')),
-                          DropdownMenuItem(
-                            value: 'Other',
-                            child: Text('Other'),
-                          ),
-                        ],
-                        onChanged: (val) {
-                          if (val != null) setDialogState(() => sex = val);
-                        },
-                      ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: sex,
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'Gender'),
+                      items: const [
+                        DropdownMenuItem(value: 'F', child: Text('Female')),
+                        DropdownMenuItem(value: 'M', child: Text('Male')),
+                        DropdownMenuItem(value: 'Other', child: Text('Other')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) setDialogState(() => sex = val);
+                      },
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: relationship,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Relation to Head',
                   ),
@@ -443,7 +443,9 @@ class _HouseholdDetailScreenState extends ConsumerState<HouseholdDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${nameCtrl.text.trim()} updated and queued for server sync.'),
+            content: Text(
+              '${nameCtrl.text.trim()} updated and queued for server sync.',
+            ),
             backgroundColor: const Color(0xFF1E4231),
           ),
         );

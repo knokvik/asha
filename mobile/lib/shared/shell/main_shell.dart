@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/l10n/language_provider.dart';
 import '../../core/sync/sync_coordinator.dart';
 import '../../shared/providers/core_providers.dart';
+import '../widgets/sync_status_button.dart';
 import '../../features/due_list/presentation/due_list_screen.dart';
 import '../../features/home/presentation/dashboard_screen.dart';
 import '../../features/home/presentation/profile_screen.dart';
@@ -36,14 +37,7 @@ class MainShell extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: [
-            if (sync == null)
-              _ShellHeader(lang: lang, snapshot: null)
-            else
-              ListenableBuilder(
-                listenable: sync,
-                builder: (context, _) =>
-                    _ShellHeader(lang: lang, snapshot: sync.snapshot),
-              ),
+            _ShellHeader(lang: lang),
             if (index == 0)
               const Padding(
                 padding: EdgeInsets.fromLTRB(18, 4, 18, 8),
@@ -129,10 +123,9 @@ class _SyncToastListenerState extends State<_SyncToastListener> {
 }
 
 class _ShellHeader extends StatelessWidget {
-  const _ShellHeader({required this.lang, required this.snapshot});
+  const _ShellHeader({required this.lang});
 
   final String lang;
-  final SyncSnapshot? snapshot;
 
   @override
   Widget build(BuildContext context) {
@@ -168,7 +161,7 @@ class _ShellHeader extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _SyncHeaderButton(snapshot: snapshot),
+                  const SyncStatusButton(),
                   InkWell(
                     onTap: () {
                       context.push('/triage/history');
@@ -188,118 +181,6 @@ class _ShellHeader extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _SyncHeaderButton extends StatelessWidget {
-  const _SyncHeaderButton({required this.snapshot});
-
-  final SyncSnapshot? snapshot;
-
-  @override
-  Widget build(BuildContext context) {
-    final pending = snapshot?.pendingCount ?? 0;
-    final isSyncing = snapshot?.state == SyncConnectionState.syncing;
-    final isConnected = snapshot?.isConnectedToServer ?? false;
-    final isOffline =
-        !isConnected || snapshot?.state == SyncConnectionState.offline;
-
-    // The title-bar cloud reflects connectivity itself: red means offline,
-    // green means the server is reachable, and blue is an active sync.
-    final iconColor = isOffline
-        ? const Color(0xFFDC2626)
-        : isSyncing
-        ? const Color(0xFF2563EB)
-        : const Color(0xFF16A34A);
-
-    return IconButton(
-      key: const Key('shell_sync_button'),
-      tooltip: isSyncing
-          ? 'Syncing with server…'
-          : isConnected && pending == 0
-          ? 'Server Connected (Online) • Tap to sync'
-          : isOffline
-          ? 'Offline • Tap to connect'
-          : '$pending packets waiting to sync',
-      onPressed: () => context.push('/sync'),
-      icon: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Icon(
-            isSyncing
-                ? Icons.sync_rounded
-                : isConnected && pending == 0
-                ? Icons.cloud_outlined
-                : pending > 0
-                ? Icons.cloud_upload_outlined
-                : Icons.cloud_queue_outlined,
-            color: iconColor,
-            size: 24,
-          ),
-          // Green dot when connected to server
-          if (isConnected && pending == 0)
-            Positioned(
-              right: -1,
-              top: -1,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF16A34A), // Bright green dot
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1.5),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x4016A34A),
-                      blurRadius: 3,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          // Red badge when packets are waiting while offline.
-          if (pending > 0)
-            Positioned(
-              right: -6,
-              top: -6,
-              child: Container(
-                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                padding: const EdgeInsets.symmetric(horizontal: 3),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFDC2626),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1),
-                ),
-                child: Text(
-                  pending > 9 ? '9+' : '$pending',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ),
-          // Red dot when offline without pending packets
-          if (isOffline && pending == 0 && !isSyncing)
-            Positioned(
-              right: -1,
-              top: -1,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFDC2626),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1.5),
-                ),
-              ),
-            ),
-        ],
       ),
     );
   }

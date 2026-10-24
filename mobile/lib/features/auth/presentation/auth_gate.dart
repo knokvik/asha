@@ -4,6 +4,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/database/demo_data_seeder.dart';
+import '../../../core/security/api_session_bridge.dart';
+import '../../../core/security/api_token.dart';
 import '../../../services/auth_service.dart';
 import '../../../shared/providers/core_providers.dart';
 import 'pin_setup_screen.dart';
@@ -46,8 +48,18 @@ class _AuthGateState extends ConsumerState<AuthGate> {
     final session = Supabase.instance.client.auth.currentSession;
     if (session != null) {
       const storage = FlutterSecureStorage();
-      await storage.write(key: 'access_token', value: session.accessToken);
-      await storage.write(key: 'worker_id', value: user.id);
+      // Keep the Supabase session away from the API bearer. Sync rejects it
+      // and the queue used to show that rejection as "unauthorized".
+      await storage.write(key: 'supabase_access_token', value: session.accessToken);
+      await storage.write(key: 'supabase_user_id', value: user.id);
+      final current = await storage.read(key: 'access_token');
+      if (current != null && !isApiAccessToken(current)) {
+        await storage.delete(key: 'access_token');
+      }
+      final apiBase = await storage.read(key: 'sync_api_base_url');
+      if (apiBase != null && apiBase.isNotEmpty) {
+        await ApiSessionBridge().adoptSupabaseSession(apiBaseUrl: apiBase);
+      }
     }
     // A fresh authenticated session must see the current Supabase registry,
     // not only records newer than a watermark left by an older install.

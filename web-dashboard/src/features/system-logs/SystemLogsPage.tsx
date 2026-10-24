@@ -383,10 +383,10 @@ export function SystemLogsPage() {
                 {/* Row Summary / Collapsed Header Bar */}
                 <div
                   onClick={() => toggleRow(log.id)}
-                  className="p-3 sm:px-4 sm:py-3 cursor-pointer hover:bg-slate-50/80 dark:hover:bg-[#252528]/60 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-2.5 select-none"
+                  className="min-w-0 p-3 sm:px-4 sm:py-3 cursor-pointer hover:bg-slate-50/80 dark:hover:bg-[#252528]/60 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-2.5 select-none"
                 >
                   {/* Left: Severity Badge, Time, Program Category */}
-                  <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
+                  <div className="min-w-0 flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
                     <span
                       className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md shrink-0 flex items-center gap-1.5 ${
                         isRed
@@ -434,7 +434,7 @@ export function SystemLogsPage() {
                   </div>
 
                   {/* Right: Ticket ID Pill, Audit Drawer CTA, Chevron */}
-                  <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+                  <div className="max-w-full flex items-center gap-2 self-end md:self-center shrink-0 flex-wrap justify-end">
                     {log.ticketId ? (
                       <span className="font-mono text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
                         {log.ticketId}

@@ -1,99 +1,90 @@
+import 'dart:async';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/sync/sync_coordinator.dart';
 import '../../shared/providers/core_providers.dart';
 
-/// Compact top-bar entry point for the offline packet queue.
-/// Shows:
-/// - A cloud icon with a bright green dot when connected to server and all synced.
-/// - A yellow/amber sync icon and badge when offline, pending sync, or syncing.
-class SyncStatusButton extends ConsumerWidget {
+bool _linkUp(List<ConnectivityResult> results) {
+  return results.any((result) => result != ConnectivityResult.none);
+}
+
+/// Cloud on the title bar. A green dot means Wi-Fi or mobile data is on.
+/// A red dot means the phone has no network link.
+class SyncStatusButton extends ConsumerStatefulWidget {
   const SyncStatusButton({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final coordinator = ref.watch(syncCoordinatorProvider);
-    if (coordinator == null) {
-      return IconButton(
-        key: const Key('sync_status_button'),
-        tooltip: 'Offline sync queue',
-        visualDensity: VisualDensity.compact,
-        onPressed: () => context.push('/sync'),
-        icon: const Icon(
-          Icons.cloud_queue_outlined,
-          size: 24,
-          color: Color(0xFFD97706),
-        ),
-      );
-    }
-    return ListenableBuilder(
-      listenable: coordinator,
-      builder: (context, _) => _buildButton(context, coordinator.snapshot),
-    );
+  ConsumerState<SyncStatusButton> createState() => _SyncStatusButtonState();
+}
+
+class _SyncStatusButtonState extends ConsumerState<SyncStatusButton> {
+  final _connectivity = Connectivity();
+  StreamSubscription<List<ConnectivityResult>>? _linkSub;
+  var _online = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _readLink();
+    _linkSub = _connectivity.onConnectivityChanged.listen((results) {
+      if (!mounted) return;
+      setState(() => _online = _linkUp(results));
+    });
   }
 
-  Widget _buildButton(BuildContext context, SyncSnapshot snapshot) {
-    final pending = snapshot.pendingCount;
-    final isSyncing = snapshot.state == SyncConnectionState.syncing;
-    final isConnected = snapshot.isConnectedToServer;
-    final isOffline = !isConnected || snapshot.state == SyncConnectionState.offline;
+  @override
+  void dispose() {
+    _linkSub?.cancel();
+    super.dispose();
+  }
 
-    // Connected = Green dot on cloud.
-    // Offline / Syncing / Pending = Yellow/Amber sync icon.
-    final iconColor = isConnected && pending == 0
-        ? const Color(0xFF1E4231)
-        : isSyncing
-            ? const Color(0xFF2563EB)
-            : const Color(0xFFD97706); // Amber / Yellow
+  Future<void> _readLink() async {
+    try {
+      final results = await _connectivity.checkConnectivity();
+      if (!mounted) return;
+      setState(() => _online = _linkUp(results));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _online = false);
+    }
+  }
 
-    final icon = isSyncing
-        ? Icons.sync_rounded
-        : isConnected && pending == 0
-            ? Icons.cloud_outlined
-            : pending > 0
-                ? Icons.cloud_upload_outlined
-                : Icons.cloud_queue_outlined;
-
+  @override
+  Widget build(BuildContext context) {
+    final coordinator = ref.watch(syncCoordinatorProvider);
+    final pending = coordinator?.snapshot.pendingCount ?? 0;
+    final dot = _online ? const Color(0xFF16A34A) : const Color(0xFFDC2626);
     return IconButton(
       key: const Key('sync_status_button'),
-      tooltip: isSyncing
-          ? 'Syncing with server…'
-          : isConnected && pending == 0
-              ? 'Server Connected (Online) • Tap to sync'
-              : isOffline
-                  ? 'Offline • Tap to connect'
-                  : '$pending packets waiting to sync',
+      tooltip: _online
+          ? 'Connected · Wi-Fi or mobile data is on'
+          : 'No internet or Wi-Fi',
       visualDensity: VisualDensity.compact,
       onPressed: () => context.push('/sync'),
       icon: Stack(
         clipBehavior: Clip.none,
         children: [
-          Icon(icon, size: 24, color: iconColor),
-          // Green dot when connected to server
-          if (isConnected && pending == 0)
-            Positioned(
-              right: -1,
-              top: -1,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF16A34A), // Bright green dot
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1.5),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x4016A34A),
-                      blurRadius: 3,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
+          Icon(
+            Icons.cloud_outlined,
+            size: 24,
+            color: _online ? const Color(0xFF1E4231) : const Color(0xFFDC2626),
+          ),
+          Positioned(
+            right: -1,
+            top: -1,
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: dot,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1.5),
               ),
             ),
-          // Yellow/Amber badge when packets are waiting to sync
+          ),
           if (pending > 0)
             Positioned(
               right: -6,
@@ -103,7 +94,7 @@ class SyncStatusButton extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 3),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF59E0B), // Yellow/Amber badge
+                  color: dot,
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 1),
                 ),
@@ -114,21 +105,6 @@ class SyncStatusButton extends ConsumerWidget {
                     fontSize: 9,
                     fontWeight: FontWeight.w800,
                   ),
-                ),
-              ),
-            )
-          else if (!isConnected)
-            // Yellow dot when disconnected/offline
-            Positioned(
-              right: -1,
-              top: -1,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF59E0B), // Yellow dot
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1.5),
                 ),
               ),
             ),

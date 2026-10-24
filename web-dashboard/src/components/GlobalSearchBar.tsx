@@ -265,7 +265,7 @@ export function GlobalSearchBar() {
           onFocus={() => setIsOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder="Search patient, ABHA ID, village, ASHA..."
-          className="w-full h-9.5 rounded-full bg-[#F3F5F4] dark:bg-[#202024] hover:bg-[#EDF1EF] dark:hover:bg-[#28282D] focus:bg-white dark:focus:bg-[#1A1A1E] pl-9.5 pr-20 text-xs font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-transparent focus:border-[#0C5A3E] dark:focus:border-[#34D399] focus:ring-2 focus:ring-[#0C5A3E]/15 focus:outline-none transition-all shadow-2xs"
+          className="w-full h-9.5 rounded-full bg-[#F3F5F4] dark:bg-[#202024] hover:bg-[#EDF1EF] dark:hover:bg-[#28282D] focus:bg-white dark:focus:bg-[#1A1A1E] pl-9.5 pr-20 text-xs font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200 dark:border-[#34343A] focus:border-slate-300 dark:focus:border-[#45454D] focus:ring-0 focus:outline-none transition-all shadow-2xs"
           role="combobox"
           aria-expanded={isOpen}
           aria-label="Universal Health Search"

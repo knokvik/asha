@@ -282,56 +282,50 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
           ClinicalFormCard(
             title: '1. Vitals & BP',
             icon: Icons.thermostat_outlined,
-            child: Row(
+            child: Column(
               children: [
-                Expanded(
-                  child: TextFormField(
-                    initialValue: _temperatureC?.toString(),
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: InputDecoration(
-                      labelText: 'Temp (°C)',
-                      isDense: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onChanged: (v) =>
-                        setState(() => _temperatureC = double.tryParse(v)),
+                TextFormField(
+                  initialValue: _temperatureC?.toString(),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
                   ),
+                  decoration: InputDecoration(
+                    labelText: 'Temp (°C)',
+                    isDense: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onChanged: (v) =>
+                      setState(() => _temperatureC = double.tryParse(v)),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextFormField(
-                    initialValue: _systolicBp?.toString(),
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Systolic BP',
-                      isDense: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  initialValue: _systolicBp?.toString(),
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Systolic BP',
+                    isDense: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    onChanged: (v) =>
-                        setState(() => _systolicBp = int.tryParse(v)),
                   ),
+                  onChanged: (v) =>
+                      setState(() => _systolicBp = int.tryParse(v)),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextFormField(
-                    initialValue: _diastolicBp?.toString(),
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Diastolic BP',
-                      isDense: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  initialValue: _diastolicBp?.toString(),
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Diastolic BP',
+                    isDense: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    onChanged: (v) =>
-                        setState(() => _diastolicBp = int.tryParse(v)),
                   ),
+                  onChanged: (v) =>
+                      setState(() => _diastolicBp = int.tryParse(v)),
                 ),
               ],
             ),
@@ -345,6 +339,7 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
               children: [
                 DropdownButtonFormField<PncBleedingStatus>(
                   initialValue: _bleedingStatus,
+                  isExpanded: true,
                   decoration: InputDecoration(
                     labelText: 'Bleeding / Lochia',
                     isDense: true,
@@ -354,7 +349,10 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                   ),
                   items: PncBleedingStatus.values
                       .map(
-                        (s) => DropdownMenuItem(value: s, child: Text(s.label)),
+                        (s) => DropdownMenuItem(
+                          value: s,
+                          child: Text(s.label, overflow: TextOverflow.ellipsis),
+                        ),
                       )
                       .toList(),
                   onChanged: (v) => setState(() => _bleedingStatus = v!),
@@ -362,6 +360,7 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                 const SizedBox(height: 10),
                 DropdownButtonFormField<PncBreastStatus>(
                   initialValue: _breastStatus,
+                  isExpanded: true,
                   decoration: InputDecoration(
                     labelText: 'Breast Condition',
                     isDense: true,
@@ -371,7 +370,10 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                   ),
                   items: PncBreastStatus.values
                       .map(
-                        (s) => DropdownMenuItem(value: s, child: Text(s.label)),
+                        (s) => DropdownMenuItem(
+                          value: s,
+                          child: Text(s.label, overflow: TextOverflow.ellipsis),
+                        ),
                       )
                       .toList(),
                   onChanged: (v) => setState(() => _breastStatus = v!),
@@ -379,6 +381,7 @@ class _PncVisitScreenState extends ConsumerState<PncVisitScreen> {
                 const SizedBox(height: 10),
                 DropdownButtonFormField<PncWoundStatus>(
                   initialValue: _woundStatus,
+                  isExpanded: true,
                   decoration: InputDecoration(
                     labelText: 'Perineal / C-Section Wound',
                     isDense: true,

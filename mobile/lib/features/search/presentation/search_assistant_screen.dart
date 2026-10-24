@@ -87,7 +87,6 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
         bottom: false,
         child: Column(
           children: [
-            _topHeader(lang),
             _bottomSearchBar(context, lang),
             _categoryBar(lang),
             Expanded(
@@ -103,55 +102,6 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  /// Top title strip with offline status badge
-  Widget _topHeader(String lang) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(18, 12, 18, 6),
-      color: Colors.white,
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AshaColors.primaryLight,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.menu_book_rounded,
-              color: AshaColors.primary,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    const Text(
-                      'Search',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: AshaColors.textPrimary,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -830,6 +780,7 @@ class _SearchAssistantScreenState extends ConsumerState<SearchAssistantScreen> {
         decoration: BoxDecoration(
           color: AshaColors.cardSurface,
           borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: const Color(0xFFD1D5DB), width: 1.2),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),

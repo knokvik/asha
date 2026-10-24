@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,19 +32,29 @@ class TrackingRecord {
   final String time;
   final Map<String, dynamic>? payload;
 
-  String get ticketCode => payload?['ticket']?.toString() ?? 'TICK-${title.hashCode.abs().toString().substring(0, 6)}';
+  String get ticketCode =>
+      payload?['ticket']?.toString() ??
+      'TICK-${title.hashCode.abs().toString().substring(0, 6)}';
   String get flag => payload?['flag']?.toString() ?? 'GREEN';
   String get village => payload?['village']?.toString() ?? 'Rampur';
   String get block => payload?['block']?.toString() ?? 'Shahpur Block';
   String get district => payload?['district']?.toString() ?? 'Varanasi';
   String get ward => payload?['ward']?.toString() ?? 'Ward 3';
   String get phone => payload?['phone']?.toString() ?? '+91-94500-11223';
-  String get facility => payload?['facility']?.toString() ?? 'PHC Shahpur Emergency Hospital';
-  String get facilityPhone => payload?['facilityPhone']?.toString() ?? '+91-94500-11223';
+  String get facility =>
+      payload?['facility']?.toString() ?? 'PHC Shahpur Emergency Hospital';
+  String get facilityPhone =>
+      payload?['facilityPhone']?.toString() ?? '+91-94500-11223';
 }
 
 class _TrackingSnapshot {
-  const _TrackingSnapshot(this.items, this.pendingCount, this.redFlagCount, this.totalMembers, this.totalHouseholds);
+  const _TrackingSnapshot(
+    this.items,
+    this.pendingCount,
+    this.redFlagCount,
+    this.totalMembers,
+    this.totalHouseholds,
+  );
   final List<TrackingRecord> items;
   final int pendingCount;
   final int redFlagCount;
@@ -57,11 +68,21 @@ class TrackingScreen extends ConsumerWidget {
   Future<_TrackingSnapshot> _load(AppDatabase db) async {
     // Seed rich rural demo dataset if DB is fresh
 
-    final households = await (db.select(db.households)..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])).get();
-    final members = await (db.select(db.members)..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])).get();
-    final encounters = await (db.select(db.clinicalEncounters)..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])).get();
-    final referrals = await (db.select(db.referralRecords)..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])).get();
-    final queue = await (db.select(db.syncQueue)..orderBy([(t) => OrderingTerm.desc(t.createdAt)])).get();
+    final households = await (db.select(
+      db.households,
+    )..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])).get();
+    final members = await (db.select(
+      db.members,
+    )..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])).get();
+    final encounters = await (db.select(
+      db.clinicalEncounters,
+    )..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])).get();
+    final referrals = await (db.select(
+      db.referralRecords,
+    )..orderBy([(t) => OrderingTerm.desc(t.updatedAt)])).get();
+    final queue = await (db.select(
+      db.syncQueue,
+    )..orderBy([(t) => OrderingTerm.desc(t.createdAt)])).get();
     final facilities = await db.select(db.facilityDirectory).get();
 
     final facilityMap = {for (final f in facilities) f.id: f};
@@ -87,8 +108,9 @@ class TrackingScreen extends ConsumerWidget {
       items.add(
         TrackingRecord(
           kind: TrackingKind.triage,
-          title: 'Ticket ${_short(referral.id)} · $patientName',
-          subtitle: '${referral.triageFlag.toUpperCase()} Flag · ${hh?.village ?? "Rampur"} · ${fac?.name ?? "PHC Shahpur"}',
+          title: 'Triage : $patientName',
+          subtitle:
+              '${referral.triageFlag.toUpperCase()} Flag · ${hh?.village ?? "Rampur"} · ${fac?.name ?? "PHC Shahpur"}',
           status: referral.status,
           time: _time(referral.updatedAt),
           payload: {
@@ -103,14 +125,20 @@ class TrackingScreen extends ConsumerWidget {
             'district': 'Varanasi',
             'flag': referral.triageFlag.toUpperCase(),
             'facility': fac?.name ?? 'PHC Shahpur Emergency Hospital',
-            'facilityLevel': referral.destinationLevel ?? fac?.facilityLevel ?? 'PHC',
+            'facilityLevel':
+                referral.destinationLevel ?? fac?.facilityLevel ?? 'PHC',
             'facilityPhone': fac?.contactPhone ?? '+91-94500-11223',
-            'transport': referral.transportArranged ?? '108 Emergency Ambulance Dispatched',
+            'transport':
+                referral.transportArranged ??
+                '108 Emergency Ambulance Dispatched',
             'clinicalNote': referral.referralNoteText ?? 'Emergency Triage Escalation: High Danger Signs Detected during home visit.',
-            'qrData': referral.referralQrData ?? '{"ticket":"${referral.id}","patient":"$patientName","flag":"${referral.triageFlag}","facility":"${fac?.name ?? "PHC Shahpur"}"}',
+            'qrData':
+                referral.referralQrData ??
+                '{"ticket":"${referral.id}","patient":"$patientName","flag":"${referral.triageFlag}","facility":"${fac?.name ?? "PHC Shahpur"}"}',
             'outcome': referral.outcome ?? 'En Route · Facility Alerted',
             'sync': referral.syncStatus,
-            'vitals': 'BP: 148/96 mmHg · Pulse: 88 bpm · Temp: 99.1°F · SpO2: 97%',
+            'vitals':
+                'BP: 148/96 mmHg · Pulse: 88 bpm · Temp: 99.1°F · SpO2: 97%',
           },
         ),
       );
@@ -120,14 +148,17 @@ class TrackingScreen extends ConsumerWidget {
     for (final member in members) {
       final hh = householdMap[member.householdId];
       final ageYears = member.dobApprox != null
-          ? ((DateTime.now().millisecondsSinceEpoch - member.dobApprox!) / (365.25 * 24 * 3600 * 1000)).floor()
+          ? ((DateTime.now().millisecondsSinceEpoch - member.dobApprox!) /
+                    (365.25 * 24 * 3600 * 1000))
+                .floor()
           : 25;
 
       items.add(
         TrackingRecord(
           kind: TrackingKind.people,
-          title: member.name,
-          subtitle: '${member.sex == "F" ? "Female" : "Male"}, $ageYears yrs · ${hh?.headName ?? "Family"} Household · ${hh?.village ?? "Rampur"}',
+          title: 'Beneficiary : ${member.name}',
+          subtitle:
+              '${member.sex == "F" ? "Female" : "Male"}, $ageYears yrs · ${hh?.headName ?? "Family"} Household · ${hh?.village ?? "Rampur"}',
           status: member.syncStatus,
           time: _time(member.updatedAt),
           payload: {
@@ -136,17 +167,27 @@ class TrackingScreen extends ConsumerWidget {
             'age': '$ageYears yrs',
             'gender': member.sex == 'F' ? 'Female' : 'Male',
             'phone': member.phone ?? hh?.contactPhone ?? '+91-94500-22334',
-            'abhaId': member.abhaId ?? '91-4521-8890-${member.id.hashCode.abs().toString().substring(0, 4)}',
-            'rchId': member.rchId ?? 'RCH-UP-2026-${member.id.hashCode.abs().toString().substring(0, 5)}',
-            'household': '${hh?.headName ?? "Family"} Household (${hh?.village ?? "Rampur"})',
+            'abhaId':
+                member.abhaId ??
+                '91-4521-8890-${member.id.hashCode.abs().toString().substring(0, 4)}',
+            'rchId':
+                member.rchId ??
+                'RCH-UP-2026-${member.id.hashCode.abs().toString().substring(0, 5)}',
+            'household':
+                '${hh?.headName ?? "Family"} Household (${hh?.village ?? "Rampur"})',
             'village': hh?.village ?? 'Rampur',
             'ward': hh?.hamlet ?? 'Ward 3',
             'block': 'Shahpur Block',
             'district': 'Varanasi',
-            'consent': member.consentStatus == 'given' ? 'Aadhaar & ABDM Consent Granted' : 'Pending',
+            'consent': member.consentStatus == 'given'
+                ? 'Aadhaar & ABDM Consent Granted'
+                : 'Pending',
             'category': member.socialCategory ?? 'OBC',
-            'bplStatus': (member.isBpl ?? true) ? 'BPL Card Holder (Antyodaya)' : 'APL',
-            'programs': 'ANC Trimester 3 · Immunization Registry · NCD Surveillance',
+            'bplStatus': (member.isBpl ?? true)
+                ? 'BPL Card Holder (Antyodaya)'
+                : 'APL',
+            'programs':
+                'ANC Trimester 3 · Immunization Registry · NCD Surveillance',
             'sync': member.syncStatus,
           },
         ),
@@ -158,8 +199,9 @@ class TrackingScreen extends ConsumerWidget {
       items.add(
         TrackingRecord(
           kind: TrackingKind.households,
-          title: '${household.headName} Household',
-          subtitle: '${household.village} · ${household.memberCount} members · ${household.hamlet ?? "Main Ward"}',
+          title: 'Household : ${household.headName}',
+          subtitle:
+              '${household.village} · ${household.memberCount} members · ${household.hamlet ?? "Main Ward"}',
           status: household.syncStatus,
           time: _time(household.updatedAt),
           payload: {
@@ -171,11 +213,17 @@ class TrackingScreen extends ConsumerWidget {
             'district': 'Varanasi',
             'phone': household.contactPhone ?? '+91-94500-33445',
             'members': '${household.memberCount} Registered Members',
-            'location': '${household.latitude ?? "25.3176"}° N, ${household.longitude ?? "82.9739"}° E',
-            'landmark': household.landmarkNotes ?? 'Near Primary School & Anganwadi Centre',
+            'location':
+                '${household.latitude ?? "25.3176"}° N, ${household.longitude ?? "82.9739"}° E',
+            'landmark':
+                household.landmarkNotes ??
+                'Near Primary School & Anganwadi Centre',
             'socialCategory': household.socialCategory ?? 'OBC',
-            'rationCard': household.isBpl ? 'BPL Ration Card #UP-BPL-88921' : 'APL Card',
-            'waterSanitation': 'Piped Har Ghar Jal Tap Water · Functional IHHL Toilet',
+            'rationCard': household.isBpl
+                ? 'BPL Ration Card #UP-BPL-88921'
+                : 'APL Card',
+            'waterSanitation':
+                'Piped Har Ghar Jal Tap Water · Functional IHHL Toilet',
             'sync': household.syncStatus,
           },
         ),
@@ -189,8 +237,10 @@ class TrackingScreen extends ConsumerWidget {
       items.add(
         TrackingRecord(
           kind: TrackingKind.other,
-          title: '${encounter.programCode.toUpperCase()} Visit · ${mem?.name ?? "Beneficiary"}',
-          subtitle: '${encounter.encounterType} · ${hh?.village ?? "Rampur"} · Dr. Verification Pending',
+          title:
+              '${encounter.programCode.toUpperCase()} : ${mem?.name ?? "Beneficiary"}',
+          subtitle:
+              '${encounter.encounterType} · ${hh?.village ?? "Rampur"} · Dr. Verification Pending',
           status: encounter.syncStatus,
           time: _time(encounter.updatedAt),
           payload: {
@@ -218,8 +268,9 @@ class TrackingScreen extends ConsumerWidget {
       items.add(
         TrackingRecord(
           kind: TrackingKind.other,
-          title: 'Sync · ${packet.targetTable}',
-          subtitle: '${packet.operation.toUpperCase()} · Record ${_short(packet.recordId)} · Port 443 Encrypted',
+          title: 'Sync : ${packet.targetTable}',
+          subtitle:
+              '${packet.operation.toUpperCase()} · Record ${_short(packet.recordId)} · Port 443 Encrypted',
           status: packet.syncStatus,
           time: _time(packet.createdAt),
           payload: {
@@ -227,7 +278,8 @@ class TrackingScreen extends ConsumerWidget {
             'table': packet.targetTable,
             'operation': packet.operation,
             'attempts': '${packet.attemptCount} / 5 retries',
-            'endpoint': 'https://asha-backend-1akc.onrender.com/api/v1/sync/activity',
+            'endpoint':
+                'https://asha-backend-1akc.onrender.com/api/v1/sync/activity',
             'encryption': 'AES-256-GCM Hardware Encrypted',
             'error': packet.errorMessage ?? 'None · Ready for automated upload',
             'sync': packet.syncStatus,
@@ -247,10 +299,14 @@ class TrackingScreen extends ConsumerWidget {
     );
   }
 
-  static String _short(String value) => value.length > 8 ? value.substring(0, 8) : value;
+  static String _short(String value) =>
+      value.length > 8 ? value.substring(0, 8) : value;
 
   static String _time(int millis) =>
-      DateTime.fromMillisecondsSinceEpoch(millis).toLocal().toString().substring(0, 16);
+      DateTime.fromMillisecondsSinceEpoch(millis)
+          .toLocal()
+          .toString()
+          .substring(0, 16);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -263,7 +319,11 @@ class TrackingScreen extends ConsumerWidget {
           children: const [
             Text(
               'Real-Time Field Tracking',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17, color: AshaColors.textPrimary),
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 17,
+                color: AshaColors.textPrimary,
+              ),
             ),
             Text(
               'Live GPS, Household, Beneficiary & Triage Registry',
@@ -284,12 +344,18 @@ class TrackingScreen extends ConsumerWidget {
         future: _load(db),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: AshaColors.primary));
+            return const Center(
+              child: CircularProgressIndicator(color: AshaColors.primary),
+            );
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Could not load tracking: ${snapshot.error}'));
+            return Center(
+              child: Text('Could not load tracking: ${snapshot.error}'),
+            );
           }
-          return _TrackingBody(snapshot.data ?? const _TrackingSnapshot([], 0, 0, 0, 0));
+          return _TrackingBody(
+            snapshot.data ?? const _TrackingSnapshot([], 0, 0, 0, 0),
+          );
         },
       ),
     );
@@ -331,8 +397,12 @@ class _TrackingBodyState extends State<_TrackingBody> {
       if (query.isEmpty) return true;
       final matchTitle = item.title.toLowerCase().contains(query);
       final matchSubtitle = item.subtitle.toLowerCase().contains(query);
-      final matchVillage = (item.payload?['village']?.toString() ?? '').toLowerCase().contains(query);
-      final matchMember = (item.payload?['member']?.toString() ?? '').toLowerCase().contains(query);
+      final matchVillage = (item.payload?['village']?.toString() ?? '')
+          .toLowerCase()
+          .contains(query);
+      final matchMember = (item.payload?['member']?.toString() ?? '')
+          .toLowerCase()
+          .contains(query);
       return matchTitle || matchSubtitle || matchVillage || matchMember;
     }).toList();
 
@@ -394,8 +464,15 @@ class _TrackingBodyState extends State<_TrackingBody> {
               onChanged: (v) => setState(() => _searchQuery = v),
               decoration: InputDecoration(
                 hintText: 'Search by patient, village, ticket, head...',
-                hintStyle: const TextStyle(fontSize: 13, color: AshaColors.textMuted),
-                prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AshaColors.textMuted),
+                hintStyle: const TextStyle(
+                  fontSize: 13,
+                  color: AshaColors.textMuted,
+                ),
+                prefixIcon: const Icon(
+                  Icons.search_rounded,
+                  size: 20,
+                  color: AshaColors.textMuted,
+                ),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear_rounded, size: 18),
@@ -426,7 +503,9 @@ class _TrackingBodyState extends State<_TrackingBody> {
                     avatar: Icon(
                       icon,
                       size: 16,
-                      color: isSelected ? Colors.white : AshaColors.textSecondary,
+                      color: isSelected
+                          ? Colors.white
+                          : AshaColors.textSecondary,
                     ),
                     label: Text(label),
                     selected: isSelected,
@@ -434,13 +513,17 @@ class _TrackingBodyState extends State<_TrackingBody> {
                     backgroundColor: AshaColors.cardSurface,
                     labelStyle: TextStyle(
                       fontSize: 12,
-                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                      fontWeight: isSelected
+                          ? FontWeight.w800
+                          : FontWeight.w600,
                       color: isSelected ? Colors.white : AshaColors.textPrimary,
                     ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                       side: BorderSide(
-                        color: isSelected ? AshaColors.primary : AshaColors.borderSubtle,
+                        color: isSelected
+                            ? AshaColors.primary
+                            : AshaColors.borderSubtle,
                       ),
                     ),
                     onSelected: (_) => setState(() => _filter = entry.key),
@@ -462,11 +545,21 @@ class _TrackingBodyState extends State<_TrackingBody> {
               ),
               child: Column(
                 children: const [
-                  Icon(Icons.search_off_rounded, size: 48, color: AshaColors.textMuted),
+                  Icon(
+                    Icons.search_off_rounded,
+                    size: 48,
+                    color: AshaColors.textMuted,
+                  ),
                   SizedBox(height: 12),
-                  Text('No matching records found', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  Text(
+                    'No matching records found',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
                   SizedBox(height: 4),
-                  Text('Try adjusting your search terms or filters', style: TextStyle(fontSize: 12, color: AshaColors.textMuted)),
+                  Text(
+                    'Try adjusting your search terms or filters',
+                    style: TextStyle(fontSize: 12, color: AshaColors.textMuted),
+                  ),
                 ],
               ),
             ),
@@ -501,7 +594,14 @@ class _TrackingBodyState extends State<_TrackingBody> {
               children: [
                 Icon(icon, size: 15, color: color),
                 const SizedBox(width: 5),
-                Text(count, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: color)),
+                Text(
+                  count,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: color,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 4),
@@ -509,7 +609,11 @@ class _TrackingBodyState extends State<_TrackingBody> {
               title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color.withValues(alpha: 0.85)),
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: color.withValues(alpha: 0.85),
+              ),
             ),
           ],
         ),
@@ -528,7 +632,9 @@ class _TrackingBodyState extends State<_TrackingBody> {
         color: AshaColors.cardSurface,
         borderRadius: AshaShapes.cardRadius,
         border: Border.all(
-          color: isTriageRed ? const Color(0xFFFCA5A5) : AshaColors.borderSubtle,
+          color: isTriageRed
+              ? const Color(0xFFFCA5A5)
+              : AshaColors.borderSubtle,
           width: isTriageRed ? 1.5 : 1.0,
         ),
         boxShadow: const [
@@ -572,7 +678,10 @@ class _TrackingBodyState extends State<_TrackingBody> {
                               Expanded(
                                 child: Text(
                                   item.title,
-                                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14,
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -583,7 +692,10 @@ class _TrackingBodyState extends State<_TrackingBody> {
                           const SizedBox(height: 4),
                           Text(
                             item.subtitle,
-                            style: const TextStyle(fontSize: 12, color: AshaColors.textSecondary),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AshaColors.textSecondary,
+                            ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -597,23 +709,47 @@ class _TrackingBodyState extends State<_TrackingBody> {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Icon(Icons.access_time_rounded, size: 13, color: AshaColors.textMuted),
+                    Icon(
+                      Icons.access_time_rounded,
+                      size: 13,
+                      color: AshaColors.textMuted,
+                    ),
                     const SizedBox(width: 4),
-                    Text(item.time, style: const TextStyle(fontSize: 11, color: AshaColors.textMuted)),
+                    Text(
+                      item.time,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AshaColors.textMuted,
+                      ),
+                    ),
                     const Spacer(),
-                    Row(
-                      children: const [
-                        Text(
-                          'View Real-Time Ticket',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              'View Real-Time Ticket',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.end,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: AshaColors.primary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          const Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 14,
                             color: AshaColors.primary,
                           ),
-                        ),
-                        SizedBox(width: 2),
-                        Icon(Icons.arrow_forward_rounded, size: 14, color: AshaColors.primary),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -632,7 +768,10 @@ class _TrackingBodyState extends State<_TrackingBody> {
     if (isRed || value == 'RED' || value == 'failed') {
       bg = const Color(0xFFFEE2E2);
       fg = const Color(0xFFB42318);
-    } else if (value == 'synced' || value == 'given' || value == 'treated' || value == 'GREEN') {
+    } else if (value == 'synced' ||
+        value == 'given' ||
+        value == 'treated' ||
+        value == 'GREEN') {
       bg = const Color(0xFFECFDF5);
       fg = const Color(0xFF047857);
     } else if (value == 'YELLOW' || value == 'pending' || value == 'en_route') {
@@ -648,11 +787,7 @@ class _TrackingBodyState extends State<_TrackingBody> {
       ),
       child: Text(
         value.toUpperCase(),
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
-          color: fg,
-        ),
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: fg),
       ),
     );
   }
@@ -673,13 +808,21 @@ class _TrackingBodyState extends State<_TrackingBody> {
 }
 
 /// ── Real-Time Ticket & Case Log Screen ──────────────────────────────────────
-class TrackingDetailScreen extends StatelessWidget {
+class TrackingDetailScreen extends StatefulWidget {
   const TrackingDetailScreen({super.key, required this.record});
 
   final TrackingRecord record;
 
   @override
+  State<TrackingDetailScreen> createState() => _TrackingDetailScreenState();
+}
+
+class _TrackingDetailScreenState extends State<TrackingDetailScreen> {
+  bool _showQr = false;
+
+  @override
   Widget build(BuildContext context) {
+    final record = widget.record;
     final flag = record.flag;
     final isRed = flag == 'RED' || record.kind == TrackingKind.triage;
     final flagColor = switch (flag) {
@@ -730,7 +873,9 @@ class TrackingDetailScreen extends StatelessWidget {
             onPressed: () {
               Clipboard.setData(ClipboardData(text: qrPayload));
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Ticket information copied to clipboard')),
+                const SnackBar(
+                  content: Text('Ticket information copied to clipboard'),
+                ),
               );
             },
           ),
@@ -762,54 +907,71 @@ class TrackingDetailScreen extends StatelessWidget {
                   Container(
                     color: flagColor.withValues(alpha: 0.12),
                     padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: flagColor,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            isRed ? Icons.priority_high_rounded : Icons.verified_rounded,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${flag.toUpperCase()} TICKET · ${record.kind.name.toUpperCase()}',
-                                style: TextStyle(
-                                  color: flagColor,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.5,
-                                ),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: flagColor,
+                                shape: BoxShape.circle,
                               ),
-                              Text(
-                                record.status.toUpperCase(),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                  color: AshaColors.textPrimary,
-                                ),
+                              child: Icon(
+                                isRed
+                                    ? Icons.priority_high_rounded
+                                    : Icons.verified_rounded,
+                                color: Colors.white,
+                                size: 22,
                               ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${flag.toUpperCase()} TICKET · ${record.kind.name.toUpperCase()}',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: flagColor,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                  Text(
+                                    record.status.toUpperCase(),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                      color: AshaColors.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
+                        const SizedBox(height: 10),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: flagColor.withValues(alpha: 0.3)),
+                            border: Border.all(
+                              color: flagColor.withValues(alpha: 0.3),
+                            ),
                           ),
                           child: Text(
                             record.ticketCode,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
@@ -857,14 +1019,23 @@ class TrackingDetailScreen extends StatelessWidget {
                               ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
-                                color: AshaColors.primary.withValues(alpha: 0.12),
+                                color: AshaColors.primary.withValues(
+                                  alpha: 0.12,
+                                ),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Text(
                                 'ASHA-VERIFIED',
-                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AshaColors.primaryDark),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: AshaColors.primaryDark,
+                                ),
                               ),
                             ),
                           ],
@@ -874,12 +1045,21 @@ class TrackingDetailScreen extends StatelessWidget {
 
                         // Block Grid (Location, Ward, Facility, Age)
                         _buildTicketGrid([
-                          ('Age / Gender', '${record.payload?["age"] ?? "28 yrs"} · ${record.payload?["gender"] ?? "Female"}'),
+                          (
+                            'Age / Gender',
+                            '${record.payload?["age"] ?? "28 yrs"} · ${record.payload?["gender"] ?? "Female"}',
+                          ),
                           ('Village', record.village),
                           ('Ward / Hamlet', record.ward),
-                          ('Block / District', '${record.block}, ${record.district}'),
+                          (
+                            'Block / District',
+                            '${record.block}, ${record.district}',
+                          ),
                           ('Destination Facility', record.facility),
-                          ('Sync Gateway', 'Live Cloud Synced (Render/Supabase)'),
+                          (
+                            'Sync Gateway',
+                            'Live Cloud Synced (Render/Supabase)',
+                          ),
                         ]),
 
                         const SizedBox(height: 16),
@@ -887,7 +1067,8 @@ class TrackingDetailScreen extends StatelessWidget {
                         const SizedBox(height: 14),
 
                         // Clinical Findings / Notes Block
-                        if (record.payload?['clinicalNote'] != null || record.payload?['notes'] != null) ...[
+                        if (record.payload?['clinicalNote'] != null ||
+                            record.payload?['notes'] != null) ...[
                           _buildSectionTitle(
                             title: 'Clinical Assessment & Findings',
                             icon: Icons.health_and_safety_rounded,
@@ -899,11 +1080,20 @@ class TrackingDetailScreen extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: flagColor.withValues(alpha: 0.06),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: flagColor.withValues(alpha: 0.2)),
+                              border: Border.all(
+                                color: flagColor.withValues(alpha: 0.2),
+                              ),
                             ),
                             child: Text(
-                              (record.payload?['clinicalNote'] ?? record.payload?['notes']).toString(),
-                              style: const TextStyle(fontSize: 13, height: 1.4, color: AshaColors.textPrimary, fontWeight: FontWeight.w600),
+                              (record.payload?['clinicalNote'] ??
+                                      record.payload?['notes'])
+                                  .toString(),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                height: 1.4,
+                                color: AshaColors.textPrimary,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 14),
@@ -922,11 +1112,17 @@ class TrackingDetailScreen extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: AshaColors.cardSurface,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AshaColors.borderSubtle),
+                              border: Border.all(
+                                color: AshaColors.borderSubtle,
+                              ),
                             ),
                             child: Text(
                               record.payload!['vitals'].toString(),
-                              style: const TextStyle(fontSize: 13, height: 1.4, fontWeight: FontWeight.w700),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                height: 1.4,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 14),
@@ -936,12 +1132,19 @@ class TrackingDetailScreen extends StatelessWidget {
                         if (record.payload?['transport'] != null) ...[
                           Row(
                             children: [
-                              const Icon(Icons.local_shipping_rounded, size: 18, color: AshaColors.primary),
+                              const Icon(
+                                Icons.local_shipping_rounded,
+                                size: 18,
+                                color: AshaColors.primary,
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   'Transport: ${record.payload!["transport"]}',
-                                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ),
                             ],
@@ -961,27 +1164,108 @@ class TrackingDetailScreen extends StatelessWidget {
                         const SizedBox(height: 10),
                         _buildTimeline([
                           ('Assessment & Triage by ASHA', record.time, true),
-                          ('Local Encrypted Storage (AES-256)', record.time, true),
-                          ('Cloud Sync to National Server', 'Completed · SHA-256 OK', true),
-                          ('PHC Medical Officer Review', record.status == 'treated' ? 'Completed' : 'In Progress', record.status == 'treated'),
+                          (
+                            'Local Encrypted Storage (AES-256)',
+                            record.time,
+                            true,
+                          ),
+                          (
+                            'Cloud Sync to National Server',
+                            'Completed · SHA-256 OK',
+                            true,
+                          ),
+                          (
+                            'PHC Medical Officer Review',
+                            record.status == 'treated'
+                                ? 'Completed'
+                                : 'In Progress',
+                            record.status == 'treated',
+                          ),
                         ]),
 
                         const SizedBox(height: 16),
                         const _DashedDivider(),
                         const SizedBox(height: 14),
 
-                        // Scannable QR Code Block
-                        Center(
-                          child: Column(
+                        // Scannable QR Code Block (collapsed by default)
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: AshaColors.borderSubtle),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: ExpansionTile(
+                            initiallyExpanded: false,
+                            onExpansionChanged: (expanded) =>
+                                setState(() => _showQr = expanded),
+                            leading: const Icon(
+                              Icons.qr_code_scanner_rounded,
+                              size: 18,
+                              color: AshaColors.primary,
+                            ),
+                            title: const Text(
+                              'Ticket QR code',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13,
+                              ),
+                            ),
+                            subtitle: Text(
+                              _showQr
+                                  ? 'Scan at receiving facility / PHC doctor'
+                                  : 'Tap to show scan code',
+                              style: const TextStyle(fontSize: 11),
+                            ),
                             children: [
+                              Center(
+                                child: Column(
+                                  children: [
+                                    const SizedBox(height: 4),
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: AshaColors.borderSubtle,
+                                        ),
+                                      ),
+                                      child: QrImageView(
+                                        data: qrPayload,
+                                        size: 156,
+                                        backgroundColor: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Ticket UUID: ${record.ticketCode}',
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: AshaColors.textMuted,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        /*
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: const [
-                                  Icon(Icons.qr_code_scanner_rounded, size: 18, color: AshaColors.primary),
+                                  Icon(
+                                    Icons.qr_code_scanner_rounded,
+                                    size: 18,
+                                    color: AshaColors.primary,
+                                  ),
                                   SizedBox(width: 6),
                                   Text(
                                     'Scan at Receiving Facility / PHC Doctor',
-                                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -991,7 +1275,9 @@ class TrackingDetailScreen extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: AshaColors.borderSubtle),
+                                  border: Border.all(
+                                    color: AshaColors.borderSubtle,
+                                  ),
                                 ),
                                 child: QrImageView(
                                   data: qrPayload,
@@ -1002,11 +1288,14 @@ class TrackingDetailScreen extends StatelessWidget {
                               const SizedBox(height: 6),
                               Text(
                                 'Ticket UUID: ${record.ticketCode}',
-                                style: const TextStyle(fontSize: 10, color: AshaColors.textMuted),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: AshaColors.textMuted,
+                                ),
                               ),
                             ],
                           ),
-                        ),
+                        ),*/
                       ],
                     ),
                   ),
@@ -1026,10 +1315,15 @@ class TrackingDetailScreen extends StatelessWidget {
                   child: FilledButton.icon(
                     style: FilledButton.styleFrom(
                       backgroundColor: AshaColors.primary,
-                      shape: RoundedRectangleBorder(borderRadius: AshaShapes.buttonRadius),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: AshaShapes.buttonRadius,
+                      ),
                     ),
                     icon: const Icon(Icons.call_rounded, size: 18),
-                    label: const Text('Call Patient', style: TextStyle(fontWeight: FontWeight.w800)),
+                    label: const Text(
+                      'Call Patient',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
                     onPressed: () async {
                       final url = Uri.parse('tel:${record.phone}');
                       if (await canLaunchUrl(url)) await launchUrl(url);
@@ -1045,10 +1339,15 @@ class TrackingDetailScreen extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AshaColors.primaryDark,
                       side: const BorderSide(color: AshaColors.primary),
-                      shape: RoundedRectangleBorder(borderRadius: AshaShapes.buttonRadius),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: AshaShapes.buttonRadius,
+                      ),
                     ),
                     icon: const Icon(Icons.local_hospital_rounded, size: 18),
-                    label: const Text('Call Facility', style: TextStyle(fontWeight: FontWeight.w800)),
+                    label: const Text(
+                      'Call Facility',
+                      style: TextStyle(fontWeight: FontWeight.w800),
+                    ),
                     onPressed: () async {
                       final url = Uri.parse('tel:${record.facilityPhone}');
                       if (await canLaunchUrl(url)) await launchUrl(url);
@@ -1063,14 +1362,22 @@ class TrackingDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionTitle({required String title, required IconData icon, required Color color}) {
+  Widget _buildSectionTitle({
+    required String title,
+    required IconData icon,
+    required Color color,
+  }) {
     return Row(
       children: [
         Icon(icon, size: 16, color: color),
         const SizedBox(width: 6),
         Text(
           title,
-          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: color),
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
         ),
       ],
     );
@@ -1096,13 +1403,21 @@ class TrackingDetailScreen extends StatelessWidget {
                   width: 130,
                   child: Text(
                     label,
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AshaColors.textSecondary),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AshaColors.textSecondary,
+                    ),
                   ),
                 ),
                 Expanded(
                   child: Text(
                     value,
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AshaColors.textPrimary),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: AshaColors.textPrimary,
+                    ),
                   ),
                 ),
               ],
@@ -1122,7 +1437,9 @@ class TrackingDetailScreen extends StatelessWidget {
           child: Row(
             children: [
               Icon(
-                done ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                done
+                    ? Icons.check_circle_rounded
+                    : Icons.radio_button_unchecked_rounded,
                 size: 16,
                 color: done ? const Color(0xFF059669) : AshaColors.textMuted,
               ),
@@ -1139,7 +1456,10 @@ class TrackingDetailScreen extends StatelessWidget {
               ),
               Text(
                 time,
-                style: const TextStyle(fontSize: 10, color: AshaColors.textMuted),
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AshaColors.textMuted,
+                ),
               ),
             ],
           ),

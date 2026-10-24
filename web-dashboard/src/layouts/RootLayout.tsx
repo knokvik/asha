@@ -41,7 +41,6 @@ const NAV_ITEMS = [
     label: 'India PHC & RaktKosh Map',
     path: '/india-map',
     icon: Navigation,
-    badge: '35.9k',
   },
   {
     label: 'Live Triage Desk',
@@ -81,7 +80,6 @@ const NAV_ITEMS = [
     label: 'State Admin Console',
     path: '/admin',
     icon: ShieldCheck,
-    badge: 'Req 43',
   },
   {
     label: 'Logs & Activity',
@@ -100,7 +98,6 @@ export function RootLayout() {
   const [searchParams] = useSearchParams();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(searchParams.get('sidebar') === 'collapsed');
-  const [offlineMode, setOfflineMode] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [operationsOpen, setOperationsOpen] = useState(true);
@@ -121,11 +118,6 @@ export function RootLayout() {
 
   return (
     <div className="min-h-screen flex bg-[#F4F6F5] dark:bg-[#121214] text-slate-800 dark:text-slate-100 font-sans antialiased">
-      {/* Hidden for test accessibility compatibility */}
-      <span className="sr-only">Primary Health Centre Shahpur</span>
-      <a href="tel:108" className="sr-only">Call 108 Ambulance</a>
-      <span className="sr-only">Emergency Triage</span>
-
       {/* Mobile Drawer Backdrop */}
       {mobileMenuOpen && (
         <div
@@ -164,9 +156,11 @@ export function RootLayout() {
                   className="flex items-center cursor-pointer select-none"
                   onClick={() => navigate('/dashboard')}
                 >
-                  <span className="text-[26px] font-black tracking-tight text-[#0C5A3E] lowercase leading-none font-sans pt-0.5">
-                    asha
-                  </span>
+                  <img
+                    src="/asha-logo.jpeg"
+                    alt="ASHA"
+                    className="h-9 w-14 rounded-lg object-cover object-center"
+                  />
                 </div>
                 <button
                   type="button"
@@ -454,11 +448,11 @@ export function RootLayout() {
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="flex items-center space-x-2 text-xs text-slate-500 whitespace-nowrap">
+            <div className="flex min-w-0 items-center space-x-2 text-xs text-slate-500 whitespace-nowrap overflow-hidden">
               <Home className="h-4 w-4 text-slate-400 shrink-0" />
-              <span className="font-medium text-slate-600 dark:text-slate-300">National Health Mission</span>
+              <span className="truncate font-medium text-slate-600 dark:text-slate-300">National Health Mission</span>
               <span className="text-slate-300 dark:text-slate-600">|</span>
-              <span className="font-semibold text-slate-700 dark:text-slate-200">{districtName} District</span>
+              <span className="truncate font-semibold text-slate-700 dark:text-slate-200">{districtName} District</span>
             </div>
           </div>
 
@@ -491,19 +485,6 @@ export function RootLayout() {
               <span className="font-bold text-[#0C5A3E] dark:text-[#34D399]">
                 {isSyncing ? 'Syncing...' : lastSyncTime}
               </span>
-            </button>
-
-            {/* Offline Mode Button */}
-            <button
-              onClick={() => setOfflineMode(!offlineMode)}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors cursor-pointer ${
-                offlineMode
-                  ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300'
-                  : 'bg-white dark:bg-[#222226] border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
-              }`}
-            >
-              <Radio className={`h-3.5 w-3.5 ${offlineMode ? 'text-amber-600' : 'text-slate-500'}`} />
-              <span className="hidden sm:inline">Offline Mode</span>
             </button>
 
             {/* Theme Toggle Button (Light/Dark Mode) */}

@@ -288,7 +288,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(
-                          Icons.map_outlined,
+                          Icons.location_on_rounded,
                           size: 16,
                           color: Color(0xFF166534),
                         ),
@@ -460,7 +460,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       // Give the four primary actions a larger touch target and use the
       // available space above the bottom navigation without hard-coding a
       // viewport height. The grid remains scroll-safe on smaller phones.
-      childAspectRatio: 1.35,
+      childAspectRatio: 1.15,
       children: [
         _buildQuickActionCard(
           title: 'Household',
@@ -501,13 +501,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Widget _quickActionIcon(IconData icon, Color color) {
     return Container(
-      width: 56,
-      height: 56,
+      width: 72,
+      height: 72,
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
       ),
-      child: Icon(icon, color: color, size: 36),
+      child: Icon(icon, color: color, size: 48),
     );
   }
 
@@ -526,26 +526,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         borderRadius: BorderRadius.circular(14),
         child: Container(
           constraints: const BoxConstraints(minHeight: 136),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: const Color(0xFFE5E7EB), width: 1.0),
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  iconWidget,
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: Color(0xFFD1D5DB),
-                    size: 20,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
+              iconWidget,
+              const SizedBox(height: 8),
               Flexible(
                 child: Text(
                   title,

@@ -495,7 +495,9 @@ class _BeneficiaryTimelineScreenState
   }
 
   Widget _buildVisitsPanel() {
-    final timeline = ref.watch(beneficiaryTimelineStreamProvider(widget.memberId));
+    final timeline = ref.watch(
+      beneficiaryTimelineStreamProvider(widget.memberId),
+    );
     return _panelCard(
       icon: Icons.event_note_outlined,
       title: 'Visits',
@@ -504,9 +506,12 @@ class _BeneficiaryTimelineScreenState
         error: (error, _) => Text('Could not load visits: $error'),
         data: (events) {
           final visits = events
-              .where((event) => event.type == TimelineEventType.encounter ||
-                  event.type == TimelineEventType.immunization ||
-                  event.type == TimelineEventType.visitSchedule)
+              .where(
+                (event) =>
+                    event.type == TimelineEventType.encounter ||
+                    event.type == TimelineEventType.immunization ||
+                    event.type == TimelineEventType.visitSchedule,
+              )
               .toList();
           return _buildEventList(
             visits,
@@ -524,7 +529,9 @@ class _BeneficiaryTimelineScreenState
   }
 
   Widget _buildTriagePanel() {
-    final timeline = ref.watch(beneficiaryTimelineStreamProvider(widget.memberId));
+    final timeline = ref.watch(
+      beneficiaryTimelineStreamProvider(widget.memberId),
+    );
     return _panelCard(
       icon: Icons.health_and_safety_outlined,
       title: 'Triage history',
@@ -532,7 +539,9 @@ class _BeneficiaryTimelineScreenState
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Text('Could not load triage history: $error'),
         data: (events) => _buildEventList(
-          events.where((event) => event.type == TimelineEventType.triage).toList(),
+          events
+              .where((event) => event.type == TimelineEventType.triage)
+              .toList(),
           emptyText: 'No saved triage assessments for this beneficiary yet.',
           action: ElevatedButton.icon(
             key: const Key('profile_start_triage_button'),
@@ -577,15 +586,29 @@ class _BeneficiaryTimelineScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(event.title, style: const TextStyle(fontWeight: FontWeight.w700)),
-              Text(event.subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
-              Text('${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}',
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
+              Text(
+                event.title,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              Text(
+                event.subtitle,
+                style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+              ),
+              Text(
+                '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}',
+                style: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+              ),
             ],
           ),
         ),
         if (event.badgeText != null)
-          Text(event.badgeText!, style: TextStyle(fontSize: 11, color: event.badgeColor ?? const Color(0xFF6B7280))),
+          Text(
+            event.badgeText!,
+            style: TextStyle(
+              fontSize: 11,
+              color: event.badgeColor ?? const Color(0xFF6B7280),
+            ),
+          ),
       ],
     );
   }
@@ -596,24 +619,38 @@ class _BeneficiaryTimelineScreenState
       icon: Icons.groups_outlined,
       title: 'Family',
       child: householdId == null
-          ? const Text('No household is linked to this beneficiary.', style: TextStyle(color: Color(0xFF6B7280)))
+          ? const Text(
+              'No household is linked to this beneficiary.',
+              style: TextStyle(color: Color(0xFF6B7280)),
+            )
           : FutureBuilder<List<Member>>(
               future: _loadFamilyMembers(householdId),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                if (!snapshot.hasData)
+                  return const Center(child: CircularProgressIndicator());
                 final family = snapshot.data!;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${family.length} household member${family.length == 1 ? '' : 's'}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                    Text(
+                      '${family.length} household member${family.length == 1 ? '' : 's'}',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
                     const SizedBox(height: 10),
-                    ...family.where((member) => member.id != widget.memberId).map((member) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const CircleAvatar(child: Icon(Icons.person_outline)),
-                      title: Text(member.name),
-                      subtitle: Text(member.sex),
-                      onTap: () => context.push('/beneficiary/${member.id}'),
-                    )),
+                    ...family
+                        .where((member) => member.id != widget.memberId)
+                        .map(
+                          (member) => ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const CircleAvatar(
+                              child: Icon(Icons.person_outline),
+                            ),
+                            title: Text(member.name),
+                            subtitle: Text(member.sex),
+                            onTap: () =>
+                                context.push('/beneficiary/${member.id}'),
+                          ),
+                        ),
                     OutlinedButton.icon(
                       key: const Key('profile_family_records_button'),
                       onPressed: () => context.go('/households'),
@@ -629,7 +666,9 @@ class _BeneficiaryTimelineScreenState
 
   Future<List<Member>> _loadFamilyMembers(String householdId) {
     final db = ref.read(appDatabaseProvider);
-    return (db.select(db.members)..where((row) => row.householdId.equals(householdId))).get();
+    return (db.select(
+      db.members,
+    )..where((row) => row.householdId.equals(householdId))).get();
   }
 
   Widget _panelCard({
@@ -735,7 +774,13 @@ class _BeneficiaryTimelineScreenState
     if (m == null) return;
 
     final currentAge = m.dobApprox != null
-        ? (DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(m.dobApprox!)).inDays / 365.25).floor()
+        ? (DateTime.now()
+                      .difference(
+                        DateTime.fromMillisecondsSinceEpoch(m.dobApprox!),
+                      )
+                      .inDays /
+                  365.25)
+              .floor()
         : 20;
 
     final nameCtrl = TextEditingController(text: m.name);
@@ -797,6 +842,7 @@ class _BeneficiaryTimelineScreenState
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: relationship,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Relation to Head',
                   ),
@@ -892,7 +938,9 @@ class _BeneficiaryTimelineScreenState
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${nameCtrl.text.trim()} details updated and queued for server sync.'),
+          content: Text(
+            '${nameCtrl.text.trim()} details updated and queued for server sync.',
+          ),
           backgroundColor: const Color(0xFF1E4231),
         ),
       );

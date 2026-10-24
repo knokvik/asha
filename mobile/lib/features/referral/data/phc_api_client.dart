@@ -1,5 +1,7 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
+
 import '../domain/referral_models.dart';
 
 /// Result of sending a referral request to the Primary Health Centre.
@@ -29,11 +31,9 @@ class PhcDispatchResult {
 /// If the device is offline or the server is temporarily unreachable,
 /// it falls back gracefully and enqueues the request for the background sync drain.
 class PhcApiClient {
-  PhcApiClient({
-    String? baseUrl,
-    http.Client? httpClient,
-  })  : _baseUrl = baseUrl ?? 'http://localhost:8000/api/v1',
-        _client = httpClient ?? http.Client();
+  PhcApiClient({String? baseUrl, http.Client? httpClient})
+    : _baseUrl = baseUrl ?? 'https://asha-backend-1akc.onrender.com/api/v1',
+      _client = httpClient ?? http.Client();
 
   final String _baseUrl;
   final http.Client _client;
@@ -55,14 +55,16 @@ class PhcApiClient {
     }
 
     final now = DateTime.now();
-    final facilityDisplay = note.destinationFacility?.name ?? 'Primary Health Centre (PHC)';
+    final facilityDisplay =
+        note.destinationFacility?.name ?? 'Primary Health Centre (PHC)';
 
     final payload = {
       'id': note.referralId,
       'encounter_id': note.encounterId,
       'member_id': note.patient.memberId,
       'triage_flag': note.triageFlag.wireName,
-      'destination_facility_id': note.destinationFacility?.id ?? 'fac_phc_default',
+      'destination_facility_id':
+          note.destinationFacility?.id ?? 'fac_phc_default',
       'destination_level': note.destinationFacility?.level.shortCode ?? 'PHC',
       'transport_arranged': note.transportArranged ?? 'None',
       'status': 'created',
@@ -94,7 +96,8 @@ class PhcApiClient {
         return PhcDispatchResult(
           isSuccess: true,
           referralId: note.referralId,
-          message: 'Request successfully received by $facilityDisplay. Registered in Doctor Queue.',
+          message:
+              'Request successfully received by $facilityDisplay. Registered in Doctor Queue.',
           dispatchedAt: now,
           facilityName: facilityDisplay,
           serverSequence: now.millisecondsSinceEpoch,

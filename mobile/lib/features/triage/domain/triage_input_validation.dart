@@ -59,6 +59,13 @@ class TriageInputValidation {
       min: 5,
       max: 120,
     ),
+    'vitals.weight_kg': TriageInputBounds(
+      unit: 'kg',
+      min: 0.5,
+      max: 200,
+      decimals: 1,
+    ),
+    'vitals.spo2': TriageInputBounds(unit: '%', min: 50, max: 100),
   };
 
   static TriageInputBounds? boundsFor(String fieldKey) => _bounds[fieldKey];
@@ -120,6 +127,8 @@ class TriageInputValidation {
     'vitals.diastolic_bp' => 'diastolic BP',
     'vitals.pulse_rate' => 'pulse rate',
     'vitals.respiratory_rate' => 'respiratory rate',
+    'vitals.weight_kg' => 'weight',
+    'vitals.spo2' => 'oximeter',
     _ => 'measurement',
   };
 }

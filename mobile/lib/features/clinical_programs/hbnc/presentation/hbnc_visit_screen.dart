@@ -54,7 +54,8 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
   bool _warmChain = true;
   bool _kmcPracticed = false;
   double? _kmcHours;
-  MaternalBleedingStatus _maternalBleeding = MaternalBleedingStatus.normalLochia;
+  MaternalBleedingStatus _maternalBleeding =
+      MaternalBleedingStatus.normalLochia;
   bool _maternalFever = false;
   bool _maternalSevereHeadache = false;
   String _maternalWound = 'normal';
@@ -113,9 +114,11 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
               memberId: widget.newbornId,
               triageResult: result.triageResult,
               rawVitals: {
-                'weight': '${checklist.currentWeightKg ?? widget.birthWeightKg} kg',
+                'weight':
+                    '${checklist.currentWeightKg ?? widget.birthWeightKg} kg',
                 'temperature': '${checklist.temperatureC ?? "unrecorded"} °C',
-                'respiratory_rate': '${checklist.respiratoryRate ?? "unrecorded"} /min',
+                'respiratory_rate':
+                    '${checklist.respiratoryRate ?? "unrecorded"} /min',
               },
             ),
           ),
@@ -137,7 +140,10 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
       if (mounted) {
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving HBNC visit: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Error saving HBNC visit: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -182,29 +188,48 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.warning_amber_rounded, color: Colors.red.shade800, size: 22),
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: Colors.red.shade800,
+                        size: 22,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Newborn / Maternal Danger Detected',
-                          style: TextStyle(color: Colors.red.shade900, fontWeight: FontWeight.bold, fontSize: 14),
+                          style: TextStyle(
+                            color: Colors.red.shade900,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
                   for (final sign in [...dangerSigns, ...maternalDangers])
-                    Text('• $sign', style: TextStyle(color: Colors.red.shade900, fontSize: 12.5)),
+                    Text(
+                      '• $sign',
+                      style: TextStyle(
+                        color: Colors.red.shade900,
+                        fontSize: 12.5,
+                      ),
+                    ),
                   const SizedBox(height: 6),
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red.shade800,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     onPressed: _submitVisit,
                     icon: const Icon(Icons.emergency, size: 18),
-                    label: const Text('Open Referral Slip (108)', style: TextStyle(fontWeight: FontWeight.bold)),
+                    label: const Text(
+                      'Open Referral Slip (108)',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ],
               ),
@@ -224,9 +249,16 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
                 leading: Icon(Icons.favorite, color: Colors.amber.shade900),
                 title: Text(
                   'High-risk newborn · ${widget.birthWeightKg.toStringAsFixed(1)} kg',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.amber.shade900),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Colors.amber.shade900,
+                  ),
                 ),
-                subtitle: const Text('KMC guidance active', style: TextStyle(fontSize: 12)),
+                subtitle: const Text(
+                  'KMC guidance active',
+                  style: TextStyle(fontSize: 12),
+                ),
                 children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -236,12 +268,19 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
                         for (final step in KmcGuidance.coreSteps)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 2),
-                            child: Text('• $step', style: const TextStyle(fontSize: 12)),
+                            child: Text(
+                              '• $step',
+                              style: const TextStyle(fontSize: 12),
+                            ),
                           ),
                         const SizedBox(height: 4),
                         Text(
                           'Target: ≥ ${KmcGuidance.recommendedTargetHours(widget.birthWeightKg)} hrs/day',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.amber.shade900),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            color: Colors.amber.shade900,
+                          ),
                         ),
                       ],
                     ),
@@ -261,28 +300,39 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
                     Expanded(
                       child: TextFormField(
                         initialValue: _currentWeightKg?.toString(),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Current Weight',
                           suffixText: 'kg',
                           isDense: true,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                        onChanged: (v) => setState(() => _currentWeightKg = double.tryParse(v)),
+                        onChanged: (v) => setState(
+                          () => _currentWeightKg = double.tryParse(v),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: TextFormField(
                         initialValue: _temperatureC?.toString(),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Temp',
                           suffixText: '°C',
                           isDense: true,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                        onChanged: (v) => setState(() => _temperatureC = double.tryParse(v)),
+                        onChanged: (v) =>
+                            setState(() => _temperatureC = double.tryParse(v)),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -294,9 +344,12 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
                           labelText: 'Breathing',
                           suffixText: '/min',
                           isDense: true,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                        onChanged: (v) => setState(() => _respiratoryRate = int.tryParse(v)),
+                        onChanged: (v) =>
+                            setState(() => _respiratoryRate = int.tryParse(v)),
                       ),
                     ),
                   ],
@@ -326,34 +379,64 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
               children: [
                 DropdownButtonFormField<FeedingStatus>(
                   initialValue: _feedingStatus,
+                  isExpanded: true,
                   decoration: InputDecoration(
                     labelText: 'Breastfeeding Status',
                     isDense: true,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  items: FeedingStatus.values.map((f) => DropdownMenuItem(value: f, child: Text(f.label))).toList(),
+                  items: FeedingStatus.values
+                      .map(
+                        (f) => DropdownMenuItem(
+                          value: f,
+                          child: Text(f.label, overflow: TextOverflow.ellipsis),
+                        ),
+                      )
+                      .toList(),
                   onChanged: (v) => setState(() => _feedingStatus = v!),
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<CordStatus>(
                   initialValue: _cordStatus,
+                  isExpanded: true,
                   decoration: InputDecoration(
                     labelText: 'Umbilical Cord',
                     isDense: true,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  items: CordStatus.values.map((c) => DropdownMenuItem(value: c, child: Text(c.label))).toList(),
+                  items: CordStatus.values
+                      .map(
+                        (c) => DropdownMenuItem(
+                          value: c,
+                          child: Text(c.label, overflow: TextOverflow.ellipsis),
+                        ),
+                      )
+                      .toList(),
                   onChanged: (v) => setState(() => _cordStatus = v!),
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<JaundiceStatus>(
                   initialValue: _jaundiceStatus,
+                  isExpanded: true,
                   decoration: InputDecoration(
                     labelText: 'Jaundice / Yellowness',
                     isDense: true,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  items: JaundiceStatus.values.map((j) => DropdownMenuItem(value: j, child: Text(j.label))).toList(),
+                  items: JaundiceStatus.values
+                      .map(
+                        (j) => DropdownMenuItem(
+                          value: j,
+                          child: Text(j.label, overflow: TextOverflow.ellipsis),
+                        ),
+                      )
+                      .toList(),
                   onChanged: (v) => setState(() => _jaundiceStatus = v!),
                 ),
               ],
@@ -384,14 +467,19 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
                 if (_kmcPracticed) ...[
                   const SizedBox(height: 6),
                   TextFormField(
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: InputDecoration(
                       labelText: 'Hours of KMC Per Day',
                       suffixText: 'hours',
                       isDense: true,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    onChanged: (v) => setState(() => _kmcHours = double.tryParse(v)),
+                    onChanged: (v) =>
+                        setState(() => _kmcHours = double.tryParse(v)),
                   ),
                 ],
               ],
@@ -406,12 +494,22 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
               children: [
                 DropdownButtonFormField<MaternalBleedingStatus>(
                   initialValue: _maternalBleeding,
+                  isExpanded: true,
                   decoration: InputDecoration(
                     labelText: 'Maternal Bleeding',
                     isDense: true,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  items: MaternalBleedingStatus.values.map((s) => DropdownMenuItem(value: s, child: Text(s.label))).toList(),
+                  items: MaternalBleedingStatus.values
+                      .map(
+                        (s) => DropdownMenuItem(
+                          value: s,
+                          child: Text(s.label, overflow: TextOverflow.ellipsis),
+                        ),
+                      )
+                      .toList(),
                   onChanged: (v) => setState(() => _maternalBleeding = v!),
                 ),
                 const SizedBox(height: 10),
@@ -434,7 +532,9 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
           const SizedBox(height: 12),
 
           ClinicalSubmitButton(
-            label: hasDangers ? 'Danger Sign: Open Referral Slip' : 'Save HBNC Visit',
+            label: hasDangers
+                ? 'Danger Sign: Open Referral Slip'
+                : 'Save HBNC Visit',
             isSaving: _isSaving,
             isEmergency: hasDangers,
             onPressed: _submitVisit,
@@ -460,16 +560,35 @@ class _HbncVisitScreenState extends ConsumerState<HbncVisitScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: AshaColors.primaryLight, shape: BoxShape.circle),
-            child: const Icon(Icons.child_care, color: AshaColors.primary, size: 22),
+            decoration: BoxDecoration(
+              color: AshaColors.primaryLight,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.child_care,
+              color: AshaColors.primary,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                Text('Birth Weight: ${widget.birthWeightKg} kg · Day ${widget.visitDay}', style: const TextStyle(fontSize: 12, color: AshaColors.textMuted)),
+                Text(
+                  displayName,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  'Birth Weight: ${widget.birthWeightKg} kg · Day ${widget.visitDay}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AshaColors.textMuted,
+                  ),
+                ),
               ],
             ),
           ),

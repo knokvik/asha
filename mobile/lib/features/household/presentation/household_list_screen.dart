@@ -60,6 +60,17 @@ class _HouseholdListScreenState extends ConsumerState<HouseholdListScreen> {
       backgroundColor: AshaColors.screenBg,
       drawer: const AppDrawer(),
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          tooltip: 'Back',
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/home');
+            }
+          },
+        ),
         title: Text(
           l10n?.households ?? 'Households',
           style: const TextStyle(

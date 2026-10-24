@@ -40,6 +40,8 @@ export function MainDashboardPage() {
   const [emergencyWindowCollapsed, setEmergencyWindowCollapsed] = useState(true);
   const [activeKpi, setActiveKpi] = useState<'referrals' | 'workers' | 'visits' | 'beds' | null>(null);
   const { syncActivities } = useSync();
+  const liveWorkerCount = new Set(syncActivities.map((item) => item.workerName).filter(Boolean)).size;
+  const liveReferralCount = syncActivities.filter((item) => item.severity === 'RED' || item.severity === 'YELLOW').length;
 
   const { location, isLocating, requestLocation } = useGeolocation({ autoLocateDefault: false });
 
@@ -307,7 +309,7 @@ export function MainDashboardPage() {
                 Population (Catchment)
               </span>
               <span className="text-sm font-extrabold text-slate-900 dark:text-white leading-tight mt-0.5">
-                58,400
+                {syncActivities.length ? syncActivities.length : '—'}
               </span>
               <span className="text-[9px] text-slate-500 dark:text-slate-400 leading-none">
                 across 6 sub-centres
@@ -325,10 +327,10 @@ export function MainDashboardPage() {
                 ASHA Workers
               </span>
               <span className="text-sm font-extrabold text-slate-900 dark:text-white leading-tight mt-0.5">
-                44
+                {liveWorkerCount || '—'}
               </span>
               <span className="text-[9px] text-slate-500 dark:text-slate-400 leading-none">
-                42 online • 2 offline
+                {liveWorkerCount ? 'authenticated workers received' : 'No worker data received'}
               </span>
             </div>
           </div>

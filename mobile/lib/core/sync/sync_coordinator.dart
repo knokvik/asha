@@ -25,7 +25,8 @@ class SyncSnapshot {
     this.isConnected = false,
   });
 
-  bool get isConnectedToServer => isConnected || state == SyncConnectionState.ready;
+  bool get isConnectedToServer =>
+      isConnected || state == SyncConnectionState.ready;
 
   int get pendingCount => records
       .where(
@@ -69,6 +70,7 @@ class SyncCoordinator extends ChangeNotifier {
   Future<void> start() async {
     if (_started) return;
     _started = true;
+    await _engine.requeueAuthFailures();
     await checkServerConnectivity();
     await refresh();
     _pollTimer = Timer.periodic(pollInterval, (_) => _poll());
@@ -76,15 +78,18 @@ class SyncCoordinator extends ChangeNotifier {
 
   Future<bool> checkServerConnectivity() async {
     try {
-      final apiBaseUrl = await _storage.read(key: 'sync_api_base_url') ??
-          'http://localhost:8000';
+      final apiBaseUrl =
+          await _storage.read(key: 'sync_api_base_url') ??
+          'https://asha-backend-1akc.onrender.com';
       final cleanUrl = apiBaseUrl.replaceFirst(RegExp(r'/+$'), '');
       final res = await http
           .get(Uri.parse('$cleanUrl/healthz'))
           .timeout(const Duration(seconds: 3));
       final connected = res.statusCode == 200;
       _snapshot = SyncSnapshot(
-        state: connected ? SyncConnectionState.ready : SyncConnectionState.offline,
+        state: connected
+            ? SyncConnectionState.ready
+            : SyncConnectionState.offline,
         records: _snapshot.records,
         lastSyncedAt: _snapshot.lastSyncedAt,
         errorMessage: connected ? null : 'Server unreachable',
@@ -129,14 +134,17 @@ class SyncCoordinator extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _engine.requeueRetryable();
-      final worker = await SyncWorker.fromStoredConfig(
-        db: _database,
-        storage: _storage,
-      ) ?? SyncWorker(
-        db: _database,
-        apiBaseUrl: await _storage.read(key: 'sync_api_base_url') ?? 'http://localhost:8000',
-      );
+      // A user-triggered sync is an explicit retry request; do not wait for
+      // the automatic exponential-backoff window of previously failed rows.
+      await _engine.requeueFailedForManualSync();
+      final worker =
+          await SyncWorker.fromStoredConfig(db: _database, storage: _storage) ??
+          SyncWorker(
+            db: _database,
+            apiBaseUrl:
+                await _storage.read(key: 'sync_api_base_url') ??
+                'https://asha-backend-1akc.onrender.com',
+          );
 
       final success = await worker.run();
       await refresh();

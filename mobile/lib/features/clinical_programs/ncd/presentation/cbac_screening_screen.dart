@@ -822,6 +822,7 @@ class _CbacScreeningScreenState extends ConsumerState<CbacScreeningScreen>
                 const SizedBox(height: 12),
                 DropdownButtonFormField<GlucoseType>(
                   initialValue: _glucoseType,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Test Type',
                     border: OutlineInputBorder(
@@ -831,7 +832,10 @@ class _CbacScreeningScreenState extends ConsumerState<CbacScreeningScreen>
                   ),
                   items: GlucoseType.values
                       .map(
-                        (t) => DropdownMenuItem(value: t, child: Text(t.label)),
+                        (t) => DropdownMenuItem(
+                          value: t,
+                          child: Text(t.label, overflow: TextOverflow.ellipsis),
+                        ),
                       )
                       .toList(),
                   onChanged: (val) {
