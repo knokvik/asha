@@ -21,6 +21,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.multi_tenant import TenantContext, set_tenant_context
+from core.config import get_settings
 from core.security import decode_token
 from db.session import get_db
 from models.db.models import AreaNotification, AsrFeedback, AuditLog, TriageTicket
@@ -66,12 +67,27 @@ async def sync_push(
     raw = await request.body()
     content_encoding = request.headers.get("content-encoding", "").lower()
     if "gzip" in content_encoding:
-        raw = gzip.decompress(raw)
+        try:
+            raw = gzip.decompress(raw)
+        except (OSError, EOFError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Invalid gzip sync payload",
+            ) from exc
 
     try:
         body = SyncPushRequest.model_validate_json(raw)
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+
+    if body.worker_id != tenant.worker_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="worker_id mismatch")
+    max_records = get_settings().SYNC_BATCH_MAX_RECORDS
+    if len(body.records) > max_records:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Sync batch exceeds maximum of {max_records} records",
+        )
 
     svc = SyncService(db)
     return await svc.apply_batch(body, block_code=tenant.block_code)

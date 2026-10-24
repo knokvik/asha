@@ -196,6 +196,9 @@ class SyncService:
             encounter_id = payload.get("encounter_id")
             if encounter_id and await self._db.get(ClinicalEncounter, encounter_id) is None:
                 payload["encounter_id"] = None
+            member_id = payload.get("member_id")
+            if member_id and await self._db.get(Member, member_id) is None:
+                payload["member_id"] = None
 
         # Inject server-side columns
         if hasattr(model_class, "worker_id"):
