@@ -136,6 +136,13 @@ class ReferralFeedbackRequest(BaseModel):
 class ReferralStatusUpdateRequest(BaseModel):
     status: Literal["created", "en_route", "arrived", "outcome_recorded"]
     updated_at: int | None = None
+
+
+class ClinicalProgramActionRequest(BaseModel):
+    decision: str = Field(..., min_length=1, max_length=80)
+    instructions: str = Field(..., min_length=1, max_length=4000)
+    follow_up_date: str | None = Field(None, max_length=30)
+    assigned_to: str | None = Field(None, max_length=120)
     notes: str | None = None
 
 

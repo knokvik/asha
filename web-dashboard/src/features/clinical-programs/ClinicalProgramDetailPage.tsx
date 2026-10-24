@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, MessageSquare, Phone, Activity, FileImage, FileAudio, ExternalLink } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { useSync, type FrontlineSyncActivity } from '@/shared/context/SyncContext';
+import { apiClient } from '@/shared/api/client';
 
 const PROGRAMS: Record<string, { title: string; subtitle: string; actions: string[] }> = {
   anc: {
@@ -51,6 +52,17 @@ export function ClinicalProgramDetailPage() {
   const config = PROGRAMS[program.toLowerCase()];
   const navigate = useNavigate();
   const { syncActivities, lastSyncTime, isSyncing, triggerManualSync } = useSync();
+  const takeAction = async (item: FrontlineSyncActivity) => {
+    const encounterId = item.recordId;
+    if (!encounterId) { window.alert('This record has no clinical encounter ID yet. Refresh after the next server sync.'); return; }
+    const decision = window.prompt('PHC decision (Reviewed / Follow-up assigned / Referred):', 'Reviewed');
+    if (!decision) return;
+    const instructions = window.prompt('Instructions for ASHA:', 'Continue routine follow-up and counselling.');
+    if (!instructions) return;
+    await apiClient.post(`/referrals/clinical/${encodeURIComponent(encounterId)}/action`, { decision, instructions });
+    window.alert('PHC action saved. It will appear in the ASHA app after sync.');
+    await triggerManualSync();
+  };
 
   const records = useMemo(() => {
     if (!config) return [];
@@ -210,7 +222,7 @@ export function ClinicalProgramDetailPage() {
 
               <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
                 <button
-                  onClick={() => navigate(`/phc${item.ticketId ? `?ticket=${encodeURIComponent(item.ticketId)}` : ''}`)}
+                  onClick={() => takeAction(item)}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-[#0C5A3E] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#094832]"
                 >
                   <MessageSquare className="h-3.5 w-3.5" /> PHC Action

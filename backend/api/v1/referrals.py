@@ -19,16 +19,47 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.multi_tenant import TenantContext, set_tenant_context
 from core.security import decode_token
 from db.session import get_db
-from models.db.models import AuditLog, Member, Household, ReferralRecord
+from models.db.models import AuditLog, Member, Household, ReferralRecord, ClinicalEncounter
 from models.schemas.schemas import (
     ReferralOutcomeRequest,
     ReferralOutcomeResponse,
     ReferralFeedbackRequest,
     ReferralStatusUpdateRequest,
+    ClinicalProgramActionRequest,
 )
 from services.notification_service import NotificationService
 
 router = APIRouter(prefix="/referrals", tags=["referrals"])
+
+
+@router.post("/clinical/{encounter_id}/action", status_code=status.HTTP_200_OK)
+async def record_clinical_program_action(
+    encounter_id: str,
+    payload: ClinicalProgramActionRequest,
+    tenant: TenantContext = Depends(_get_optional_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
+    """Save PHC action instructions on a clinical encounter for ASHA sync."""
+    result = await db.execute(select(ClinicalEncounter).where(ClinicalEncounter.id == encounter_id))
+    encounter = result.scalar_one_or_none()
+    if not encounter:
+        raise HTTPException(status_code=404, detail=f"Clinical encounter '{encounter_id}' not found.")
+    now_ms = int(time.time() * 1000)
+    action = (
+        f"\n\n--- PHC CLINICAL ACTION ---\n"
+        f"Decision: {payload.decision}\n"
+        f"Assigned to: {payload.assigned_to or 'PHC team'}\n"
+        f"Follow-up date: {payload.follow_up_date or 'Not specified'}\n"
+        f"Instructions: {payload.instructions}\n"
+        f"By: {tenant.worker_id} · {now_ms}\n"
+    )
+    encounter.visit_notes = (encounter.visit_notes or "") + action
+    encounter.status = "phc_actioned"
+    encounter.updated_at = now_ms
+    encounter.sync_status = "synced"
+    encounter.server_seq = now_ms
+    await db.commit()
+    return {"success": True, "encounter_id": encounter_id, "status": encounter.status, "updated_at": now_ms}
 
 
 async def _get_optional_tenant(authorization: str | None = Header(None)) -> TenantContext:
